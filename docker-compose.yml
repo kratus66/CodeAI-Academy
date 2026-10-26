@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: codeai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: codeai
+      POSTGRES_PASSWORD: codeai
+      POSTGRES_DB: codeai
+    ports:
+      # 5433 en el host: 5432 suele estar ocupado por otras bases locales.
+      - "5433:5432"
+    volumes:
+      - codeai-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codeai -d codeai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  codeai-pgdata:

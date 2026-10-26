@@ -1,0 +1,36 @@
+{
+  "name": "codeai-academy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma y currículo de CodeAI Academy: formación profesional para construir software con IA.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "predev": "npm run build -w packages/shared",
+    "dev": "concurrently -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
+    "predev:web": "npm run build -w packages/shared",
+    "dev:web": "npm run dev -w apps/web",
+    "predev:api": "npm run build -w packages/shared",
+    "dev:api": "npm run dev -w apps/api",
+    "prebuild": "npm run build -w packages/shared",
+    "build": "npm run build --workspaces --if-present",
+    "pretypecheck": "npm run build -w packages/shared",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "pretest": "npm run build -w packages/shared",
+    "test": "npm run test --workspaces --if-present",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run db:migrate -w apps/api",
+    "db:seed": "npm run db:seed -w apps/api",
+    "db:reset": "npm run db:reset -w apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
