@@ -87,20 +87,22 @@ Dejar un monorepo ejecutable y verificable donde el currículo ya sea visible: c
 
 ## 7. Deuda conocida
 
-| Deuda | Impacto | Cuándo se paga |
-|-------|---------|----------------|
-| Repositorio sin commits ni CI | No hay historial ni verificación automática | Antes de S1 |
-| Sin Prisma ni migraciones | `db:*` reservados pero inoperativos | S2 |
-| Sin pruebas E2E ni de accesibilidad automatizadas | Cobertura de integración baja | S3 |
-| `details` del error sin `field` en validaciones de Nest | El contrato admite `field` opcional | S1 |
-| Sin rate limiting | Riesgo de abuso en auth | S1 |
-| `docs/06-plantillas/` sin contenido | Plantillas de lección/ejercicio pendientes | Antes de producir contenido |
+| Deuda | Impacto | Cuándo se paga | Estado (2026-10-26) |
+|-------|---------|----------------|---------------------|
+| Repositorio sin commits ni CI | No hay historial ni verificación automática | Antes de S1 | 🔄 historial creado (`85652f0`); CI sigue pendiente (S11) |
+| Sin Prisma ni migraciones | `db:*` reservados pero inoperativos | S2 | ✅ pagada en S1: `schema.prisma` + migración `init_identity` |
+| Sin pruebas E2E ni de accesibilidad automatizadas | Cobertura de integración baja | S3 | ⬜ pendiente |
+| `details` del error sin `field` en validaciones de Nest | El contrato admite `field` opcional | S1 | ✅ pagada en S1 (S1-T5) |
+| Sin rate limiting | Riesgo de abuso en auth | S1 | ✅ pagada en S1 (S1-T10) |
+| `docs/06-plantillas/` sin contenido | Plantillas de lección/ejercicio pendientes | Antes de producir contenido | ✅ lección y ejercicio disponibles · ⬜ ADR prevista |
 
 ---
 
 ## 8. Siguiente paso
 
-Redactar la ficha **S1-T1** (Prisma + modelo de usuario, o bootstrap de `auth` según decisión del Orquestador) y abrir el sprint S1 en [`roadmap-sprints.md`](../roadmap-sprints.md).
+> ✅ **Cumplido:** S1 se redactó y cerró el 2026-10-26; ver [`sprint-01-auth.md`](sprint-01-auth.md). El siguiente sprint es **S2 — Modelo de datos y API de contenido** (⏳).
+>
+> *Instrucción original (histórica):* redactar la ficha **S1-T1** (Prisma + modelo de usuario, o bootstrap de `auth` según decisión del Orquestador) y abrir el sprint S1 en [`roadmap-sprints.md`](../roadmap-sprints.md).
 
 ---
 

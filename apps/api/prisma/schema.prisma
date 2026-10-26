@@ -1,7 +1,9 @@
 // Esquema Prisma de CodeAI Academy.
 // Fuente de verdad: docs/03-arquitectura/modelo-datos.md.
-// S1 (identidad): User + RefreshToken. Los modelos de contenido se añaden en S2
-// junto con sus relaciones, para no crear tablas sin contrato.
+// S1 (identidad): User + RefreshToken.
+// S2 (contenido): Stage → Module → Unit → Lesson → Exercise y el catálogo de
+// recursos. Las relaciones con progreso, envíos, pistas y pruebas se añaden en
+// los sprints que crean esas tablas (S4–S6), nunca antes.
 
 generator client {
   provider = "prisma-client-js"
@@ -49,4 +51,172 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ─────────────────────────── CONTENIDO ───────────────────────────
+
+model Stage {
+  id           Int      @id // 0..11
+  slug         String   @unique
+  title        String
+  objective    String
+  level        Int // 1..4
+  estimatedMin Int?
+  order        Int
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  modules Module[]
+
+  @@index([level])
+}
+
+model Module {
+  id          String  @id @default(cuid())
+  stageId     Int
+  code        String  @unique // "M2.3"
+  title       String
+  order       Int
+  isPublished Boolean @default(false)
+
+  stage Stage  @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  units Unit[]
+
+  @@index([stageId])
+}
+
+model Unit {
+  id              String   @id @default(cuid())
+  moduleId        String
+  code            String   @unique // "U2.3.3"
+  title           String
+  objective       String
+  estimatedMin    Int?
+  order           Int
+  isPublished     Boolean  @default(false)
+  prerequisiteIds String[] @default([]) // códigos de unidad previos
+
+  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+  exercises Exercise[]
+
+  @@index([moduleId])
+}
+
+model Lesson {
+  id           String   @id @default(cuid())
+  unitId       String
+  slug         String   @unique
+  title        String
+  content      Json // bloques estructurados, validados con Zod
+  steps        Json // los 7 pasos obligatorios de la microestructura
+  estimatedMin Int?
+  order        Int
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  unit      Unit             @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  resources LessonResource[]
+
+  @@index([unitId])
+}
+
+enum ResourceType {
+  DOCUMENTATION
+  VIDEO
+  COURSE
+  INTERACTIVE
+  REPOSITORY
+  DIAGRAM
+  ANIMATION
+}
+
+enum ResourceStatus {
+  VERIFIED
+  NEEDS_REVIEW
+  OBSOLETE
+}
+
+model Resource {
+  id           String         @id @default(cuid())
+  slug         String         @unique
+  title        String
+  provider     String
+  url          String
+  type         ResourceType
+  language     String         @default("es")
+  level        String?
+  durationMin  Int?
+  license      String?
+  embedAllowed Boolean        @default(false)
+  status       ResourceStatus @default(VERIFIED)
+  reviewedAt   DateTime?
+  notes        String?
+  createdAt    DateTime       @default(now())
+
+  lessons LessonResource[]
+
+  @@index([status])
+}
+
+model LessonResource {
+  lessonId   String
+  resourceId String
+  order      Int     @default(0)
+  note       String?
+
+  lesson   Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, resourceId])
+}
+
+enum ExerciseType {
+  LAB
+  QUIZ
+  MEMORY
+  FLASHCARD
+  DEBUG
+  AUDIT
+  CHALLENGE
+  SIM
+  READING
+  REFLECT
+  PROJECT
+}
+
+enum Ladder {
+  GUIDED
+  SEMI
+  AUTONOMOUS
+}
+
+model Exercise {
+  id           String       @id @default(cuid())
+  unitId       String
+  slug         String       @unique
+  type         ExerciseType
+  title        String
+  statement    String
+  config       Json // configuración específica del tipo, validada con Zod
+  solution     Json? // nunca se expone al cliente
+  ladder       Ladder       @default(GUIDED)
+  difficulty   Int          @default(2)
+  concepts     String[] // para SM-2 y analítica
+  competencies String[] // ["C1", "C5"]
+  estimatedMin Int?
+  language     String?
+  sources      String[]     @default([])
+  maxAttempts  Int?
+  isPublished  Boolean      @default(false)
+  order        Int
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId, type])
+  @@index([isPublished])
 }

@@ -1,7 +1,8 @@
 # Sprint 01 — Identidad y acceso
 
-> **Estado:** 🔄 en curso · **Inicio:** 2026-10-26 · **Depende de:** S0 ✅
-> **Avance:** backend de identidad completo y verificado (S1-T1…S1-T13); pantallas web pendientes (S1-T14…S1-T16).
+> **Estado:** ✅ completado · **Inicio:** 2026-10-26 · **Cierre:** 2026-10-26 · **Depende de:** S0 ✅
+> **Avance:** **16/16 tareas ✅** (S1-T1…S1-T16) · **12/12 criterios de aceptación ✅** · suite completa verde.
+> **Cobertura:** backend de identidad (S1-T1…S1-T13) y pantallas web de acceso (S1-T14…S1-T16) completos y verificados.
 > **Terminal por tarea:** cada tarea se implementa y verifica en un terminal propio (no se mezclan verificaciones).
 
 ---
@@ -74,9 +75,9 @@ Cada tarea se ejecuta y verifica en **un terminal distinto** (`Terminal 1`, `Ter
 | S1-T11 | Controlador, módulo `auth` conectado a `AppModule` | `auth.controller.ts`, `auth.module.ts`, `app.module.ts` | 11 | ✅ |
 | S1-T12 | Verificación HTTP real del flujo completo (registro → me → refresh → logout) | — (guion de comandos) | 12 | ✅ |
 | S1-T13 | Cierre documental: contrato, `modelo-datos.md`, README y roadmap | docs | 13 | ✅ |
-| S1-T14 | Web: cliente de API con `credentials: include` y manejo del envelope de error | `apps/web/src/lib/api-client.ts` | 14 | ⬜ |
-| S1-T15 | Web: pantallas de registro y login con esquemas compartidos | `apps/web/src/app/(auth)/*` | 15 | ⬜ |
-| S1-T16 | Web: estado de sesión (`/auth/me`) y cabecera con usuario | `apps/web/src/components/*` | 16 | ⬜ |
+| S1-T14 | Web: cliente de API con `credentials: include` y manejo del envelope de error | `apps/web/src/lib/api-client.ts` + spec | 14 | ✅ |
+| S1-T15 | Web: pantallas de registro y login con esquemas compartidos | `apps/web/src/app/(auth)/*`, `src/features/auth/*` | 15 | ✅ |
+| S1-T16 | Web: estado de sesión (`/auth/me`) y cabecera con usuario | `src/features/auth/context/*`, `src/components/layout/*`, `SiteHeader` | 16 | ✅ |
 
 > **Nota de alcance:** el guard de roles y `@Public` se posponen a S3, cuando exista navegación autenticada que los use; hoy `JwtAuthGuard` se aplica por ruta y no hay código muerto.
 
@@ -86,16 +87,20 @@ Cada tarea se ejecuta y verifica en **un terminal distinto** (`Terminal 1`, `Ter
 
 ## 5. Criterios de aceptación
 
-1. `POST /api/auth/register` devuelve `201` con `{ user }` (sin `passwordHash`), crea al usuario en PostgreSQL y deja ambas cookies.
-2. Registro con email repetido → `409 CONFLICT`; cuerpo inválido → `400 VALIDATION_ERROR` con `details[].field`.
-3. `POST /api/auth/login` correcto → `200` con cookies; credenciales erróneas → `401 UNAUTHENTICATED` sin revelar si el email existe.
-4. `POST /api/auth/refresh` rota el refresh token; reutilizar uno revocado revoca toda la familia y devuelve `401`.
-5. `GET /api/auth/me` con cookie o `Bearer` devuelve el usuario; sin credenciales → `401`.
-6. `POST /api/auth/logout` → `204` e invalida el refresh token (idempotente).
-7. Contraseñas guardadas como hash bcrypt (nunca en claro, nunca en respuestas ni logs).
-8. Límites de auth aplicados con `429 RATE_LIMITED` y cabecera `Retry-After`.
-9. Suite del monorepo verde: typecheck, lint, test y build.
-10. `docs/03-arquitectura/contratos-api.md` y `modelo-datos.md` actualizados en el mismo commit.
+**Estado:** 12/12 verificados ✅ (ver bitácora §8).
+
+- [x] `POST /api/auth/register` devuelve `201` con `{ user }` (sin `passwordHash`), crea al usuario en PostgreSQL y deja ambas cookies.
+- [x] Registro con email repetido → `409 CONFLICT`; cuerpo inválido → `400 VALIDATION_ERROR` con `details[].field`.
+- [x] `POST /api/auth/login` correcto → `200` con cookies; credenciales erróneas → `401 UNAUTHENTICATED` sin revelar si el email existe.
+- [x] `POST /api/auth/refresh` rota el refresh token; reutilizar uno revocado revoca toda la familia y devuelve `401`.
+- [x] `GET /api/auth/me` con cookie o `Bearer` devuelve el usuario; sin credenciales → `401`.
+- [x] `POST /api/auth/logout` → `204` e invalida el refresh token (idempotente).
+- [x] Contraseñas guardadas como hash bcrypt (nunca en claro, nunca en respuestas ni logs).
+- [x] Límites de auth aplicados con `429 RATE_LIMITED` y cabecera `Retry-After`.
+- [x] `/register` y `/login` validan con los esquemas de `@codeai/shared` y traducen el envelope: `409` (correo registrado), `401` (credenciales) y `429` (espera de `Retry-After`) sin filtrar si el email existe.
+- [x] La cabecera refleja la sesión (`/auth/me` + rotación del refresh al cargar) y permite cerrarla; los tokens solo viajan en cookies httpOnly.
+- [x] Suite del monorepo verde: typecheck, lint, test y build.
+- [x] `docs/03-arquitectura/contratos-api.md` y `modelo-datos.md` se mantienen sincronizados cuando cambia el contrato.
 
 ---
 
@@ -135,6 +140,9 @@ Cada tarea se ejecuta y verifica en **un terminal distinto** (`Terminal 1`, `Ter
 | S1-T11 | 11 | 53 pruebas + build | Módulo conectado a `AppModule` sin errores de DI |
 | S1-T12 | 12 | HTTP real con `curl` + PostgreSQL | `201 → 200 → 200 → 204 → 401`, `409` en duplicado, `400` con campos, `429 Retry-After: 899`, hash `$2b$12$` y refresh de 64 hex en la base |
 | S1-T13 | 13 | Suite completa del monorepo | Documentación sincronizada y verificación final |
+| S1-T14 | 14 | `npm run test -w apps/web` (10 pruebas) | Envelope → `ApiError` con `details` y `Retry-After`, 204 sin cuerpo, contrato de usuario inválido rechazado, refresh tras `401` en `/me` |
+| S1-T15 | 15 | 8 pruebas de formularios + `next build` | Validación local con esquemas compartidos, `401`/`409`/`429` traducidos, `/login` y `/register` prerenderizadas |
+| S1-T16 | 16 | 4 pruebas de `SessionMenu` + `next start` + HTTP | Sesión restaurada con `/auth/me`; cabecera de anónimo/autenticado; `/login` y `/register` → `200` en servidor de producción |
 
 **Desviaciones registradas**
 
@@ -144,6 +152,9 @@ Cada tarea se ejecuta y verifica en **un terminal distinto** (`Terminal 1`, `Ter
 4. **`process.loadEnvFile()` en lugar de `dotenv`.** Node 24 lo incluye; se evita una dependencia.
 5. **Reloj del rate limiter por herencia.** Un parámetro de constructor hacía que Nest intentara inyectar `Function`; las pruebas usan una subclase con `override now()`.
 6. **`ZodValidationPipe` sin `instanceof`.** La comprobación por comportamiento (`strict`) evita el problema de doble instancia ESM/CJS de Zod entre `shared` y `api`.
+7. **S1-T15 superó la regla de 3 archivos.** El marco visual (`AuthCard`), el campo accesible (`AuthField`), los dos formularios, el mapeo de errores y las páginas forman una sola unidad de UI; separarlos habría duplicado estilos y validación entre registro y login.
+8. **Tras el acceso se vuelve a `/`.** El shell autenticado llega en S3; hasta entonces iniciar sesión actualiza la cabecera y regresa a la landing en lugar de mostrar una pantalla vacía.
+9. **Sin lectura de tokens desde JavaScript.** El cliente usa siempre `credentials: "include"` y obtiene la identidad de `/auth/me`; si el access token caducó, `restoreSession` rota el refresh una vez antes de declarar la sesión anónima.
 
 ---
 

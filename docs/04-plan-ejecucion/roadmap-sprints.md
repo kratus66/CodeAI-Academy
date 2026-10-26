@@ -22,8 +22,8 @@
 | Sprint | Objetivo | Etapas | Módulos backend | Estado |
 |--------|----------|--------|-----------------|--------|
 | **S0** | Fundación técnica y landing pública | E0 | `health` | ✅ |
-| **S1** | Identidad y acceso (registro, login, roles, sesión) | E0–E1 | `auth`, `users` | ⏳ |
-| **S2** | Modelo de datos y API de contenido | E1 | `content` | ⬜ |
+| **S1** | Identidad y acceso (registro, login, roles, sesión) | E0–E1 | `auth` (`users` en S3) | ✅ |
+| **S2** | Modelo de datos y API de contenido | E1 | `content` | ✅ |
 | **S3** | Plataforma de aprendizaje (catálogo y lección) | E1–E3 | `content` (lectura) | ⬜ |
 | **S4** | Progreso, desbloqueos y competencias | E1–E4 | `progress` | ⬜ |
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ⬜ |
@@ -35,6 +35,8 @@
 | **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | ⬜ |
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
+>
+> **Cierre acumulado (2026-10-26):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 ⏳ siguiente**.
 
 ---
 
@@ -45,21 +47,25 @@
 - **Objetivo:** monorepo verde (shared + API + web) con landing pública que comunica la ruta completa.
 - **Entregables:** workspaces npm, `packages/shared` con contratos Zod, bootstrap NestJS con `/api/health`, trazabilidad y formato único de error, landing con 12 etapas / 4 niveles / C1–C14.
 - **Criterio de salida:** `npm run typecheck`, `npm run lint`, `npm test` y `npm run build` verdes; landing renderizada en producción local.
+- **Cierre:** 7/7 tareas ✅ · suite completa verde · landing verificada con `next start`.
 - **Ficha:** [`sprints/sprint-00-fundacion.md`](sprints/sprint-00-fundacion.md).
 
-### S1 — Identidad y acceso 🔄
+### S1 — Identidad y acceso ✅
 
 - **Objetivo:** una persona puede registrarse, iniciar sesión y mantener sesión con roles.
-- **Entregables:** Prisma + PostgreSQL y migración de identidad (`User`, `RefreshToken`), `auth` (registro, login, refresh, logout, `me`), guards de rol, cookies httpOnly, rate limiting de auth, pantallas de registro/login.
+- **Entregables:** Prisma + PostgreSQL y migración de identidad (`User`, `RefreshToken`), `auth` (registro, login, refresh, logout, `me`), guard JWT, cookies httpOnly, rate limiting de auth, pantallas de registro/login. Guard de roles y `@Public` se difieren a S3.
 - **Criterio de salida:** pruebas de registro/login/refresh y de aislamiento entre usuarios; contraseñas hasheadas; ningún dato sensible en respuestas.
-- **Estado (2026-10-26):** backend de identidad completo y verificado por HTTP (S1-T1…S1-T13). Pendientes: guard de roles, módulo `users` y pantallas web (S1-T14…S1-T16).
+- **Estado (2026-10-26):** completo. Backend verificado por HTTP (S1-T1…S1-T13) y web con cliente de API, pantallas de acceso y sesión en cabecera (S1-T14…S1-T16). Diferidos a S3: guard de roles, `@Public` y módulo `users`.
+- **Cierre:** 16/16 tareas ✅ · 12/12 criterios de aceptación ✅ · suite completa verde.
 - **Ficha:** [`sprints/sprint-01-auth.md`](sprints/sprint-01-auth.md).
 
-### S2 — Modelo de datos y API de contenido
+### S2 — Modelo de datos y API de contenido ✅
 
 - **Objetivo:** el currículo vive en base de datos y se sirve por API paginada.
 - **Entregables:** modelos de contenido en Prisma (Stage → Module → Unit → Lesson → Exercise) y su migración, seed idempotente desde JSON validado, `content` con etapas, módulos, unidades, lecciones y recursos.
 - **Criterio de salida:** seed reproducible desde cero; listados `{ data, meta }`; esquemas Zod de contenido probados.
+- **Cierre:** 10/10 tareas ✅ · 12/12 criterios de aceptación ✅ · 12 etapas / 48 módulos / 63 unidades sembradas de forma idempotente · suite completa verde.
+- **Ficha:** [`sprints/sprint-02-contenido.md`](sprints/sprint-02-contenido.md).
 
 ### S3 — Plataforma de aprendizaje
 
@@ -123,7 +129,7 @@
 S0 ──► S1 ──► S2 ──► S3 ──► S4 ──► S5 ──► S6 ──► S7 ──► S8 ──► S9 ──► S10 ──► S11
 ```
 
-- **S3** requiere S1 (sesión) y S2 (contenido).
+- **S3** requiere S1 (sesión ✅) y S2 (contenido).
 - **S6** requiere S5 (envíos); S7 puede solaparse con S6.
 - **S8** requiere S7: no se automatiza docencia sin reglas de evaluación probadas.
 - **S9–S11** requieren el dominio completo de fundamentos y calidad (E7).

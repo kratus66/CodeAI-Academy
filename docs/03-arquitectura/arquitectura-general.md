@@ -126,9 +126,9 @@ Usuario hace clic en "Verificar solución"
 
 | Módulo | Responsabilidad | Sprint |
 |--------|----------------|--------|
-| `auth` | Registro, login, JWT, refresh, roles | S1 |
-| `users` | Perfil, preferencias, estado | S1 |
-| `content` | Etapas, módulos, unidades, lecciones, recursos | S2 |
+| `auth` | Registro, login, JWT, refresh, roles | S1 ✅ |
+| `users` | Perfil, preferencias, estado | S3 |
+| `content` | Etapas, módulos, unidades, lecciones, recursos | S2 ✅ |
 | `exercises` | Ejercicios, envíos, pistas, corrección | S5, S6 |
 | `progress` | Progreso, desbloqueos, competencias | S4 |
 | `review` | SM-2, cola de repaso | S7 |
@@ -137,7 +137,9 @@ Usuario hace clic en "Verificar solución"
 | `projects` | Entregas, rúbricas, portafolio | S9 |
 | `interviews` | Simulaciones, transcripciones, evaluación | S10 |
 | `analytics` | Agregaciones de competencias y errores | S11 |
-| `health` | Estado del servicio y observabilidad | S0 |
+| `health` | Estado del servicio y observabilidad | S0 ✅ |
+
+> **Estado (2026-10-26):** `health` (S0), `auth` (S1) y `content` (S2, solo lectura) implementados y verificados. `users` se pospone a S3 junto con el shell autenticado; el guard de roles y `@Public` llegan en el mismo sprint.
 
 ---
 

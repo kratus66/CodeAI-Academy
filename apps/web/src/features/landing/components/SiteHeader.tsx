@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import { Container } from "@/components/layout/Container";
+import { SessionMenu } from "@/components/layout/SessionMenu";
 
 const NAVIGATION = [
   { href: "#ruta", label: "Ruta" },
@@ -11,8 +14,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-ink/85 backdrop-blur">
       <Container className="flex h-16 items-center justify-between gap-6">
-        <a
-          href="#inicio"
+        <Link
+          href="/"
           className="group flex items-center gap-3"
           aria-label="CodeAI Academy, ir al inicio"
         >
@@ -30,7 +33,7 @@ export function SiteHeader() {
               Academy
             </span>
           </span>
-        </a>
+        </Link>
 
         <nav
           aria-label="Navegación principal"
@@ -47,14 +50,9 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <a
-          href="#ruta"
-          className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-sm font-medium text-accent transition hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
-        >
-          Explorar la ruta
-          <span aria-hidden>→</span>
-        </a>
+        <SessionMenu />
       </Container>
     </header>
   );
 }
+

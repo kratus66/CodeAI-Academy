@@ -79,9 +79,9 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 
 ## 4. Endpoints por módulo
 
-> **Estado del contrato (2026-10-26):** implementados `GET /api/health` (S0) y `/api/auth/*` (S1). El resto de endpoints describe el **contrato objetivo** y se implementa en los sprints S2–S11 según el [`roadmap`](../04-plan-ejecucion/roadmap-sprints.md).
+> **Estado del contrato (2026-10-26):** implementados `GET /api/health` (S0), `/api/auth/*` (S1) y `/api/content/*` (S2). El resto de endpoints describe el **contrato objetivo** y se implementa en los sprints S3–S11 según el [`roadmap`](../04-plan-ejecucion/roadmap-sprints.md).
 
-### 4.1 Autenticación (`/api/auth`)
+### 4.1 Autenticación (`/api/auth`) — ✅ implementado en S1
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
@@ -127,15 +127,21 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 - `GET /me` acepta la cookie `access_token` o `Authorization: Bearer`.
 - Las respuestas de auth solo incluyen `{ user }`; nunca `passwordHash` ni tokens en el cuerpo.
 
-### 4.2 Contenido (`/api/content`)
+### 4.2 Contenido (`/api/content`) — ✅ implementado en S2
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| GET | `/stages` | — | Etapas publicadas |
+| GET | `/stages` | — | Etapas publicadas (`?page&pageSize&level`) |
 | GET | `/stages/:id` | — | Etapa con módulos |
 | GET | `/units/:code` | opcional | Unidad con lecciones y ejercicios (oculta soluciones) |
 | GET | `/lessons/:slug` | opcional | Lección con bloques de contenido |
-| GET | `/resources?stage=` | — | Recursos verificados |
+| GET | `/resources` | — | Recursos verificados (`?page&pageSize&stage&type`) |
+
+- Módulo de **solo lectura**: no hay mutaciones de contenido en el contrato.
+- Filtro de publicación en el adaptador: solo etapas publicadas, elementos con ancestros publicados y recursos `VERIFIED`. En la semilla eso son 4 etapas (E0–E3); E4–E11 quedan como borrador.
+- Paginación 1-based: `skip = (page - 1) × pageSize`, `totalPages = ceil(total / pageSize)` (0 si no hay coincidencias).
+- `:id`, `:code` y `:slug` se validan antes de llegar al servicio, así que un formato inválido devuelve `400 VALIDATION_ERROR` con `details[].field` en vez de un `404` engañoso.
+- `solution`, `sources` y pruebas ocultas no se seleccionan en la consulta: nunca salen de la base de datos.
 
 ### 4.3 Ejercicios (`/api/exercises`)
 

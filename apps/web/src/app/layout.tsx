@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { SessionProvider } from "@/features/auth/context/SessionProvider";
 import { SiteFooter } from "@/features/landing/components/SiteFooter";
 import { SiteHeader } from "@/features/landing/components/SiteHeader";
 
@@ -45,15 +46,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="es" className="scroll-smooth">
       <body className="flex min-h-screen flex-col bg-ink font-sans text-slate-100 antialiased">
-        <a
-          href="#inicio"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ink"
-        >
-          Saltar al contenido
-        </a>
-        <SiteHeader />
-        <div className="flex-1">{children}</div>
-        <SiteFooter />
+        <SessionProvider>
+          <a
+            href="#inicio"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ink"
+          >
+            Saltar al contenido
+          </a>
+          <SiteHeader />
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
+        </SessionProvider>
       </body>
     </html>
   );

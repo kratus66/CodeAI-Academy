@@ -15,15 +15,16 @@ CodeAI Academy es a la vez:
 |------|-------------|--------|
 | **A** | Documentación fuente de verdad (`docs/`) | ✅ completada |
 | **B** | Roadmap de sprints y fichas de tareas atómicas | ✅ completada |
-| **C** | Construcción de la plataforma (S0 → S11) | 🔄 en curso — **S0 ✅ · S1 en curso** |
+| **C** | Construcción de la plataforma (S0 → S11) | 🔄 en curso — **S0 ✅ · S1 ✅ · S2 ✅ · S3 ⏳ siguiente** |
 
 ### Estado de construcción
 
 | Sprint | Foco | Estado |
 |--------|------|--------|
 | **S0** | Monorepo, contratos compartidos, API base y landing pública | ✅ completado |
-| **S1** | Identidad y acceso (registro, login, roles) | 🔄 en curso — backend ✅, web ⏳ |
-| **S2–S11** | Contenido, progreso, laboratorio, IA, proyectos, analítica | ⬜ pendiente |
+| **S1** | Identidad y acceso (registro, login, roles) | ✅ completado |
+| **S2** | Modelo de datos y API de contenido | ✅ completado |
+| **S3–S11** | Plataforma de aprendizaje, progreso, laboratorio, IA, proyectos, analítica | ⬜ pendiente |
 
 Detalle y criterios de cierre en [`docs/04-plan-ejecucion/roadmap-sprints.md`](docs/04-plan-ejecucion/roadmap-sprints.md).
 
@@ -110,7 +111,7 @@ Detalle completo en [`docs/05-orquestacion/`](docs/05-orquestacion/).
 
 ---
 
-## Comandos previstos
+## Comandos
 
 ```bash
 npm install            # instalar dependencias del monorepo
@@ -119,13 +120,15 @@ npm run dev:web        # solo Next.js
 npm run dev:api        # solo NestJS
 npm run db:up          # PostgreSQL vía docker-compose (localhost:5433)
 npm run db:migrate     # aplicar migraciones Prisma (desde S1)
-npm run db:seed        # cargar contenido de ejemplo (desde S2)
+npm run db:seed        # cargar el currículo de forma idempotente (desde S2)
 npm run test           # pruebas de todos los workspaces
 npm run lint           # análisis estático
 npm run typecheck      # verificación de tipos
 ```
 
-> **Base de datos local (S1):** copia `.env.example` a `apps/api/.env`, ejecuta `npm run db:up` y después `npm run db:migrate`. El puerto del host es **5433** porque el 5432 suele estar ocupado por otras bases locales. El seed de contenido llega en S2.
+> **Base de datos local (S1–S2):** copia `.env.example` a `apps/api/.env`, ejecuta `npm run db:up`, después `npm run db:migrate` y por último `npm run db:seed`. El puerto del host es **5433** porque el 5432 suele estar ocupado por otras bases locales. La semilla carga las 12 etapas del currículo con 48 módulos y 63 unidades (E0–E3 publicadas), y puede ejecutarse varias veces sin duplicar filas.
+
+> **Acceso (S1):** la web expone `/register` y `/login`; la sesión se restaura con `GET /api/auth/me` y los tokens solo viven en cookies httpOnly. Si la API no está en `http://localhost:3001/api`, define `NEXT_PUBLIC_API_URL` en `apps/web/.env.local`.
 
 ---
 

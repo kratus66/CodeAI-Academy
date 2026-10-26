@@ -114,7 +114,7 @@ Commit atómico + actualización de documentación afectada + casilla marcada en
 | Lint de un workspace | `npm run lint -w apps/web` |
 | Pruebas de un workspace | `npm run test -w packages/shared` |
 | Suite completa | `npm run typecheck && npm run lint && npm test && npm run build` |
-| Postgres local | `npm run db:up` (operativo desde S2) |
+| Postgres local | `npm run db:up` (operativo desde S1) |
 
 ---
 

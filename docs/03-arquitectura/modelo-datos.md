@@ -2,7 +2,9 @@
 
 > Esquema Prisma como fuente de verdad. Cualquier cambio estructural requiere migración y actualización de este documento **en el mismo commit**.
 >
-> **Implementación incremental (S1):** `apps/api/prisma/schema.prisma` contiene por ahora solo el bloque de identidad (`User` y `RefreshToken`) con la migración `init_identity`. Los modelos de contenido, progreso y analítica se añaden en S2 con sus relaciones y su propia migración: crear tablas sin contrato en vigor sería deuda, no avance.
+> **Implementación incremental (S1 ✅ · S2 ✅):** `apps/api/prisma/schema.prisma` contiene el bloque de identidad (`User` y `RefreshToken`, migración `init_identity`) y el bloque de contenido (`Stage` → `Module` → `Unit` → `Lesson`, `Exercise`, `Resource` y `LessonResource`, migración `content_structure`). Los modelos de progreso y analítica se añaden en S4–S11 con sus relaciones y su propia migración: crear tablas sin contrato en vigor sería deuda, no avance.
+>
+> **Estado (2026-10-26):** ✅ identidad (`init_identity`) y contenido (`content_structure`) implementados y sembrados · ⬜ modelos de progreso y analítica (S4–S11).
 
 ---
 

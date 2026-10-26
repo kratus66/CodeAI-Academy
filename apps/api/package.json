@@ -8,14 +8,19 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:seed": "tsc -p prisma/tsconfig.seed.json",
     "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
+    "db:seed": "npm run typecheck:seed && node prisma/seed/seed.mts",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "node prisma/seed/seed.mts"
   },
   "dependencies": {
     "@codeai/shared": "*",
