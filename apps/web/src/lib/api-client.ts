@@ -2,15 +2,27 @@ import {
   DEFAULT_ERROR_MESSAGE_BY_CODE,
   ERROR_CODE_BY_HTTP_STATUS,
   errorResponseSchema,
+  lessonDetailSchema,
+  paginatedSchema,
+  stageDetailSchema,
+  stageSummarySchema,
+  unitDetailSchema,
   userResponseSchema,
 } from "@codeai/shared";
 import type {
   ErrorCode,
   ErrorDetail,
+  LessonDetail,
   LoginInput,
+  PaginationMeta,
   RegisterInput,
+  StageDetail,
+  StageSummary,
+  UnitDetail,
   UserPublic,
 } from "@codeai/shared";
+import { z } from "zod";
+import type { ZodType } from "zod";
 
 /**
  * Destino por defecto en desarrollo. `NEXT_PUBLIC_API_URL` lo sobreescribe
@@ -150,6 +162,70 @@ export const authApi = {
   },
 };
 
+/** Catálogo paginado de etapas publicadas que consume la web. */
+export interface StageCatalogPage {
+  readonly stages: readonly StageSummary[];
+  readonly meta: PaginationMeta;
+}
+
+const stagePageSchema = paginatedSchema(stageSummarySchema);
+const stageResponseSchema = z.object({ stage: stageDetailSchema });
+const unitResponseSchema = z.object({ unit: unitDetailSchema });
+const lessonResponseSchema = z.object({ lesson: lessonDetailSchema });
+
+/**
+ * Contenido público del currículo. Cada respuesta se valida contra el contrato
+ * de `@codeai/shared`: si la API cambia de forma, falla aquí y no en la vista.
+ */
+export const contentApi = {
+  async listStages(signal?: AbortSignal): Promise<StageCatalogPage> {
+    const page = await requestParsed(
+      stagePageSchema,
+      "/content/stages",
+      signal,
+    );
+
+    return { stages: page.data, meta: page.meta };
+  },
+
+  /**
+   * El `id` se acepta como texto: una URL con `abc` debe devolver el `400` de la
+   * API y no reventar al convertirla en el cliente.
+   */
+  async getStage(
+    id: number | string,
+    signal?: AbortSignal,
+  ): Promise<StageDetail> {
+    const response = await requestParsed(
+      stageResponseSchema,
+      `/content/stages/${encodeURIComponent(String(id))}`,
+      signal,
+    );
+
+    return response.stage;
+  },
+
+  async getUnit(code: string, signal?: AbortSignal): Promise<UnitDetail> {
+    const response = await requestParsed(
+      unitResponseSchema,
+      `/content/units/${encodeURIComponent(code)}`,
+      signal,
+    );
+
+    return response.unit;
+  },
+
+  async getLesson(slug: string, signal?: AbortSignal): Promise<LessonDetail> {
+    const response = await requestParsed(
+      lessonResponseSchema,
+      `/content/lessons/${encodeURIComponent(slug)}`,
+      signal,
+    );
+
+    return response.lesson;
+  },
+};
+
 /**
  * Sesión inicial de la aplicación: usa `/auth/me` y, si el access token caducó,
  * rota el refresh una sola vez. Devuelve `null` cuando no hay sesión válida.
@@ -237,7 +313,27 @@ function readRetryAfter(value: string | null): number | undefined {
 }
 
 function parseUserResponse(payload: unknown): UserPublic {
-  const parsed = userResponseSchema.safeParse(payload);
+  return parseContract(userResponseSchema, payload).user;
+}
+
+/** `GET` con validación de contrato antes de tocar la vista. */
+async function requestParsed<T>(
+  schema: ZodType<T>,
+  path: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  return parseContract(
+    schema,
+    await apiRequest<unknown>(path, signal ? { signal } : {}),
+  );
+}
+
+/**
+ * Una respuesta fuera de esquema se reporta como error interno: el estudiante ve
+ * el mensaje del catálogo, nunca la forma cruda de la respuesta.
+ */
+function parseContract<T>(schema: ZodType<T>, payload: unknown): T {
+  const parsed = schema.safeParse(payload);
 
   if (!parsed.success) {
     throw new ApiError({
@@ -247,7 +343,7 @@ function parseUserResponse(payload: unknown): UserPublic {
     });
   }
 
-  return parsed.data.user;
+  return parsed.data;
 }
 
 function isUnauthenticated(error: unknown): boolean {

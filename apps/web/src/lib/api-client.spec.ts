@@ -1,8 +1,10 @@
+import { LESSON_STEP_KINDS } from "@codeai/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ApiError,
   authApi,
+  contentApi,
   resolveApiBaseUrl,
   restoreSession,
 } from "./api-client";
@@ -21,6 +23,78 @@ const UNAUTHENTICATED = {
     message: "La sesión no es válida o ha expirado",
     traceId: "trace-401",
   },
+} as const;
+
+const STAGE = {
+  id: 0,
+  slug: "e0-fundamentos",
+  title: "Fundamentos de la IA",
+  objective: "Entender qué es la inteligencia artificial.",
+  level: 1,
+  estimatedMin: 900,
+  order: 1,
+  moduleCount: 1,
+} as const;
+
+const UNIT = {
+  id: "unit_1",
+  code: "U0.1.1",
+  title: "Qué es la inteligencia artificial",
+  objective: "Distinguir IA de automatización clásica.",
+  estimatedMin: 90,
+  order: 1,
+  stageId: 0,
+  moduleCode: "M0.1",
+  prerequisiteIds: [],
+} as const;
+
+const STAGE_DETAIL = {
+  ...STAGE,
+  modules: [
+    {
+      id: "module_1",
+      code: "M0.1",
+      title: "Pensamiento computacional",
+      order: 1,
+      unitCount: 1,
+      units: [UNIT],
+    },
+  ],
+} as const;
+
+const UNIT_DETAIL = {
+  ...UNIT,
+  lessons: [
+    {
+      id: "lesson_1",
+      slug: "hola-mundo",
+      title: "Hola mundo",
+      estimatedMin: 25,
+      order: 1,
+    },
+  ],
+  exercises: [],
+} as const;
+
+const LESSON = {
+  id: "lesson_1",
+  slug: "hola-mundo",
+  title: "Hola mundo",
+  estimatedMin: 25,
+  order: 1,
+  unitCode: "U0.1.1",
+  content: [
+    {
+      type: "paragraph",
+      text: "Un programa es una secuencia de instrucciones.",
+    },
+  ],
+  steps: LESSON_STEP_KINDS.map((kind) => ({
+    kind,
+    title: `Paso ${kind}`,
+    body: `Cuerpo del paso ${kind}`,
+  })),
+  resources: [],
 } as const;
 
 const fetchMock =
@@ -170,6 +244,106 @@ describe("apiRequest a través de authApi", () => {
 
     expect(error.code).toBe("INTERNAL_ERROR");
     expect(error.message).toContain("contrato");
+  });
+});
+
+describe("contentApi", () => {
+  it("lista las etapas con sus metadatos de paginación", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [STAGE],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      }),
+    );
+
+    const page = await contentApi.listStages();
+
+    expect(page.stages.map((item) => item.id)).toEqual([0]);
+    expect(page.meta.total).toBe(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/content/stages",
+    );
+  });
+
+  it("devuelve el detalle de la etapa con las unidades de cada módulo", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ stage: STAGE_DETAIL }));
+
+    const stage = await contentApi.getStage(0);
+
+    expect(stage.modules[0]?.units.map((item) => item.code)).toEqual(["U0.1.1"]);
+    expect(stage.modules[0]?.units[0]?.stageId).toBe(0);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/content/stages/0",
+    );
+  });
+
+  it("pide la unidad por su código y devuelve lecciones y ejercicios", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ unit: UNIT_DETAIL }));
+
+    const unit = await contentApi.getUnit("U0.1.1");
+
+    expect(unit.lessons.map((item) => item.slug)).toEqual(["hola-mundo"]);
+    expect(unit.exercises).toEqual([]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/content/units/U0.1.1",
+    );
+  });
+
+  it("devuelve la lección con sus siete pasos", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ lesson: LESSON }));
+
+    const lesson = await contentApi.getLesson("hola-mundo");
+
+    expect(lesson.steps).toHaveLength(7);
+    expect(lesson.unitCode).toBe("U0.1.1");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/content/lessons/hola-mundo",
+    );
+  });
+
+  it("rechaza una etapa cuyo módulo llega sin unidades", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        stage: {
+          ...STAGE_DETAIL,
+          modules: [
+            {
+              id: "module_1",
+              code: "M0.1",
+              title: "Pensamiento",
+              order: 1,
+              unitCount: 0,
+            },
+          ],
+        },
+      }),
+    );
+
+    const error = await captureApiError(contentApi.getStage(0));
+
+    expect(error.code).toBe("INTERNAL_ERROR");
+    expect(error.message).toContain("contrato");
+  });
+
+  it("propaga el 404 de una unidad inexistente", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "NOT_FOUND",
+            message: "La unidad no existe o no está publicada",
+            traceId: "trace-404",
+          },
+        },
+        { status: 404 },
+      ),
+    );
+
+    const error = await captureApiError(contentApi.getUnit("U9.1.1"));
+
+    expect(error.status).toBe(404);
+    expect(error.code).toBe("NOT_FOUND");
+    expect(error.traceId).toBe("trace-404");
   });
 });
 
