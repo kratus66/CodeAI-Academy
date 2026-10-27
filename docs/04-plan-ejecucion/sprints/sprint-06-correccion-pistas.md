@@ -36,6 +36,14 @@ Al cerrar el sprint, la plataforma puede asumir:
 
 **Decisión de secuencia.** El roadmap (§4) dice «S6 requiere S5 (envíos)». Este sprint **abre** con las tareas que no tocan el código de S5 (evaluador y pistas puras) y deja para el final las que modifican archivos que S5 aún no ha creado. No se adelanta ningún archivo de S5: T8 vive en `submissions.service.ts`, que **no** aparece en la ficha de S5.
 
+**Ratificación del Orquestador (2026-10-27).** S5 se cerró antes de abrir S6, así que se ratifica la ficha con tres ajustes de realidad:
+
+1. **T7** añade `findHint(exerciseId, level)` al puerto `ExercisesRepository` y a sus dos adaptadores. El listado del ejercicio sólo expone `hintsAvailable`; el texto de la pista se lee de `ExerciseHint` en el momento de servirla, de modo que el catálogo sigue siendo la única fuente y la respuesta no puede inventar texto.
+2. **T9** **extiende** el flujo de envío que S5 ya centraliza en `ExercisesService`, en vez de extraer un `submissions.service.ts`. Mover el flujo exigiría duplicar los helpers de sandbox y crearía un ciclo `SubmissionsService → ExercisesService → SubmissionsService`. La tarea se verifica sobre `exercises.service.ts` y su spec.
+3. **T11** ya está implementado por S5 (`GET /api/exercises/:id/submissions` con paginación y aislamiento por usuario). No se crea `submissions.module.ts` para no envolver un módulo que ya exporta todo lo necesario; la tarea se limita a verificar el criterio y a completar la prueba que falte.
+
+**Regla de tamaño ratificada:** ≤ 3 archivos por tarea; ≤ 5 cuando la tarea incluya un puerto compartido y sus dos adaptadores (T7, T8, T9). El resto de la ficha no cambia.
+
 ---
 
 ## 3. Decisiones de arquitectura
@@ -136,11 +144,11 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T4 | Migración `hint_requests` (modelo `HintRequest` con cascada) | `apps/api/prisma/schema.prisma` + migración | 4 | ⬜ |
 | S6-T5 | Puerto `HintRequestRepository` + adaptador en memoria | `hint-requests.repository.ts`, `in-memory-hint-requests.repository.ts` | 5 | ⬜ |
 | S6-T6 | Adaptador Prisma de `HintRequestRepository` | `prisma-hint-requests.repository.ts` | 6 | ⬜ |
-| S6-T7 | `HintsService`: sirve la pista del nivel pedido y registra el uso | `hints.service.ts` + spec | 7 | ⬜ |
-| S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec | 8 | ⬜ |
-| S6-T9 | `SubmissionsService`: corrige, persiste nivel y `hintsUsed`, historial | `submissions.service.ts` + spec | 9 | ⬜ |
+| S6-T7 | `HintsService`: sirve la pista del nivel pedido y registra el uso | `hints.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 7 | ⬜ |
+| S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec, `exercises.repository.ts`, `prisma-exercises.repository.ts` | 8 | ⬜ |
+| S6-T9 | Corrección completa en `ExercisesService`: nivel, `hintsUsed`, historial | `exercises.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 9 | ⬜ |
 | S6-T10 | Endpoint `POST /api/exercises/:id/hints` y registro en el módulo | `exercises.controller.ts`, `exercises.module.ts` | 10 | ⬜ |
-| S6-T11 | `GET /api/exercises/:id/submissions` (historial propio paginado) | `submissions.controller.ts`, `submissions.module.ts` | 11 | ⬜ |
+| S6-T11 | Verificación de `GET /api/exercises/:id/submissions` (historial propio paginado) | Sin archivos nuevos: implementado en S5; se completa la prueba si falta | 11 | ⬜ |
 | S6-T12 | Cuota de pistas por minuto y traducción de la regla de progresión a `422` | `hints-rate-limit.guard.ts` + spec | 12 | ⬜ |
 | S6-T13 | `codeApi.requestHint` y `codeApi.submissionHistory` en la web | `apps/web/src/lib/api-client.ts` + spec | 13 | ⬜ |
 | S6-T14 | `HintPanel` y nivel alcanzado con su motivo en el resultado | `features/lab/components/HintPanel.tsx` + spec, `ExerciseLab.tsx` | 14 | ⬜ |
