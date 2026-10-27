@@ -1,7 +1,7 @@
 # Sprint 05 — Laboratorio de código
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S2 ✅ (contenido) y S3 🔄 (unidad servida); de S4 sólo hereda el vocabulario de progreso, no su código.
-> **Avance:** 1/14 tareas · 1/13 criterios de aceptación.
+> **Avance:** 2/14 tareas · 2/13 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -49,6 +49,8 @@ Al cerrar el sprint, la plataforma puede asumir:
 | `difficulty` es entero **1–4** y `ladder` usa los tres valores ya existentes | `banco-ejercicios.md` §6 fija `difficulty: 1-4`; `LADDERS` ya vive en `shared` | Escala 1–5 inventada |
 | `language` significa **lenguaje de programación** (`typescript`, `javascript`, `sql`), no idioma del contenido | `sandbox-ejecucion.md` §5 fija esos tres valores y `Exercise.language` es el que consume el sandbox | Modelar `es|en|both` de `banco-ejercicios.md` §6, que ningún endpoint usa |
 | `POST /api/sandbox/run` y `GET /api/sandbox/status` exigen sesión y cuota de 20 ejecuciones/minuto | `contratos-api.md` §4.6 («límite por minuto») y `sandbox-ejecucion.md` §7 | Sandbox abierto a anónimos |
+| El resumen del laboratorio se llama `ExerciseListItem`, no `ExerciseSummary` | `schemas/content.ts` ya exporta `ExerciseSummary` para el ejercicio del detalle de unidad; dos `export *` con el mismo nombre dejarían el símbolo ambiguo en `index.ts` | Renombrar el de contenido, rompiendo S3 y la web |
+| La paginación del laboratorio replica `pageQuerySchema` en vez de importarlo | `pageQuerySchema` no se exporta desde `content.ts` y esta tarea no debía tocar un cuarto archivo; se extraerá a `common.ts` cuando un tercer contrato la necesite | Exportarlo desde `content.ts` en esta tarea |
 
 **Nota de reconstrucción (supuestos).** Esta ficha **no existía**: `sandbox-ejecucion.md` §222 dice literalmente «sprint S5 (ficha pendiente de redacción al abrir el sprint)». Se redacta el 2026-10-27 a partir de [`roadmap-sprints.md`](../roadmap-sprints.md) §S5, [`contratos-api.md`](../../03-arquitectura/contratos-api.md) §4.3 y §4.6, [`modelo-datos.md`](../../03-arquitectura/modelo-datos.md) §3, [`sandbox-ejecucion.md`](../../03-arquitectura/sandbox-ejecucion.md) §3–§8 y [`banco-ejercicios.md`](../../02-contenido/banco-ejercicios.md) §3.1 y §6. La descomposición en catorce tareas es una **propuesta** y requiere ratificación del Orquestador antes de darse por definitiva.
 
@@ -134,7 +136,7 @@ interface SubmissionSummary {
 | ID | Tarea | Archivos principales | Sesión | Estado |
 |----|-------|----------------------|--------|--------|
 | S5-T1 | Contrato compartido del sandbox (`sandbox-ejecucion.md` §5) | `packages/shared/src/schemas/sandbox.ts` + spec, `index.ts` | 1 | ✅ `685a904` |
-| S5-T2 | Contrato compartido del ejercicio, las pruebas públicas y el envío | `packages/shared/src/schemas/exercise.ts` + spec, `index.ts` | 2 | ⬜ |
+| S5-T2 | Contrato compartido del ejercicio, las pruebas públicas y el envío | `packages/shared/src/schemas/exercise.ts` + spec, `index.ts` | 2 | ✅ `4bbc0b9` |
 | S5-T3 | Migración `exercises_and_submissions` (5 modelos y 2 enums) | `apps/api/prisma/schema.prisma` + migración | 3 | ⬜ |
 | S5-T4 | Puerto `SandboxService` y `MockSandboxService` determinista | `modules/sandbox/sandbox.service.ts`, `mock-sandbox.service.ts` + spec | 4 | ⬜ |
 | S5-T5 | `SANDBOX_MODE` en `loadEnv`: en producción sólo `docker` | `apps/api/src/config/env.ts` + `env.spec.ts` | 5 | ⬜ |
@@ -157,7 +159,7 @@ interface SubmissionSummary {
 ## 6. Criterios de aceptación
 
 - [x] `S5-T1`: `sandboxRunRequestSchema` aplica los límites por defecto (`timeoutMs` 5000, `memoryMb` 256) y rechaza `files` vacío, lenguajes fuera de `typescript|javascript|sql` y más de 30 tests.
-- [ ] `S5-T2`: `ExerciseSummary` rechaza `difficulty: 5`; `SubmissionSummary` acepta `achievedLevel: null` y rechaza `outcome: "OK"`.
+- [x] `S5-T2`: `ExerciseSummary` rechaza `difficulty: 5`; `SubmissionSummary` acepta `achievedLevel: null` y rechaza `outcome: "OK"`.
 - [ ] La migración `exercises_and_submissions` crea los 5 modelos con cascada desde `User`, `Unit` y `Exercise`.
 - [ ] `MockSandboxService` es determinista: el mismo código produce el mismo `outcome`, y el código con `TODO` devuelve `FAILED` con puntuación 0.
 - [ ] `SANDBOX_MODE=subprocess` con `NODE_ENV=production` impide arrancar; fuera de producción se acepta.
@@ -170,7 +172,7 @@ interface SubmissionSummary {
 - [ ] Sin `@monaco-editor/react` disponible, `CodeEditor` sigue siendo usable con un área de texto monoespaciada (prueba de reserva).
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 1/13 verificados.
+**Estado:** 2/13 verificados.
 
 ---
 
@@ -202,6 +204,9 @@ interface SubmissionSummary {
 | Tarea | Verificación ejecutada | Resultado | Commit |
 |-------|------------------------|-----------|--------|
 | S5-T1 | Rojo: `npm run test -w @codeai/shared` → `FAIL src/schemas/sandbox.spec.ts`, `Failed to load url ./sandbox`, 1 suite fallida y 5 correctas, 64 pruebas previas intactas. Verde: misma orden → `Test Files 6 passed (6)`, `Tests 83 passed (83)`. `npm run typecheck` → exit 0 (shared, api, web). `npm run lint` → primer intento con 1 error (`_durationMs` sin usar en la prueba, `no-unused-vars`); corregido sin tocar el contrato; segundo intento exit 0. `npm test` → shared 83 · api 68 · web 81 (total 232), exit 0. `npm run build` → `Compiled successfully`, exit 0. | 19 pruebas nuevas; contrato y export idénticos al documento, con `sandboxLanguageSchema` extraído para reutilizarlo en T2. | `685a904` |
+| S5-T2 | Rojo: `npx vitest run src/schemas/exercise.spec.ts` con el módulo ausente → `Failed Suites 1`, 0 pruebas ejecutadas. Verde: misma orden → `Test Files 1 passed (1)`, 14 pruebas. `npx vitest run` (shared 97 · API 142 · web 93) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: el listado rechaza dificultad `5`, `0` y `2.5`; el detalle exige enunciado y pistas ≥ 0 y no acepta `solution`; el envío acepta `achievedLevel: null` y rechaza `outcome: "OK"`, nota `101` y nivel `0`/`5`; el cuerpo rechaza código vacío y de más de 100 KB; la query convierte `"2"`/`"5"`, aplica `1`/`20` por defecto y rechaza `pageSize=101` y parámetros desconocidos. `typecheck`, `lint` y `build` en 0 | `4bbc0b9` |
+
+> **Artefacto de verificación:** en este entorno el aviso `The CJS build of Vite's Node API is deprecated` llega por stderr y el *harness* de comandos corta la ejecución a mitad; las corridas se hicieron con `VITE_CJS_IGNORE_WARNING=true`, que solo silencia ese aviso.
 
 ---
 
