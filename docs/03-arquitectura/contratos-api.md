@@ -362,6 +362,7 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 | `/auth/login` | 5 / 15 min por IP + email |
 | `/auth/register` | 3 / hora por IP |
 | `/sandbox/run` | 20 / min por usuario |
+| `/exercises/:id/hints` | 20 / min por usuario |
 | `/ai/tutor` | 30 / hora por usuario |
 | Resto | 120 / min por usuario |
 

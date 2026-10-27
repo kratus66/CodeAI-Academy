@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 11/16 tareas · 13/14 criterios de aceptación.
+> **Avance:** 12/16 tareas · 13/14 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -42,6 +42,7 @@ Al cerrar el sprint, la plataforma puede asumir:
 2. **T9** **extiende** el flujo de envío que S5 ya centraliza en `ExercisesService`, en vez de extraer un `submissions.service.ts`. Mover el flujo exigiría duplicar los helpers de sandbox y crearía un ciclo `SubmissionsService → ExercisesService → SubmissionsService`. La tarea se verifica sobre `exercises.service.ts` y su spec.
 3. **T11** ya está implementado por S5 (`GET /api/exercises/:id/submissions` con paginación y aislamiento por usuario). No se crea `submissions.module.ts` para no envolver un módulo que ya exporta todo lo necesario; la tarea se limita a verificar el criterio y a completar la prueba que falte.
 4. **T9** toca un sexto archivo, `exercises.mapper.ts`: el `feedback` del evaluador es el único texto que explica el motivo del tope de nivel, y el mapper es el punto único por el que pasa todo envío hacia el cliente. Sin ese cambio, el motivo se perdería al serializar y el historial no podría reconstruirlo. Los adaptadores siguen siendo dos.
+5. **T12** no crea `hints-rate-limit.guard.ts`. El repositorio ya tiene `RateLimitGuard` con `429` y `Retry-After` en uso por `login` y `register`; duplicarlo habría dejado dos limitadores que mantener. Se añade `keyFromUser` al decorador y a la clave, y la tarea toca cuatro archivos (decorador, guard, su spec y el controlador) porque la cuota debe ser por usuario y el guard sólo sabía segmentar por IP o por campo del cuerpo.
 
 **Regla de tamaño ratificada:** ≤ 3 archivos por tarea; ≤ 5 cuando la tarea incluya un puerto compartido y sus dos adaptadores (T7, T8, T9). El resto de la ficha no cambia.
 
@@ -129,7 +130,7 @@ outcome       = todas superadas → PASSED · ninguna → FAILED · resto → PA
 | Cuerpo inválido (`level` fuera de `1..3`) | `400 VALIDATION_ERROR` con `details[].field` |
 | Nivel pedido sin haber usado el anterior | `422 RULE_VIOLATION` (regla del programa, no del formato) |
 | Intentos agotados (`maxAttempts`) | `409 CONFLICT` |
-| Cuota de pistas por minuto superada | `429 RATE_LIMITED` + `Retry-After` (el número se fija en T12, con el mismo interceptor que el sandbox) |
+| Cuota de pistas por minuto superada | `429 RATE_LIMITED` + `Retry-After` (20 por minuto y usuario, T12) |
 
 Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo códigos de `ERROR_CODES`.
 
@@ -150,7 +151,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T9 | Corrección completa en `ExercisesService`: nivel, `hintsUsed`, historial | `exercises.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma, `exercises.mapper.ts` | 9 | ✅ `44d25d6` |
 | S6-T10 | Endpoint `POST /api/exercises/:id/hints` y registro en el módulo | `exercises.controller.ts`, `exercises.module.ts` | 10 | ✅ `ff93ae1` |
 | S6-T11 | Verificación de `GET /api/exercises/:id/submissions` (historial propio paginado) | Sin archivos nuevos: implementado en S5; se completa la prueba si falta | 11 | ✅ `6f9aae6` |
-| S6-T12 | Cuota de pistas por minuto y traducción de la regla de progresión a `422` | `hints-rate-limit.guard.ts` + spec | 12 | ⬜ |
+| S6-T12 | Cuota de pistas por minuto y traducción de la regla de progresión a `422` | `rate-limit.decorator.ts`, `rate-limit.guard.ts` + spec, `exercises.controller.ts` | 12 | ✅ `3081836` |
 | S6-T13 | `codeApi.requestHint` y `codeApi.submissionHistory` en la web | `apps/web/src/lib/api-client.ts` + spec | 13 | ⬜ |
 | S6-T14 | `HintPanel` y nivel alcanzado con su motivo en el resultado | `features/lab/components/HintPanel.tsx` + spec, `ExerciseLab.tsx` | 14 | ⬜ |
 | S6-T15 | `AttemptHistory` con estados de carga, error y vacío | `features/lab/components/AttemptHistory.tsx` + spec, página del ejercicio | 15 | ⬜ |
@@ -225,6 +226,8 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T9 | `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 101 passed (101)` (`exercises.service.spec.ts`: 23). `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 231 passed (231)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | El envío comprueba el tope antes de tocar el sandbox, cuenta `hintsUsed` desde `lastRequestedAt` posterior al envío anterior y corrige con las pruebas ocultas. Sólo las visibles se persisten, así que el historial no filtra nombres ocultos. Cambiaron cuatro esperados de S5 (los ids del sandbox, el `achievedLevel` ya no es `null`, el `score` de pesos incluye la oculta y el `feedback` añade el tope de escalón). El subproceso detectó que `Array.map` pasaría el índice como `feedback` y lo evitó con un envoltorio explícito. | `44d25d6` |
 | S6-T10 | `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 231 passed (231)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. `npm run build -w @codeai/api` → exit 0. Arranque real con `node dist/main.js` y base disponible: `[RouterExplorer] Mapped {/api/exercises/:id/hints, POST} route` y `Nest application successfully started`. | La ruta va después de `POST :id/submissions` y responde `201` con el sobre del contrato; el `userId` sigue saliendo del token. El módulo registra el segundo puerto con `PrismaHintRequestsRepository`, así que el arranque confirma también la dependencia nueva de T9. | `ff93ae1` |
 | S6-T11 | `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 105 passed (105)` (`exercises.service.spec.ts`: 27). `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 235 passed (235)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | Sin cambios de producción: el endpoint de S5 ya cumplía el criterio. Las pruebas siembran los envíos con fechas distintas en vez de encadenar `submit`, porque dos envíos seguidos comparten milisegundo y el orden quedaría ambiguo. La tercera comprueba además que el historial no expone el nombre ni el id de la prueba oculta. | `6f9aae6` |
+| S6-T12 | `npm run test -w @codeai/api -- rate-limit` → `Test Files 1 passed (1)`, `Tests 8 passed (8)`. `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 238 passed (238)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. `npm run build -w @codeai/api` → exit 0. | No hay guard nuevo: `RateLimitGuard` gana `keyFromUser` y se reutiliza el mismo `429` + `Retry-After` que ya usan `login` y `register`. La cuota queda en 20 pistas/min **por usuario** (misma cifra que el sandbox): una IP compartida en un aula no debe penalizar a otros estudiantes. Sin usuario en la petición la clave cae a la IP. El `422 RULE_VIOLATION` de la progresión ya lo traducía el filtro global desde T7, así que la tarea no duplica esa regla. | `3081836` |
+
 
 
 
