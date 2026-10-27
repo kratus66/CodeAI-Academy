@@ -78,7 +78,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 
 | Caso | Respuesta |
 |------|-----------|
-| Sin sesión o token inválido | `401 UNAUTHORIZED` |
+| Sin sesión o token inválido | `401 UNAUTHENTICATED` |
 | Unidad inexistente o no publicada | `404 NOT_FOUND` |
 | Unidad `LOCKED` al marcar lección | `409 CONFLICT` |
 | `:id` vacío o `pageSize > 100` | `400 VALIDATION_ERROR` con `details[].field` |

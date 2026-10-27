@@ -121,7 +121,7 @@ interface SubmissionSummary {
 
 | Caso | Respuesta |
 |------|-----------|
-| Sin sesión o token inválido | `401 UNAUTHORIZED` |
+| Sin sesión o token inválido | `401 UNAUTHENTICATED` |
 | Ejercicio o unidad inexistente / no publicado | `404 NOT_FOUND` |
 | Cuerpo inválido (`code` vacío, lenguaje no permitido, > 100 KB) | `400 VALIDATION_ERROR` con `details[].field` |
 | Más de 20 ejecuciones por minuto | `429 RATE_LIMITED` + `Retry-After` |
