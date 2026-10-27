@@ -53,6 +53,11 @@ const envSchema = z
       .max(86_400)
       .default(900),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+
+    // Sandbox (S5). Debe coincidir con `SANDBOX_MODES` del puerto
+    // `modules/sandbox/sandbox.service.ts`. `sandbox-ejecucion.md` §3: en
+    // producción sólo se acepta el adaptador aislado.
+    SANDBOX_MODE: z.enum(["mock", "subprocess", "docker"]).default("mock"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && env.JWT_SECRET === DEV_JWT_SECRET) {
@@ -60,6 +65,14 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["JWT_SECRET"],
         message: "obligatorio en producción: define un secreto propio",
+      });
+    }
+
+    if (env.NODE_ENV === "production" && env.SANDBOX_MODE !== "docker") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SANDBOX_MODE"],
+        message: "en producción sólo se acepta SANDBOX_MODE=docker",
       });
     }
   });

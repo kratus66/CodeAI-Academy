@@ -57,15 +57,41 @@ describe("loadEnv", () => {
       loadEnv({
         NODE_ENV: "production",
         JWT_SECRET: "dev-only-secret-change-me-please-32-chars",
+        SANDBOX_MODE: "docker",
       }),
     ).toThrow(/producción/);
 
     const env = loadEnv({
       NODE_ENV: "production",
       JWT_SECRET: "produccion-secreto-de-32-caracteres-o-mas",
+      SANDBOX_MODE: "docker",
     });
 
     expect(env.NODE_ENV).toBe("production");
+  });
+
+  it("en producción sólo acepta el sandbox docker", () => {
+    const production = {
+      NODE_ENV: "production",
+      JWT_SECRET: "produccion-secreto-de-32-caracteres-o-mas",
+    } as const;
+
+    expect(() => loadEnv({ ...production, SANDBOX_MODE: "subprocess" })).toThrow(
+      /SANDBOX_MODE/,
+    );
+    expect(() => loadEnv(production)).toThrow(/SANDBOX_MODE/);
+    expect(loadEnv({ ...production, SANDBOX_MODE: "docker" }).SANDBOX_MODE).toBe("docker");
+  });
+
+  it("fuera de producción acepta mock y subprocess", () => {
+    expect(loadEnv({ SANDBOX_MODE: "mock" }).SANDBOX_MODE).toBe("mock");
+    expect(loadEnv({ SANDBOX_MODE: "subprocess" }).SANDBOX_MODE).toBe("subprocess");
+    expect(loadEnv({ NODE_ENV: "test", SANDBOX_MODE: "mock" }).SANDBOX_MODE).toBe("mock");
+  });
+
+  it("usa el sandbox mock por defecto y rechaza modos desconocidos", () => {
+    expect(loadEnv({}).SANDBOX_MODE).toBe("mock");
+    expect(() => loadEnv({ SANDBOX_MODE: "firecracker" })).toThrow(/SANDBOX_MODE/);
   });
 
   it("no falla si el archivo .env no existe", () => {
