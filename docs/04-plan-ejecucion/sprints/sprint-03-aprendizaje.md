@@ -110,7 +110,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 | S3-T7 | Vista de unidad con prerrequisitos y navegación | `features/learning/lib/unit-view-loader.ts` + spec, `features/learning/components/UnitView.tsx` + spec, `learn/units/[code]/page.tsx` | ✅ `153d2b4` |
 | S3-T8 | Lector de lección: bloques, 7 pasos y recursos | `features/learning/components/LessonReader.tsx` + spec, `learn/lessons/[slug]/page.tsx` | ✅ `daf0261` |
 | S3-T9 | Verificación HTTP real y compilación de la web | — (guion de comandos) | ✅ `5205d46` |
-| S3-T10 | Cierre documental: contratos, roadmap y bitácora | docs | ✅ `docs(s3)` |
+| S3-T10 | Cierre documental: contratos, roadmap y bitácora | docs | ✅ `7f09607` |
 | S3-T10 | Cierre documental: contratos, roadmap y bitácora | docs | ⬜ |
 | S3-T11 | Autoría de la primera lección real (requiere revisión pedagógica) | `apps/api/prisma/seed/content.seed.json` | ⬜ |
 
@@ -182,7 +182,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 | S3-T7 | `npm run test -w @codeai/web` (rojo: `./unit-view-loader` y `./UnitView` inexistentes → verde 75), `npm run typecheck`, `npm run lint` | Verde: el loader pide la etapa solo con el `stageId` de la unidad y no la pide si la unidad falla; la vista muestra objetivo y prerrequisitos enlazados, deshabilita «Anterior» en U0.1.1, enlaza anterior/siguiente en U0.1.2, declara la unidad sin lecciones y trata el 404 con `traceId` y vuelta al catálogo | `153d2b4` |
 | S3-T8 | `npm run test -w @codeai/web` (rojo: `./LessonReader` inexistente → verde 81), `npm run typecheck` (rojo: `type: "course"` no es del catálogo `RESOURCE_TYPES` → corregido a `COURSE`), `npm run lint` | Verde: los seis tipos de bloque se pintan (párrafo, lista, código con lenguaje, aviso, diagrama y tabla), los 7 pasos aparecen con su nombre en castellano, los recursos abren en pestaña nueva con `noopener noreferrer`, y el 404 lleva `traceId` y vuelta al catálogo mientras un fallo de red ofrece reintento | `daf0261` |
 | S3-T9 | `node dist/main.js` + `curl` contra PostgreSQL local (`localhost:5433`) y `npm run build` | Verde: `stages` 200 (4 etapas), `stages/1` 200 con 5 módulos y sus `units` ordenadas, `units/U0.1.1` 200 con `stageId: 0` y `lessons: []`, `resources` 200 vacío, `lessons/no-existe` 404 con `NOT_FOUND` y `traceId`; ninguna respuesta incluye `solution` ni `sources`. `npm run build` en 0 con las cuatro rutas nuevas (`/learn`, `/learn/stages/[id]`, `/learn/units/[code]`, `/learn/lessons/[slug]`), la última dinámica | `5205d46` |
-| S3-T10 | `npm test` (shared 45 · API 68 · web 81), `npm run typecheck`, `npm run lint`, `npm run build` | Verde: el contrato de S3 queda documentado en `contratos-api.md` (ejemplo real de `units`/`stageId`, nota de compatibilidad en §7), el roadmap marca S3 🔄 con su estado y el cierre acumulado, y la ficha recoge el resumen construido/desviado/pendiente | `docs(s3)` |
+| S3-T10 | `npm test` (shared 45 · API 68 · web 81), `npm run typecheck`, `npm run lint`, `npm run build` | Verde: el contrato de S3 queda documentado en `contratos-api.md` (ejemplo real de `units`/`stageId`, nota de compatibilidad en §7), el roadmap marca S3 🔄 con su estado y el cierre acumulado, y la ficha recoge el resumen construido/desviado/pendiente | `7f09607` |
 
 ---
 
