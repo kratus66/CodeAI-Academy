@@ -2,9 +2,9 @@
 
 > Esquema Prisma como fuente de verdad. Cualquier cambio estructural requiere migración y actualización de este documento **en el mismo commit**.
 >
-> **Implementación incremental (S1 ✅ · S2 ✅):** `apps/api/prisma/schema.prisma` contiene el bloque de identidad (`User` y `RefreshToken`, migración `init_identity`) y el bloque de contenido (`Stage` → `Module` → `Unit` → `Lesson`, `Exercise`, `Resource` y `LessonResource`, migración `content_structure`). Los modelos de progreso y analítica se añaden en S4–S11 con sus relaciones y su propia migración: crear tablas sin contrato en vigor sería deuda, no avance.
+> **Implementación incremental (S1–S6):** `apps/api/prisma/schema.prisma` contiene el bloque de identidad (`User` y `RefreshToken`, migración `init_identity`), el bloque de contenido (`Stage` → `Module` → `Unit` → `Lesson`, `Exercise`, `Resource` y `LessonResource`, migración `content_structure`), el de progreso (`UnitProgress`, migraciones `progress_tracking` y `unit_progress_lesson_ids`), el de ejercicios y envíos (`ExerciseHint`, `ExerciseTest`, `Submission`, `SubmissionTestResult`, migración `exercises_and_submissions`) y el de pistas pedidas (`HintRequest`, migración `hint_requests`). Los modelos de analítica se añaden en S7–S11 con sus relaciones y su propia migración: crear tablas sin contrato en vigor sería deuda, no avance.
 >
-> **Estado (2026-10-26):** ✅ identidad (`init_identity`) y contenido (`content_structure`) implementados y sembrados · ⬜ modelos de progreso y analítica (S4–S11).
+> **Estado (2026-10-27):** ✅ identidad, contenido, progreso, ejercicios y `HintRequest` implementados y migrados · ⬜ analítica (S7–S11).
 
 ---
 
@@ -35,6 +35,8 @@
               │  Hint    │   │ ExerciseTest │
               └──────────┘   └──────────────┘
 ```
+
+`HintRequest` (S6) cuelga de `User` y de `Exercise`: registra qué niveles de pista pidió cada estudiante, sin duplicar filas.
 
 ---
 
@@ -74,6 +76,7 @@ model User {
   refreshTokens  RefreshToken[]
   unitProgress   UnitProgress[]
   submissions    Submission[]
+  hintRequests   HintRequest[]
   competency     CompetencyProgress[]
   reviewItems    ReviewItem[]
   projects       ProjectSubmission[]
@@ -271,6 +274,7 @@ model Exercise {
   hints       ExerciseHint[]
   tests       ExerciseTest[]
   submissions Submission[]
+  hintRequests HintRequest[]
 
   @@index([unitId, type])
   @@index([isPublished])
@@ -298,6 +302,26 @@ model ExerciseTest {
 
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
+  @@index([exerciseId])
+}
+
+/// Solicitud de pista de un estudiante (S6). Una fila por usuario, ejercicio y
+/// nivel: volver a pedir la misma pista no duplica el registro. `lastRequestedAt`
+/// permite contar los niveles distintos usados desde el envío anterior.
+model HintRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  exerciseId      String
+  level           Int      // 1..3
+  requests        Int      @default(1)
+  lastRequestedAt DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, exerciseId, level])
+  @@index([userId, exerciseId])
   @@index([exerciseId])
 }
 
@@ -527,6 +551,7 @@ model AiInteraction {
 | Auditoría IA | `AiInteraction` es *append-only*; sin updates ni deletes |
 | Intentos | Un `Submission` nunca se modifica; solo se crean nuevos |
 | Unicidad de repaso | `@@unique([userId, exerciseId])` garantiza un ítem por ejercicio |
+| Pistas pedidas | `@@unique([userId, exerciseId, level])`: repetir un nivel incrementa `requests` y `lastRequestedAt` sin crear fila |
 
 ---
 
@@ -535,6 +560,7 @@ model AiInteraction {
 - Cola de repaso: `@@index([userId, dueAt])` — consulta principal del dashboard.
 - Avance: `@@unique([userId, unitId])` evita filas duplicadas y `@@index([userId, state])` resuelve los contadores del overview sin recorrer todas las unidades.
 - Historial: `@@index([userId, createdAt])` en `Submission`.
+- Pistas: `@@index([userId, exerciseId])` en `HintRequest` — calcular `hintsUsed` desde el envío anterior sin recorrer la tabla.
 - Catálogo: `@@index([unitId, type])` para listar ejercicios por unidad.
 - Coste IA: `@@index([module, createdAt])` para reportes mensuales.
 
