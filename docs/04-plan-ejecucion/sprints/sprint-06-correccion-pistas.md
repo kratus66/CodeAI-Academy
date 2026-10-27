@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 14/16 tareas · 13/14 criterios de aceptación.
+> **Avance:** 15/16 tareas · 14/15 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -60,6 +60,7 @@ Al cerrar el sprint, la plataforma puede asumir:
 | `hintsUsed` sale de un registro `HintRequest` propio, nunca del cliente | `Submission.hintsUsed` existe pero nada lo alimenta; aceptar el número del cliente convierte el tope en opcional | Aceptar `hintsUsed` en el cuerpo del envío |
 | Progresión obligatoria de pistas (1 → 2 → 3) | `banco-ejercicios.md` §3.1: «las pistas son **progresivas** y su uso se registra (afecta al nivel máximo alcanzable)»; los tres niveles los nombra el roadmap §S6 (concepto → dirección → fragmento). Pedir el fragmento sin el concepto destruye el propósito | Servir cualquier nivel a demanda |
 | La web pinta un botón por nivel y bloquea los posteriores hasta pedir el anterior | Repite en la interfaz la regla que el servidor ya impone: el `422` queda como red de seguridad, no como forma de descubrir el orden. La nota «Pide antes la pista N−1» y el aviso de `nextLevelAvailable` evitan el callejón sin salida de §7 | Un único botón «Pedir la siguiente pista», que oculta cuántos niveles ofrece el ejercicio |
+| El historial se refresca por un contador (`refreshToken`) que sube tras cada envío | La lista la sigue poseyendo el servidor: el laboratorio no guarda envíos ni intenta insertar el nuevo a mano, y `useContentLoader` vuelve a pedir con el mismo loader. Coste: durante el refresco se ve un instante el estado de carga | Pasar el envío nuevo como callback y que el padre lo anteponga a la lista |
 | El escalón topa el nivel: GUIDED 2 · SEMI 3 · AUTONOMOUS 4 | `banco-ejercicios.md` §4: «no se puede certificar Nivel 3 con ejercicios del escalón 1» y la tabla da 2 · 2–3 · 3. El 4 se permite sólo en `AUTONOMOUS` porque la rúbrica §3 lo llama «Nivel 4 **potencial**»; certificarlo no es de este sprint | Dejar que la puntuación decida sola el nivel, ignorando el escalón |
 | El `feedback` se construye **sólo** con pruebas visibles | Nombrar una prueba oculta filtra el conjunto de casos y permite sobreajuste (`rubricas-evaluacion.md` §4) | Incluir el listado completo de resultados |
 | `feedback` y pista se generan con datos del catálogo, nunca con el código del estudiante | Evita reenviar la solución por eco y mantiene el mensaje estable en las pruebas | Devolver el `stderr` del sandbox como explicación |
@@ -156,12 +157,12 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T12 | Cuota de pistas por minuto y traducción de la regla de progresión a `422` | `rate-limit.decorator.ts`, `rate-limit.guard.ts` + spec, `exercises.controller.ts` | 12 | ✅ `3081836` |
 | S6-T13 | `codeApi.requestHint` y `codeApi.submissionHistory` en la web | `apps/web/src/lib/api-client.ts` + spec | 13 | ✅ `464e0f6` |
 | S6-T14 | `HintPanel` y nivel alcanzado con su motivo en el resultado | `features/lab/components/HintPanel.tsx` + spec, `ExerciseLab.tsx` + spec (4 archivos, ratificado) | 14 | ✅ `ca80c4d` |
-| S6-T15 | `AttemptHistory` con estados de carga, error y vacío | `features/lab/components/AttemptHistory.tsx` + spec, página del ejercicio | 15 | ⬜ |
+| S6-T15 | `AttemptHistory` con estados de carga, error y vacío | `features/lab/components/AttemptHistory.tsx` + spec, `ExerciseLab.tsx` + spec (4 archivos, ratificado) | 15 | ✅ `6da9575` |
 | S6-T16 | Verificación HTTP real con dos usuarios y cierre documental | — (guion de comandos) y docs | 16 | ⬜ |
 
 > **Regla de tamaño:** ninguna tarea toca más de 3 archivos. Si una tarea necesita más, se parte antes de empezar.
 >
-> **Ratificación (2026-10-27):** S6-T14 usó un cuarto archivo, `ExerciseLab.spec.tsx`, para cubrir la integración del panel con el ejercicio real (id, `hintsAvailable` y el nivel alcanzado en el resultado). La alternativa —dejarla sin prueba de integración hasta T15— dejaba el cableado sin red. Se ratifica la excepción y se mantiene la regla para el resto del sprint.
+> **Ratificación (2026-10-27):** S6-T14 y S6-T15 usaron un cuarto archivo, `ExerciseLab.spec.tsx`, para cubrir la integración del panel con el ejercicio real (id, `hintsAvailable`, nivel alcanzado en el resultado) y el refresco del historial tras enviar. La alternativa —dejar el cableado sin prueba de integración— obligaba además a que las pruebas existentes del laboratorio golpearan la red, porque el historial se carga al montar. Se ratifican ambas excepciones: el cuarto archivo es siempre el spec del componente que integra, no un archivo de producción. La regla sigue vigente para T16, que no toca archivos de producción.
 
 **Orden y dependencias internas.** T1, T2, T3, T4 y T8 no dependen de nada (son las que pueden ejecutarse mientras S5 siga abierto). T5 depende de T4; T6 de T5; T7 de T2, T3 y T5. Desde T9 el sprint **necesita** lo que S5 deja: T9 depende de T1, T5 y `ExercisesService` (S5-T8); T10 depende de T7 y del controlador de S5-T10; T11 depende de T9; T12 de T10. En la web, T13 depende de T2 y de `codeApi` (S5-T11); T14 y T15 dependen de T13; T16 cierra el sprint.
 
@@ -182,10 +183,12 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 - [x] El envío se corrige con pruebas ocultas: una oculta fallida baja el `score` aunque todas las visibles pasen.
 - [x] Superar `maxAttempts` devuelve `409 CONFLICT` sin crear `Submission`.
 - [x] El historial devuelve sólo los envíos del usuario autenticado, en orden descendente y paginado.
-- [ ] La web muestra la pista pedida, el motivo del tope y el historial, con estados de carga, error y vacío.
+- [x] La web muestra la pista pedida, el motivo del tope y el historial, con estados de carga, error y vacío. — Verificado con pruebas de componente: `HintPanel.spec.tsx` (7), `AttemptHistory.spec.tsx` (6) y `ExerciseLab.spec.tsx` (8, dos de integración), más `npm run build -w @codeai/web`.
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 13/14 verificados.
+**Estado:** 14/15 verificados. Queda la suite completa del monorepo, que ejecuta T16 junto con la verificación HTTP de cierre.
+
+> **Corrección de recuento (2026-10-27):** el encabezado decía catorce criterios, pero la lista tiene quince. Se ajusta el total a quince en lugar de borrar una línea, porque las quince están formuladas como criterios del sprint (§1 y contrato §4).
 
 ---
 
@@ -233,6 +236,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T12 | `npm run test -w @codeai/api -- rate-limit` → `Test Files 1 passed (1)`, `Tests 8 passed (8)`. `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 238 passed (238)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. `npm run build -w @codeai/api` → exit 0. | No hay guard nuevo: `RateLimitGuard` gana `keyFromUser` y se reutiliza el mismo `429` + `Retry-After` que ya usan `login` y `register`. La cuota queda en 20 pistas/min **por usuario** (misma cifra que el sandbox): una IP compartida en un aula no debe penalizar a otros estudiantes. Sin usuario en la petición la clave cae a la IP. El `422 RULE_VIOLATION` de la progresión ya lo traducía el filtro global desde T7, así que la tarea no duplica esa regla. | `3081836` |
 | S6-T13 | `npm run test -w @codeai/web -- api-client` → `Test Files 1 passed (1)`, `Tests 33 passed (33)`. `npm run test -w @codeai/web` → `Test Files 18 passed (18)`, `Tests 116 passed (116)`. `npm run typecheck -w @codeai/web` → exit 0. `npm run lint -w @codeai/web` → `No ESLint warnings or errors`. | `requestHint(id, level)` valida la respuesta con `hintResponseEnvelopeSchema`, que es estricto: si la API filtrara `solution`, el cliente fallaría con `500 INTERNAL_ERROR` en vez de pintarla. El `422 RULE_VIOLATION` de la progresión sube como `ApiError` para que la vista lo explique. No se añadió `submissionHistory` porque `listSubmissions` ya existía. | `464e0f6` |
 | S6-T14 | `npm run test -w @codeai/web -- HintPanel` → `Test Files 1 passed (1)`, `Tests 7 passed (7)`. `npm run test -w @codeai/web` → `Test Files 19 passed (19)`, `Tests 124 passed (124)` (`ExerciseLab.spec.tsx`: 7). `npm run typecheck -w @codeai/web` → exit 0. `npm run lint -w @codeai/web` → `No ESLint warnings or errors`. `npm run build -w @codeai/web` → exit 0, `/learn/units/[code]/exercises/[slug]` 6.24 kB. | El panel pinta un botón por nivel: el siguiente habilitado, los posteriores deshabilitados con la nota «Pide antes la pista N−1» y, si `nextLevelAvailable` es `false`, «No hay más pistas». El 429 menciona las 20 pistas/min y el 422 explica el orden sin reenviar el `message` de la API. `ExerciseLab` inyecta `requestHint` con `exercisesApi.requestHint` por defecto y el resultado muestra `Nivel alcanzado: N/4 · N pistas usadas`. El primer subproceso recibió el enunciado truncado (Windows cortó el argumento de `claude -p`) e improvisó un único botón; la segunda pasada, con el enunciado por `stdin`, lo corrigió. | `ca80c4d` |
+| S6-T15 | `npm run test -w @codeai/web` → `Test Files 20 passed (20)`, `Tests 131 passed (131)` (`AttemptHistory.spec.tsx`: 6; `ExerciseLab.spec.tsx`: 8). `npm run typecheck -w @codeai/web` → exit 0. `npm run lint -w @codeai/web` → `No ESLint warnings or errors`. `npm run build -w @codeai/web` → exit 0, `/learn/units/[code]/exercises/[slug]` 6.85 kB. | `AttemptHistory` carga con `useContentLoader` (aborta al desmontar), ignora el primer render para no duplicar la petición y llama a `reload()` sólo cuando cambia `refreshToken`; el loader por defecto es una referencia de módulo porque un lambda como valor por defecto se recrearía en cada render y dispararía el bucle que advierte el hook. El 401 de la carga pide volver a iniciar sesión en vez de ofrecer «Reintentar», que repetiría el fallo. `OUTCOME_LABEL` se movió al componente nuevo y `ExerciseLab` lo importa, así que la traducción del desenlace vive en un solo sitio. | `6da9575` |
 
 ---
 
