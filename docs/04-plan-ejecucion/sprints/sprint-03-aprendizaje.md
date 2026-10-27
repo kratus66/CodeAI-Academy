@@ -1,7 +1,7 @@
 # Sprint 03 — Plataforma de aprendizaje
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅ y S2 ✅
-> **Avance:** 1/11 tareas · 0/10 criterios de aceptación.
+> **Avance:** 2/11 tareas · 0/10 criterios de aceptación.
 > **Terminal por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -33,7 +33,7 @@ Al cerrar el sprint, la plataforma puede asumir:
 
 **Fuera de alcance explícito (heredado de S1):** el guard de roles, el decorador `@Public` y el módulo `users` no se implementan en este sprint porque **no tienen consumidor** (no hay rutas de administración ni listado de usuarios hasta S9/S11). Se reprograman y se documentan en §8. Es una decisión reversible: no se borra ni se deja a medias nada de S1.
 
-**Brecha de contenido declarada:** la semilla de S2 siembra etapas, módulos y unidades, pero **cero lecciones**. Este sprint entrega el lector y lo prueba con el repositorio en memoria; la primera lección real requiere autoría pedagógica con revisión humana y queda como tarea S3-T12 (⬜). No se inventa contenido curricular para «poder demostrar» la pantalla.
+**Brecha de contenido declarada:** la semilla de S2 siembra etapas, módulos y unidades, pero **cero lecciones**. Este sprint entrega el lector y lo prueba con el repositorio en memoria; la primera lección real requiere autoría pedagógica con revisión humana y queda como tarea S3-T11 (⬜). No se inventa contenido curricular para «poder demostrar» la pantalla.
 
 ---
 
@@ -102,7 +102,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 | ID | Tarea | Archivos principales | Estado |
 |----|-------|----------------------|--------|
 | S3-T1 | Contrato y API: `units` en el módulo, `stageId` en la unidad | `packages/shared/src/schemas/content.ts` + spec, `content.mapper.ts`, `prisma-content.repository.ts`, `content.service.spec.ts` | ✅ `1d02d14` |
-| S3-T2 | Cliente `contentApi` con validación Zod de las respuestas | `apps/web/src/lib/api-client.ts`, `api-client.spec.ts` | ⬜ |
+| S3-T2 | Cliente `contentApi` con validación Zod de las respuestas | `apps/web/src/lib/api-client.ts`, `api-client.spec.ts` | ✅ `85fcca0` |
 | S3-T3 | Shell autenticado: guard de sesión y layout de aprendizaje | `features/learning/components/SessionGate.tsx` + spec, `app/(learning)/learn/layout.tsx` | ⬜ |
 | S3-T4 | Catálogo de etapas con carga, error y vacío | `features/learning/components/StageCatalog.tsx` + spec, `learn/page.tsx` | ⬜ |
 | S3-T5 | Vista de etapa: módulos y unidades | `features/learning/components/StageOutline.tsx` + spec, `learn/stages/[id]/page.tsx` | ⬜ |
@@ -139,7 +139,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 |--------|-----------|
 | Cambiar `ModuleSummary` rompe consumidores de S2 | Es un campo añadido; se actualizan fixtures y la prueba de servicio en la misma tarea |
 | Doble petición en la vista de unidad (unidad + etapa) | Ambas caben en la misma navegación; la alternativa (endpoint nuevo) se descartó a propósito |
-| Sin lecciones sembradas, el lector no se demuestra | Se prueba con dataset en memoria y la UI declara el vacío; tarea S3-T12 abierta |
+| Sin lecciones sembradas, el lector no se demuestra | Se prueba con dataset en memoria y la UI declara el vacío; tarea S3-T11 abierta |
 | Redirección en cliente provoca parpadeo | `SessionGate` anuncia `role="status"` y no monta contenido hasta tener sesión |
 | API caída durante la verificación | `npm run db:up` y arranque de la API con `node dist/main.js` antes del `curl` |
 
@@ -149,7 +149,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 
 - Progreso, porcentaje y desbloqueos por prerrequisitos: S4. En S3 los prerrequisitos solo se **muestran**.
 - Guard de roles, `@Public` y módulo `users`: sin consumidor hasta S9/S11 (ver §2).
-- Contenido de lecciones: autoría pedagógica separada (S3-T12).
+- Contenido de lecciones: autoría pedagógica separada (S3-T11).
 - Editor de código, envíos y corrección: S5–S6.
 
 ---
@@ -159,6 +159,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 | Tarea | Verificación ejecutada | Resultado | Commit |
 |-------|------------------------|-----------|--------|
 | S3-T1 | `npm run test -w @codeai/shared` (rojo 4 fallos → verde 45), `npm run test -w @codeai/api` (68), `npm run typecheck`, `npm run lint` | Verde: módulos con `units` ordenadas, `stageId` validado en [0, 11] y requerido, `unitCount` derivado de la lista | `1d02d14` |
+| S3-T2 | `npm run test -w @codeai/web` (rojo: import sin exportar → verde 36), `npm test` (11 + 6 + 4 archivos), `npm run typecheck`, `npm run lint` | Verde: `contentApi` pide `/content/stages`, `/content/stages/:id`, `/content/units/:code` y `/content/lessons/:slug`; una etapa con módulo sin `units` se rechaza como `INTERNAL_ERROR` y el `404` de la API llega intacto con `traceId` | `85fcca0` |
 
 ---
 
