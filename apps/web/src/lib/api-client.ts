@@ -3,26 +3,37 @@ import {
   ERROR_CODE_BY_HTTP_STATUS,
   competencyProgressSchema,
   errorResponseSchema,
+  exerciseDetailResponseSchema,
+  exerciseListResponseSchema,
   lessonDetailSchema,
   paginatedSchema,
   progressOverviewSchema,
+  sandboxRunEnvelopeSchema,
   stageDetailSchema,
   stageSummarySchema,
+  submissionListResponseSchema,
+  submissionResponseSchema,
   unitDetailSchema,
   unitProgressSummarySchema,
   userResponseSchema,
 } from "@codeai/shared";
 import type {
   CompetencyProgress,
+  CreateSubmissionInput,
   ErrorCode,
   ErrorDetail,
+  ExerciseDetail,
+  ExerciseListItem,
   LessonDetail,
   LoginInput,
   PaginationMeta,
   ProgressOverview,
   RegisterInput,
+  SandboxRunRequest,
+  SandboxRunResponse,
   StageDetail,
   StageSummary,
+  SubmissionSummary,
   UnitDetail,
   UnitProgressSummary,
   UserPublic,
@@ -282,6 +293,102 @@ export const progressApi = {
     );
 
     return response.unit;
+  },
+};
+
+/** Catálogo paginado de ejercicios de una unidad. */
+export interface ExerciseCatalogPage {
+  readonly exercises: readonly ExerciseListItem[];
+  readonly meta: PaginationMeta;
+}
+
+/**
+ * Laboratorio de código (`contratos-api.md` §4.3). Igual que `progressApi`,
+ * depende de la cookie de sesión; la API responde `401` sin ella y el cliente
+ * deja que la vista decida qué hacer.
+ *
+ * El listado se pide por **código de unidad** porque es lo único que conoce la
+ * web al entrar desde el currículo: el `id` del ejercicio se usa después para el
+ * detalle y los envíos.
+ */
+export const exercisesApi = {
+  async listByUnit(
+    unitCode: string,
+    signal?: AbortSignal,
+  ): Promise<ExerciseCatalogPage> {
+    const page = await requestParsed(
+      exerciseListResponseSchema,
+      `/exercises/units/${encodeURIComponent(unitCode)}`,
+      signal,
+    );
+
+    return { exercises: page.data, meta: page.meta };
+  },
+
+  async getDetail(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<ExerciseDetail> {
+    const response = await requestParsed(
+      exerciseDetailResponseSchema,
+      `/exercises/${encodeURIComponent(id)}`,
+      signal,
+    );
+
+    return response.exercise;
+  },
+
+  /** Historial del propio estudiante; la API nunca devuelve envíos ajenos. */
+  async listSubmissions(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<SubmissionSummary[]> {
+    const page = await requestParsed(
+      submissionListResponseSchema,
+      `/exercises/${encodeURIComponent(id)}/submissions`,
+      signal,
+    );
+
+    return page.data;
+  },
+
+  async submit(
+    id: string,
+    input: CreateSubmissionInput,
+  ): Promise<SubmissionSummary> {
+    const response = parseContract(
+      submissionResponseSchema,
+      await apiRequest<unknown>(
+        `/exercises/${encodeURIComponent(id)}/submissions`,
+        { method: "POST", body: input },
+      ),
+    );
+
+    return response.submission;
+  },
+};
+
+/**
+ * Ejecución suelta en el sandbox (`contratos-api.md` §4.6), para el botón
+ * «Probar» antes de enviar. Comparte cuota con los envíos: la API limita a
+ * veinte ejecuciones por minuto y responde `429` con `Retry-After`, que
+ * `apiRequest` ya expone en `ApiError.retryAfterSeconds`.
+ */
+export const sandboxApi = {
+  async run(
+    input: SandboxRunRequest,
+    signal?: AbortSignal,
+  ): Promise<SandboxRunResponse> {
+    const response = parseContract(
+      sandboxRunEnvelopeSchema,
+      await apiRequest<unknown>("/sandbox/run", {
+        method: "POST",
+        body: input,
+        ...(signal ? { signal } : {}),
+      }),
+    );
+
+    return response.run;
   },
 };
 

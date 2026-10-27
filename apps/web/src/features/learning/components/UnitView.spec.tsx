@@ -137,6 +137,43 @@ describe("UnitView", () => {
     ).toBeInTheDocument();
   });
 
+  it("enlaza cada ejercicio con su laboratorio", async () => {
+    const base = contentOf("U0.1.1");
+
+    render(
+      <UnitView
+        code="U0.1.1"
+        loadUnit={() =>
+          Promise.resolve({
+            stage: base.stage,
+            unit: {
+              ...base.unit,
+              exercises: [
+                {
+                  id: "ex_1",
+                  slug: "suma-segura",
+                  type: "LAB",
+                  title: "Suma segura",
+                  statement: "Implementa una suma que valide sus entradas.",
+                  ladder: "GUIDED",
+                  difficulty: 2,
+                  concepts: [],
+                  competencies: [],
+                  estimatedMin: 30,
+                  order: 1,
+                },
+              ],
+            },
+          })
+        }
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: /Suma segura/ }),
+    ).toHaveAttribute("href", "/learn/units/U0.1.1/exercises/suma-segura");
+  });
+
   it("trata el 404 como unidad inexistente con vuelta al catálogo", async () => {
     render(
       <UnitView

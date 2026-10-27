@@ -218,19 +218,21 @@ export function UnitView({ code, loadUnit = loadUnitView }: UnitViewProps) {
           <SectionTitle id="ejercicios">Ejercicios</SectionTitle>
           <ul className="grid list-none gap-3 p-0 sm:grid-cols-2">
             {unit.exercises.map((exercise) => (
-              <li
-                key={exercise.id}
-                className="rounded-xl border border-line/70 bg-ink-card/40 px-4 py-3"
-              >
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  {exercise.type} · dificultad {exercise.difficulty}/5
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-100">
-                  {exercise.title}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                  {exercise.statement}
-                </p>
+              <li key={exercise.id}>
+                <Link
+                  href={`/learn/units/${unit.code}/exercises/${exercise.slug}`}
+                  className={ROW_CLASSES}
+                >
+                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                    {exercise.type} · dificultad {exercise.difficulty}/5
+                  </span>
+                  <span className="text-sm font-medium text-slate-100">
+                    {exercise.title}
+                  </span>
+                  <span className="text-xs leading-relaxed text-slate-400">
+                    {exercise.statement}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

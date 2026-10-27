@@ -1,13 +1,16 @@
 import { LESSON_STEP_KINDS } from "@codeai/shared";
+import type { SandboxRunRequest } from "@codeai/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ApiError,
   authApi,
   contentApi,
+  exercisesApi,
   progressApi,
   resolveApiBaseUrl,
   restoreSession,
+  sandboxApi,
 } from "./api-client";
 
 const USER = {
@@ -452,6 +455,193 @@ describe("progressApi", () => {
 
     expect(error.status).toBe(500);
     expect(error.code).toBe("INTERNAL_ERROR");
+  });
+});
+
+const EXERCISE_ITEM = {
+  id: "ex_1",
+  unitId: "unit_1",
+  unitCode: "U0.1.1",
+  type: "LAB",
+  title: "Suma de dos números",
+  ladder: "GUIDED",
+  difficulty: 1,
+  estimatedMin: 15,
+  language: "typescript",
+  competencies: ["C1"],
+} as const;
+
+const EXERCISE_DETAIL = {
+  ...EXERCISE_ITEM,
+  statement: "Escribe una función que sume dos números.",
+  config: {},
+  publicTests: [{ testId: "t1", name: "suma positivos" }],
+  hintsAvailable: 2,
+  starterCode: "export function sumar(a: number, b: number): number {}",
+} as const;
+
+const SUBMISSION = {
+  id: "sub_1",
+  outcome: "PARTIAL",
+  score: 66.7,
+  achievedLevel: null,
+  hintsUsed: 0,
+  results: [
+    { testId: "t1", name: "suma positivos", passed: true, durationMs: 1 },
+    { testId: "t2", name: "suma negativos", passed: false },
+  ],
+  feedback: "1 de 2 pruebas visibles superadas",
+  createdAt: "2026-10-27T10:00:00.000Z",
+} as const;
+
+describe("exercisesApi", () => {
+  it("lista los ejercicios de una unidad por su código", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [EXERCISE_ITEM],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      }),
+    );
+
+    const page = await exercisesApi.listByUnit("U0.1.1");
+
+    expect(page.exercises.map((item) => item.id)).toEqual(["ex_1"]);
+    expect(page.meta.total).toBe(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exercises/units/U0.1.1",
+    );
+  });
+
+  it("devuelve el detalle sin solución ni pruebas ocultas", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ exercise: EXERCISE_DETAIL }));
+
+    const exercise = await exercisesApi.getDetail("ex_1");
+
+    expect(exercise.publicTests).toHaveLength(1);
+    expect(exercise.hintsAvailable).toBe(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exercises/ex_1",
+    );
+  });
+
+  it("desenvuelve el historial de envíos del estudiante", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [SUBMISSION],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      }),
+    );
+
+    const submissions = await exercisesApi.listSubmissions("ex_1");
+
+    expect(submissions[0]?.outcome).toBe("PARTIAL");
+    expect(submissions[0]?.results).toHaveLength(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exercises/ex_1/submissions",
+    );
+  });
+
+  it("envía el código con POST y devuelve el desenlace", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ submission: SUBMISSION }));
+
+    const submission = await exercisesApi.submit("ex_1", {
+      code: "export function sumar(a, b) { return a + b; }",
+      selfExplanation: "Uso el operador suma",
+    });
+
+    expect(submission.score).toBe(66.7);
+    expect(submission.achievedLevel).toBeNull();
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        code: "export function sumar(a, b) { return a + b; }",
+        selfExplanation: "Uso el operador suma",
+      }),
+    });
+  });
+
+  it("propaga el 404 de un ejercicio no publicado", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "NOT_FOUND",
+            message: "El ejercicio no existe o no está publicado",
+            traceId: "trace-404",
+          },
+        },
+        { status: 404 },
+      ),
+    );
+
+    const error = await captureApiError(exercisesApi.getDetail("ex_404"));
+
+    expect(error.status).toBe(404);
+    expect(error.code).toBe("NOT_FOUND");
+  });
+});
+
+const SANDBOX_RUN = {
+  outcome: "PASSED",
+  score: 100,
+  results: [{ testId: "t1", passed: true, durationMs: 1 }],
+  stdout: "ok",
+  durationMs: 1,
+} as const;
+
+describe("sandboxApi", () => {
+  const request: SandboxRunRequest = {
+    language: "typescript",
+    files: [{ path: "index.ts", content: "console.log(1)" }],
+    tests: [{ id: "t1", code: "assert(true)", weight: 1 }],
+    limits: { timeoutMs: 5_000, memoryMb: 256 },
+  };
+
+  it("ejecuta en /sandbox/run y desenvuelve la ejecución", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ run: SANDBOX_RUN }));
+
+    const run = await sandboxApi.run(request);
+
+    expect(run.outcome).toBe("PASSED");
+    expect(run.results).toHaveLength(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/sandbox/run",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  });
+
+  it("expone Retry-After cuando se agota la cuota de ejecuciones", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "RATE_LIMITED",
+            message: "Has alcanzado el límite de 20 ejecuciones por minuto.",
+            traceId: "trace-429",
+          },
+        },
+        { status: 429, headers: { "Retry-After": "47" } },
+      ),
+    );
+
+    const error = await captureApiError(sandboxApi.run(request));
+
+    expect(error.code).toBe("RATE_LIMITED");
+    expect(error.retryAfterSeconds).toBe(47);
+  });
+
+  it("rechaza una ejecución fuera del contrato", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ run: { ...SANDBOX_RUN, outcome: "DESCONOCIDO" } }),
+    );
+
+    const error = await captureApiError(sandboxApi.run(request));
+
+    expect(error.code).toBe("INTERNAL_ERROR");
+    expect(error.message).toContain("contrato");
   });
 });
 
