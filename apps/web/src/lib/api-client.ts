@@ -9,6 +9,8 @@ import {
   lessonDetailSchema,
   paginatedSchema,
   progressOverviewSchema,
+  reviewAnswerResultSchema,
+  reviewQueueResponseSchema,
   sandboxRunEnvelopeSchema,
   stageDetailSchema,
   stageSummarySchema,
@@ -32,6 +34,9 @@ import type {
   PaginationMeta,
   ProgressOverview,
   RegisterInput,
+  ReviewAnswerInput,
+  ReviewAnswerResult,
+  ReviewQueueResponse,
   SandboxRunRequest,
   SandboxRunResponse,
   StageDetail,
@@ -409,6 +414,30 @@ export const sandboxApi = {
     );
 
     return response.run;
+  },
+};
+
+/**
+ * Repaso espaciado (`contratos-api.md` §4.5). La cola llega acotada y
+ * intercalada por el servidor; el cliente no reordena ni calcula intervalos: sólo
+ * valida el contrato y envía la calidad elegida.
+ */
+export const reviewApi = {
+  async getQueue(signal?: AbortSignal): Promise<ReviewQueueResponse> {
+    return requestParsed(reviewQueueResponseSchema, "/review/queue", signal);
+  },
+
+  async answer(
+    itemId: string,
+    input: ReviewAnswerInput,
+  ): Promise<ReviewAnswerResult> {
+    return parseContract(
+      reviewAnswerResultSchema,
+      await apiRequest<unknown>(
+        `/review/items/${encodeURIComponent(itemId)}/answer`,
+        { method: "POST", body: input },
+      ),
+    );
   },
 };
 

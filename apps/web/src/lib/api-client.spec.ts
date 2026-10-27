@@ -10,6 +10,7 @@ import {
   progressApi,
   resolveApiBaseUrl,
   restoreSession,
+  reviewApi,
   sandboxApi,
 } from "./api-client";
 
@@ -721,3 +722,108 @@ describe("restoreSession", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+const REVIEW_ITEM = {
+  id: "item_1",
+  exerciseId: "ex_1",
+  exerciseTitle: "Suma segura",
+  exerciseSlug: "suma-segura-001",
+  concept: "funciones",
+  competencies: ["C1"],
+  dueAt: "2026-10-27T08:00:00.000Z",
+  intervalDays: 1,
+  repetitions: 1,
+  easeFactor: 2.6,
+  priority: 0,
+} as const;
+
+const REVIEW_ANSWER = {
+  nextDueAt: "2026-11-02T09:00:00.000Z",
+  intervalDays: 6,
+  easeFactor: 2.6,
+  repetitions: 2,
+} as const;
+
+describe("reviewApi", () => {
+  it("pide la cola y devuelve los ítems validados", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ items: [REVIEW_ITEM], dueReviews: 7, limit: 30 }),
+    );
+
+    const queue = await reviewApi.getQueue();
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/review/queue",
+    );
+    expect(queue.items[0]).toEqual(REVIEW_ITEM);
+    expect(queue.dueReviews).toBe(7);
+    expect(queue.limit).toBe(30);
+  });
+
+  it("envía la calidad al ítem correcto y devuelve el próximo repaso", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(REVIEW_ANSWER));
+
+    const result = await reviewApi.answer("item_1", { quality: 4 });
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+
+    expect(url).toBe("http://localhost:3001/api/review/items/item_1/answer");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe(JSON.stringify({ quality: 4 }));
+    expect(result).toEqual(REVIEW_ANSWER);
+  });
+
+  it("codifica el id del ítem en la ruta", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(REVIEW_ANSWER));
+
+    await reviewApi.answer("item/1", { quality: 5 });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/review/items/item%2F1/answer",
+    );
+  });
+
+  it("propaga el 404 de un ítem ajeno", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "NOT_FOUND",
+            message: "El ítem de repaso no existe o no te pertenece",
+            traceId: "trace-404",
+          },
+        },
+        { status: 404 },
+      ),
+    );
+
+    const error = await captureApiError(reviewApi.answer("item_9", { quality: 3 }));
+
+    expect(error.status).toBe(404);
+    expect(error.code).toBe("NOT_FOUND");
+    expect(error.traceId).toBe("trace-404");
+  });
+
+  it("rechaza una cola fuera de contrato antes de tocar la vista", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ items: [{ ...REVIEW_ITEM, easeFactor: 1.2 }], dueReviews: 0, limit: 30 }),
+    );
+
+    const error = await captureApiError(reviewApi.getQueue());
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe("INTERNAL_ERROR");
+    expect(error.message).toContain("contrato");
+  });
+
+  it("rechaza una respuesta SM-2 fuera de contrato", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ ...REVIEW_ANSWER, intervalDays: 0 }),
+    );
+
+    const error = await captureApiError(reviewApi.answer("item_1", { quality: 4 }));
+
+    expect(error.code).toBe("INTERNAL_ERROR");
+  });
+});
+
