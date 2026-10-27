@@ -79,6 +79,12 @@ export interface CreateSubmissionInput {
   results: readonly SubmissionResultRow[];
 }
 
+/** Pista del catálogo (`ExerciseHint`): el texto se sirve tal cual, sin interpolar. */
+export interface ExerciseHintRow {
+  level: number;
+  text: string;
+}
+
 export interface ExercisesRepository {
   /** Ejercicios publicados de una unidad publicada, por orden curricular. */
   listByUnit(unitCode: string, window: PageWindow): Promise<Page<ExerciseRow>>;
@@ -96,4 +102,6 @@ export interface ExercisesRepository {
     window: PageWindow,
   ): Promise<Page<SubmissionRow>>;
   createSubmission(input: CreateSubmissionInput): Promise<SubmissionRow>;
+  /** Texto de la pista tal cual está en el catálogo; `null` si ese nivel no existe. */
+  findHint(exerciseId: string, level: number): Promise<ExerciseHintRow | null>;
 }

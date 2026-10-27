@@ -7,6 +7,7 @@ import { PrismaService } from "../../database/prisma.service";
 import type { Page, PageWindow } from "../content/content.repository";
 import type {
   CreateSubmissionInput,
+  ExerciseHintRow,
   ExercisesRepository,
   ExerciseRow,
   SubmissionRow,
@@ -174,6 +175,15 @@ export class PrismaExercisesRepository implements ExercisesRepository {
     });
 
     return toSubmissionRow(row, new Map(input.results.map((result) => [result.testId, result.name])));
+  }
+
+  async findHint(exerciseId: string, level: number): Promise<ExerciseHintRow | null> {
+    const row = await this.prisma.exerciseHint.findUnique({
+      where: { exerciseId_level: { exerciseId, level } },
+      select: { level: true, text: true },
+    });
+
+    return row ?? null;
   }
 }
 

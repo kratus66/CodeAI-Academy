@@ -1,5 +1,6 @@
 import type {
   CreateSubmissionInput,
+  ExerciseHintRow,
   ExercisesRepository,
   ExerciseRow,
   SubmissionRow,
@@ -22,6 +23,11 @@ export interface ExercisesDataset {
    * confundiría con una inexistente.
    */
   unitCodes?: readonly string[];
+  /**
+   * Texto de las pistas del catálogo. `ExerciseRow.hintLevels` sólo declara los
+   * niveles; sin entrada aquí `findHint` devuelve `null`.
+   */
+  hintTexts?: readonly (ExerciseHintRow & { exerciseId: string })[];
 }
 
 export const EMPTY_EXERCISES_DATASET: ExercisesDataset = {
@@ -92,6 +98,14 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
     this.submissions.push({ ...row, userId: input.userId, exerciseId: input.exerciseId });
 
     return { ...row, results: row.results.map((result) => ({ ...result })) };
+  }
+
+  async findHint(exerciseId: string, level: number): Promise<ExerciseHintRow | null> {
+    const hint = this.dataset.hintTexts?.find(
+      (entry) => entry.exerciseId === exerciseId && entry.level === level,
+    );
+
+    return hint ? { level: hint.level, text: hint.text } : null;
   }
 }
 
