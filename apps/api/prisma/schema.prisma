@@ -40,6 +40,7 @@ model User {
   refreshTokens      RefreshToken[]
   unitProgress       UnitProgress[]
   competencyProgress CompetencyProgress[]
+  submissions        Submission[]
 
   @@index([role])
 }
@@ -222,8 +223,93 @@ model Exercise {
 
   unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
+  hints       ExerciseHint[]
+  tests       ExerciseTest[]
+  submissions Submission[]
+
   @@index([unitId, type])
   @@index([isPublished])
+}
+
+// ─────────────────────── EJERCICIOS Y ENVÍOS ───────────────────────
+
+/// Pista graduada de un ejercicio (`modelo-datos.md` §3). El texto no sale del
+/// servidor hasta S6, que sirve los niveles 1–3.
+model ExerciseHint {
+  id         String @id @default(cuid())
+  exerciseId String
+  level      Int // 1..3
+  text       String
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, level])
+}
+
+/// Prueba del ejercicio: ejecutable o declarativa según el tipo. `isHidden`
+/// decide si el estudiante llega a ver su nombre.
+model ExerciseTest {
+  id         String  @id @default(cuid())
+  exerciseId String
+  name       String
+  spec       Json
+  isHidden   Boolean @default(true)
+  weight     Float   @default(1)
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([exerciseId])
+}
+
+enum SubmissionOutcome {
+  PASSED
+  FAILED
+  PARTIAL
+  ERROR
+  TIMEOUT
+}
+
+/// Envío de un ejercicio. Nunca se modifica: sólo se crean envíos nuevos
+/// (`modelo-datos.md` §7).
+model Submission {
+  id              String            @id @default(cuid())
+  userId          String
+  exerciseId      String
+  code            String?
+  /// Respuesta para los tipos que no son código (quiz, reflexión).
+  answer          Json?
+  outcome         SubmissionOutcome
+  score           Float             @default(0) // 0..100
+  /// 1..4; S5 siempre lo deja en null y lo acredita S6.
+  achievedLevel   Int?
+  hintsUsed       Int               @default(0)
+  durationMs      Int?
+  errorCategory   String?
+  selfExplanation String?
+  aiAssisted      Boolean           @default(false)
+  aiInteractionId String?
+  createdAt       DateTime          @default(now())
+
+  user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise              @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  results  SubmissionTestResult[]
+
+  @@index([userId, createdAt])
+  @@index([exerciseId])
+}
+
+/// Resultado de una prueba dentro de un envío.
+model SubmissionTestResult {
+  id           String  @id @default(cuid())
+  submissionId String
+  testId       String
+  passed       Boolean
+  output       String?
+  durationMs   Int?
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
 }
 
 // ─────────────────────────── PROGRESO ───────────────────────────
