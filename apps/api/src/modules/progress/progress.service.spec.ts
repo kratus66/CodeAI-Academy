@@ -71,7 +71,10 @@ const masteredA = progress("user-1", "unit-a", {
   completedLessonIds: ["lesson-a1", "lesson-a2"],
 });
 
-function createService(overrides: Partial<ProgressDataset> = {}): ProgressService {
+function createService(
+  overrides: Partial<ProgressDataset> = {},
+  dueReviews = 0,
+): ProgressService {
   return new ProgressService(
     new InMemoryProgressRepository({
       users: [
@@ -84,6 +87,7 @@ function createService(overrides: Partial<ProgressDataset> = {}): ProgressServic
       competencyProgress: [],
       ...overrides,
     }),
+    { countDue: () => Promise.resolve(dueReviews) },
   );
 }
 
@@ -99,6 +103,12 @@ describe("ProgressService.getOverview", () => {
       competencies: expect.any(Array),
       dueReviews: 0,
     });
+  });
+
+  it("publica la deuda real de repaso del usuario", async () => {
+    const overview = await createService({}, 7).getOverview("user-1");
+
+    expect(overview.dueReviews).toBe(7);
   });
 
   it("publica el mapa completo C1–C14 con nivel 0 sin evidencia", async () => {

@@ -29,6 +29,17 @@ const UNIT_LOCKED = "La unidad está bloqueada: completa sus prerrequisitos para
 const USER_NOT_FOUND = "El usuario autenticado no existe";
 
 /**
+ * Puerto mínimo del repaso (S7): el panel sólo necesita la deuda de ítems
+ * vencidos. `ReviewModule` aporta el `ReviewService` real y las pruebas un
+ * contador fijo, de modo que el progreso no arrastra el motor SM-2.
+ */
+export const REVIEW_DUE_COUNTER = Symbol("REVIEW_DUE_COUNTER");
+
+export interface ReviewDueCounter {
+  countDue(userId: string): Promise<number>;
+}
+
+/**
  * Competencias del perfil profesional (`mapa-competencias.md`). El mapa se
  * publica completo: las que no tienen evidencia salen con nivel 0, y así el
  * panel puede dibujar C1–C14 sin huecos. Los códigos guardados fuera de rango
@@ -56,14 +67,16 @@ interface ResolvedUnit {
 export class ProgressService {
   constructor(
     @Inject(PROGRESS_REPOSITORY) private readonly repository: ProgressRepository,
+    @Inject(REVIEW_DUE_COUNTER) private readonly reviews: ReviewDueCounter,
   ) {}
 
   async getOverview(userId: string): Promise<ProgressOverview> {
-    const [user, units, records, competencies] = await Promise.all([
+    const [user, units, records, competencies, dueReviews] = await Promise.all([
       this.repository.findUser(userId),
       this.repository.listPublishedUnits(),
       this.repository.listUnitProgress(userId),
       this.repository.listCompetencyProgress(userId),
+      this.reviews.countDue(userId),
     ]);
 
     if (!user) {
@@ -78,8 +91,7 @@ export class ProgressService {
       overallPct: overallProgressPct(resolved),
       units: countUnitsByState(resolved),
       competencies: toCompetencyMap(competencies),
-      // Los repasos vencidos llegan con `ReviewItem` (S7).
-      dueReviews: 0,
+      dueReviews,
     };
   }
 
