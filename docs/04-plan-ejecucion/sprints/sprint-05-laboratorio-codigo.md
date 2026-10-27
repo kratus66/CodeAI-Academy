@@ -1,7 +1,7 @@
 # Sprint 05 — Laboratorio de código
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S2 ✅ (contenido) y S3 🔄 (unidad servida); de S4 sólo hereda el vocabulario de progreso, no su código.
-> **Avance:** 0/14 tareas · 0/13 criterios de aceptación.
+> **Avance:** 1/14 tareas · 1/13 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -133,7 +133,7 @@ interface SubmissionSummary {
 
 | ID | Tarea | Archivos principales | Sesión | Estado |
 |----|-------|----------------------|--------|--------|
-| S5-T1 | Contrato compartido del sandbox (`sandbox-ejecucion.md` §5) | `packages/shared/src/schemas/sandbox.ts` + spec, `index.ts` | 1 | ⬜ |
+| S5-T1 | Contrato compartido del sandbox (`sandbox-ejecucion.md` §5) | `packages/shared/src/schemas/sandbox.ts` + spec, `index.ts` | 1 | ✅ `685a904` |
 | S5-T2 | Contrato compartido del ejercicio, las pruebas públicas y el envío | `packages/shared/src/schemas/exercise.ts` + spec, `index.ts` | 2 | ⬜ |
 | S5-T3 | Migración `exercises_and_submissions` (5 modelos y 2 enums) | `apps/api/prisma/schema.prisma` + migración | 3 | ⬜ |
 | S5-T4 | Puerto `SandboxService` y `MockSandboxService` determinista | `modules/sandbox/sandbox.service.ts`, `mock-sandbox.service.ts` + spec | 4 | ⬜ |
@@ -156,7 +156,7 @@ interface SubmissionSummary {
 
 ## 6. Criterios de aceptación
 
-- [ ] `S5-T1`: `sandboxRunRequestSchema` aplica los límites por defecto (`timeoutMs` 5000, `memoryMb` 256) y rechaza `files` vacío, lenguajes fuera de `typescript|javascript|sql` y más de 30 tests.
+- [x] `S5-T1`: `sandboxRunRequestSchema` aplica los límites por defecto (`timeoutMs` 5000, `memoryMb` 256) y rechaza `files` vacío, lenguajes fuera de `typescript|javascript|sql` y más de 30 tests.
 - [ ] `S5-T2`: `ExerciseSummary` rechaza `difficulty: 5`; `SubmissionSummary` acepta `achievedLevel: null` y rechaza `outcome: "OK"`.
 - [ ] La migración `exercises_and_submissions` crea los 5 modelos con cascada desde `User`, `Unit` y `Exercise`.
 - [ ] `MockSandboxService` es determinista: el mismo código produce el mismo `outcome`, y el código con `TODO` devuelve `FAILED` con puntuación 0.
@@ -170,7 +170,7 @@ interface SubmissionSummary {
 - [ ] Sin `@monaco-editor/react` disponible, `CodeEditor` sigue siendo usable con un área de texto monoespaciada (prueba de reserva).
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 0/13 verificados.
+**Estado:** 1/13 verificados.
 
 ---
 
@@ -201,7 +201,7 @@ interface SubmissionSummary {
 
 | Tarea | Verificación ejecutada | Resultado | Commit |
 |-------|------------------------|-----------|--------|
-| S5-T1 | — | — | — |
+| S5-T1 | Rojo: `npm run test -w @codeai/shared` → `FAIL src/schemas/sandbox.spec.ts`, `Failed to load url ./sandbox`, 1 suite fallida y 5 correctas, 64 pruebas previas intactas. Verde: misma orden → `Test Files 6 passed (6)`, `Tests 83 passed (83)`. `npm run typecheck` → exit 0 (shared, api, web). `npm run lint` → primer intento con 1 error (`_durationMs` sin usar en la prueba, `no-unused-vars`); corregido sin tocar el contrato; segundo intento exit 0. `npm test` → shared 83 · api 68 · web 81 (total 232), exit 0. `npm run build` → `Compiled successfully`, exit 0. | 19 pruebas nuevas; contrato y export idénticos al documento, con `sandboxLanguageSchema` extraído para reutilizarlo en T2. | `685a904` |
 
 ---
 
