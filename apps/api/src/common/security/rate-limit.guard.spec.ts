@@ -6,7 +6,11 @@ import { RateLimit } from "./rate-limit.decorator";
 import { RateLimitGuard } from "./rate-limit.guard";
 
 function createContext(
-  request: { ip?: string; body?: Record<string, unknown> },
+  request: {
+    ip?: string;
+    body?: Record<string, unknown>;
+    user?: { sub?: string };
+  },
   handler: () => void,
 ): { context: ExecutionContext; headers: Record<string, string> } {
   const headers: Record<string, string> = {};
@@ -32,6 +36,9 @@ class LoginProbe {
 
   @RateLimit({ limit: 2, windowMs: 60_000 })
   register(): void {}
+
+  @RateLimit({ limit: 2, windowMs: 60_000, keyFromUser: true })
+  hint(): void {}
 
   free(): void {}
 }
@@ -111,6 +118,58 @@ describe("RateLimitGuard", () => {
     expect(
       guard.canActivate(createContext({ ip: "2.2.2.2" }, handler).context),
     ).toBe(true);
+  });
+
+  it("limita por usuario aunque la IP sea la misma", () => {
+    const guard = new RateLimitGuard();
+    const handler = LoginProbe.prototype.hint;
+    const request = { ip: "1.1.1.1", user: { sub: "user-a" } };
+
+    const third = createContext(request, handler);
+
+    expect(guard.canActivate(createContext(request, handler).context)).toBe(
+      true,
+    );
+    expect(guard.canActivate(createContext(request, handler).context)).toBe(
+      true,
+    );
+    expect(() => guard.canActivate(third.context)).toThrow(HttpException);
+    expect(third.headers["Retry-After"]).toBe("60");
+  });
+
+  it("da ventanas independientes a usuarios distintos desde la misma IP", () => {
+    const guard = new RateLimitGuard();
+    const handler = LoginProbe.prototype.hint;
+    const userA = { ip: "1.1.1.1", user: { sub: "user-a" } };
+    const userB = { ip: "1.1.1.1", user: { sub: "user-b" } };
+
+    guard.canActivate(createContext(userA, handler).context);
+    guard.canActivate(createContext(userA, handler).context);
+    expect(() =>
+      guard.canActivate(createContext(userA, handler).context),
+    ).toThrow(HttpException);
+
+    expect(guard.canActivate(createContext(userB, handler).context)).toBe(
+      true,
+    );
+    expect(guard.canActivate(createContext(userB, handler).context)).toBe(
+      true,
+    );
+  });
+
+  it("cae a la IP cuando la petición no trae usuario", () => {
+    const guard = new RateLimitGuard();
+    const handler = LoginProbe.prototype.hint;
+
+    expect(
+      guard.canActivate(createContext({ ip: "1.1.1.1" }, handler).context),
+    ).toBe(true);
+    expect(
+      guard.canActivate(createContext({ ip: "1.1.1.1" }, handler).context),
+    ).toBe(true);
+    expect(() =>
+      guard.canActivate(createContext({ ip: "1.1.1.1" }, handler).context),
+    ).toThrow(HttpException);
   });
 
   it("reinicia la ventana al expirar", () => {

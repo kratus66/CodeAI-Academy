@@ -30,6 +30,8 @@ import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
+import { RateLimit } from "../../common/security/rate-limit.decorator";
+import { RateLimitGuard } from "../../common/security/rate-limit.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import type { AccessTokenPayload } from "../auth/token.service";
@@ -46,6 +48,9 @@ const exerciseIdParamsSchema = z.object({
 });
 
 type ExerciseIdParams = z.infer<typeof exerciseIdParamsSchema>;
+
+/** `20` pistas por minuto y usuario (`contratos-api.md` §6, misma cifra que el sandbox). */
+const HINTS_LIMIT = { limit: 20, windowMs: 60_000, keyFromUser: true };
 
 /**
  * Laboratorio de código y pistas (`contratos-api.md` §4.3). Todo el controlador está
@@ -105,6 +110,11 @@ export class ExercisesController {
    */
   @Post(":id/hints")
   @HttpCode(HttpStatus.CREATED)
+  @RateLimit(HINTS_LIMIT)
+  // Nest acumula los guards de clase y de método y los ejecuta en ese orden:
+  // `JwtAuthGuard` corre antes y `request.user` ya existe cuando el limitador
+  // calcula la clave.
+  @UseGuards(RateLimitGuard)
   async requestHint(
     @CurrentUser() user: AccessTokenPayload,
     @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,

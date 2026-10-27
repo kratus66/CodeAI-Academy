@@ -13,7 +13,8 @@ interface Window {
 const MESSAGE = "Demasiados intentos. Espera antes de volver a probar.";
 
 /**
- * Límite de peticiones en memoria por IP y, opcionalmente, por campo del cuerpo.
+ * Límite de peticiones en memoria por IP, por campo del cuerpo o por usuario
+ * autenticado.
  *
  * Es deliberadamente simple: una instancia, sin Redis. Suficiente para S1 y
  * sustituible en S11 sin tocar los controladores (mismo decorador).
@@ -75,9 +76,21 @@ export class RateLimitGuard implements CanActivate {
     );
   }
 
-  /** IP + valor normalizado del campo declarado (si existe). */
-  private keyFor(request: Request, options: RateLimitOptions): string {
+  /** Usuario autenticado, o IP + valor normalizado del campo declarado (si existe). */
+  private keyFor(
+    request: Request & { user?: { sub?: unknown } },
+    options: RateLimitOptions,
+  ): string {
     const ip = request.ip ?? request.socket?.remoteAddress ?? "desconocida";
+
+    if (options.keyFromUser) {
+      const userId = request.user?.sub;
+
+      if (typeof userId === "string" && userId !== "") {
+        return `usuario:${userId}`;
+      }
+    }
+
     const rawValue = options.keyFromBody
       ? (request.body as Record<string, unknown> | undefined)?.[
           options.keyFromBody
