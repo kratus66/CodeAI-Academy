@@ -27,7 +27,7 @@
 | **S3** | Plataforma de aprendizaje (catálogo y lección) | E1–E3 | `content` (lectura) | 🔄 |
 | **S4** | Progreso, desbloqueos y competencias | E1–E4 | `progress` | ✅ |
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ✅ |
-| **S6** | Corrección automática y pistas graduadas | E2–E7 | `exercises` | 🔄 |
+| **S6** | Corrección automática y pistas graduadas | E2–E7 | `exercises` | ✅ |
 | **S7** | Repaso espaciado (SM-2) | E2–E7 | `review` | ⬜ |
 | **S8** | Capa de IA intercambiable y tutor socrático | E8–E9 | `ai` | ⬜ |
 | **S9** | Proyectos, rúbricas y portafolio | E9–E11 | `projects` | ⬜ |
@@ -36,7 +36,7 @@
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >
-> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 🔄 en curso (15/16 tareas y 14/15 criterios)**.
+> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 ✅ 16/16 tareas y 15/15 criterios**.
 
 ---
 
@@ -93,12 +93,13 @@
 - **Cierre:** 14/14 tareas ✅ · 13/13 criterios de aceptación ✅ · verificación HTTP real con dos usuarios (aislamiento de envíos, `404` de unidad y ejercicio, `429` con `Retry-After`) · suite completa verde (shared 97 · API 179 · web 113).
 - **Ficha:** [`sprints/sprint-05-laboratorio-codigo.md`](sprints/sprint-05-laboratorio-codigo.md).
 
-### S6 — Corrección automática y pistas graduadas
+### S6 — Corrección automática y pistas graduadas ✅
 
 - **Objetivo:** el envío se evalúa y el estudiante recibe pistas sin la solución.
 - **Entregables:** evaluador de casos, estados de envío, pistas por nivel (concepto → dirección → fragmento), historial de intentos.
 - **Criterio de salida:** pruebas de evaluación y de que ninguna respuesta incluye la solución completa.
-- **Estado:** 🔄 en curso (2026-10-27) — S6-T1 a S6-T15 cerradas; queda la verificación HTTP de cierre (T16). El laboratorio ya pinta el panel de pistas, el nivel alcanzado con su motivo y el historial de intentos con estados de carga, error y vacío.
+- **Estado (2026-10-27):** completo. Corrección automática con pruebas ocultas ponderadas, nivel alcanzado con su motivo, pistas graduadas 1→3 servidas del catálogo con registro de uso, tope de intentos, historial paginado y cuota de pistas por usuario; en la web, panel de pistas, nivel alcanzado en el resultado e historial de intentos con estados de carga, error y vacío.
+- **Cierre:** 16/16 tareas ✅ · 15/15 criterios de aceptación ✅ · verificación HTTP real con dos usuarios (45 comprobaciones: `422` fuera de orden, `409` al superar `maxAttempts`, historial aislado sin pruebas ocultas y `429` con `Retry-After`) · suite completa verde (shared 112 · API 238 · web 131).
 - **Ficha:** [`sprints/sprint-06-correccion-pistas.md`](sprints/sprint-06-correccion-pistas.md).
 
 ### S7 — Repaso espaciado

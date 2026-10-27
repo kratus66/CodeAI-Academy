@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
-> **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 15/16 tareas · 14/15 criterios de aceptación.
+> **Estado:** ✅ cerrado (2026-10-27) · **Inicio:** 2026-10-27 · **Depende de:** S5 ✅ (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
+> **Avance:** 16/16 tareas · 15/15 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -158,7 +158,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T13 | `codeApi.requestHint` y `codeApi.submissionHistory` en la web | `apps/web/src/lib/api-client.ts` + spec | 13 | ✅ `464e0f6` |
 | S6-T14 | `HintPanel` y nivel alcanzado con su motivo en el resultado | `features/lab/components/HintPanel.tsx` + spec, `ExerciseLab.tsx` + spec (4 archivos, ratificado) | 14 | ✅ `ca80c4d` |
 | S6-T15 | `AttemptHistory` con estados de carga, error y vacío | `features/lab/components/AttemptHistory.tsx` + spec, `ExerciseLab.tsx` + spec (4 archivos, ratificado) | 15 | ✅ `6da9575` |
-| S6-T16 | Verificación HTTP real con dos usuarios y cierre documental | — (guion de comandos) y docs | 16 | ⬜ |
+| S6-T16 | Verificación HTTP real con dos usuarios y cierre documental | — (guion de comandos) y docs | 16 | ✅ este documento |
 
 > **Regla de tamaño:** ninguna tarea toca más de 3 archivos. Si una tarea necesita más, se parte antes de empezar.
 >
@@ -184,9 +184,9 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 - [x] Superar `maxAttempts` devuelve `409 CONFLICT` sin crear `Submission`.
 - [x] El historial devuelve sólo los envíos del usuario autenticado, en orden descendente y paginado.
 - [x] La web muestra la pista pedida, el motivo del tope y el historial, con estados de carga, error y vacío. — Verificado con pruebas de componente: `HintPanel.spec.tsx` (7), `AttemptHistory.spec.tsx` (6) y `ExerciseLab.spec.tsx` (8, dos de integración), más `npm run build -w @codeai/web`.
-- [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
+- [x] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`. — `typecheck` exit 0; `lint` exit 0 con `No ESLint warnings or errors` en los tres paquetes; `test` exit 0 con `Test Files 51 passed (51)` y `Tests 481 passed (481)` (shared 112, api 238, web 131); `build` exit 0 con `✓ Compiled successfully`.
 
-**Estado:** 14/15 verificados. Queda la suite completa del monorepo, que ejecuta T16 junto con la verificación HTTP de cierre.
+**Estado:** 15/15 verificados. La verificación HTTP de cierre (T16) corrió 45 comprobaciones sin fallos.
 
 > **Corrección de recuento (2026-10-27):** el encabezado decía catorce criterios, pero la lista tiene quince. Se ajusta el total a quince en lugar de borrar una línea, porque las quince están formuladas como criterios del sprint (§1 y contrato §4).
 
@@ -237,6 +237,32 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T13 | `npm run test -w @codeai/web -- api-client` → `Test Files 1 passed (1)`, `Tests 33 passed (33)`. `npm run test -w @codeai/web` → `Test Files 18 passed (18)`, `Tests 116 passed (116)`. `npm run typecheck -w @codeai/web` → exit 0. `npm run lint -w @codeai/web` → `No ESLint warnings or errors`. | `requestHint(id, level)` valida la respuesta con `hintResponseEnvelopeSchema`, que es estricto: si la API filtrara `solution`, el cliente fallaría con `500 INTERNAL_ERROR` en vez de pintarla. El `422 RULE_VIOLATION` de la progresión sube como `ApiError` para que la vista lo explique. No se añadió `submissionHistory` porque `listSubmissions` ya existía. | `464e0f6` |
 | S6-T14 | `npm run test -w @codeai/web -- HintPanel` → `Test Files 1 passed (1)`, `Tests 7 passed (7)`. `npm run test -w @codeai/web` → `Test Files 19 passed (19)`, `Tests 124 passed (124)` (`ExerciseLab.spec.tsx`: 7). `npm run typecheck -w @codeai/web` → exit 0. `npm run lint -w @codeai/web` → `No ESLint warnings or errors`. `npm run build -w @codeai/web` → exit 0, `/learn/units/[code]/exercises/[slug]` 6.24 kB. | El panel pinta un botón por nivel: el siguiente habilitado, los posteriores deshabilitados con la nota «Pide antes la pista N−1» y, si `nextLevelAvailable` es `false`, «No hay más pistas». El 429 menciona las 20 pistas/min y el 422 explica el orden sin reenviar el `message` de la API. `ExerciseLab` inyecta `requestHint` con `exercisesApi.requestHint` por defecto y el resultado muestra `Nivel alcanzado: N/4 · N pistas usadas`. El primer subproceso recibió el enunciado truncado (Windows cortó el argumento de `claude -p`) e improvisó un único botón; la segunda pasada, con el enunciado por `stdin`, lo corrigió. | `ca80c4d` |
 | S6-T15 | `npm run test -w @codeai/web` → `Test Files 20 passed (20)`, `Tests 131 passed (131)` (`AttemptHistory.spec.tsx`: 6; `ExerciseLab.spec.tsx`: 8). `npm run typecheck -w @codeai/web` → exit 0. `npm run lint -w @codeai/web` → `No ESLint warnings or errors`. `npm run build -w @codeai/web` → exit 0, `/learn/units/[code]/exercises/[slug]` 6.85 kB. | `AttemptHistory` carga con `useContentLoader` (aborta al desmontar), ignora el primer render para no duplicar la petición y llama a `reload()` sólo cuando cambia `refreshToken`; el loader por defecto es una referencia de módulo porque un lambda como valor por defecto se recrearía en cada render y dispararía el bucle que advierte el hook. El 401 de la carga pide volver a iniciar sesión en vez de ofrecer «Reintentar», que repetiría el fallo. `OUTCOME_LABEL` se movió al componente nuevo y `ExerciseLab` lo importa, así que la traducción del desenlace vive en un solo sitio. | `6da9575` |
+| S6-T16 | `verify-s6.ps1` (PowerShell + `Invoke-WebRequest`) contra `node dist/main.js` en `:3001` con fixture SQL, más `npm run typecheck`, `npm run lint`, `npm test` y `npm run build` en la raíz | Verde en **45 comprobaciones** (`OK=45 FAIL=0`, exit 0): `401` sin cookie; detalle con `hintsAvailable=3`, las 2 pruebas visibles, sin `solution` ni prueba oculta, con `x-trace-id`; pistas `201` 1→2→3 con `nextLevelAvailable` y texto exacto del catálogo, `422 RULE_VIOLATION` al pedir la 2 antes que la 1, `400` con `level: 0`, `404` con ejercicio inexistente, petición repetida idempotente; envíos `PASSED`/`100` con las 3 pistas topando el nivel en 2 y `hintsUsed: 3`, `FAILED`/`0` con `TODO` y nivel 1 sin arrastrar pistas del intento anterior, `409 CONFLICT` en el tercer envío con `maxAttempts: 2`; historial de A con 2 intentos ordenados y sin prueba oculta, B vacío; cuota `429 RATE_LIMITED` con `Retry-After` en la pista 21 y por usuario. Suite: `typecheck` exit 0, `lint` exit 0 (`--max-warnings 0`), `test` exit 0 (`51` archivos, `481` pruebas: shared 112, api 238, web 131), `build` exit 0 (`✓ Compiled successfully`, `/learn/units/[code]/exercises/[slug]` 6.85 kB) | La cuota de 20/min vive en memoria del proceso y no se reinicia antes de su ventana, así que una segunda corrida dentro del mismo minuto arrancaba con el contador gastado: el guion ahora agota la ventana vigente, espera el `Retry-After` y mide 20 `201` + un `429` desde cero. En la base quedó la prueba de idempotencia que el HTTP no puede ver: A tiene 3 filas de `HintRequest` tras 4 peticiones y B una sola tras 21. El fixture y las cuentas `s6-*@codeai.test` se borraron al terminar y el proceso de la API se detuvo. | este documento |
+
+**Verificación HTTP de cierre (T16).** La base de desarrollo no siembra ejercicios, así que la corrida creó un `LAB` temporal con dos pruebas visibles, una oculta, tres pistas y `maxAttempts: 2`, y lo borró al terminar (junto con las cuentas `s6-*@codeai.test` y, por cascada, envíos y registros de pistas):
+
+```sql
+INSERT INTO "Exercise" (id, "unitId", slug, type, title, statement, config, solution,
+  ladder, difficulty, concepts, competencies, "estimatedMin", language, sources,
+  "maxAttempts", "isPublished", "order", "createdAt", "updatedAt")
+SELECT 'ex_s6_verif', id, 'suma-segura-s6', 'LAB', 'Suma segura', 'Implementa una suma que valide sus entradas.',
+  '{"starterCode":"export function sumar(a: number, b: number) {\n  // TODO\n}"}'::jsonb,
+  '{"code":"return a + b;"}'::jsonb, 'SEMI', 2, ARRAY['funciones'], ARRAY['C1'],
+  30, 'typescript', ARRAY[]::text[], 2, true, 1, now(), now()
+FROM "Unit" WHERE code = 'U0.1.1';
+
+INSERT INTO "ExerciseTest" (id, "exerciseId", name, spec, "isHidden", weight) VALUES
+  ('t1', 'ex_s6_verif', 'suma dos positivos', '{"code":"expect(sumar(1,2)).toBe(3)"}'::jsonb, false, 1),
+  ('t2', 'ex_s6_verif', 'suma negativos', '{"code":"expect(sumar(-1,-1)).toBe(-2)"}'::jsonb, false, 1),
+  ('t3', 'ex_s6_verif', 'oculta rechaza texto', '{"code":"expect(() => sumar(1)).toThrow()"}'::jsonb, true, 1);
+
+INSERT INTO "ExerciseHint" (id, "exerciseId", "level", "text") VALUES
+  ('hint_s6_1', 'ex_s6_verif', 1, 'Una suma no necesita condicionales: revisa los tipos de los parametros.'),
+  ('hint_s6_2', 'ex_s6_verif', 2, 'Valida que ambos argumentos sean numeros antes de operar.'),
+  ('hint_s6_3', 'ex_s6_verif', 3, 'Empieza comprobando typeof de a y de b y lanza un error si no son numeros.');
+```
+
+**Cómo reproducirla.** Con la API compilada y levantada (`npm run build -w @codeai/api` y `node apps/api/dist/main.js`), el fixture anterior aplicado con `docker exec -i codeai-postgres psql -U codeai -d codeai` y el guion guardado fuera del repositorio, `verify-s6.ps1` abre sesión con dos usuarios fijos (login y, si no existe, registro), recorre las 45 comprobaciones y termina con `RESUMEN: OK=45 FAIL=0`. El guion **no** se versiona: es un artefacto de corrida que depende de una base viva y de cuentas concretas, igual que el guion de S5-T14. Dos detalles del entorno: el registro está limitado a 3 cuentas/hora por IP, así que las re-ejecuciones deben entrar por `login`; y la cuota de pistas es un contador en memoria por proceso, de modo que la medición exacta de 20/min exige esperar el `Retry-After` de la ventana en curso.
 
 ---
 

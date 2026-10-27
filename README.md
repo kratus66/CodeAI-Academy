@@ -24,7 +24,11 @@ CodeAI Academy es a la vez:
 | **S0** | Monorepo, contratos compartidos, API base y landing pública | ✅ completado |
 | **S1** | Identidad y acceso (registro, login, roles) | ✅ completado |
 | **S2** | Modelo de datos y API de contenido | ✅ completado |
-| **S3–S11** | Plataforma de aprendizaje, progreso, laboratorio, IA, proyectos, analítica | ⬜ pendiente |
+| **S3** | Plataforma de aprendizaje (catálogo y lección) | 🔄 en curso |
+| **S4** | Progreso, desbloqueos y competencias | ✅ completado |
+| **S5** | Laboratorio de código (ejercicios + sandbox mock) | ✅ completado |
+| **S6** | Corrección automática y pistas graduadas | ✅ completado |
+| **S7–S11** | Repaso espaciado, IA, proyectos, entrevistas y analítica | ⬜ pendiente |
 
 Detalle y criterios de cierre en [`docs/04-plan-ejecucion/roadmap-sprints.md`](docs/04-plan-ejecucion/roadmap-sprints.md).
 
