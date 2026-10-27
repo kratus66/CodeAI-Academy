@@ -8,6 +8,7 @@ import { ContentModule } from "./modules/content/content.module";
 import { ExercisesModule } from "./modules/exercises/exercises.module";
 import { HealthModule } from "./modules/health/health.module";
 import { ProgressModule } from "./modules/progress/progress.module";
+import { ReviewModule } from "./modules/review/review.module";
 import { SandboxModule } from "./modules/sandbox/sandbox.module";
 
 @Module({
@@ -19,6 +20,7 @@ import { SandboxModule } from "./modules/sandbox/sandbox.module";
     ProgressModule,
     SandboxModule,
     ExercisesModule,
+    ReviewModule,
   ],
   providers: [TraceIdMiddleware],
 })
