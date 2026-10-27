@@ -210,8 +210,6 @@ export function UnitView({ code, loadUnit = loadUnitView }: UnitViewProps) {
         )}
       </section>
 
-
-
       {unit.exercises.length > 0 ? (
         <section
           aria-labelledby="ejercicios"

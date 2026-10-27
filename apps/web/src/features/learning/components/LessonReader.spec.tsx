@@ -106,7 +106,6 @@ const LESSON: LessonDetail = {
 
 const loadLesson = (): Promise<LessonDetail> => Promise.resolve(LESSON);
 
-
 describe("LessonReader", () => {
   it("anuncia la carga de la lección", () => {
     render(
@@ -148,7 +147,6 @@ describe("LessonReader", () => {
       screen.getByText("datos -> modelo -> predicción"),
     ).toBeInTheDocument();
   });
-
 
   it("presenta los siete pasos con su nombre en castellano", async () => {
     render(<LessonReader slug="que-es-la-ia" loadLesson={loadLesson} />);

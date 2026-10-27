@@ -220,7 +220,6 @@ export function LessonReader({
         </h1>
       </header>
 
-
       <section
         aria-labelledby="contenido"
         className="space-y-6 border-t border-line/70 pt-8"
