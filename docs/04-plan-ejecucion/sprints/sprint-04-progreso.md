@@ -1,7 +1,7 @@
 # Sprint 04 — Progreso, desbloqueos y competencias
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅, S2 ✅ y S3 🔄 (cierre técnico)
-> **Avance:** 5/10 tareas · 5/10 criterios de aceptación.
+> **Avance:** 6/10 tareas · 5/10 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -50,6 +50,8 @@ Al cerrar el sprint, la plataforma puede asumir:
 | `/competencies` y el overview publican C1–C14 completos, con nivel 0 sin evidencia | El panel dibuja el mapa entero y los códigos fuera de rango se descartan al mapear, así el contrato nunca emite un `code` inválido | Devolver solo las filas existentes y dejar huecos en la web |
 | `currentStage` es la etapa de la primera unidad no `MASTERED` | No hay campo persistido de etapa actual y el estado ya se deriva; sin pendientes se queda en la última etapa publicada | Añadir una columna que habría que mantener en cada escritura |
 | `complete-lesson` devuelve el resumen y el controlador lo envuelve en `{ unit }` | El contrato §4.4 publica `{ unit: UnitProgressSummary }` y el servicio no conoce el sobre HTTP | Devolver el sobre desde el servicio |
+| Las listas se publican como `{ units }` y `{ competencies }` | El contrato §4.4 no fija el sobre y el resto de la API ya usa envoltorios (`{ user }`, `{ stage }`, `{ items }`); así el cliente valida un objeto y no un arreglo desnudo | Devolver arreglos desnudos y romper la convención |
+| El cuerpo de `complete-lesson` se valida en el controlador | El contrato fija ruta y respuesta pero no publica el cuerpo; mover el esquema a `packages/shared` cambiaría un paquete fuera del alcance de la tarea | Aceptar cualquier cuerpo y confiar en el servicio |
 | Contadores de `overview` con los cuatro campos publicados (`mastered`, `inProgress`, `needsReview`, `locked`) | `contratos-api.md` §4.4 es el contrato vigente; añadir `available` lo cambiaría | Inventar un quinto contador |
 | `AVAILABLE` se cuenta dentro de `inProgress` | Con cuatro contadores, la suma debe dar el total de unidades; `AVAILABLE` es «desbloqueada sin dominar» | Dejar las unidades disponibles fuera del recuento |
 | `dueReviews` se sirve como `0` en S4 | El contrato ya lo pide y todavía no existe `ReviewItem`; `0` es la verdad actual | Omitir el campo y romper el contrato |
@@ -99,7 +101,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 | S4-T3 | Reglas de desbloqueo como función pura | `apps/api/src/modules/progress/progress.rules.ts` + spec | 3 | ✅ `9ca0d6d` |
 | S4-T4 | Puerto `ProgressRepository`, adaptador Prisma y mapper | `progress.repository.ts`, `prisma-progress.repository.ts`, `progress.mapper.ts` + spec | 4 | ✅ `0f518e7` |
 | S4-T5 | `ProgressService` (overview, unidades, competencias, complete-lesson) y repositorio en memoria | `progress.service.ts` + spec, `in-memory-progress.repository.ts` | 5 | ✅ `bfac78c` |
-| S4-T6 | Controlador `/api/progress`, módulo y registro en `AppModule` | `progress.controller.ts`, `progress.module.ts`, `app.module.ts` | 6 | ⬜ |
+| S4-T6 | Controlador `/api/progress`, módulo y registro en `AppModule` | `progress.controller.ts`, `progress.module.ts`, `app.module.ts` | 6 | ✅ `361341f` |
 | S4-T7 | Cliente `progressApi` con validación Zod | `apps/web/src/lib/api-client.ts` + spec | 7 | ⬜ |
 | S4-T8 | Panel de avance y ruta `/learn/progress` | `features/progress/components/ProgressOverview.tsx` + spec, `learn/progress/page.tsx` | 8 | ⬜ |
 | S4-T9 | Verificación HTTP real con dos usuarios (aislamiento) | — (guion de comandos) | 9 | ⬜ |
@@ -155,6 +157,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 | S4-T3 | Rojo: `npx vitest run src/modules/progress` con el módulo ausente → `Failed to load url ./progress.rules`, 1 suite fallida. Verde: misma orden → 22 pruebas. `npm run typecheck` · `npm run lint` · `npm test` (shared 83 · API 116 · web 81) · `npm run build` | Verde: los cuatro casos del criterio quedan fijados (sin prerrequisitos y prerrequisito `MASTERED` → `AVAILABLE`; prerrequisito pendiente y código inexistente → `LOCKED`), más fila `LOCKED` obsoleta → `AVAILABLE`, bloqueo sobre estado guardado, `NEEDS_REVIEW` no desbloquea y `AVAILABLE` plegado en `inProgress`. `typecheck`, `lint` y `build` en 0 | `9ca0d6d` |
 | S4-T4 | `npx prisma migrate dev --name unit_progress_lesson_ids --skip-seed` → `npx vitest run src/modules/progress` (29) · `npm run typecheck` · `npm run lint` · `npx vitest run` (API 123) · `npm run build` | Verde: migración `20261027160352_unit_progress_lesson_ids` aplicada y cliente regenerado; el mapper aplana `module.stageId`/`module.code`, toma `_count.lessons` como denominador, copia los arreglos para no compartir referencias con la fila y serializa las fechas a ISO; el resumen sirve el estado calculado aunque la fila diga `LOCKED`. `typecheck`, `lint` y `build` en 0 | `0f518e7` |
 | S4-T5 | `npx vitest run src/modules/progress` (48) · `npm run typecheck` · `npm run lint` · `npx vitest run` (API 142) · `npm run build` | Verde: 19 pruebas nuevas cubren el overview de seis campos, la etapa en curso, el mapa C1–C14, el aislamiento entre Ana y Beto, `50 % → 50 %` al repetir la misma lección, `100 %` sin acreditar `MASTERED`, `404` de unidad y lección y `409` de unidad bloqueada. `typecheck`, `lint` y `build` en 0 | `bfac78c` |
+| S4-T6 | `npm run typecheck` · `npm run lint` · `npm run build` · arranque real con `node dist/main.js` y sondeo a `http://localhost:3001` | Verde: Nest mapea `GET /api/progress/overview`, `GET /api/progress/units`, `GET /api/progress/competencies` y `POST /api/progress/units/:id/complete-lesson`; las tres rutas de lectura y el POST responden `401` sin cookie, lo que confirma el guard y la inyección del adaptador Prisma. `typecheck`, `lint` y `build` en 0 | `361341f` |
 
 > **Artefacto de verificación:** `pnpm typecheck` y `pnpm lint` ejecutan los scripts `npm` del monorepo, pero `pnpm` creó un `pnpm-lock.yaml` que no se versiona (el lockfile del repo es `package-lock.json`); se eliminó antes del commit.
 
