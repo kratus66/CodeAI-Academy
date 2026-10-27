@@ -34,6 +34,12 @@ export default function LearningLayout({ children }: LearningLayoutProps) {
             >
               Aprender
             </Link>
+            <Link
+              href="/learn/review"
+              className="text-slate-400 transition hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+            >
+              Repaso
+            </Link>
           </nav>
           <Link
             href="/"
