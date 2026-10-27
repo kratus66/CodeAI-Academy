@@ -1,7 +1,7 @@
 # Sprint 05 — Laboratorio de código
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S2 ✅ (contenido) y S3 🔄 (unidad servida); de S4 sólo hereda el vocabulario de progreso, no su código.
-> **Avance:** 6/14 tareas · 6/13 criterios de aceptación.
+> **Avance:** 7/14 tareas · 6/13 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -52,6 +52,7 @@ Al cerrar el sprint, la plataforma puede asumir:
 | El resumen del laboratorio se llama `ExerciseListItem`, no `ExerciseSummary` | `schemas/content.ts` ya exporta `ExerciseSummary` para el ejercicio del detalle de unidad; dos `export *` con el mismo nombre dejarían el símbolo ambiguo en `index.ts` | Renombrar el de contenido, rompiendo S3 y la web |
 | La paginación del laboratorio replica `pageQuerySchema` en vez de importarlo | `pageQuerySchema` no se exporta desde `content.ts` y esta tarea no debía tocar un cuarto archivo; se extraerá a `common.ts` cuando un tercer contrato la necesite | Exportarlo desde `content.ts` en esta tarea |
 | La migración `exercises_and_submissions` sólo añade **un** enum (`SubmissionOutcome`) | `ExerciseType` y `Ladder` ya existen desde S2; la ficha cuenta cinco modelos y dos enums porque incluye `Exercise`, que tampoco se crea aquí | Duplicar enums ya definidos, que Prisma rechaza |
+| Los `select` de Prisma se declaran con `satisfies`, no con `as const` | `as const` vuelve `readonly` el `orderBy` anidado y Prisma exige un arreglo mutable; `satisfies` valida y conserva los literales para deducir la fila | Tipar las filas a mano y perder la comprobación contra el esquema |
 
 **Nota de reconstrucción (supuestos).** Esta ficha **no existía**: `sandbox-ejecucion.md` §222 dice literalmente «sprint S5 (ficha pendiente de redacción al abrir el sprint)». Se redacta el 2026-10-27 a partir de [`roadmap-sprints.md`](../roadmap-sprints.md) §S5, [`contratos-api.md`](../../03-arquitectura/contratos-api.md) §4.3 y §4.6, [`modelo-datos.md`](../../03-arquitectura/modelo-datos.md) §3, [`sandbox-ejecucion.md`](../../03-arquitectura/sandbox-ejecucion.md) §3–§8 y [`banco-ejercicios.md`](../../02-contenido/banco-ejercicios.md) §3.1 y §6. La descomposición en catorce tareas es una **propuesta** y requiere ratificación del Orquestador antes de darse por definitiva.
 
@@ -142,7 +143,7 @@ interface SubmissionSummary {
 | S5-T4 | Puerto `SandboxService` y `MockSandboxService` determinista | `modules/sandbox/sandbox.service.ts`, `mock-sandbox.service.ts` + spec | 4 | ✅ `d9bfe51` |
 | S5-T5 | `SANDBOX_MODE` en `loadEnv`: en producción sólo `docker` | `apps/api/src/config/env.ts` + `env.spec.ts` | 5 | ✅ `5003dcf` |
 | S5-T6 | Mapper del ejercicio (filtra `solution` y tests ocultos) y puerto de repositorio | `exercises.mapper.ts` + spec, `exercises.repository.ts` | 6 | ✅ `379bc72` |
-| S5-T7 | Adaptadores de repositorio: memoria y Prisma | `in-memory-exercises.repository.ts`, `prisma-exercises.repository.ts` | 7 | ⬜ |
+| S5-T7 | Adaptadores de repositorio: memoria y Prisma | `in-memory-exercises.repository.ts`, `prisma-exercises.repository.ts` | 7 | ✅ `43dc91c` |
 | S5-T8 | `ExercisesService`: listado por unidad, detalle y envío | `exercises.service.ts` + spec | 8 | ⬜ |
 | S5-T9 | `/api/sandbox` con cuota por usuario y estado del servicio | `sandbox.controller.ts`, `sandbox.module.ts`, `app.module.ts` | 9 | ⬜ |
 | S5-T10 | `/api/exercises` y registro del módulo | `exercises.controller.ts`, `exercises.module.ts`, `app.module.ts` | 10 | ⬜ |
@@ -210,6 +211,7 @@ interface SubmissionSummary {
 | S5-T4 | `npx vitest run src/modules/sandbox` (6) · `npx vitest run` (API 148) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: dos corridas del mismo código devuelven respuestas idénticas con `durationMs: 1`; con `TODO` el resultado es `FAILED`/`0`, la prueba falla con mensaje y `stderr` nombra el archivo; el `TODO` se detecta también en minúsculas; sin `TODO` las dos pruebas salen `passed` y conservan su `testId`; sin pruebas el resultado es `PASSED`/`100` con `results: []`; `status()` publica `{ provider: "mock", mode: "mock" }`. `typecheck`, `lint` y `build` en 0 | `d9bfe51` |
 | S5-T5 | `npx vitest run src/config/env.spec.ts` (12) · `npx vitest run` (API 151) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: en producción `SANDBOX_MODE=subprocess` y el valor por defecto `mock` lanzan `Variables de entorno inválidas → SANDBOX_MODE: …` y sólo `docker` arranca; fuera de producción `mock`, `subprocess` y `test` se aceptan; un modo desconocido (`firecracker`) se rechaza. `typecheck`, `lint` y `build` en 0 | `5003dcf` |
 | S5-T6 | `npx vitest run src/modules/exercises/exercises.mapper.spec.ts` (9) · `npx vitest run` (API 160) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: el detalle no contiene `solution` ni el nombre del test oculto, y la comprobación se hace sobre el JSON serializado; `publicTests` sólo lista `t1` y `t2`; `hintsAvailable` cuenta los niveles; `starterCode` sale de `config` y es `null` si falta; `config` no objeto se sirve como `{}`; un lenguaje `python` se publica como `null`; el envío resuelve nombres, omite `durationMs` nulo y deriva `1 de 2`/`2 de 2`/vacío. `typecheck`, `lint` y `build` en 0 | `379bc72` |
+| S5-T7 | `npm run typecheck` → primer intento con 5 errores `TS2344`/`TS2322` por `as const` en los `select`; corregido con `satisfies` sin tocar la consulta. `npx vitest run` (API 160) · `npm run lint` · `npm run build` | Verde: `typecheck`, `lint` y `build` en 0; el adaptador Prisma resuelve `unitCode` por relación, ordena las pruebas visibles antes de las ocultas y nombra los resultados del historial con un `Map` de `ExerciseTest`; el adaptador en memoria pagina, ordena por fecha descendente y acepta reloj inyectable | `43dc91c` |
 
 > **Artefacto de verificación:** en este entorno el aviso `The CJS build of Vite's Node API is deprecated` llega por stderr y el *harness* de comandos corta la ejecución a mitad; las corridas se hicieron con `VITE_CJS_IGNORE_WARNING=true`, que solo silencia ese aviso.
 
