@@ -1,7 +1,7 @@
 # Sprint 05 — Laboratorio de código
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S2 ✅ (contenido) y S3 🔄 (unidad servida); de S4 sólo hereda el vocabulario de progreso, no su código.
-> **Avance:** 5/14 tareas · 5/13 criterios de aceptación.
+> **Avance:** 6/14 tareas · 6/13 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -141,7 +141,7 @@ interface SubmissionSummary {
 | S5-T3 | Migración `exercises_and_submissions` (5 modelos y 2 enums) | `apps/api/prisma/schema.prisma` + migración | 3 | ✅ `8cd4ca9` |
 | S5-T4 | Puerto `SandboxService` y `MockSandboxService` determinista | `modules/sandbox/sandbox.service.ts`, `mock-sandbox.service.ts` + spec | 4 | ✅ `d9bfe51` |
 | S5-T5 | `SANDBOX_MODE` en `loadEnv`: en producción sólo `docker` | `apps/api/src/config/env.ts` + `env.spec.ts` | 5 | ✅ `5003dcf` |
-| S5-T6 | Mapper del ejercicio (filtra `solution` y tests ocultos) y puerto de repositorio | `exercises.mapper.ts` + spec, `exercises.repository.ts` | 6 | ⬜ |
+| S5-T6 | Mapper del ejercicio (filtra `solution` y tests ocultos) y puerto de repositorio | `exercises.mapper.ts` + spec, `exercises.repository.ts` | 6 | ✅ `379bc72` |
 | S5-T7 | Adaptadores de repositorio: memoria y Prisma | `in-memory-exercises.repository.ts`, `prisma-exercises.repository.ts` | 7 | ⬜ |
 | S5-T8 | `ExercisesService`: listado por unidad, detalle y envío | `exercises.service.ts` + spec | 8 | ⬜ |
 | S5-T9 | `/api/sandbox` con cuota por usuario y estado del servicio | `sandbox.controller.ts`, `sandbox.module.ts`, `app.module.ts` | 9 | ⬜ |
@@ -164,7 +164,7 @@ interface SubmissionSummary {
 - [x] La migración `exercises_and_submissions` crea los 5 modelos con cascada desde `User`, `Unit` y `Exercise`.
 - [x] `MockSandboxService` es determinista: el mismo código produce el mismo `outcome`, y el código con `TODO` devuelve `FAILED` con puntuación 0.
 - [x] `SANDBOX_MODE=subprocess` con `NODE_ENV=production` impide arrancar; fuera de producción se acepta.
-- [ ] El detalle de un ejercicio **nunca** incluye `solution` ni el nombre de un test con `isHidden: true` (prueba del mapper).
+- [x] El detalle de un ejercicio **nunca** incluye `solution` ni el nombre de un test con `isHidden: true` (prueba del mapper).
 - [ ] `POST /api/exercises/:id/submissions` persiste el envío y devuelve sólo pruebas visibles; `achievedLevel` es `null`.
 - [ ] Dos usuarios con sesión ven exclusivamente sus propios envíos (prueba de aislamiento).
 - [ ] `GET /api/exercises/*` y `POST /api/sandbox/run` responden `401` sin cookie, `404` con ejercicio inexistente y `429` al superar 20 ejecuciones por minuto.
@@ -173,7 +173,7 @@ interface SubmissionSummary {
 - [ ] Sin `@monaco-editor/react` disponible, `CodeEditor` sigue siendo usable con un área de texto monoespaciada (prueba de reserva).
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 5/13 verificados.
+**Estado:** 6/13 verificados.
 
 ---
 
@@ -209,6 +209,7 @@ interface SubmissionSummary {
 | S5-T3 | `cmd /c "npx prisma validate"` → `cmd /c "npx prisma migrate dev --name exercises_and_submissions --skip-seed"` → consulta a `information_schema` y `pg_enum` en el contenedor → `npm run typecheck` · `npm run lint` · `npx vitest run` (API 142) · `npm run build` | Verde: `The schema at prisma\schema.prisma is valid`; migración `20261027163022_exercises_and_submissions` aplicada y cliente regenerado (v6.19.3); `ExerciseHint→Exercise`, `ExerciseTest→Exercise`, `Submission→User`, `Submission→Exercise` y `SubmissionTestResult→Submission` con `ON DELETE CASCADE`; `SubmissionOutcome` con `PASSED, FAILED, PARTIAL, ERROR, TIMEOUT`; `typecheck`, `lint` y `build` en 0 | `8cd4ca9` |
 | S5-T4 | `npx vitest run src/modules/sandbox` (6) · `npx vitest run` (API 148) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: dos corridas del mismo código devuelven respuestas idénticas con `durationMs: 1`; con `TODO` el resultado es `FAILED`/`0`, la prueba falla con mensaje y `stderr` nombra el archivo; el `TODO` se detecta también en minúsculas; sin `TODO` las dos pruebas salen `passed` y conservan su `testId`; sin pruebas el resultado es `PASSED`/`100` con `results: []`; `status()` publica `{ provider: "mock", mode: "mock" }`. `typecheck`, `lint` y `build` en 0 | `d9bfe51` |
 | S5-T5 | `npx vitest run src/config/env.spec.ts` (12) · `npx vitest run` (API 151) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: en producción `SANDBOX_MODE=subprocess` y el valor por defecto `mock` lanzan `Variables de entorno inválidas → SANDBOX_MODE: …` y sólo `docker` arranca; fuera de producción `mock`, `subprocess` y `test` se aceptan; un modo desconocido (`firecracker`) se rechaza. `typecheck`, `lint` y `build` en 0 | `5003dcf` |
+| S5-T6 | `npx vitest run src/modules/exercises/exercises.mapper.spec.ts` (9) · `npx vitest run` (API 160) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: el detalle no contiene `solution` ni el nombre del test oculto, y la comprobación se hace sobre el JSON serializado; `publicTests` sólo lista `t1` y `t2`; `hintsAvailable` cuenta los niveles; `starterCode` sale de `config` y es `null` si falta; `config` no objeto se sirve como `{}`; un lenguaje `python` se publica como `null`; el envío resuelve nombres, omite `durationMs` nulo y deriva `1 de 2`/`2 de 2`/vacío. `typecheck`, `lint` y `build` en 0 | `379bc72` |
 
 > **Artefacto de verificación:** en este entorno el aviso `The CJS build of Vite's Node API is deprecated` llega por stderr y el *harness* de comandos corta la ejecución a mitad; las corridas se hicieron con `VITE_CJS_IGNORE_WARNING=true`, que solo silencia ese aviso.
 
