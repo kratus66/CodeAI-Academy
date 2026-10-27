@@ -1,7 +1,7 @@
 # Sprint 03 — Plataforma de aprendizaje
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅ y S2 ✅
-> **Avance:** 6/11 tareas · 0/10 criterios de aceptación.
+> **Avance:** 7/11 tareas · 0/10 criterios de aceptación.
 > **Terminal por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -107,7 +107,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 | S3-T4 | Catálogo de etapas con carga, error y vacío | `features/learning/lib/use-content-loader.ts` + spec, `features/learning/components/StageCatalog.tsx` + spec, `learn/page.tsx` | ✅ `d5ac85b` |
 | S3-T5 | Vista de etapa: módulos y unidades | `features/learning/lib/format.ts` + spec, `features/learning/components/StageOutline.tsx` + spec, `learn/stages/[id]/page.tsx` | ✅ `0f114d4` |
 | S3-T6 | Navegación anterior/siguiente como función pura | `features/learning/lib/navigation.ts` + spec | ✅ `6ca874a` |
-| S3-T7 | Vista de unidad con prerrequisitos y navegación | `features/learning/components/UnitView.tsx` + spec, `learn/units/[code]/page.tsx` | ⬜ |
+| S3-T7 | Vista de unidad con prerrequisitos y navegación | `features/learning/lib/unit-view-loader.ts` + spec, `features/learning/components/UnitView.tsx` + spec, `learn/units/[code]/page.tsx` | ✅ `153d2b4` |
 | S3-T8 | Lector de lección: bloques, 7 pasos y recursos | `features/learning/components/LessonReader.tsx` + spec, `learn/lessons/[slug]/page.tsx` | ⬜ |
 | S3-T9 | Verificación HTTP real y compilación de la web | — (guion de comandos) | ⬜ |
 | S3-T10 | Cierre documental: contratos, roadmap y bitácora | docs | ⬜ |
@@ -164,6 +164,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 | S3-T4 | `npm run test -w @codeai/web` (rojo: módulos sin exportar → verde 47), `npm run typecheck`, `npm run lint` | Verde: el hook aborta al desmontar y al cambiar de loader; el catálogo anuncia la carga, lista etapas con enlace `/learn/stages/0`, declara el vacío y reintenta tras el fallo (2 llamadas) | `d5ac85b` |
 | S3-T5 | `npm run test -w @codeai/web` (rojo: `./format` y `./StageOutline` inexistentes → verde 56), `npm run typecheck`, `npm run lint` | Verde: `formatMinutes` cubre `null`, minutos, horas exactas y mixtas; la vista pide la etapa por id, enlaza unidades y su duración, declara el módulo vacío, y separa 404/400 (con `traceId`, sin reintento) de un fallo de red (con reintento hasta el dato) | `0f114d4` |
 | S3-T6 | `npm run test -w @codeai/web` (rojo: `./navigation` inexistente → verde 66), `npm run typecheck`, `npm run lint` | Verde: el recorrido cruza módulos y salta los vacíos; la primera unidad no tiene anterior ni la última siguiente; un código ajeno o una etapa vacía no inventan vecinos; los prerrequisitos se traducen por id y descartan lo despublicado | `6ca874a` |
+| S3-T7 | `npm run test -w @codeai/web` (rojo: `./unit-view-loader` y `./UnitView` inexistentes → verde 75), `npm run typecheck`, `npm run lint` | Verde: el loader pide la etapa solo con el `stageId` de la unidad y no la pide si la unidad falla; la vista muestra objetivo y prerrequisitos enlazados, deshabilita «Anterior» en U0.1.1, enlaza anterior/siguiente en U0.1.2, declara la unidad sin lecciones y trata el 404 con `traceId` y vuelta al catálogo | `153d2b4` |
 
 ---
 
