@@ -1,0 +1,219 @@
+# Sprint 06 — Corrección automática y pistas graduadas
+
+> **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
+> **Avance:** 0/16 tareas · 0/14 criterios de aceptación.
+> **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
+
+---
+
+## 1. Objetivo
+
+El envío deja de ser un registro pasivo: **se corrige**. El estudiante recibe `outcome`, `score` y `achievedLevel`, puede pedir **pistas graduadas** (concepto → dirección → fragmento) y ve su historial de intentos. Ninguna respuesta —ni la corrección ni la pista— devuelve la solución completa: es el criterio de salida del roadmap §S6.
+
+Al cerrar el sprint, la plataforma puede asumir:
+
+1. Existe una función pura `gradeSubmission` que, dadas las pruebas con su peso y su resultado, devuelve `outcome`, `score` (0–100), `achievedLevel` (1–4 o `null`), el recuento de pruebas visibles y un `feedback` en español.
+2. `POST /api/exercises/:id/hints` sirve **una** pista del nivel pedido (`1..3`) y registra el uso; la progresión es obligatoria (no hay nivel 2 sin nivel 1).
+3. `POST /api/exercises/:id/submissions` corrige con pruebas visibles **y ocultas** y persiste `achievedLevel` y `hintsUsed`, columnas que ya existen en `modelo-datos.md` §3.
+4. El tope por pistas de `rubricas-evaluacion.md` §2.1 («si se usaron pistas de nivel 3+, el máximo alcanzable es Nivel 2») se aplica en el evaluador y el estudiante **lee el motivo** del tope.
+5. `GET /api/exercises/:id/submissions` devuelve el historial propio, paginado y aislado por usuario.
+
+---
+
+## 2. Alcance
+
+| Incluye | No incluye (queda para otro sprint) |
+|---------|-------------------------------------|
+| Evaluador determinista de casos (visibles + ocultos) con pesos y `achievedLevel` | Análisis estático de calidad de código y de pruebas propias aportadas (S11) |
+| Pistas por nivel servidas por endpoint, con progresión obligatoria y registro de uso | Tutor IA que explique el error o sugiera la siguiente pista (S8) |
+| Persistencia de `achievedLevel`, `hintsUsed` y resultados por prueba | Repaso espaciado derivado del envío (`q` de SM-2): S7 |
+| Historial de intentos propio y límite de intentos (`Exercise.maxAttempts`) | Rúbricas de proyecto y portafolio: S9 |
+| Web: panel de pistas, nivel alcanzado con su motivo e historial | Analítica de errores frecuentes por ejercicio: S11 |
+
+**Traspaso desde S5.** S6 **consume** lo que S5 deja probado: `SandboxService` como puerto, `Submission` persistido y el mapper que filtra `solution` y tests ocultos. Si S5-T2…T10 aún no existen, S6 **sólo** puede avanzar en las tareas puras (T1–T6).
+
+**Traspaso a S4.** S6 calcula `achievedLevel` pero **no** escribe `UnitProgress` ni `CompetencyProgress`; el paso de nivel alcanzado a estado `MASTERED` sigue siendo de S4. La penalización `q ≤ 2` por pistas de nivel 3+ (`prerequisitos-y-progreso.md` §5.3) se aplica en S7, que leerá `hintsUsed`.
+
+**Decisión de secuencia.** El roadmap (§4) dice «S6 requiere S5 (envíos)». Este sprint **abre** con las tareas que no tocan el código de S5 (evaluador y pistas puras) y deja para el final las que modifican archivos que S5 aún no ha creado. No se adelanta ningún archivo de S5: T8 vive en `submissions.service.ts`, que **no** aparece en la ficha de S5.
+
+---
+
+## 3. Decisiones de arquitectura
+
+| Decisión | Motivo | Alternativa descartada |
+|----------|--------|------------------------|
+| `score` es la proporción **ponderada** de pruebas superadas, redondeada a entero | Es el único criterio que S6 puede medir sin inventar señales; `ExerciseTest.weight` existe justo para esto (`modelo-datos.md` §3). El `75` del ejemplo de `contratos-api.md` §4.3 queda como **ilustrativo**, no como fórmula | Repartir el 100 % entre los cuatro criterios de la rúbrica §2.1 cuando dos de ellos (calidad y pruebas propias) todavía no se pueden medir |
+| `selfExplanation` vacía y `ladder` GUIDED **topan** el nivel, no restan puntos | La rúbrica dice que la justificación vacía «resta el 15 % completo»; con dos criterios sin medir, descontar puntos sería un castigo arbitrario. Se traduce a un tope explícito y visible | Descontar veinte puntos por justificación ausente |
+| Umbrales de nivel tomados de `rubricas-evaluacion.md` §3 | `< 70` Nivel 1 · `70–79` Nivel 2 · `80–89` Nivel 3 · `90–100` Nivel 4; son los mismos cortes que desbloquean etapa (≥ 80 %) | Inventar una escala nueva |
+| El evaluador **calcula** el `outcome` a partir de las pruebas y sólo reenvía `ERROR`/`TIMEOUT` del sandbox | Un sandbox puede responder `PASSED` con una prueba fallida; la verdad está en los resultados | Confiar en el `outcome` que devuelve el sandbox |
+| `hintsUsed` sale de un registro `HintRequest` propio, nunca del cliente | `Submission.hintsUsed` existe pero nada lo alimenta; aceptar el número del cliente convierte el tope en opcional | Aceptar `hintsUsed` en el cuerpo del envío |
+| Progresión obligatoria de pistas (1 → 2 → 3) | `banco-ejercicios.md` §3.1: «las pistas son **progresivas** y su uso se registra (afecta al nivel máximo alcanzable)»; los tres niveles los nombra el roadmap §S6 (concepto → dirección → fragmento). Pedir el fragmento sin el concepto destruye el propósito | Servir cualquier nivel a demanda |
+| El escalón topa el nivel: GUIDED 2 · SEMI 3 · AUTONOMOUS 4 | `banco-ejercicios.md` §4: «no se puede certificar Nivel 3 con ejercicios del escalón 1» y la tabla da 2 · 2–3 · 3. El 4 se permite sólo en `AUTONOMOUS` porque la rúbrica §3 lo llama «Nivel 4 **potencial**»; certificarlo no es de este sprint | Dejar que la puntuación decida sola el nivel, ignorando el escalón |
+| El `feedback` se construye **sólo** con pruebas visibles | Nombrar una prueba oculta filtra el conjunto de casos y permite sobreajuste (`rubricas-evaluacion.md` §4) | Incluir el listado completo de resultados |
+| `feedback` y pista se generan con datos del catálogo, nunca con el código del estudiante | Evita reenviar la solución por eco y mantiene el mensaje estable en las pruebas | Devolver el `stderr` del sandbox como explicación |
+
+**Nota de reconstrucción (supuestos).** Esta ficha **no existía**: el roadmap §S6 sólo fija objetivo, entregables y criterio de salida. Se redacta el 2026-10-27 a partir de [`roadmap-sprints.md`](../roadmap-sprints.md) §S6 y §4, [`contratos-api.md`](../../03-arquitectura/contratos-api.md) §4.3, [`modelo-datos.md`](../../03-arquitectura/modelo-datos.md) §3, [`rubricas-evaluacion.md`](../../01-curriculo/rubricas-evaluacion.md) §2.1 y §3, [`prerequisitos-y-progreso.md`](../../01-curriculo/prerequisitos-y-progreso.md) §5.3 y [`banco-ejercicios.md`](../../02-contenido/banco-ejercicios.md) §3.1 y §4. La descomposición en dieciséis tareas es una **propuesta** y requiere ratificación del Orquestador.
+
+**Deuda documental que abre este sprint.** `modelo-datos.md` §3 no define ningún modelo para registrar pistas usadas; el sprint introduce `HintRequest` (T4) y **debe** reflejarlo en ese documento al cerrar. Sin ese registro, `hintsUsed` no tiene fuente.
+
+---
+
+## 4. Contrato
+
+| Método | Ruta | Auth | Respuesta |
+|--------|------|------|-----------|
+| POST | `/api/exercises/:id/hints` | ✅ | `201 { hint: HintResponse }` |
+| GET | `/api/exercises/:id/submissions` | ✅ | `{ data: SubmissionSummary[], meta }` |
+| POST | `/api/exercises/:id/submissions` | ✅ | `201 { submission: SubmissionSummary }` (misma forma que S5; `achievedLevel` deja de ser `null`) |
+
+```ts
+interface HintRequestInput {
+  level: 1 | 2 | 3;
+}
+interface HintResponse {
+  level: 1 | 2 | 3;
+  text: string;                 // concepto, dirección o fragmento: nunca la solución completa
+  nextLevelAvailable: boolean;  // existe pista del nivel siguiente en el catálogo
+}
+```
+
+**Fórmula de corrección (T1), única fuente de verdad.**
+
+```
+ratio        = Σ peso(prueba superada) / Σ peso(prueba)          // 0 si no hay pruebas
+score        = redondeado(100 · ratio)                          // entero 0..100
+nivelBase    = score < 70 → 1 · score < 80 → 2 · score < 90 → 3 · resto → 4
+tope         = mínimo de:
+                 hintsUsed >= 3            → 2
+                 selfExplanation vacía     → 2
+                 ladder GUIDED → 2 · SEMI  → 3 · AUTONOMOUS → 4
+achievedLevel = mínimo(nivelBase, tope)                          // null sin pruebas o con ERROR/TIMEOUT
+outcome       = todas superadas → PASSED · ninguna → FAILED · resto → PARTIAL
+```
+
+```json
+// POST /api/exercises/:id/hints
+{ "level": 2 }
+
+// 201
+{ "hint": { "level": 2, "text": "Comprueba el estado de la respuesta antes de leer el cuerpo.", "nextLevelAvailable": true } }
+```
+
+```json
+// 201 POST /api/exercises/:id/submissions (tras el evaluador de S6)
+{
+  "submission": {
+    "id": "ckx…", "outcome": "PARTIAL", "score": 50, "achievedLevel": 2, "hintsUsed": 3,
+    "results": [{ "testId": "t1", "name": "devuelve el usuario", "passed": true }],
+    "feedback": "1 de 2 pruebas visibles superadas. Revisa los casos que fallan y vuelve a enviar. Nivel máximo 2: usaste pistas de nivel 3.",
+    "createdAt": "2026-10-27T15:10:00.000Z"
+  }
+}
+```
+
+**Errores esperados**
+
+| Caso | Respuesta |
+|------|-----------|
+| Sin sesión o token inválido | `401 UNAUTHENTICATED` |
+| Ejercicio inexistente / no publicado, o nivel sin pista en el catálogo | `404 NOT_FOUND` |
+| Cuerpo inválido (`level` fuera de `1..3`) | `400 VALIDATION_ERROR` con `details[].field` |
+| Nivel pedido sin haber usado el anterior | `422 RULE_VIOLATION` (regla del programa, no del formato) |
+| Intentos agotados (`maxAttempts`) | `409 CONFLICT` |
+| Cuota de pistas por minuto superada | `429 RATE_LIMITED` + `Retry-After` (el número se fija en T12, con el mismo interceptor que el sandbox) |
+
+Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo códigos de `ERROR_CODES`.
+
+---
+
+## 5. Tareas
+
+| ID | Tarea | Archivos principales | Sesión | Estado |
+|----|-------|----------------------|--------|--------|
+| S6-T1 | Evaluador `gradeSubmission`: puntuación, desenlace, nivel y tope | `apps/api/src/modules/exercises/grading.ts` + spec | 1 | ⬜ |
+| S6-T2 | Contrato compartido de la pista | `packages/shared/src/schemas/hint.ts` + spec, `index.ts` | 2 | ⬜ |
+| S6-T3 | Selección de pista por nivel con progresión obligatoria (pura) | `modules/exercises/hint-selection.ts` + spec | 3 | ⬜ |
+| S6-T4 | Migración `hint_requests` (modelo `HintRequest` con cascada) | `apps/api/prisma/schema.prisma` + migración | 4 | ⬜ |
+| S6-T5 | Puerto `HintRequestRepository` + adaptador en memoria | `hint-requests.repository.ts`, `in-memory-hint-requests.repository.ts` | 5 | ⬜ |
+| S6-T6 | Adaptador Prisma de `HintRequestRepository` | `prisma-hint-requests.repository.ts` | 6 | ⬜ |
+| S6-T7 | `HintsService`: sirve la pista del nivel pedido y registra el uso | `hints.service.ts` + spec | 7 | ⬜ |
+| S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec | 8 | ⬜ |
+| S6-T9 | `SubmissionsService`: corrige, persiste nivel y `hintsUsed`, historial | `submissions.service.ts` + spec | 9 | ⬜ |
+| S6-T10 | Endpoint `POST /api/exercises/:id/hints` y registro en el módulo | `exercises.controller.ts`, `exercises.module.ts` | 10 | ⬜ |
+| S6-T11 | `GET /api/exercises/:id/submissions` (historial propio paginado) | `submissions.controller.ts`, `submissions.module.ts` | 11 | ⬜ |
+| S6-T12 | Cuota de pistas por minuto y traducción de la regla de progresión a `422` | `hints-rate-limit.guard.ts` + spec | 12 | ⬜ |
+| S6-T13 | `codeApi.requestHint` y `codeApi.submissionHistory` en la web | `apps/web/src/lib/api-client.ts` + spec | 13 | ⬜ |
+| S6-T14 | `HintPanel` y nivel alcanzado con su motivo en el resultado | `features/lab/components/HintPanel.tsx` + spec, `ExerciseLab.tsx` | 14 | ⬜ |
+| S6-T15 | `AttemptHistory` con estados de carga, error y vacío | `features/lab/components/AttemptHistory.tsx` + spec, página del ejercicio | 15 | ⬜ |
+| S6-T16 | Verificación HTTP real con dos usuarios y cierre documental | — (guion de comandos) y docs | 16 | ⬜ |
+
+> **Regla de tamaño:** ninguna tarea toca más de 3 archivos. Si una tarea necesita más, se parte antes de empezar.
+
+**Orden y dependencias internas.** T1, T2, T3, T4 y T8 no dependen de nada (son las que pueden ejecutarse mientras S5 siga abierto). T5 depende de T4; T6 de T5; T7 de T2, T3 y T5. Desde T9 el sprint **necesita** lo que S5 deja: T9 depende de T1, T5 y `ExercisesService` (S5-T8); T10 depende de T7 y del controlador de S5-T10; T11 depende de T9; T12 de T10. En la web, T13 depende de T2 y de `codeApi` (S5-T11); T14 y T15 dependen de T13; T16 cierra el sprint.
+
+---
+
+## 6. Criterios de aceptación
+
+- [ ] `S6-T1`: dos pruebas de peso 1 con una superada dan `score: 50` y `outcome: PARTIAL`; con pesos 2 y 1 y la de peso 2 superada, `score: 67`.
+- [ ] `S6-T1`: con `score` 100 y `hintsUsed: 3` el nivel queda en 2 y el `feedback` explica el motivo.
+- [ ] `S6-T1`: `selfExplanation` vacía topa a 2, `ladder: GUIDED` topa a 2, `SEMI` a 3 y `AUTONOMOUS` no topa.
+- [ ] `S6-T1`: `ERROR` y `TIMEOUT` del sandbox se conservan con `score: 0` y `achievedLevel: null`.
+- [ ] `S6-T1`: el `feedback` **nunca** contiene el nombre de una prueba con `isHidden: true` ni el código enviado.
+- [ ] `S6-T2`: `hintRequestSchema` rechaza `level: 4` y `hintResponseSchema` rechaza `text` vacío y `level: 0`.
+- [ ] `S6-T3`: pedir el nivel 2 sin el 1 devuelve `422 RULE_VIOLATION`; pedir el 1 dos veces devuelve la misma pista sin duplicar el registro.
+- [ ] La pista servida es **exactamente** el texto del catálogo: ni `solution` ni código del estudiante en la respuesta.
+- [ ] La migración `hint_requests` crea `HintRequest` con cascada desde `User` y `Exercise` y unicidad `[userId, exerciseId, level]`.
+- [ ] `hintsUsed` persistido es el número de niveles distintos usados desde el intento anterior, calculado en el servidor.
+- [ ] El envío se corrige con pruebas ocultas: una oculta fallida baja el `score` aunque todas las visibles pasen.
+- [ ] Superar `maxAttempts` devuelve `409 CONFLICT` sin crear `Submission`.
+- [ ] El historial devuelve sólo los envíos del usuario autenticado, en orden descendente y paginado.
+- [ ] La web muestra la pista pedida, el motivo del tope y el historial, con estados de carga, error y vacío.
+- [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
+
+**Estado:** 0/14 verificados.
+
+---
+
+## 7. Riesgos y mitigaciones
+
+| Riesgo | Mitigación |
+|--------|-----------|
+| Confiar en el `outcome` del sandbox y acreditar un envío que falló | El evaluador recalcula desde las pruebas; `errorOutcome` sólo puede forzar `ERROR`/`TIMEOUT`, y la prueba lo fija |
+| El `feedback` filtra pruebas ocultas | Se construye sólo con el recuento de visibles; una prueba con nombre reconocible comprueba que no aparece |
+| La pista filtra la solución | Se sirve el `text` del catálogo, sin interpolar código ni `solution`; la prueba usa una fila con `solution` y verifica que no viaja |
+| `hintsUsed` declarado por el cliente | Se calcula en el servidor desde `HintRequest`; el cuerpo del envío no acepta ese campo |
+| Pesos de prueba mal puestos que inflan el `score` | El peso lo fija el autor del ejercicio y la suma se normaliza; un peso 0 no altera el resto |
+| Tareas T9–T15 bloqueadas porque S5 no está cerrado | Están declaradas como dependientes y el sprint no se cierra sin `ExercisesService` y su controlador; T1–T8 avanzan igual |
+| Nivel 4 regalado por un ejercicio guiado | El tope por `ladder` es explícito y la UI muestra el motivo; la autonomía sólo se acredita en `SEMI` y `AUTONOMOUS` |
+| Progresión de pistas frustrante para el estudiante | El panel indica qué nivel falta y `nextLevelAvailable` anticipa si hay más |
+
+---
+
+## 8. Fuera de alcance (a propósito)
+
+- Análisis estático de calidad y de pruebas propias aportadas: S11. Los pesos 20 % + 20 % de la rúbrica §2.1 quedan sin medir y el sprint lo declara.
+- Repaso espaciado derivado del envío (`q` de SM-2, `prerequisitos-y-progreso.md` §5): S7.
+- Tutor IA que explique el fallo o proponga el siguiente paso: S8.
+- `errorCategory` y analítica de errores frecuentes: S11.
+- Rúbricas de proyecto, portafolio y entrevistas: S9 y S10.
+- Sandbox real (`subprocess`, `docker`): sigue pendiente de infraestructura tras S5.
+
+---
+
+## 9. Bitácora de ejecución
+
+| Tarea | Verificación ejecutada | Resultado | Commit |
+|-------|------------------------|-----------|--------|
+
+---
+
+## Documentos relacionados
+
+- [`roadmap-sprints.md`](../roadmap-sprints.md) §S6 — objetivo, entregables y criterio de salida.
+- [`sprint-05-laboratorio-codigo.md`](sprint-05-laboratorio-codigo.md) — sprint del que hereda el envío y el `SandboxService`.
+- [`contratos-api.md`](../../03-arquitectura/contratos-api.md) §4.3 — contrato de ejercicios, pistas y envíos.
+- [`modelo-datos.md`](../../03-arquitectura/modelo-datos.md) §3 — `ExerciseHint`, `ExerciseTest`, `Submission` y la deuda de `HintRequest`.
+- [`rubricas-evaluacion.md`](../../01-curriculo/rubricas-evaluacion.md) §2.1 y §3 — tope por pistas y escala de niveles.
+- [`prerequisitos-y-progreso.md`](../../01-curriculo/prerequisitos-y-progreso.md) §5.3 — penalización de repaso por pistas (traspaso a S7).
+- [`banco-ejercicios.md`](../../02-contenido/banco-ejercicios.md) §3.1 y §4 — pistas progresivas con uso registrado y escalón máximo certificable.
