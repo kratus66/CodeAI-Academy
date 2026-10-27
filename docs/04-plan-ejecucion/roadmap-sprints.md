@@ -36,7 +36,7 @@
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >
-> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 🔄 en curso (7/16 tareas y 9/14 criterios)**.
+> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 🔄 en curso (8/16 tareas y 9/14 criterios)**.
 
 ---
 
@@ -98,7 +98,7 @@
 - **Objetivo:** el envío se evalúa y el estudiante recibe pistas sin la solución.
 - **Entregables:** evaluador de casos, estados de envío, pistas por nivel (concepto → dirección → fragmento), historial de intentos.
 - **Criterio de salida:** pruebas de evaluación y de que ninguna respuesta incluye la solución completa.
-- **Estado:** 🔄 en curso (2026-10-27) — S6-T1 a S6-T7 cerradas; quedan el envío corregido, el historial y la web.
+- **Estado:** 🔄 en curso (2026-10-27) — S6-T1 a S6-T8 cerradas; quedan el envío corregido, el historial y la web.
 - **Ficha:** [`sprints/sprint-06-correccion-pistas.md`](sprints/sprint-06-correccion-pistas.md).
 
 ### S7 — Repaso espaciado

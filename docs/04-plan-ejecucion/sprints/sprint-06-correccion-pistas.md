@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 7/16 tareas · 9/14 criterios de aceptación.
+> **Avance:** 8/16 tareas · 9/14 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -145,7 +145,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T5 | Puerto `HintRequestRepository` + adaptador en memoria | `hint-requests.repository.ts`, `in-memory-hint-requests.repository.ts` | 5 | ✅ `26c5849` |
 | S6-T6 | Adaptador Prisma de `HintRequestRepository` | `prisma-hint-requests.repository.ts` | 6 | ✅ `1315554` |
 | S6-T7 | `HintsService`: sirve la pista del nivel pedido y registra el uso | `hints.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 7 | ✅ `ad9fc8c` |
-| S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec, `exercises.repository.ts`, `prisma-exercises.repository.ts` | 8 | ⬜ |
+| S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 8 | ✅ `d9e7c17` |
 | S6-T9 | Corrección completa en `ExercisesService`: nivel, `hintsUsed`, historial | `exercises.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 9 | ⬜ |
 | S6-T10 | Endpoint `POST /api/exercises/:id/hints` y registro en el módulo | `exercises.controller.ts`, `exercises.module.ts` | 10 | ⬜ |
 | S6-T11 | Verificación de `GET /api/exercises/:id/submissions` (historial propio paginado) | Sin archivos nuevos: implementado en S5; se completa la prueba si falta | 11 | ⬜ |
@@ -220,6 +220,8 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T5 | `npm run test -w @codeai/api -- hint-requests` → `Test Files 1 passed (1)`, `Tests 8 passed (8)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | El puerto expone `findUsedLevels`, `findLevelsRequestedSince` (estricto, para no contar dos veces el envío anterior) y `recordRequest`. El adaptador copia fechas y filas del dataset, así que ninguna prueba puede mutar el estado del llamador. | `26c5849` |
 | S6-T6 | `npx prisma generate` → Prisma Client v6.19.3 regenerado. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | El `upsert` usa el `where` compuesto `userId_exerciseId_level`, que sólo compila si la unicidad de T4 existe. Sin spec propia: los adaptadores Prisma del repositorio no la tienen y la semántica ya la cubre el adaptador en memoria. | `1315554` |
 | S6-T7 | `npm run test -w @codeai/api -- hints` → `Test Files 1 passed (1)`, `Tests 12 passed (12)`. `npm run test -w @codeai/api` → `Test Files 22 passed (22)`, `Tests 213 passed (213)` (S5 sigue verde). `npm run typecheck -w @codeai/api` → exit 0 `tsc -p tsconfig.json --noEmit`. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | `findHint` entra en el puerto y en los dos adaptadores sin tocar `ExerciseRow`: los fixtures de S5 compilan intactos y el dataset en memoria gana `hintTexts` opcional. El servicio lee el texto del catálogo, lo devuelve sin interpolar y sólo registra el uso cuando la pista se sirve; un `404`/`422` deja `findUsedLevels` vacío. `UnprocessableEntityException` sale como `422 RULE_VIOLATION` por el filtro global. | `ad9fc8c` |
+| S6-T8 | `npm run test -w @codeai/api -- submit-limits` → `Test Files 1 passed (1)`, `Tests 9 passed (9)`. `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 92 passed (92)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | `checkAttemptLimit` no lanza: devuelve `attemptNumber` (1-based) y `allowed`, y el `409` lo decide T9. `maxAttempts` nulo, no entero o menor que 1 se trata como sin límite, y entra en `ExerciseRow` como opcional para no romper los fixtures de S5. `countSubmissions` se añade al puerto y a los dos adaptadores. | `d9e7c17` |
+
 
 ---
 
