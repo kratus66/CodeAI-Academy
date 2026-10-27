@@ -7,3 +7,4 @@ export * from "./schemas/auth";
 export * from "./schemas/common";
 export * from "./schemas/content";
 export * from "./schemas/progress";
+export * from "./schemas/sandbox";
