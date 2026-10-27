@@ -6,9 +6,10 @@ import { EnvModule } from "./config/env.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { ContentModule } from "./modules/content/content.module";
 import { HealthModule } from "./modules/health/health.module";
+import { ProgressModule } from "./modules/progress/progress.module";
 
 @Module({
-  imports: [EnvModule, HealthModule, AuthModule, ContentModule],
+  imports: [EnvModule, HealthModule, AuthModule, ContentModule, ProgressModule],
   providers: [TraceIdMiddleware],
 })
 export class AppModule implements NestModule {
