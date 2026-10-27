@@ -43,6 +43,7 @@ const EXERCISE_SELECT = {
   competencies: true,
   estimatedMin: true,
   language: true,
+  maxAttempts: true,
   unit: { select: { code: true } },
   hints: { select: { level: true }, orderBy: { level: "asc" } },
   tests: {
@@ -150,6 +151,10 @@ export class PrismaExercisesRepository implements ExercisesRepository {
     return { items: rows.map((row) => toSubmissionRow(row, names)), total };
   }
 
+  async countSubmissions(userId: string, exerciseId: string): Promise<number> {
+    return this.prisma.submission.count({ where: { userId, exerciseId } });
+  }
+
   async createSubmission(input: CreateSubmissionInput): Promise<SubmissionRow> {
     const row = await this.prisma.submission.create({
       data: {
@@ -204,6 +209,7 @@ function toExerciseRow(row: ExerciseDbRow): ExerciseRow {
     estimatedMin: row.estimatedMin,
     language: row.language,
     hintLevels: row.hints.map((hint) => hint.level),
+    maxAttempts: row.maxAttempts,
     tests: row.tests,
   };
 }

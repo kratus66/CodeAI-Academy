@@ -31,6 +31,8 @@ export interface ExerciseRow {
   language: string | null;
   /** Niveles de pista disponibles; el texto llega con S6. */
   hintLevels: readonly number[];
+  /** `Exercise.maxAttempts`; `null` = sin límite. Opcional para no romper datasets de S5. */
+  maxAttempts?: number | null;
   tests: readonly {
     id: string;
     name: string;
@@ -101,6 +103,8 @@ export interface ExercisesRepository {
     exerciseId: string,
     window: PageWindow,
   ): Promise<Page<SubmissionRow>>;
+  /** Envíos del usuario en el ejercicio, sin paginar: alimenta el tope `maxAttempts`. */
+  countSubmissions(userId: string, exerciseId: string): Promise<number>;
   createSubmission(input: CreateSubmissionInput): Promise<SubmissionRow>;
   /** Texto de la pista tal cual está en el catálogo; `null` si ese nivel no existe. */
   findHint(exerciseId: string, level: number): Promise<ExerciseHintRow | null>;

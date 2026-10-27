@@ -82,6 +82,12 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
     return paginate(items, window);
   }
 
+  async countSubmissions(userId: string, exerciseId: string): Promise<number> {
+    return this.submissions.filter(
+      (submission) => submission.userId === userId && submission.exerciseId === exerciseId,
+    ).length;
+  }
+
   async createSubmission(input: CreateSubmissionInput): Promise<SubmissionRow> {
     this.sequence += 1;
 
