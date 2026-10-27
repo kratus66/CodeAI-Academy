@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 1/16 tareas · 5/14 criterios de aceptación.
+> **Avance:** 2/16 tareas · 6/14 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -139,7 +139,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | ID | Tarea | Archivos principales | Sesión | Estado |
 |----|-------|----------------------|--------|--------|
 | S6-T1 | Evaluador `gradeSubmission`: puntuación, desenlace, nivel y tope | `apps/api/src/modules/exercises/grading.ts` + spec | 1 | ✅ `f182d46` |
-| S6-T2 | Contrato compartido de la pista | `packages/shared/src/schemas/hint.ts` + spec, `index.ts` | 2 | ⬜ |
+| S6-T2 | Contrato compartido de la pista | `packages/shared/src/schemas/hint.ts` + spec, `index.ts` | 2 | ✅ `ca0a889` |
 | S6-T3 | Selección de pista por nivel con progresión obligatoria (pura) | `modules/exercises/hint-selection.ts` + spec | 3 | ⬜ |
 | S6-T4 | Migración `hint_requests` (modelo `HintRequest` con cascada) | `apps/api/prisma/schema.prisma` + migración | 4 | ⬜ |
 | S6-T5 | Puerto `HintRequestRepository` + adaptador en memoria | `hint-requests.repository.ts`, `in-memory-hint-requests.repository.ts` | 5 | ⬜ |
@@ -168,7 +168,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 - [x] `S6-T1`: `selfExplanation` vacía topa a 2, `ladder: GUIDED` topa a 2, `SEMI` a 3 y `AUTONOMOUS` no topa.
 - [x] `S6-T1`: `ERROR` y `TIMEOUT` del sandbox se conservan con `score: 0` y `achievedLevel: null`.
 - [x] `S6-T1`: el `feedback` **nunca** contiene el nombre de una prueba con `isHidden: true` ni el código enviado.
-- [ ] `S6-T2`: `hintRequestSchema` rechaza `level: 4` y `hintResponseSchema` rechaza `text` vacío y `level: 0`.
+- [x] `S6-T2`: `hintRequestSchema` rechaza `level: 4` y `hintResponseSchema` rechaza `text` vacío y `level: 0`.
 - [ ] `S6-T3`: pedir el nivel 2 sin el 1 devuelve `422 RULE_VIOLATION`; pedir el 1 dos veces devuelve la misma pista sin duplicar el registro.
 - [ ] La pista servida es **exactamente** el texto del catálogo: ni `solution` ni código del estudiante en la respuesta.
 - [ ] La migración `hint_requests` crea `HintRequest` con cascada desde `User` y `Exercise` y unicidad `[userId, exerciseId, level]`.
@@ -179,7 +179,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 - [ ] La web muestra la pista pedida, el motivo del tope y el historial, con estados de carga, error y vacío.
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 5/14 verificados.
+**Estado:** 6/14 verificados.
 
 ---
 
@@ -214,6 +214,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | Tarea | Verificación ejecutada | Resultado | Commit |
 |-------|------------------------|-----------|--------|
 | S6-T1 | Rojo: `npm run test -w @codeai/api -- grading` → `FAIL src/modules/exercises/grading.spec.ts`, `Failed to load url ./grading`, 0 pruebas ejecutadas. Verde: misma orden → `Tests 26 passed (26)`. `npm run test -w @codeai/api` → `Test Files 12 passed (12)`, `Tests 94 passed (94)`. `npm test` → shared 83 · api 94 · web 81 (total 258), exit 0. `npm run typecheck` → exit 0 (api, web, shared). `npm run lint` → exit 0, `No ESLint warnings or errors` con `--max-warnings 0`. `npm run build` → exit 0. | La fórmula de §4 queda implementada tal cual, con `levelCap` para que la UI explique el motivo del tope. Antes de implementar corregí tres pruebas mías que omitían `selfExplanation`: sin ella, el tope de explicación dejaba el nivel en 2 y la prueba esperaba 3 o 4. | `f182d46` |
+| S6-T2 | `npm run test -w @codeai/shared -- hint` → `Test Files 1 passed (1)`, `Tests 15 passed (15)`. `npm run typecheck -w @codeai/shared` → exit 0. `npm run lint -w @codeai/shared` → exit 0 con `--max-warnings 0`. | `hintLevelSchema` es unión de literales 1–3; los tres esquemas son estrictos. La prueba de tipo usa `expectTypeOf` y `tsc` la valida. | `ca0a889` |
 
 ---
 
