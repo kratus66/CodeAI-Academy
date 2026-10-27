@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 9/16 tareas · 12/14 criterios de aceptación.
+> **Avance:** 10/16 tareas · 12/14 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -148,7 +148,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T7 | `HintsService`: sirve la pista del nivel pedido y registra el uso | `hints.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 7 | ✅ `ad9fc8c` |
 | S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 8 | ✅ `d9e7c17` |
 | S6-T9 | Corrección completa en `ExercisesService`: nivel, `hintsUsed`, historial | `exercises.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma, `exercises.mapper.ts` | 9 | ✅ `44d25d6` |
-| S6-T10 | Endpoint `POST /api/exercises/:id/hints` y registro en el módulo | `exercises.controller.ts`, `exercises.module.ts` | 10 | ⬜ |
+| S6-T10 | Endpoint `POST /api/exercises/:id/hints` y registro en el módulo | `exercises.controller.ts`, `exercises.module.ts` | 10 | ✅ `ff93ae1` |
 | S6-T11 | Verificación de `GET /api/exercises/:id/submissions` (historial propio paginado) | Sin archivos nuevos: implementado en S5; se completa la prueba si falta | 11 | ⬜ |
 | S6-T12 | Cuota de pistas por minuto y traducción de la regla de progresión a `422` | `hints-rate-limit.guard.ts` + spec | 12 | ⬜ |
 | S6-T13 | `codeApi.requestHint` y `codeApi.submissionHistory` en la web | `apps/web/src/lib/api-client.ts` + spec | 13 | ⬜ |
@@ -223,6 +223,8 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T7 | `npm run test -w @codeai/api -- hints` → `Test Files 1 passed (1)`, `Tests 12 passed (12)`. `npm run test -w @codeai/api` → `Test Files 22 passed (22)`, `Tests 213 passed (213)` (S5 sigue verde). `npm run typecheck -w @codeai/api` → exit 0 `tsc -p tsconfig.json --noEmit`. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | `findHint` entra en el puerto y en los dos adaptadores sin tocar `ExerciseRow`: los fixtures de S5 compilan intactos y el dataset en memoria gana `hintTexts` opcional. El servicio lee el texto del catálogo, lo devuelve sin interpolar y sólo registra el uso cuando la pista se sirve; un `404`/`422` deja `findUsedLevels` vacío. `UnprocessableEntityException` sale como `422 RULE_VIOLATION` por el filtro global. | `ad9fc8c` |
 | S6-T8 | `npm run test -w @codeai/api -- submit-limits` → `Test Files 1 passed (1)`, `Tests 9 passed (9)`. `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 92 passed (92)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | `checkAttemptLimit` no lanza: devuelve `attemptNumber` (1-based) y `allowed`, y el `409` lo decide T9. `maxAttempts` nulo, no entero o menor que 1 se trata como sin límite, y entra en `ExerciseRow` como opcional para no romper los fixtures de S5. `countSubmissions` se añade al puerto y a los dos adaptadores. | `d9e7c17` |
 | S6-T9 | `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 101 passed (101)` (`exercises.service.spec.ts`: 23). `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 231 passed (231)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | El envío comprueba el tope antes de tocar el sandbox, cuenta `hintsUsed` desde `lastRequestedAt` posterior al envío anterior y corrige con las pruebas ocultas. Sólo las visibles se persisten, así que el historial no filtra nombres ocultos. Cambiaron cuatro esperados de S5 (los ids del sandbox, el `achievedLevel` ya no es `null`, el `score` de pesos incluye la oculta y el `feedback` añade el tope de escalón). El subproceso detectó que `Array.map` pasaría el índice como `feedback` y lo evitó con un envoltorio explícito. | `44d25d6` |
+| S6-T10 | `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 231 passed (231)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. `npm run build -w @codeai/api` → exit 0. Arranque real con `node dist/main.js` y base disponible: `[RouterExplorer] Mapped {/api/exercises/:id/hints, POST} route` y `Nest application successfully started`. | La ruta va después de `POST :id/submissions` y responde `201` con el sobre del contrato; el `userId` sigue saliendo del token. El módulo registra el segundo puerto con `PrismaHintRequestsRepository`, así que el arranque confirma también la dependencia nueva de T9. | `ff93ae1` |
+
 
 
 
