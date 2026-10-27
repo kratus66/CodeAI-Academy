@@ -2,8 +2,10 @@
 // Fuente de verdad: docs/03-arquitectura/modelo-datos.md.
 // S1 (identidad): User + RefreshToken.
 // S2 (contenido): Stage → Module → Unit → Lesson → Exercise y el catálogo de
-// recursos. Las relaciones con progreso, envíos, pistas y pruebas se añaden en
-// los sprints que crean esas tablas (S4–S6), nunca antes.
+// recursos.
+// S4 (progreso): UnitProgress + CompetencyProgress.
+// Las relaciones con envíos, pistas y pruebas se añaden en los sprints que
+// crean esas tablas (S5–S6), nunca antes.
 
 generator client {
   provider = "prisma-client-js"
@@ -35,7 +37,9 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  refreshTokens RefreshToken[]
+  refreshTokens      RefreshToken[]
+  unitProgress       UnitProgress[]
+  competencyProgress CompetencyProgress[]
 
   @@index([role])
 }
@@ -97,9 +101,10 @@ model Unit {
   isPublished     Boolean  @default(false)
   prerequisiteIds String[] @default([]) // códigos de unidad previos
 
-  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module    Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   lessons   Lesson[]
   exercises Exercise[]
+  progress  UnitProgress[]
 
   @@index([moduleId])
 }
@@ -219,4 +224,52 @@ model Exercise {
 
   @@index([unitId, type])
   @@index([isPublished])
+}
+
+// ─────────────────────────── PROGRESO ───────────────────────────
+
+enum UnitState {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  NEEDS_REVIEW
+  MASTERED
+}
+
+/// Avance de un estudiante en una unidad (`modelo-datos.md` §4).
+/// `state` y `progressPct` se calculan sólo en el servidor.
+model UnitProgress {
+  id             String    @id @default(cuid())
+  userId         String
+  unitId         String
+  state          UnitState @default(AVAILABLE)
+  progressPct    Float     @default(0) // 0..100
+  lessonsDone    Int       @default(0)
+  exercisesDone  Int       @default(0)
+  bestScore      Float?
+  lastActivityAt DateTime?
+  completedAt    DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, unitId])
+  @@index([userId, state])
+}
+
+/// Nivel de dominio por competencia C1–C14 (`modelo-datos.md` §4).
+/// `level` se calcula sólo en el servidor.
+model CompetencyProgress {
+  id            String    @id @default(cuid())
+  userId        String
+  competency    String // "C1".."C14"
+  level         Int       @default(0) // 0..4
+  evidenceCount Int       @default(0)
+  lastEvaluated DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, competency])
 }
