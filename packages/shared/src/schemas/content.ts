@@ -134,13 +134,40 @@ export const stageSummarySchema = z.object({
 
 export type StageSummary = z.infer<typeof stageSummarySchema>;
 
-/** Módulo dentro de una etapa; `unitCount` cuenta solo unidades publicadas. */
+/**
+ * Ficha mínima de una unidad en el mapa curricular. `stageId` viaja con la
+ * unidad para que el cliente no tenga que deducir la etapa del código.
+ */
+export const unitSummarySchema = z.object({
+  id: z.string().min(1),
+  code: z.string().min(1),
+  title: z.string().min(1),
+  objective: z.string().min(1),
+  estimatedMin: estimatedMinSchema,
+  order: z.number().int().nonnegative(),
+  stageId: z
+    .number()
+    .int()
+    .min(0)
+    .max(CURRICULUM_STAGE_COUNT - 1),
+  moduleCode: z.string().min(1),
+  prerequisiteIds: z.array(z.string().min(1)),
+});
+
+export type UnitSummary = z.infer<typeof unitSummarySchema>;
+
+/**
+ * Módulo dentro de una etapa. `unitCount` y `units` cuentan solo unidades
+ * publicadas; las unidades viajan en el módulo para que una etapa se pinte con
+ * una sola petición.
+ */
 export const moduleSummarySchema = z.object({
   id: z.string().min(1),
   code: z.string().min(1),
   title: z.string().min(1),
   order: z.number().int().nonnegative(),
   unitCount: z.number().int().nonnegative(),
+  units: z.array(unitSummarySchema),
 });
 
 export type ModuleSummary = z.infer<typeof moduleSummarySchema>;
@@ -150,20 +177,6 @@ export const stageDetailSchema = stageSummarySchema.extend({
 });
 
 export type StageDetail = z.infer<typeof stageDetailSchema>;
-
-/** Ficha mínima de una unidad en el mapa curricular. */
-export const unitSummarySchema = z.object({
-  id: z.string().min(1),
-  code: z.string().min(1),
-  title: z.string().min(1),
-  objective: z.string().min(1),
-  estimatedMin: estimatedMinSchema,
-  order: z.number().int().nonnegative(),
-  moduleCode: z.string().min(1),
-  prerequisiteIds: z.array(z.string().min(1)),
-});
-
-export type UnitSummary = z.infer<typeof unitSummarySchema>;
 
 export const lessonSummarySchema = z.object({
   id: z.string().min(1),

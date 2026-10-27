@@ -9,6 +9,7 @@ import {
   lessonSlugParamsSchema,
   lessonStepsSchema,
   resourceListQuerySchema,
+  stageDetailSchema,
   stageIdParamsSchema,
   stageListQuerySchema,
   unitCodeParamsSchema,
@@ -239,6 +240,7 @@ describe("unitDetailSchema", () => {
       objective: "Distinguir IA de automatización clásica.",
       estimatedMin: null,
       order: 1,
+      stageId: 1,
       moduleCode: "M1.1",
       prerequisiteIds: [],
       lessons: [
@@ -269,6 +271,69 @@ describe("unitDetailSchema", () => {
 
     expect(unit.exercises[0]).not.toHaveProperty("solution");
     expect(unit.exercises[0]).not.toHaveProperty("tests");
+    expect(unit.stageId).toBe(1);
+  });
+});
+
+describe("stageDetailSchema", () => {
+  const stage = {
+    id: 1,
+    slug: "e1-programacion",
+    title: "Programación",
+    objective: "Escribir programas pequeños y verificables.",
+    level: 1,
+    estimatedMin: 900,
+    order: 2,
+    moduleCount: 1,
+  };
+
+  const unit = {
+    id: "unit_1",
+    code: "U1.1.1",
+    title: "Tu primer programa",
+    objective: "Ejecutar un programa que imprima texto.",
+    estimatedMin: 60,
+    order: 1,
+    stageId: 1,
+    moduleCode: "M1.1",
+    prerequisiteIds: [],
+  };
+
+  const module = {
+    id: "module_1",
+    code: "M1.1",
+    title: "Fundamentos de programación",
+    order: 1,
+    unitCount: 1,
+    units: [unit],
+  };
+
+  it("acepta un módulo con sus unidades publicadas", () => {
+    const detail = stageDetailSchema.parse({ ...stage, modules: [module] });
+
+    expect(detail.modules[0]?.units.map((item) => item.code)).toEqual(["U1.1.1"]);
+    expect(detail.modules[0]?.units[0]?.stageId).toBe(1);
+  });
+
+  it("rechaza un módulo sin la lista de unidades", () => {
+    const moduleWithoutUnits: Record<string, unknown> = { ...module };
+    delete moduleWithoutUnits.units;
+
+    const result = stageDetailSchema.safeParse({ ...stage, modules: [moduleWithoutUnits] });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza una unidad sin la etapa a la que pertenece", () => {
+    const unitWithoutStage: Record<string, unknown> = { ...unit };
+    delete unitWithoutStage.stageId;
+
+    const result = stageDetailSchema.safeParse({
+      ...stage,
+      modules: [{ ...module, units: [unitWithoutStage] }],
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 

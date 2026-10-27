@@ -129,17 +129,26 @@ export function toStageDetail(
   return { ...toStageSummary(row, modules.length), modules };
 }
 
-export function toModuleSummary(row: ModuleRow, unitCount: number): ModuleSummary {
+/**
+ * `units` son las unidades publicadas del módulo, ya ordenadas: el conteo se
+ * deriva de la lista para que `unitCount` y `units` no puedan contradecirse.
+ */
+export function toModuleSummary(row: ModuleRow, units: UnitSummary[]): ModuleSummary {
   return {
     id: row.id,
     code: row.code,
     title: row.title,
     order: row.order,
-    unitCount,
+    unitCount: units.length,
+    units,
   };
 }
 
-export function toUnitSummary(row: UnitRow, moduleCode: string): UnitSummary {
+export function toUnitSummary(
+  row: UnitRow,
+  stageId: number,
+  moduleCode: string,
+): UnitSummary {
   return {
     id: row.id,
     code: row.code,
@@ -147,6 +156,7 @@ export function toUnitSummary(row: UnitRow, moduleCode: string): UnitSummary {
     objective: row.objective,
     estimatedMin: row.estimatedMin,
     order: row.order,
+    stageId,
     moduleCode,
     prerequisiteIds: [...row.prerequisiteIds],
   };
@@ -154,12 +164,13 @@ export function toUnitSummary(row: UnitRow, moduleCode: string): UnitSummary {
 
 export function toUnitDetail(
   row: UnitRow,
+  stageId: number,
   moduleCode: string,
   lessons: LessonSummary[],
   exercises: ExerciseSummary[],
 ): UnitDetail {
   return {
-    ...toUnitSummary(row, moduleCode),
+    ...toUnitSummary(row, stageId, moduleCode),
     lessons,
     exercises,
   };

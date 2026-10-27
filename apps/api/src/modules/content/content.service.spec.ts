@@ -4,6 +4,7 @@ import type {
   ResourceSummary,
   StageDetail,
   UnitDetail,
+  UnitSummary,
 } from "@codeai/shared";
 import { LESSON_STEP_KINDS } from "@codeai/shared";
 import { NotFoundException } from "@nestjs/common";
@@ -73,7 +74,21 @@ const videoResource: ResourceSummary = {
   durationMin: 12,
 };
 
-function stage(id: number, level: number, code: string, unitCount: number): StageDetail {
+function unitSummary(code: string, stageId: number, moduleCode: string): UnitSummary {
+  return {
+    id: `unit-${code}`,
+    code,
+    title: `Unidad ${code}`,
+    objective: `Objetivo de la unidad ${code}`,
+    estimatedMin: 90,
+    order: 1,
+    stageId,
+    moduleCode,
+    prerequisiteIds: [],
+  };
+}
+
+function stage(id: number, level: number, code: string, units: UnitSummary[]): StageDetail {
   return {
     id,
     slug: `e${id}-etapa-${id}`,
@@ -89,7 +104,8 @@ function stage(id: number, level: number, code: string, unitCount: number): Stag
         code,
         title: `Módulo ${code}`,
         order: 1,
-        unitCount,
+        unitCount: units.length,
+        units,
       },
     ],
   };
@@ -105,6 +121,7 @@ function dataset(): ContentDataset {
       objective: "Distinguir IA de automatización clásica",
       estimatedMin: 90,
       order: 1,
+      stageId: 0,
       moduleCode: "M0.1",
       prerequisiteIds: [],
       lessons: [
@@ -120,8 +137,14 @@ function dataset(): ContentDataset {
     },
   ];
 
+  const publishedUnits = [unitSummary("U0.1.1", 0, "M0.1")];
+
   return {
-    stages: [stage(0, 1, "M0.1", 1), stage(1, 2, "M1.1", 0), stage(2, 2, "M2.1", 0)],
+    stages: [
+      stage(0, 1, "M0.1", publishedUnits),
+      stage(1, 2, "M1.1", []),
+      stage(2, 2, "M2.1", []),
+    ],
     units,
     lessons: [lesson("hola-mundo", "U0.1.1", 1)],
     resources: [
@@ -176,6 +199,18 @@ describe("ContentService", () => {
       expect(found.moduleCount).toBe(1);
     });
 
+    it("incluye las unidades publicadas de cada módulo", async () => {
+      const { stage: found } = await service.getStage(0);
+
+      expect(found.modules[0]?.units.map((item) => item.code)).toEqual(["U0.1.1"]);
+      expect(found.modules[0]?.unitCount).toBe(1);
+
+      const { stage: withoutUnits } = await service.getStage(1);
+
+      expect(withoutUnits.modules[0]?.units).toEqual([]);
+      expect(withoutUnits.modules[0]?.unitCount).toBe(0);
+    });
+
     it("responde 404 cuando la etapa no existe o no está publicada", async () => {
       await expect(service.getStage(7)).rejects.toBeInstanceOf(NotFoundException);
     });
@@ -187,6 +222,13 @@ describe("ContentService", () => {
 
       expect(unit.lessons.map((item) => item.slug)).toEqual(["hola-mundo"]);
       expect(unit.exercises.map((item) => item.slug)).toEqual(["primer-programa"]);
+    });
+
+    it("expone la etapa a la que pertenece la unidad", async () => {
+      const { unit } = await service.getUnit("U0.1.1");
+
+      expect(unit.stageId).toBe(0);
+      expect(unit.moduleCode).toBe("M0.1");
     });
 
     it("nunca expone la solución del ejercicio", async () => {

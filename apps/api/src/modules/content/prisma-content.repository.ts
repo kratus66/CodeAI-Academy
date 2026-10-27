@@ -20,6 +20,7 @@ import {
   toStageDetail,
   toStageSummary,
   toUnitDetail,
+  toUnitSummary,
 } from "./content.mapper";
 
 /**
@@ -106,7 +107,19 @@ export class PrismaContentRepository implements ContentRepository {
           where: { isPublished: true },
           orderBy: [{ order: "asc" }, { code: "asc" }],
           include: {
-            _count: { select: { units: { where: { isPublished: true } } } },
+            units: {
+              where: { isPublished: true },
+              orderBy: [{ order: "asc" }, { code: "asc" }],
+              select: {
+                id: true,
+                code: true,
+                title: true,
+                objective: true,
+                estimatedMin: true,
+                order: true,
+                prerequisiteIds: true,
+              },
+            },
           },
         },
       },
@@ -118,7 +131,12 @@ export class PrismaContentRepository implements ContentRepository {
 
     return toStageDetail(
       row,
-      row.modules.map((module) => toModuleSummary(module, module._count.units)),
+      row.modules.map((module) =>
+        toModuleSummary(
+          module,
+          module.units.map((unit) => toUnitSummary(unit, row.id, module.code)),
+        ),
+      ),
     );
   }
 
@@ -126,7 +144,7 @@ export class PrismaContentRepository implements ContentRepository {
     const row = await this.prisma.unit.findFirst({
       where: { code, ...PUBLISHED_UNIT },
       include: {
-        module: { select: { code: true } },
+        module: { select: { code: true, stageId: true } },
         lessons: {
           where: { isPublished: true },
           orderBy: [{ order: "asc" }, { slug: "asc" }],
@@ -146,6 +164,7 @@ export class PrismaContentRepository implements ContentRepository {
 
     return toUnitDetail(
       row,
+      row.module.stageId,
       row.module.code,
       row.lessons.map(toLessonSummary),
       row.exercises.map(toExerciseSummary),
