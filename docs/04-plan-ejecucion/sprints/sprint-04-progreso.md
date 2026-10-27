@@ -1,7 +1,7 @@
 # Sprint 04 — Progreso, desbloqueos y competencias
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅, S2 ✅ y S3 🔄 (cierre técnico)
-> **Avance:** 1/10 tareas · 1/10 criterios de aceptación.
+> **Avance:** 2/10 tareas · 2/10 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -90,7 +90,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 | ID | Tarea | Archivos principales | Sesión | Estado |
 |----|-------|----------------------|--------|--------|
 | S4-T1 | Contrato compartido del progreso: esquemas Zod y porcentaje | `packages/shared/src/schemas/progress.ts` + spec, `index.ts` | 1 | ✅ `0ffe003` |
-| S4-T2 | Persistencia: `UnitProgress`, `CompetencyProgress` y migración `progress_tracking` | `apps/api/prisma/schema.prisma` + migración | 2 | ⬜ |
+| S4-T2 | Persistencia: `UnitProgress`, `CompetencyProgress` y migración `progress_tracking` | `apps/api/prisma/schema.prisma` + migración | 2 | ✅ `f97261f` |
 | S4-T3 | Reglas de desbloqueo como función pura | `apps/api/src/modules/progress/progress.rules.ts` + spec | 3 | ⬜ |
 | S4-T4 | Puerto `ProgressRepository`, adaptador Prisma y mapper | `progress.repository.ts`, `prisma-progress.repository.ts`, `progress.mapper.ts` | 4 | ⬜ |
 | S4-T5 | `ProgressService` (overview, unidades, competencias, complete-lesson) y repositorio en memoria | `progress.service.ts` + spec, `in-memory-progress.repository.ts` | 5 | ⬜ |
@@ -107,7 +107,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 ## 6. Criterios de aceptación
 
 - [x] `S4-T1`: `progressPctSchema` rechaza < 0 y > 100; `competencyCodeSchema` acepta `C1`–`C14` y rechaza `C0`, `C15` y `c1`.
-- [ ] La migración `progress_tracking` crea `UnitProgress`, `CompetencyProgress` y `UnitState`, con cascada desde `User` y `Unit`.
+- [x] La migración `progress_tracking` crea `UnitProgress`, `CompetencyProgress` y `UnitState`, con cascada desde `User` y `Unit`.
 - [ ] Las reglas de desbloqueo cubren: sin prerrequisitos → `AVAILABLE`; un prerrequisito `MASTERED` → `AVAILABLE`; un prerrequisito pendiente → `LOCKED`; prerrequisitos inexistentes no desbloquean.
 - [ ] `POST /api/progress/units/:id/complete-lesson` dos veces con la misma lección no supera el 100 % (idempotencia).
 - [ ] Dos usuarios con sesión ven exclusivamente su propio progreso (prueba de aislamiento).
@@ -116,7 +116,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 - [ ] La web muestra el panel de avance con estados de carga, error y vacío.
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 1/10 verificados.
+**Estado:** 2/10 verificados.
 
 ---
 
@@ -146,6 +146,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 | Tarea | Verificación ejecutada | Resultado | Commit |
 |-------|------------------------|-----------|--------|
 | S4-T1 | `npm run test -w @codeai/shared` (rojo: `Failed to load url ./progress`, 1 suite fallida y 45 verdes) → `npm run test -w @codeai/shared` (64) · `pnpm typecheck` · `pnpm lint` · `npm test` (shared 64 · API 68 · web 81) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: `progressPctSchema` acepta 0/34.5/100 y rechaza −0.1 y 100.1; `competencyCodeSchema` acepta `C1`, `C10` y `C14` y rechaza `C0`, `C15`, `c1` y `C`; el resumen de unidad rechaza estado `DONE`, 140 % y fechas no ISO; el resumen global acepta el ejemplo de `contratos-api.md` §4.4 y rechaza `currentStage: 12`, contadores negativos y `C99`. `typecheck`, `lint` y `build` en 0 | `0ffe003` |
+| S4-T2 | `npx prisma validate` → `npx prisma migrate dev --name progress_tracking --skip-seed` → `npx prisma migrate status` → consulta a `information_schema.table_constraints` + `referential_constraints` y a `pg_enum` en el contenedor → `npm run typecheck` · `npm run lint` · `npm test` (shared 83 · API 94 · web 81) · `npm run build` | Verde: `The schema at prisma\schema.prisma is valid`; migración `20261027155602_progress_tracking` creada y aplicada, `3 migrations found` y «Database schema is up to date!»; `UnitProgress_unitId_fkey`, `UnitProgress_userId_fkey` y `CompetencyProgress_userId_fkey` con `ON DELETE CASCADE`; `UnitState` con los cinco valores en el orden de `UNIT_STATES`; Cliente Prisma regenerado (v6.19.3); 12 archivos de prueba, 258 pruebas y `Compiled successfully` | `f97261f` |
 
 > **Artefacto de verificación:** `pnpm typecheck` y `pnpm lint` ejecutan los scripts `npm` del monorepo, pero `pnpm` creó un `pnpm-lock.yaml` que no se versiona (el lockfile del repo es `package-lock.json`); se eliminó antes del commit.
 
