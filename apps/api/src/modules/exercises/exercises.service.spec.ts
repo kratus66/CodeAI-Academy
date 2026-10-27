@@ -499,3 +499,86 @@ describe("ExercisesService: corrección S6", () => {
     expect(stored.items[0]?.hintsUsed).toBe(2);
   });
 });
+
+describe("ExercisesService: historial S6", () => {
+  const at = (hour: number): Date => new Date(`2026-01-01T${String(hour).padStart(2, "0")}:00:00.000Z`);
+
+  it("ordena del más reciente al más antiguo y pagina con meta consistente", async () => {
+    const { service } = serviceWith([row()], undefined, undefined, undefined, [
+      seededSubmission({ id: "sub_a", createdAt: at(10) }),
+      seededSubmission({ id: "sub_c", createdAt: at(12) }),
+      seededSubmission({ id: "sub_b", createdAt: at(11) }),
+    ]);
+
+    const first = await service.listSubmissions("user_a", "ex_1", { page: 1, pageSize: 2 });
+    const second = await service.listSubmissions("user_a", "ex_1", { page: 2, pageSize: 2 });
+
+    expect(first.data.map((item) => item.id)).toEqual(["sub_c", "sub_b"]);
+    expect(first.meta).toEqual({ page: 1, pageSize: 2, total: 3, totalPages: 2 });
+    expect(second.data.map((item) => item.id)).toEqual(["sub_a"]);
+    expect(second.meta).toEqual({ page: 2, pageSize: 2, total: 3, totalPages: 2 });
+  });
+
+  it("no mezcla envíos de otro usuario ni los cuenta en el total", async () => {
+    const { service } = serviceWith([row()], undefined, undefined, undefined, [
+      seededSubmission({ id: "sub_a", createdAt: at(10) }),
+      seededSubmission({ id: "sub_b_1", userId: "user_b", createdAt: at(11) }),
+    ]);
+
+    const own = await service.listSubmissions("user_a", "ex_1", LIST_QUERY);
+
+    expect(own.data.map((item) => item.id)).toEqual(["sub_a"]);
+    expect(own.meta.total).toBe(1);
+  });
+
+  function visibleOnly(hintsUsed: number): SubmissionSeed {
+    return seededSubmission({
+      id: "sub_h",
+      outcome: "FAILED",
+      score: 67,
+      achievedLevel: 2,
+      hintsUsed,
+      results: [
+        { testId: "t1", name: "devuelve el usuario", passed: true, durationMs: 1 },
+        { testId: "t2", name: "lanza con 404", passed: true, durationMs: 1 },
+      ],
+    });
+  }
+
+  it("el historial no filtra pruebas ocultas y explica el tope con 3 pistas", async () => {
+    const { service } = serviceWith(
+      [row({ tests: weightOneTests() })],
+      undefined,
+      undefined,
+      undefined,
+      [visibleOnly(3)],
+    );
+
+    const { data } = await service.listSubmissions("user_a", "ex_1", LIST_QUERY);
+    const item = data[0];
+
+    expect(item?.hintsUsed).toBe(3);
+    expect(item?.achievedLevel).toBe(2);
+    expect(item?.feedback).toContain("Nivel máximo 2: usaste pistas de nivel 3.");
+    expect(item?.feedback).not.toContain("secreto");
+    expect(item?.feedback).not.toContain("t3");
+    const serialized = JSON.stringify(item);
+    expect(serialized).not.toContain("secreto");
+    expect(serialized).not.toContain("t3");
+  });
+
+  it("un envío con una pista no lleva el sufijo del tope", async () => {
+    const { service } = serviceWith(
+      [row({ tests: weightOneTests() })],
+      undefined,
+      undefined,
+      undefined,
+      [visibleOnly(1)],
+    );
+
+    const { data } = await service.listSubmissions("user_a", "ex_1", LIST_QUERY);
+
+    expect(data[0]?.hintsUsed).toBe(1);
+    expect(data[0]?.feedback).not.toContain("Nivel máximo 2");
+  });
+});
