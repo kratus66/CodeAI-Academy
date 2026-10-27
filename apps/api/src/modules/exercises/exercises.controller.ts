@@ -3,6 +3,8 @@ import type {
   ExerciseDetailResponse,
   ExerciseListQuery,
   ExerciseListResponse,
+  HintRequestInput,
+  HintResponseEnvelope,
   SubmissionListResponse,
   SubmissionResponse,
   UnitCodeParams,
@@ -10,9 +12,20 @@ import type {
 import {
   createSubmissionSchema,
   exerciseListQuerySchema,
+  hintRequestSchema,
   unitCodeParamsSchema,
 } from "@codeai/shared";
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 
@@ -23,6 +36,9 @@ import type { AccessTokenPayload } from "../auth/token.service";
 // Import de valor obligatorio: Nest resuelve `ExercisesService` por `design:paramtypes`.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { ExercisesService } from "./exercises.service";
+// Import de valor obligatorio: Nest resuelve `HintsService` por `design:paramtypes`.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { HintsService } from "./hints.service";
 
 /** El id llega de la fila de Prisma; sólo se comprueba que no venga vacío. */
 const exerciseIdParamsSchema = z.object({
@@ -32,7 +48,7 @@ const exerciseIdParamsSchema = z.object({
 type ExerciseIdParams = z.infer<typeof exerciseIdParamsSchema>;
 
 /**
- * Laboratorio de código (`contratos-api.md` §4.3). Todo el controlador está
+ * Laboratorio de código y pistas (`contratos-api.md` §4.3). Todo el controlador está
  * detrás de `JwtAuthGuard` y el `userId` de los envíos sale del token: el
  * cliente nunca elige de quién es un envío ni puede leer el de otro.
  *
@@ -45,7 +61,10 @@ type ExerciseIdParams = z.infer<typeof exerciseIdParamsSchema>;
 @Controller("exercises")
 @UseGuards(JwtAuthGuard)
 export class ExercisesController {
-  constructor(private readonly exercises: ExercisesService) {}
+  constructor(
+    private readonly exercises: ExercisesService,
+    private readonly hints: HintsService,
+  ) {}
 
   @Get("units/:code")
   async listByUnit(
@@ -78,5 +97,19 @@ export class ExercisesController {
     @Body(new ZodValidationPipe(createSubmissionSchema)) body: CreateSubmissionInput,
   ): Promise<SubmissionResponse> {
     return this.exercises.submit(user.sub, params.id, body);
+  }
+
+  /**
+   * La pista se sirve con el `userId` del token; el cuerpo sólo lleva `level`
+   * y la respuesta nunca incluye la solución.
+   */
+  @Post(":id/hints")
+  @HttpCode(HttpStatus.CREATED)
+  async requestHint(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,
+    @Body(new ZodValidationPipe(hintRequestSchema)) body: HintRequestInput,
+  ): Promise<HintResponseEnvelope> {
+    return this.hints.requestHint(user.sub, params.id, body);
   }
 }
