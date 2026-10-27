@@ -28,7 +28,8 @@ CodeAI Academy es a la vez:
 | **S4** | Progreso, desbloqueos y competencias | ✅ completado |
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | ✅ completado |
 | **S6** | Corrección automática y pistas graduadas | ✅ completado |
-| **S7–S11** | Repaso espaciado, IA, proyectos, entrevistas y analítica | ⬜ pendiente |
+| **S7** | Repaso espaciado con SM-2 | ✅ completado |
+| **S8–S11** | IA, proyectos, entrevistas y analítica | ⬜ pendiente |
 
 Detalle y criterios de cierre en [`docs/04-plan-ejecucion/roadmap-sprints.md`](docs/04-plan-ejecucion/roadmap-sprints.md).
 

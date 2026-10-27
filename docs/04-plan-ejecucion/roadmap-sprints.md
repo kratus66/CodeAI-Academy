@@ -28,7 +28,7 @@
 | **S4** | Progreso, desbloqueos y competencias | E1–E4 | `progress` | ✅ |
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ✅ |
 | **S6** | Corrección automática y pistas graduadas | E2–E7 | `exercises` | ✅ |
-| **S7** | Repaso espaciado (SM-2) | E2–E7 | `review` | ⬜ |
+| **S7** | Repaso espaciado (SM-2) | E2–E7 | `review` | ✅ |
 | **S8** | Capa de IA intercambiable y tutor socrático | E8–E9 | `ai` | ⬜ |
 | **S9** | Proyectos, rúbricas y portafolio | E9–E11 | `projects` | ⬜ |
 | **S10** | Simulaciones de entrevista | E11 | `interviews` | ⬜ |
@@ -36,7 +36,7 @@
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >
-> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 ✅ 16/16 tareas y 15/15 criterios**.
+> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 ✅ 16/16 tareas y 15/15 criterios** · **S7 ✅ 14/14 tareas y 12/12 criterios**.
 
 ---
 
@@ -102,11 +102,14 @@
 - **Cierre:** 16/16 tareas ✅ · 15/15 criterios de aceptación ✅ · verificación HTTP real con dos usuarios (45 comprobaciones: `422` fuera de orden, `409` al superar `maxAttempts`, historial aislado sin pruebas ocultas y `429` con `Retry-After`) · suite completa verde (shared 112 · API 238 · web 131).
 - **Ficha:** [`sprints/sprint-06-correccion-pistas.md`](sprints/sprint-06-correccion-pistas.md).
 
-### S7 — Repaso espaciado
+### S7 — Repaso espaciado ✅
 
 - **Objetivo:** los fundamentos se reevalúan a lo largo del tiempo (regla permanente 4).
 - **Entregables:** `review` con algoritmo SM-2, cola diaria, registro de aciertos/errores por competencia.
 - **Criterio de salida:** pruebas del cálculo de intervalos y de la cola; el repaso aparece en la app.
+- **Estado (2026-10-27):** completo. `ReviewItem`/`ReviewLog` con migración `spaced_repetition`, motor SM-2 puro (1 → 6 → ~16 días), calidad derivada del envío corregido con la penalización por pistas de nivel 3+, cola diaria de 30 intercalada por concepto, `dueReviews` real en el progreso y cola en `/learn/review` con las seis calidades.
+- **Cierre:** 14/14 tareas ✅ · 12/12 criterios de aceptación ✅ · verificación HTTP real con dos usuarios (51 comprobaciones: cola, respuesta, aislamiento, validación, `404`, repaso programado por el envío y `dueReviews`) · suite completa verde (shared 132 · API 280 · web 144).
+- **Ficha:** [`sprints/sprint-07-repaso-espaciado.md`](sprints/sprint-07-repaso-espaciado.md).
 
 ### S8 — Capa de IA intercambiable y tutor socrático
 

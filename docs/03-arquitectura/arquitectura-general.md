@@ -100,7 +100,7 @@ Usuario hace clic en "Verificar solución"
    4. Calcula puntuación y nivel alcanzado
    5. Registra Submission
    6. Actualiza ProgressService (unidad, competencia)
-   7. Si corresponde, programa ReviewSchedule (SM-2)
+   7. Si corresponde, programa ReviewItem (SM-2)
    │
    ▼
 [web] Recibe resultado → muestra retroalimentación → invalida caché de progreso

@@ -252,25 +252,60 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 
 **Idempotencia:** `complete-lesson` guarda las lecciones vistas en `UnitProgress.completedLessonIds`, así que repetir la misma lección no cambia el porcentaje. Responde `404 NOT_FOUND` si la unidad o la lección no existen (o si la lección no pertenece a la unidad) y `409 CONFLICT` si la unidad está bloqueada. Nunca acredita `MASTERED`: eso lo decide la evaluación de S6.
 
-### 4.5 Repaso (`/api/review`)
+### 4.5 Repaso (`/api/review`) — ✅ implementado en S7
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| GET | `/queue` | ✅ | Ítems vencidos (máx. 30) |
+| GET | `/queue` | ✅ | Ítems vencidos (máx. 30), intercalados por concepto |
 | POST | `/items/:id/answer` | ✅ | Registra calidad y recalcula SM-2 |
 
+**GET `/api/review/queue`**
+
 ```json
-// POST /api/review/items/:id/answer
+{
+  "items": [
+    {
+      "id": "ckx…",
+      "exerciseId": "ckx…",
+      "exerciseTitle": "Suma segura",
+      "exerciseSlug": "suma-segura-001",
+      "concept": "funciones",
+      "competencies": ["C1"],
+      "dueAt": "2026-10-28T09:00:00.000Z",
+      "intervalDays": 1,
+      "repetitions": 1,
+      "easeFactor": 2.6,
+      "priority": 0
+    }
+  ],
+  "dueReviews": 7,
+  "limit": 30
+}
+```
+
+**POST `/api/review/items/:id/answer`**
+
+```json
+// Request
 { "quality": 4, "durationMs": 42000 }
 
 // 200 Response
 {
-  "nextDueAt": "2026-11-01T14:30:00.000Z",
+  "nextDueAt": "2026-11-02T14:30:00.000Z",
   "intervalDays": 6,
   "easeFactor": 2.6,
   "repetitions": 2
 }
 ```
+
+**Reglas del repaso**
+
+- La cola se ordena por `priority` desc y `dueAt` asc, y se **intercala por concepto** antes de servirse: al menos el 30 % de las parejas adyacentes mezcla conceptos (`prerequisitos-y-progreso.md` §5.3).
+- `dueReviews` cuenta **todos** los vencidos, no sólo los 30 servidos; el límite diario es `REVIEW_QUEUE_MAX = 30`.
+- `quality` es un entero 0–5; el servidor aplica SM-2 y nunca acepta un intervalo calculado por el cliente.
+- `durationMs` se valida y todavía **no se persiste**: `ReviewLog` (`modelo-datos.md` §5) no tiene columna de duración; su análisis es de S11.
+- `404 NOT_FOUND` si el ítem no existe o pertenece a otro estudiante (`contratos-api.md` §5).
+- Cada respuesta añade una fila a `ReviewLog` y actualiza el único ítem del usuario para ese ejercicio.
 
 ### 4.6 Sandbox (`/api/sandbox`)
 

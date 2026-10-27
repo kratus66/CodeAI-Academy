@@ -10,7 +10,7 @@ La literatura sobre aprendizaje (en particular la síntesis de estrategias cogni
 
 | Estrategia | Definición breve | Traducción a CodeAI Academy | Mecanismo en la plataforma |
 |-----------|------------------|---------------------------|---------------------------|
-| **Práctica espaciada** | Distribuir la práctica en el tiempo en lugar de concentrarla | Un concepto se reevalúa al día siguiente, a la semana y dentro de proyectos posteriores | Motor SM-2 + `ReviewSchedule` |
+| **Práctica espaciada** | Distribuir la práctica en el tiempo en lugar de concentrarla | Un concepto se reevalúa al día siguiente, a la semana y dentro de proyectos posteriores | Motor SM-2 + `ReviewItem` |
 | **Recuperación activa** | Recuperar de memoria en vez de releer | Antes de ver la solución, el estudiante predice, explica o escribe el código | Bloqueo de revelación + `QuizAttempt` |
 | **Intercalado** | Mezclar tipos de problemas para entrenar la discriminación | Ejercicios que mezclan lógica, pruebas, APIs y depuración sin anunciar la categoría | `Exercise.stacking` (conceptos cruzados) |
 | **Elaboración** | Explicar el *porqué* y conectar con conocimiento previo | Justificar decisiones, alternativas y consecuencias | Campo obligatorio de justificación en entregas |

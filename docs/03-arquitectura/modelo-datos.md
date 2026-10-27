@@ -465,6 +465,16 @@ model ReviewLog {
 }
 ```
 
+> **Implementación (S7).** Un único `ReviewItem` por `[userId, exerciseId]`: cada
+> envío corregido lo reprograma y añade su `ReviewLog`, nunca crea otro. `concept`
+> es `Exercise.concepts[0]` (`"general"` si el ejercicio no declara ninguno) y
+> agrupa la cola intercalada. `priority` sube a `1` cuando `q < 3` para que un
+> fallo vuelva antes, y baja a `0` con un acierto. La cola consulta
+> `[userId, dueAt]` y el límite diario de 30 se aplica en el servicio, no en la
+> tabla. `ReviewLog` es la evidencia de aciertos y errores por concepto; la
+> duración declarada por el cliente se valida en HTTP pero no tiene columna aquí
+> (su análisis es de S11).
+
 ---
 
 ## 6. Proyectos, entrevistas e IA
