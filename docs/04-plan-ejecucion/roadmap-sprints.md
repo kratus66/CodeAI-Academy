@@ -24,7 +24,7 @@
 | **S0** | Fundación técnica y landing pública | E0 | `health` | ✅ |
 | **S1** | Identidad y acceso (registro, login, roles, sesión) | E0–E1 | `auth` (`users` en S3) | ✅ |
 | **S2** | Modelo de datos y API de contenido | E1 | `content` | ✅ |
-| **S3** | Plataforma de aprendizaje (catálogo y lección) | E1–E3 | `content` (lectura) | ⬜ |
+| **S3** | Plataforma de aprendizaje (catálogo y lección) | E1–E3 | `content` (lectura) | 🔄 |
 | **S4** | Progreso, desbloqueos y competencias | E1–E4 | `progress` | ⬜ |
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ⬜ |
 | **S6** | Corrección automática y pistas graduadas | E2–E7 | `exercises` | ⬜ |
@@ -36,7 +36,7 @@
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >
-> **Cierre acumulado (2026-10-26):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 ⏳ siguiente**.
+> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación).
 
 ---
 
@@ -67,11 +67,14 @@
 - **Cierre:** 10/10 tareas ✅ · 12/12 criterios de aceptación ✅ · 12 etapas / 48 módulos / 63 unidades sembradas de forma idempotente · suite completa verde.
 - **Ficha:** [`sprints/sprint-02-contenido.md`](sprints/sprint-02-contenido.md).
 
-### S3 — Plataforma de aprendizaje
+### S3 — Plataforma de aprendizaje 🔄
 
 - **Objetivo:** el estudiante navega la ruta y lee lecciones dentro de la app.
-- **Entregables:** shell autenticado, catálogo de etapas/módulos, vista de unidad con navegación anterior/siguiente, estados de carga y error.
+- **Entregables:** shell autenticado, catálogo de etapas/módulos, vista de unidad con navegación anterior/siguiente, lector de lección (bloques, 7 pasos y recursos) y estados de carga y error.
 - **Criterio de salida:** recorrido completo etapa → módulo → unidad con datos reales de la API; sin contenido hardcodeado.
+- **Estado (2026-10-27):** cierre técnico. Contrato ampliado (`units` en el módulo y `stageId` en la unidad), cliente `contentApi` con validación Zod, shell autenticado, catálogo, vista de etapa, vista de unidad y lector de lección implementados con 81 pruebas de web; verificado por HTTP contra PostgreSQL local y con `npm run build` en 0 (cuatro rutas nuevas).
+- **Cierre:** 10/11 tareas ✅ · 5/10 criterios de aceptación ✅ (los cinco restantes exigen navegador con sesión) · pendiente S3-T11, autoría de la primera lección real con revisión pedagógica.
+- **Ficha:** [`sprints/sprint-03-aprendizaje.md`](sprints/sprint-03-aprendizaje.md).
 
 ### S4 — Progreso, desbloqueos y competencias
 

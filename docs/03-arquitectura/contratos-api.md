@@ -79,7 +79,7 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 
 ## 4. Endpoints por módulo
 
-> **Estado del contrato (2026-10-26):** implementados `GET /api/health` (S0), `/api/auth/*` (S1) y `/api/content/*` (S2). El resto de endpoints describe el **contrato objetivo** y se implementa en los sprints S3–S11 según el [`roadmap`](../04-plan-ejecucion/roadmap-sprints.md).
+> **Estado del contrato (2026-10-27):** implementados `GET /api/health` (S0), `/api/auth/*` (S1) y `/api/content/*` (S2), con el contrato ampliado en S3 (`units` en el módulo y `stageId` en la unidad) y consumido por la web en `/learn/*`. El resto de endpoints describe el **contrato objetivo** y se implementa en los sprints S4–S11 según el [`roadmap`](../04-plan-ejecucion/roadmap-sprints.md).
 
 ### 4.1 Autenticación (`/api/auth`) — ✅ implementado en S1
 
@@ -142,6 +142,41 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 - Paginación 1-based: `skip = (page - 1) × pageSize`, `totalPages = ceil(total / pageSize)` (0 si no hay coincidencias).
 - `:id`, `:code` y `:slug` se validan antes de llegar al servicio, así que un formato inválido devuelve `400 VALIDATION_ERROR` con `details[].field` en vez de un `404` engañoso.
 - `solution`, `sources` y pruebas ocultas no se seleccionan en la consulta: nunca salen de la base de datos.
+
+**Ampliación de S3: `units` en el módulo y `stageId` en la unidad**
+
+```json
+{
+  "stage": {
+    "id": 1,
+    "modules": [
+      {
+        "id": "cmvpiam7600111dic1x2obsqq",
+        "code": "M1.1",
+        "order": 1,
+        "unitCount": 4,
+        "units": [
+          {
+            "id": "cmvpiam7900131dicnddo43lt",
+            "code": "U1.1.1",
+            "title": "Algoritmos y pseudocódigo",
+            "stageId": 1,
+            "moduleCode": "M1.1",
+            "order": 1,
+            "estimatedMin": null,
+            "prerequisiteIds": []
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- `units` viaja **dentro de cada módulo**, ordenado por `order` ascendente y sin elementos no publicados: una sola petición pinta la etapa completa. `unitCount` se deriva de esa misma lista, así que nunca discrepan.
+- `stageId` es obligatorio en `UnitSummary` y es el dato con el que la web pide la etapa desde la vista de unidad (migas y navegación anterior/siguiente). El cliente **no** deduce la etapa parseando `U0.1.1`.
+- `GET /api/content/units/:code` devuelve `{ unit }` con `lessons` y `exercises` (listas vacías hoy, porque la semilla no siembra lecciones) y sigue sin exponer `solution` ni `sources`.
+- Verificado por HTTP el 2026-10-27 (S3-T9): `stages/1` devuelve 5 módulos con sus unidades ordenadas y `units/U0.1.1` responde `stageId: 0` con `lessons: []`.
 
 ### 4.3 Ejercicios (`/api/exercises`)
 
@@ -327,6 +362,7 @@ Al exceder: `429 RATE_LIMITED` con cabecera `Retry-After`.
 ## 7. Versionado y compatibilidad
 
 - Cambio **compatible** (añadir campo opcional): sin cambio de versión.
+- Añadir un campo **requerido en una respuesta** se considera compatible para el consumidor pero rompe a quien construye el objeto (fixtures, mappers, pruebas): se entrega en un solo commit con el esquema de `shared`, el mapper, el adaptador y los fixtures actualizados. Así se hizo en S3 con `ModuleSummary.units` y `UnitSummary.stageId`.
 - Cambio **incompatible** (renombrar, eliminar, cambiar tipo): nueva versión `/api/v2`.
 - Ambas versiones conviven al menos un sprint.
 
