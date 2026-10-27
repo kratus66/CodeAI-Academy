@@ -1,7 +1,7 @@
 # Sprint 04 — Progreso, desbloqueos y competencias
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅, S2 ✅ y S3 🔄 (cierre técnico)
-> **Avance:** 2/10 tareas · 2/10 criterios de aceptación.
+> **Avance:** 3/10 tareas · 3/10 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -47,6 +47,7 @@ Al cerrar el sprint, la plataforma puede asumir:
 | `LOCKED` y `AVAILABLE` se derivan al leer, no se persisten como verdad | Si se guardara `LOCKED`, completar un prerrequisito exigiría actualizar N filas de otros usuarios | Recalcular y escribir todos los registros en cada avance |
 | `POST /units/:id/complete-lesson` es **idempotente** | Marcar dos veces la misma lección no debe inflar el porcentaje | Contador incremental sin clave de lección |
 | Contadores de `overview` con los cuatro campos publicados (`mastered`, `inProgress`, `needsReview`, `locked`) | `contratos-api.md` §4.4 es el contrato vigente; añadir `available` lo cambiaría | Inventar un quinto contador |
+| `AVAILABLE` se cuenta dentro de `inProgress` | Con cuatro contadores, la suma debe dar el total de unidades; `AVAILABLE` es «desbloqueada sin dominar» | Dejar las unidades disponibles fuera del recuento |
 | `dueReviews` se sirve como `0` en S4 | El contrato ya lo pide y todavía no existe `ReviewItem`; `0` es la verdad actual | Omitir el campo y romper el contrato |
 | `progressPct` es `Float` 0–100 (no dinero) | Es un porcentaje, no un importe: ADR-0004 no aplica y no hay aritmética monetaria en el sprint | Decimales como `string` |
 
@@ -91,7 +92,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 |----|-------|----------------------|--------|--------|
 | S4-T1 | Contrato compartido del progreso: esquemas Zod y porcentaje | `packages/shared/src/schemas/progress.ts` + spec, `index.ts` | 1 | ✅ `0ffe003` |
 | S4-T2 | Persistencia: `UnitProgress`, `CompetencyProgress` y migración `progress_tracking` | `apps/api/prisma/schema.prisma` + migración | 2 | ✅ `f97261f` |
-| S4-T3 | Reglas de desbloqueo como función pura | `apps/api/src/modules/progress/progress.rules.ts` + spec | 3 | ⬜ |
+| S4-T3 | Reglas de desbloqueo como función pura | `apps/api/src/modules/progress/progress.rules.ts` + spec | 3 | ✅ `9ca0d6d` |
 | S4-T4 | Puerto `ProgressRepository`, adaptador Prisma y mapper | `progress.repository.ts`, `prisma-progress.repository.ts`, `progress.mapper.ts` | 4 | ⬜ |
 | S4-T5 | `ProgressService` (overview, unidades, competencias, complete-lesson) y repositorio en memoria | `progress.service.ts` + spec, `in-memory-progress.repository.ts` | 5 | ⬜ |
 | S4-T6 | Controlador `/api/progress`, módulo y registro en `AppModule` | `progress.controller.ts`, `progress.module.ts`, `app.module.ts` | 6 | ⬜ |
@@ -108,7 +109,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 
 - [x] `S4-T1`: `progressPctSchema` rechaza < 0 y > 100; `competencyCodeSchema` acepta `C1`–`C14` y rechaza `C0`, `C15` y `c1`.
 - [x] La migración `progress_tracking` crea `UnitProgress`, `CompetencyProgress` y `UnitState`, con cascada desde `User` y `Unit`.
-- [ ] Las reglas de desbloqueo cubren: sin prerrequisitos → `AVAILABLE`; un prerrequisito `MASTERED` → `AVAILABLE`; un prerrequisito pendiente → `LOCKED`; prerrequisitos inexistentes no desbloquean.
+- [x] Las reglas de desbloqueo cubren: sin prerrequisitos → `AVAILABLE`; un prerrequisito `MASTERED` → `AVAILABLE`; un prerrequisito pendiente → `LOCKED`; prerrequisitos inexistentes no desbloquean.
 - [ ] `POST /api/progress/units/:id/complete-lesson` dos veces con la misma lección no supera el 100 % (idempotencia).
 - [ ] Dos usuarios con sesión ven exclusivamente su propio progreso (prueba de aislamiento).
 - [ ] `GET /api/progress/*` responde `401` sin cookie y `404` con una unidad inexistente.
@@ -116,7 +117,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 - [ ] La web muestra el panel de avance con estados de carga, error y vacío.
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 2/10 verificados.
+**Estado:** 3/10 verificados.
 
 ---
 
@@ -147,6 +148,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 |-------|------------------------|-----------|--------|
 | S4-T1 | `npm run test -w @codeai/shared` (rojo: `Failed to load url ./progress`, 1 suite fallida y 45 verdes) → `npm run test -w @codeai/shared` (64) · `pnpm typecheck` · `pnpm lint` · `npm test` (shared 64 · API 68 · web 81) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: `progressPctSchema` acepta 0/34.5/100 y rechaza −0.1 y 100.1; `competencyCodeSchema` acepta `C1`, `C10` y `C14` y rechaza `C0`, `C15`, `c1` y `C`; el resumen de unidad rechaza estado `DONE`, 140 % y fechas no ISO; el resumen global acepta el ejemplo de `contratos-api.md` §4.4 y rechaza `currentStage: 12`, contadores negativos y `C99`. `typecheck`, `lint` y `build` en 0 | `0ffe003` |
 | S4-T2 | `npx prisma validate` → `npx prisma migrate dev --name progress_tracking --skip-seed` → `npx prisma migrate status` → consulta a `information_schema.table_constraints` + `referential_constraints` y a `pg_enum` en el contenedor → `npm run typecheck` · `npm run lint` · `npm test` (shared 83 · API 94 · web 81) · `npm run build` | Verde: `The schema at prisma\schema.prisma is valid`; migración `20261027155602_progress_tracking` creada y aplicada, `3 migrations found` y «Database schema is up to date!»; `UnitProgress_unitId_fkey`, `UnitProgress_userId_fkey` y `CompetencyProgress_userId_fkey` con `ON DELETE CASCADE`; `UnitState` con los cinco valores en el orden de `UNIT_STATES`; Cliente Prisma regenerado (v6.19.3); 12 archivos de prueba, 258 pruebas y `Compiled successfully` | `f97261f` |
+| S4-T3 | Rojo: `npx vitest run src/modules/progress` con el módulo ausente → `Failed to load url ./progress.rules`, 1 suite fallida. Verde: misma orden → 22 pruebas. `npm run typecheck` · `npm run lint` · `npm test` (shared 83 · API 116 · web 81) · `npm run build` | Verde: los cuatro casos del criterio quedan fijados (sin prerrequisitos y prerrequisito `MASTERED` → `AVAILABLE`; prerrequisito pendiente y código inexistente → `LOCKED`), más fila `LOCKED` obsoleta → `AVAILABLE`, bloqueo sobre estado guardado, `NEEDS_REVIEW` no desbloquea y `AVAILABLE` plegado en `inProgress`. `typecheck`, `lint` y `build` en 0 | `9ca0d6d` |
 
 > **Artefacto de verificación:** `pnpm typecheck` y `pnpm lint` ejecutan los scripts `npm` del monorepo, pero `pnpm` creó un `pnpm-lock.yaml` que no se versiona (el lockfile del repo es `package-lock.json`); se eliminó antes del commit.
 
