@@ -329,6 +329,18 @@ const unitCodeSchema = z
   .string()
   .regex(unitCodePattern, "El código de unidad debe tener la forma U0.1.1");
 
+export const contentSeedLessonSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug en minúsculas separado por guiones"),
+  title: z.string().min(1),
+  estimatedMin: estimatedMinSchema.default(null),
+  order: z.number().int().positive(),
+  isPublished: z.boolean(),
+  content: lessonContentSchema,
+  steps: lessonStepsSchema,
+});
+
+export type ContentSeedLesson = z.infer<typeof contentSeedLessonSchema>;
+
 export const contentSeedUnitSchema = z.object({
   code: unitCodeSchema,
   title: z.string().min(1),
@@ -337,6 +349,7 @@ export const contentSeedUnitSchema = z.object({
   order: z.number().int().positive(),
   isPublished: z.boolean(),
   prerequisiteIds: z.array(unitCodeSchema).default([]),
+  lessons: z.array(contentSeedLessonSchema).default([]),
 });
 
 export type ContentSeedUnit = z.infer<typeof contentSeedUnitSchema>;

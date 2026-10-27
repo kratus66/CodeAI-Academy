@@ -105,11 +105,29 @@ async function main(): Promise<void> {
             moduleId: storedModule.id,
           };
 
-          await prisma.unit.upsert({
+          const storedUnit = await prisma.unit.upsert({
             where: { code: unit.code },
             create: { code: unit.code, ...unitFields },
             update: unitFields,
           });
+
+          for (const lesson of unit.lessons) {
+            const lessonFields = {
+              title: lesson.title,
+              estimatedMin: lesson.estimatedMin,
+              order: lesson.order,
+              isPublished: lesson.isPublished,
+              content: lesson.content,
+              steps: lesson.steps,
+              unitId: storedUnit.id,
+            };
+
+            await prisma.lesson.upsert({
+              where: { slug: lesson.slug },
+              create: { slug: lesson.slug, ...lessonFields },
+              update: lessonFields,
+            });
+          }
         }
       }
     }
