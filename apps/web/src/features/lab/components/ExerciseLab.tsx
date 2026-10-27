@@ -6,7 +6,6 @@ import type {
   SandboxLanguage,
   SandboxRunRequest,
   SandboxRunResponse,
-  SubmissionOutcome,
   SubmissionSummary,
 } from "@codeai/shared";
 import { sandboxRunRequestSchema } from "@codeai/shared";
@@ -24,6 +23,8 @@ import {
 } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
 
+import { AttemptHistory, OUTCOME_LABEL } from "./AttemptHistory";
+import type { LoadHistory } from "./AttemptHistory";
 import { CodeEditor } from "./CodeEditor";
 import type { CodeSurfaceProps } from "./CodeEditor";
 import { HintPanel } from "./HintPanel";
@@ -37,7 +38,8 @@ import type { RequestHint } from "./HintPanel";
  * Ejecutar usa `/sandbox/run` (sin pruebas: sólo comprueba que el código corre
  * en el mock) y enviar usa `/exercises/:id/submissions`, que sí evalúa las
  * pruebas visibles y persiste el envío. Además pide pistas graduadas contra
- * `POST /api/exercises/:id/hints` desde el panel de pistas.
+ * `POST /api/exercises/:id/hints` desde el panel de pistas. Debajo del resultado
+ * del envío lista el historial de intentos, que se vuelve a pedir tras cada envío.
  */
 
 /** Nombre del archivo que se manda al sandbox; el mock lo cita en `stderr`. */
@@ -45,14 +47,6 @@ const FILE_NAME: Record<SandboxLanguage, string> = {
   typescript: "index.ts",
   javascript: "index.js",
   sql: "query.sql",
-};
-
-const OUTCOME_LABEL: Record<SubmissionOutcome, string> = {
-  PASSED: "Superado",
-  PARTIAL: "Parcial",
-  FAILED: "Fallido",
-  ERROR: "Error de ejecución",
-  TIMEOUT: "Tiempo agotado",
 };
 
 const PRIMARY_BUTTON =
@@ -242,6 +236,7 @@ interface LabWorkspaceProps {
     input: CreateSubmissionInput,
   ) => Promise<SubmissionSummary>;
   readonly requestHint?: RequestHint;
+  readonly loadHistory?: LoadHistory;
 }
 
 /** Estado del laboratorio una vez el ejercicio está cargado. */
@@ -253,6 +248,7 @@ function LabWorkspace({
   runCode,
   submitSolution,
   requestHint,
+  loadHistory,
 }: LabWorkspaceProps) {
   const [code, setCode] = useState(() => exercise.starterCode ?? "");
   const [selfExplanation, setSelfExplanation] = useState("");
@@ -262,6 +258,7 @@ function LabWorkspace({
   const [submission, setSubmission] = useState<SubmissionSummary | null>(null);
   const [submitError, setSubmitError] = useState<unknown>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
 
   const language = exercise.language;
   const busy = running || submitting;
@@ -319,6 +316,7 @@ function LabWorkspace({
       );
 
       setSubmission(result);
+      setAttemptCount((count) => count + 1);
     } catch (error) {
       setSubmitError(error);
     } finally {
@@ -470,6 +468,11 @@ function LabWorkspace({
           ) : null}
           {run ? <RunPanel run={run} /> : null}
           {submission ? <SubmissionPanel submission={submission} /> : null}
+          <AttemptHistory
+            exerciseId={exercise.id}
+            refreshToken={attemptCount}
+            loadHistory={loadHistory}
+          />
         </section>
       </div>
     </div>
@@ -488,6 +491,7 @@ export interface ExerciseLabProps {
     input: CreateSubmissionInput,
   ) => Promise<SubmissionSummary>;
   readonly requestHint?: RequestHint;
+  readonly loadHistory?: LoadHistory;
 }
 
 /** Una URL mal formada y un ejercicio no publicado son el mismo caso. */
@@ -511,6 +515,7 @@ export function ExerciseLab({
   submitSolution = (exerciseId, input) =>
     exercisesApi.submit(exerciseId, input),
   requestHint,
+  loadHistory,
 }: ExerciseLabProps) {
   const load = useCallback(
     (signal: AbortSignal) => loadLab(unitCode, slug, signal),
@@ -566,6 +571,7 @@ export function ExerciseLab({
     <LabWorkspace
       editorSurface={editorSurface}
       exercise={state.data.exercise}
+      loadHistory={loadHistory}
       requestHint={requestHint}
       runCode={runCode}
       submitSolution={submitSolution}

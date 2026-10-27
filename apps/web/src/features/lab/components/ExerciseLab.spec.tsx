@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-client";
 
+import type { LoadHistory } from "./AttemptHistory";
 import { ExerciseLab } from "./ExerciseLab";
 import type { ExerciseLabContent } from "./ExerciseLab";
 import type { RequestHint } from "./HintPanel";
@@ -80,6 +81,7 @@ function renderLab({
     ...HINT,
     level,
   })),
+  loadHistory = vi.fn(async (): Promise<SubmissionSummary[]> => []),
 }: {
   content?: ExerciseLabContent;
   runCode?: (input: SandboxRunRequest) => Promise<SandboxRunResponse>;
@@ -88,10 +90,12 @@ function renderLab({
     input: CreateSubmissionInput,
   ) => Promise<SubmissionSummary>;
   requestHint?: RequestHint;
+  loadHistory?: LoadHistory;
 } = {}) {
   render(
     <ExerciseLab
       editorSurface={null}
+      loadHistory={loadHistory}
       loadLab={async () => content}
       requestHint={requestHint}
       runCode={runCode}
@@ -101,7 +105,7 @@ function renderLab({
     />,
   );
 
-  return { runCode, submitSolution, requestHint };
+  return { runCode, submitSolution, requestHint, loadHistory };
 }
 
 describe("ExerciseLab", () => {
@@ -176,6 +180,29 @@ describe("ExerciseLab", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/Nivel alcanzado: 2\/4/)).toBeInTheDocument();
     expect(screen.getByText(/3 pistas usadas/)).toBeInTheDocument();
+  });
+
+  it("refresca el historial tras enviar y pinta el intento", async () => {
+    const loadHistory = vi
+      .fn<() => Promise<SubmissionSummary[]>>()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([SUBMISSION]);
+
+    renderLab({ loadHistory });
+
+    await screen.findByRole("heading", { name: "Suma segura", level: 1 });
+    expect(
+      await screen.findByText("Todavía no has enviado este ejercicio."),
+    ).toBeInTheDocument();
+    expect(loadHistory).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Historial de intentos" }),
+    ).toBeInTheDocument();
+    expect(loadHistory).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Intento 1")).toBeInTheDocument();
   });
 
   it("pide la pista del ejercicio desde el panel del laboratorio", async () => {
