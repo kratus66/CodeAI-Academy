@@ -5,6 +5,7 @@ import {
   errorResponseSchema,
   exerciseDetailResponseSchema,
   exerciseListResponseSchema,
+  hintResponseEnvelopeSchema,
   lessonDetailSchema,
   paginatedSchema,
   progressOverviewSchema,
@@ -24,6 +25,8 @@ import type {
   ErrorDetail,
   ExerciseDetail,
   ExerciseListItem,
+  HintLevel,
+  HintResponse,
   LessonDetail,
   LoginInput,
   PaginationMeta,
@@ -336,6 +339,23 @@ export const exercisesApi = {
     );
 
     return response.exercise;
+  },
+
+  /**
+   * Pide la pista de un nivel (`contratos-api.md` §4.3). El servidor valida la
+   * progresión: pedir el nivel 2 sin el 1 responde `422 RULE_VIOLATION` y el
+   * cliente lo deja subir como `ApiError` para que la vista lo explique.
+   */
+  async requestHint(id: string, level: HintLevel): Promise<HintResponse> {
+    const response = parseContract(
+      hintResponseEnvelopeSchema,
+      await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/hints`, {
+        method: "POST",
+        body: { level },
+      }),
+    );
+
+    return response.hint;
   },
 
   /** Historial del propio estudiante; la API nunca devuelve envíos ajenos. */

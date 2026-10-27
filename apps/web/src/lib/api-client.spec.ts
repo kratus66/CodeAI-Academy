@@ -494,6 +494,12 @@ const SUBMISSION = {
   createdAt: "2026-10-27T10:00:00.000Z",
 } as const;
 
+const HINT = {
+  level: 2,
+  text: "Piensa en qué operador combina dos números.",
+  nextLevelAvailable: true,
+} as const;
+
 describe("exercisesApi", () => {
   it("lista los ejercicios de una unidad por su código", async () => {
     fetchMock.mockResolvedValue(
@@ -578,6 +584,52 @@ describe("exercisesApi", () => {
 
     expect(error.status).toBe(404);
     expect(error.code).toBe("NOT_FOUND");
+  });
+
+  it("pide la pista de un nivel con POST", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ hint: HINT }));
+
+    const hint = await exercisesApi.requestHint("ex_1", 2);
+
+    expect(hint).toEqual(HINT);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exercises/ex_1/hints",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ level: 2 }),
+    });
+  });
+
+  it("rechaza una pista que filtra campos de más", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ hint: { ...HINT, solution: "return a + b" } }),
+    );
+
+    const error = await captureApiError(exercisesApi.requestHint("ex_1", 2));
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe("INTERNAL_ERROR");
+  });
+
+  it("propaga el 422 al pedir un nivel sin el anterior", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "RULE_VIOLATION",
+            message: "Pide primero la pista del nivel 1",
+            traceId: "trace-422",
+          },
+        },
+        { status: 422 },
+      ),
+    );
+
+    const error = await captureApiError(exercisesApi.requestHint("ex_1", 2));
+
+    expect(error.status).toBe(422);
+    expect(error.code).toBe("RULE_VIOLATION");
   });
 });
 
