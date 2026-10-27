@@ -4,8 +4,10 @@
 // S2 (contenido): Stage → Module → Unit → Lesson → Exercise y el catálogo de
 // recursos.
 // S4 (progreso): UnitProgress + CompetencyProgress.
-// Las relaciones con envíos, pistas y pruebas se añaden en los sprints que
-// crean esas tablas (S5–S6), nunca antes.
+// S5–S6: ejercicios, envíos, pruebas y pistas.
+// S7 (repaso): ReviewItem + ReviewLog (SM-2).
+// Las relaciones con proyectos, entrevistas e IA se añaden en los sprints que
+// crean esas tablas (S8–S10), nunca antes.
 
 generator client {
   provider = "prisma-client-js"
@@ -42,6 +44,7 @@ model User {
   competencyProgress CompetencyProgress[]
   submissions        Submission[]
   hintRequests       HintRequest[]
+  reviewItems        ReviewItem[]
 
   @@index([role])
 }
@@ -228,6 +231,7 @@ model Exercise {
   tests        ExerciseTest[]
   submissions  Submission[]
   hintRequests HintRequest[]
+  reviewItems  ReviewItem[]
 
   @@index([unitId, type])
   @@index([isPublished])
@@ -385,4 +389,44 @@ model CompetencyProgress {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, competency])
+}
+
+// --------------------------- REPASO ESPACIADO ---------------------------
+
+/// Item de repaso de un ejercicio (`modelo-datos.md` �5). Un �nico item por
+/// usuario y ejercicio: cada env�o lo reprograma en lugar de crear otro.
+model ReviewItem {
+  id             String    @id @default(cuid())
+  userId         String
+  exerciseId     String
+  /// Primer concepto del ejercicio; agrupa la cola intercalada.
+  concept        String
+  easeFactor     Float     @default(2.5)
+  intervalDays   Int       @default(1)
+  repetitions    Int       @default(0)
+  dueAt          DateTime
+  lastReviewedAt DateTime?
+  priority       Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  logs     ReviewLog[]
+
+  @@unique([userId, exerciseId])
+  @@index([userId, dueAt])
+}
+
+/// Bit�cora de una respuesta de repaso: la evidencia de aciertos y errores.
+model ReviewLog {
+  id           String   @id @default(cuid())
+  reviewItemId String
+  quality      Int // 0..5
+  intervalDays Int
+  easeFactor   Float
+  reviewedAt   DateTime @default(now())
+
+  reviewItem ReviewItem @relation(fields: [reviewItemId], references: [id], onDelete: Cascade)
+
+  @@index([reviewItemId, reviewedAt])
 }
