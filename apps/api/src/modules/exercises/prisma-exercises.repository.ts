@@ -45,7 +45,7 @@ const EXERCISE_SELECT = {
   unit: { select: { code: true } },
   hints: { select: { level: true }, orderBy: { level: "asc" } },
   tests: {
-    select: { id: true, name: true, isHidden: true },
+    select: { id: true, name: true, isHidden: true, weight: true, spec: true },
     orderBy: [{ isHidden: "asc" }, { name: "asc" }],
   },
 } satisfies Prisma.ExerciseSelect;
@@ -102,6 +102,24 @@ export class PrismaExercisesRepository implements ExercisesRepository {
     });
 
     return row === null ? null : toExerciseRow(row);
+  }
+
+  /**
+   * Misma condición de publicación que el listado: si la unidad no está
+   * publicada (o no existe), el estudiante recibe `404` en vez de una lista
+   * vacía que parecería «sin ejercicios».
+   */
+  async unitExists(unitCode: string): Promise<boolean> {
+    const row = await this.prisma.unit.findFirst({
+      where: {
+        code: unitCode,
+        isPublished: true,
+        module: { isPublished: true, stage: { isPublished: true } },
+      },
+      select: { id: true },
+    });
+
+    return row !== null;
   }
 
   async listSubmissions(

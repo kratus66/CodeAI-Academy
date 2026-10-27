@@ -35,6 +35,16 @@ export interface ExerciseRow {
     id: string;
     name: string;
     isHidden: boolean;
+    /**
+     * Peso relativo de la prueba en la nota (`ExerciseTest.weight`, 1 por
+     * defecto). Opcional para que un dataset de prueba no tenga que declararlo.
+     */
+    weight?: number;
+    /**
+     * Aserción que el sandbox ejecuta. Nunca se sirve al cliente: sólo viaja
+     * dentro de la petición al puerto (`sandbox-ejecucion.md` §5).
+     */
+    spec?: unknown;
   }[];
 }
 
@@ -72,6 +82,12 @@ export interface CreateSubmissionInput {
 export interface ExercisesRepository {
   /** Ejercicios publicados de una unidad publicada, por orden curricular. */
   listByUnit(unitCode: string, window: PageWindow): Promise<Page<ExerciseRow>>;
+  /**
+   * ¿La unidad existe y está publicada? El listado responde `404` si no: una
+   * unidad inexistente y una unidad sin ejercicios no son el mismo caso
+   * (`contratos-api.md` §4.3).
+   */
+  unitExists(unitCode: string): Promise<boolean>;
   findPublished(id: string): Promise<ExerciseRow | null>;
   /** Historial del propio usuario; el `userId` nunca viene del cliente. */
   listSubmissions(

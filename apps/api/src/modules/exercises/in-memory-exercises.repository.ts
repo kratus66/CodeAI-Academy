@@ -16,6 +16,12 @@ export interface ExercisesDataset {
   /** Ejercicios publicados; el adaptador no conoce `isPublished`. */
   exercises: readonly ExerciseRow[];
   submissions: readonly SubmissionSeed[];
+  /**
+   * Unidades publicadas que no tienen ejercicios en el dataset. Sin esto sólo se
+   * conocen las unidades que aparecen en `exercises`, y una unidad vacía se
+   * confundiría con una inexistente.
+   */
+  unitCodes?: readonly string[];
 }
 
 export const EMPTY_EXERCISES_DATASET: ExercisesDataset = {
@@ -43,6 +49,14 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
     const items = this.dataset.exercises.filter((exercise) => exercise.unitCode === unitCode);
 
     return paginate(items, window);
+  }
+
+  async unitExists(unitCode: string): Promise<boolean> {
+    if (this.dataset.unitCodes?.includes(unitCode)) {
+      return true;
+    }
+
+    return this.dataset.exercises.some((exercise) => exercise.unitCode === unitCode);
   }
 
   async findPublished(id: string): Promise<ExerciseRow | null> {
