@@ -76,6 +76,8 @@ export interface CreateSubmissionInput {
   selfExplanation?: string;
   outcome: SubmissionOutcome;
   score: number;
+  /** El nivel lo calcula el evaluador; el adaptador sólo lo persiste. */
+  achievedLevel: number | null;
   hintsUsed: number;
   durationMs: number;
   results: readonly SubmissionResultRow[];

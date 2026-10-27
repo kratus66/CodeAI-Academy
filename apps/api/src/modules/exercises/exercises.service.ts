@@ -13,6 +13,7 @@ import type {
 import { sandboxLanguageSchema } from "@codeai/shared";
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -35,6 +36,9 @@ import type {
   SubmissionResultRow,
 } from "./exercises.repository";
 import { EXERCISES_REPOSITORY } from "./exercises.repository";
+import type { HintRequestRepository } from "./hint-requests.repository";
+import { HINT_REQUESTS_REPOSITORY } from "./hint-requests.repository";
+import { ATTEMPTS_EXHAUSTED, checkAttemptLimit } from "./submit-limits";
 
 const EXERCISE_NOT_FOUND = "El ejercicio solicitado no existe o no está publicado";
 const UNIT_NOT_FOUND = "La unidad solicitada no existe o no está publicada";
@@ -64,15 +68,17 @@ type ExerciseTestRow = ExerciseRow["tests"][number];
  * `404` para unidades y ejercicios no publicados y una única llamada al puerto
  * del sandbox por envío. No conoce Prisma ni HTTP.
  *
- * En S5 la nota se calcula **sólo con pruebas visibles** y `achievedLevel` queda
- * en `null`: los tests ocultos, los pesos con pistas y el nivel son de S6, que
- * reutiliza este envío persistido.
+ * S6 corrige con **todas** las pruebas (visibles y ocultas) y calcula el nivel y
+ * `hintsUsed` en el servidor; sólo las visibles se persisten. El `409` por tope
+ * de intentos se decide aquí (T9), antes de tocar el sandbox.
  */
 @Injectable()
 export class ExercisesService {
   constructor(
     @Inject(EXERCISES_REPOSITORY) private readonly repository: ExercisesRepository,
     @Inject(SANDBOX_SERVICE) private readonly sandbox: SandboxService,
+    @Inject(HINT_REQUESTS_REPOSITORY)
+    private readonly hintRequests: HintRequestRepository,
   ) {}
 
   async listByUnit(
@@ -108,7 +114,8 @@ export class ExercisesService {
       toWindow(query),
     );
 
-    return toPaginated(page, query, toSubmissionSummary);
+    // Envoltorio explícito: `Array.map` pasaría el índice como `feedback`.
+    return toPaginated(page, query, (row) => toSubmissionSummary(row));
   }
 
   async submit(
@@ -117,11 +124,34 @@ export class ExercisesService {
     body: CreateSubmissionInput,
   ): Promise<SubmissionResponse> {
     const exercise = await this.requireExercise(exerciseId);
+
+    // El tope se comprueba antes de ejecutar nada: un envío rechazado no gasta sandbox.
+    const attemptsUsed = await this.repository.countSubmissions(userId, exerciseId);
+    const limit = checkAttemptLimit({
+      attemptsUsed,
+      maxAttempts: exercise.maxAttempts ?? null,
+    });
+
+    if (!limit.allowed) {
+      throw new ConflictException(ATTEMPTS_EXHAUSTED);
+    }
+
     const language = sandboxLanguageSchema.safeParse(exercise.language);
 
     if (!language.success) {
       throw new BadRequestException(EXERCISE_WITHOUT_SANDBOX);
     }
+
+    // Sin envío previo cuentan todas las pistas del ejercicio; el número lo
+    // calcula el servidor, nunca el cliente.
+    const previous = await this.repository.listSubmissions(userId, exerciseId, {
+      skip: 0,
+      take: 1,
+    });
+    const previousAt = previous.items[0]?.createdAt ?? null;
+    const hintsUsed = (
+      await this.hintRequests.findLevelsRequestedSince(userId, exerciseId, previousAt)
+    ).length;
 
     const visibleTests = exercise.tests.filter((test) => !test.isHidden);
     const run = await this.execute({
@@ -129,22 +159,21 @@ export class ExercisesService {
       files: [
         { path: FILE_NAME_BY_LANGUAGE[language.data], content: body.code },
       ],
-      tests: visibleTests.map(toSandboxTest),
+      tests: exercise.tests.map(toSandboxTest),
       limits: { ...RUN_LIMITS },
     });
     const grade = gradeSubmission({
-      tests: visibleTests.map((test) => ({
+      tests: exercise.tests.map((test) => ({
         testId: test.id,
         name: test.name,
         weight: weightOf(test),
-        // S5 sólo evalúa pruebas visibles: las ocultas llegan con S6.
-        isHidden: false,
+        isHidden: test.isHidden,
         passed: run.results.some(
           (result) => result.testId === test.id && result.passed,
         ),
       })),
       ladder: exercise.ladder,
-      hintsUsed: 0,
+      hintsUsed,
       selfExplanation: body.selfExplanation ?? null,
       sandboxOutcome: run.outcome,
     });
@@ -158,12 +187,14 @@ export class ExercisesService {
         : { selfExplanation: body.selfExplanation }),
       outcome: grade.outcome,
       score: grade.score,
-      hintsUsed: 0,
+      achievedLevel: grade.achievedLevel,
+      hintsUsed,
       durationMs: run.durationMs,
+      // Sólo las visibles: el historial no debe filtrar nombres de pruebas ocultas.
       results: toTestResults(run, visibleTests),
     } satisfies CreateSubmissionRow);
 
-    return { submission: toSubmissionSummary(row) };
+    return { submission: toSubmissionSummary(row, grade.feedback) };
   }
 
   private async requireExercise(id: string): Promise<ExerciseRow> {

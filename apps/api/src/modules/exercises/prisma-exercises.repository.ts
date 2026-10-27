@@ -163,6 +163,7 @@ export class PrismaExercisesRepository implements ExercisesRepository {
         code: input.code,
         outcome: input.outcome,
         score: input.score,
+        achievedLevel: input.achievedLevel,
         hintsUsed: input.hintsUsed,
         durationMs: input.durationMs,
         ...(input.selfExplanation === undefined

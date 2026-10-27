@@ -95,7 +95,7 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
       id: `sub_${this.sequence}`,
       outcome: input.outcome,
       score: input.score,
-      achievedLevel: null,
+      achievedLevel: input.achievedLevel,
       hintsUsed: input.hintsUsed,
       createdAt: this.now(),
       results: input.results.map((result) => ({ ...result })),

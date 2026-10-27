@@ -85,7 +85,29 @@ function feedbackFor(results: readonly SubmissionTestResult[]): string {
   return `${passed} de ${results.length} pruebas visibles superadas.`;
 }
 
-export function toSubmissionSummary(row: SubmissionRow): SubmissionSummary {
+/**
+ * Con 3 niveles de pista usados la progresión obligatoria implica el nivel 3,
+ * así que el historial puede reconstruir el motivo del tope sin guardarlo.
+ */
+function historyFeedback(
+  row: SubmissionRow,
+  results: readonly SubmissionTestResult[],
+): string {
+  const base = feedbackFor(results);
+
+  return row.hintsUsed >= 3
+    ? `${base} Nivel máximo 2: usaste pistas de nivel 3.`
+    : base;
+}
+
+/**
+ * `feedback` del evaluador se usa tal cual (es el único con el motivo del tope
+ * de nivel); sin él (historial) se deriva de las pruebas persistidas.
+ */
+export function toSubmissionSummary(
+  row: SubmissionRow,
+  feedback?: string,
+): SubmissionSummary {
   const results: SubmissionTestResult[] = row.results.map((result) => ({
     testId: result.testId,
     name: result.name,
@@ -100,7 +122,7 @@ export function toSubmissionSummary(row: SubmissionRow): SubmissionSummary {
     achievedLevel: row.achievedLevel,
     hintsUsed: row.hintsUsed,
     results,
-    feedback: feedbackFor(results),
+    feedback: feedback ?? historyFeedback(row, results),
     createdAt: row.createdAt.toISOString(),
   };
 }
