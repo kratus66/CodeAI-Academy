@@ -217,7 +217,7 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 
 > Los tests ocultos devuelven **solo el resultado agregado**, nunca su contenido.
 
-### 4.4 Progreso (`/api/progress`)
+### 4.4 Progreso (`/api/progress`) — ✅ implementado en S4
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
@@ -241,6 +241,16 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
   "dueReviews": 7
 }
 ```
+
+**Resto de rutas** (todas exigen cookie de sesión; sin ella responden `401 UNAUTHENTICATED`):
+
+| Ruta | Respuesta |
+|------|-----------|
+| `GET /units` | `{ "units": UnitProgressSummary[] }` |
+| `GET /competencies` | `{ "competencies": CompetencyProgress[] }`, con C1–C14 completos y nivel 0 en las que no tienen evidencia |
+| `POST /units/:id/complete-lesson` | `200 { "unit": UnitProgressSummary }`; cuerpo `{ "lessonId": "..." }` |
+
+**Idempotencia:** `complete-lesson` guarda las lecciones vistas en `UnitProgress.completedLessonIds`, así que repetir la misma lección no cambia el porcentaje. Responde `404 NOT_FOUND` si la unidad o la lección no existen (o si la lección no pertenece a la unidad) y `409 CONFLICT` si la unidad está bloqueada. Nunca acredita `MASTERED`: eso lo decide la evaluación de S6.
 
 ### 4.5 Repaso (`/api/review`)
 

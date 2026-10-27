@@ -533,6 +533,7 @@ model AiInteraction {
 ## 8. Índices y rendimiento
 
 - Cola de repaso: `@@index([userId, dueAt])` — consulta principal del dashboard.
+- Avance: `@@unique([userId, unitId])` evita filas duplicadas y `@@index([userId, state])` resuelve los contadores del overview sin recorrer todas las unidades.
 - Historial: `@@index([userId, createdAt])` en `Submission`.
 - Catálogo: `@@index([unitId, type])` para listar ejercicios por unidad.
 - Coste IA: `@@index([module, createdAt])` para reportes mensuales.

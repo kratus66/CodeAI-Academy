@@ -1,7 +1,7 @@
 # Sprint 04 — Progreso, desbloqueos y competencias
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅, S2 ✅ y S3 🔄 (cierre técnico)
-> **Avance:** 9/10 tareas · 8/10 criterios de aceptación.
+> **Avance:** 10/10 tareas · 10/10 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -105,7 +105,7 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 | S4-T7 | Cliente `progressApi` con validación Zod | `apps/web/src/lib/api-client.ts` + spec | 7 | ✅ `cb24147` |
 | S4-T8 | Panel de avance y ruta `/learn/progress` | `features/progress/components/ProgressOverview.tsx` + spec, `learn/progress/page.tsx` | 8 | ✅ `8bbe715` |
 | S4-T9 | Verificación HTTP real con dos usuarios (aislamiento) | — (guion de comandos) | 9 | ✅ verificado |
-| S4-T10 | Cierre documental: modelo de datos, contratos, roadmap y bitácora | docs | 10 | ⬜ |
+| S4-T10 | Cierre documental: modelo de datos, contratos, roadmap y bitácora | docs | 10 | ✅ cierre |
 
 > **Regla de tamaño:** ninguna tarea toca más de 3 archivos de código. Si una tarea necesita más, se parte antes de empezar.
 
@@ -121,10 +121,10 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 - [x] `GET /api/progress/*` responde `401` sin cookie y `404` con una unidad inexistente.
 - [x] `GET /api/progress/overview` responde con los seis campos del contrato y `x-trace-id`.
 - [x] La web muestra el panel de avance con estados de carga, error y vacío.
-- [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
-- [ ] `modelo-datos.md`, `contratos-api.md` y `roadmap-sprints.md` reflejan el progreso implementado.
+- [x] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
+- [x] `modelo-datos.md`, `contratos-api.md` y `roadmap-sprints.md` reflejan el progreso implementado.
 
-**Estado:** 8/10 verificados.
+**Estado:** 10/10 verificados.
 
 ---
 
@@ -162,8 +162,11 @@ interface ProgressCounts { mastered: number; inProgress: number; needsReview: nu
 | S4-T7 | `npx vitest run src/lib/api-client.spec.ts` (22) · `npx vitest run` (web 87) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: seis pruebas nuevas comprueban la URL de cada ruta, el `POST` con `{ lessonId }`, el desenvolvimiento de `{ units }` y `{ competencies }`, la propagación del `409 CONFLICT` con su `traceId` y el rechazo de un estado `DONE` como `INTERNAL_ERROR` antes de tocar la vista. `typecheck`, `lint` y `build` en 0 | `cb24147` |
 | S4-T8 | `npx vitest run src/features/progress` (6) · `npx vitest run` (web 93) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: el panel anuncia la carga, pinta `34,5 %` con `aria-valuenow="34.5"` y los contadores (`12/3/2/40`, 57 unidades), publica `Nivel 3 · 14 evidencias`, declara el vacío sin unidades, avisa cuando no hay evidencia y reintenta tras el fallo (dos llamadas al loader). Next compila `/learn/progress` (1.69 kB). `typecheck`, `lint` y `build` en 0 | `8bbe715` |
 | S4-T9 | `node dist/main.js` · `POST /api/auth/register` ×2 (`201/201`) · fixtures temporales en PostgreSQL (1 unidad con 2 lecciones, 1 unidad bloqueada con 1 lección) · `GET /overview` · `POST /units/:id/complete-lesson` ×2 · `GET /units` con cada sesión · intentos de `404`, `409` y `401` · limpieza SQL y recuento de restos | Verde: el overview publica exactamente `user,currentStage,overallPct,units,competencies,dueReviews` y un `x-trace-id`; `complete-lesson` responde `200` con `50 %`/1 lección y, repetido, `200` con `50 %`/1 lección (idempotente); Ana queda `IN_PROGRESS`/`50`/1 con `lastActivityAt` y Beto `AVAILABLE`/`0`/0 con `lastActivityAt: null`, con 0 unidades con avance en su cuenta; `404 NOT_FOUND` con `x-trace-id`, `409 CONFLICT` y `401` sin cookie. La limpieza deja 0 unidades `s4t9%` y 0 usuarios | — (sin cambios de código) |
+| S4-T10 | `npm run typecheck` · `npm run lint` · `npm test` (shared 83 · API 142 · web 93) · `npm run build` · revisión de `modelo-datos.md`, `contratos-api.md` §4.4 y `roadmap-sprints.md` contra el código | Verde: los cuatro comandos en `0` y `/learn/progress` compilada (1.69 kB); §4.4 documenta los sobres, el cuerpo `{ lessonId }`, la idempotencia y los `404`/`409`; el roadmap marca S4 ✅ con su cierre y `modelo-datos.md` justifica el índice `[userId, state]` y la clave de idempotencia | este commit |
 
 > **Artefacto de verificación:** `pnpm typecheck` y `pnpm lint` ejecutan los scripts `npm` del monorepo, pero `pnpm` creó un `pnpm-lock.yaml` que no se versiona (el lockfile del repo es `package-lock.json`); se eliminó antes del commit.
+
+> **Cierre del sprint (2026-10-27):** las diez tareas y los diez criterios quedan verificados. La evidencia de S4-T9 son las líneas `CHECK` del guion ejecutado contra la API real; el resto de tareas deja commit propio. El porcentaje de unidad se calcula hoy como lecciones vistas sobre lecciones publicadas: S6 sustituirá `unitProgressPct` por la fórmula ponderada de `prerequisitos-y-progreso.md` §4.1 sin tocar endpoints.
 
 ---
 

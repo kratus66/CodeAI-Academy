@@ -25,7 +25,7 @@
 | **S1** | Identidad y acceso (registro, login, roles, sesión) | E0–E1 | `auth` (`users` en S3) | ✅ |
 | **S2** | Modelo de datos y API de contenido | E1 | `content` | ✅ |
 | **S3** | Plataforma de aprendizaje (catálogo y lección) | E1–E3 | `content` (lectura) | 🔄 |
-| **S4** | Progreso, desbloqueos y competencias | E1–E4 | `progress` | ⬜ |
+| **S4** | Progreso, desbloqueos y competencias | E1–E4 | `progress` | ✅ |
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ⬜ |
 | **S6** | Corrección automática y pistas graduadas | E2–E7 | `exercises` | ⬜ |
 | **S7** | Repaso espaciado (SM-2) | E2–E7 | `review` | ⬜ |
@@ -36,7 +36,7 @@
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >
-> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación).
+> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios**.
 
 ---
 
@@ -76,11 +76,14 @@
 - **Cierre:** 10/11 tareas ✅ · 5/10 criterios de aceptación ✅ (los cinco restantes exigen navegador con sesión) · pendiente S3-T11, autoría de la primera lección real con revisión pedagógica.
 - **Ficha:** [`sprints/sprint-03-aprendizaje.md`](sprints/sprint-03-aprendizaje.md).
 
-### S4 — Progreso, desbloqueos y competencias
+### S4 — Progreso, desbloqueos y competencias ✅
 
 - **Objetivo:** el avance se registra y desbloquea la siguiente unidad según prerequisitos.
 - **Entregables:** `progress` (unidad completada, porcentaje, competencias trabajadas), reglas de desbloqueo, panel de avance.
 - **Criterio de salida:** pruebas de reglas de desbloqueo y de aislamiento de progreso; reevaluación de fundamentos soportada por el modelo de datos.
+- **Estado (2026-10-27):** completo. Contrato compartido, `UnitProgress` + `CompetencyProgress` con migración `progress_tracking`, reglas puras de desbloqueo y avance, puerto con adaptadores Prisma y en memoria, `ProgressService`, controlador `/api/progress` protegido por JWT, cliente `progressApi` con validación Zod y panel en `/learn/progress`.
+- **Cierre:** 10/10 tareas ✅ · 10/10 criterios de aceptación ✅ · verificación HTTP real con dos usuarios (idempotencia `50 % → 50 %`, aislamiento, `404`, `409` y `401`) · suite completa verde (shared 83 · API 142 · web 93).
+- **Ficha:** [`sprints/sprint-04-progreso.md`](sprints/sprint-04-progreso.md).
 
 ### S5 — Laboratorio de código
 
