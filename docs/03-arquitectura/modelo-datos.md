@@ -373,6 +373,7 @@ model UnitProgress {
   bestScore      Float?
   lastActivityAt DateTime?
   completedAt    DateTime?
+  completedLessonIds String[] @default([]) // idempotencia de complete-lesson
   updatedAt      DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -398,6 +399,8 @@ model CompetencyProgress {
 ```
 
 > **Regla crítica:** `level` y `state` se calculan **exclusivamente en el servidor**. Ningún endpoint permite que el cliente los fije directamente.
+>
+> **Idempotencia:** `completedLessonIds` guarda las lecciones vistas y `lessonsDone` se deriva de su tamaño. Marcar dos veces la misma lección no infla el avance (criterio de S4-T5), y la columna evita una tabla de uniones que el modelo no declara.
 
 ---
 
