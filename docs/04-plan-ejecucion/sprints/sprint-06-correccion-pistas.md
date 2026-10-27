@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 10/16 tareas · 12/14 criterios de aceptación.
+> **Avance:** 11/16 tareas · 13/14 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -149,7 +149,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 8 | ✅ `d9e7c17` |
 | S6-T9 | Corrección completa en `ExercisesService`: nivel, `hintsUsed`, historial | `exercises.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma, `exercises.mapper.ts` | 9 | ✅ `44d25d6` |
 | S6-T10 | Endpoint `POST /api/exercises/:id/hints` y registro en el módulo | `exercises.controller.ts`, `exercises.module.ts` | 10 | ✅ `ff93ae1` |
-| S6-T11 | Verificación de `GET /api/exercises/:id/submissions` (historial propio paginado) | Sin archivos nuevos: implementado en S5; se completa la prueba si falta | 11 | ⬜ |
+| S6-T11 | Verificación de `GET /api/exercises/:id/submissions` (historial propio paginado) | Sin archivos nuevos: implementado en S5; se completa la prueba si falta | 11 | ✅ `6f9aae6` |
 | S6-T12 | Cuota de pistas por minuto y traducción de la regla de progresión a `422` | `hints-rate-limit.guard.ts` + spec | 12 | ⬜ |
 | S6-T13 | `codeApi.requestHint` y `codeApi.submissionHistory` en la web | `apps/web/src/lib/api-client.ts` + spec | 13 | ⬜ |
 | S6-T14 | `HintPanel` y nivel alcanzado con su motivo en el resultado | `features/lab/components/HintPanel.tsx` + spec, `ExerciseLab.tsx` | 14 | ⬜ |
@@ -176,11 +176,11 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 - [x] `hintsUsed` persistido es el número de niveles distintos usados desde el intento anterior, calculado en el servidor.
 - [x] El envío se corrige con pruebas ocultas: una oculta fallida baja el `score` aunque todas las visibles pasen.
 - [x] Superar `maxAttempts` devuelve `409 CONFLICT` sin crear `Submission`.
-- [ ] El historial devuelve sólo los envíos del usuario autenticado, en orden descendente y paginado.
+- [x] El historial devuelve sólo los envíos del usuario autenticado, en orden descendente y paginado.
 - [ ] La web muestra la pista pedida, el motivo del tope y el historial, con estados de carga, error y vacío.
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 12/14 verificados.
+**Estado:** 13/14 verificados.
 
 ---
 
@@ -224,6 +224,8 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T8 | `npm run test -w @codeai/api -- submit-limits` → `Test Files 1 passed (1)`, `Tests 9 passed (9)`. `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 92 passed (92)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | `checkAttemptLimit` no lanza: devuelve `attemptNumber` (1-based) y `allowed`, y el `409` lo decide T9. `maxAttempts` nulo, no entero o menor que 1 se trata como sin límite, y entra en `ExerciseRow` como opcional para no romper los fixtures de S5. `countSubmissions` se añade al puerto y a los dos adaptadores. | `d9e7c17` |
 | S6-T9 | `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 101 passed (101)` (`exercises.service.spec.ts`: 23). `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 231 passed (231)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | El envío comprueba el tope antes de tocar el sandbox, cuenta `hintsUsed` desde `lastRequestedAt` posterior al envío anterior y corrige con las pruebas ocultas. Sólo las visibles se persisten, así que el historial no filtra nombres ocultos. Cambiaron cuatro esperados de S5 (los ids del sandbox, el `achievedLevel` ya no es `null`, el `score` de pesos incluye la oculta y el `feedback` añade el tope de escalón). El subproceso detectó que `Array.map` pasaría el índice como `feedback` y lo evitó con un envoltorio explícito. | `44d25d6` |
 | S6-T10 | `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 231 passed (231)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. `npm run build -w @codeai/api` → exit 0. Arranque real con `node dist/main.js` y base disponible: `[RouterExplorer] Mapped {/api/exercises/:id/hints, POST} route` y `Nest application successfully started`. | La ruta va después de `POST :id/submissions` y responde `201` con el sobre del contrato; el `userId` sigue saliendo del token. El módulo registra el segundo puerto con `PrismaHintRequestsRepository`, así que el arranque confirma también la dependencia nueva de T9. | `ff93ae1` |
+| S6-T11 | `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 105 passed (105)` (`exercises.service.spec.ts`: 27). `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 235 passed (235)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | Sin cambios de producción: el endpoint de S5 ya cumplía el criterio. Las pruebas siembran los envíos con fechas distintas en vez de encadenar `submit`, porque dos envíos seguidos comparten milisegundo y el orden quedaría ambiguo. La tercera comprueba además que el historial no expone el nombre ni el id de la prueba oculta. | `6f9aae6` |
+
 
 
 
