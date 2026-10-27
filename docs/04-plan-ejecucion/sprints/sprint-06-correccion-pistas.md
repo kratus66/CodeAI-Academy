@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 4/16 tareas · 7/14 criterios de aceptación.
+> **Avance:** 5/16 tareas · 7/14 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -142,7 +142,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T2 | Contrato compartido de la pista | `packages/shared/src/schemas/hint.ts` + spec, `index.ts` | 2 | ✅ `ca0a889` |
 | S6-T3 | Selección de pista por nivel con progresión obligatoria (pura) | `modules/exercises/hint-selection.ts` + spec | 3 | ✅ `30730df` |
 | S6-T4 | Migración `hint_requests` (modelo `HintRequest` con cascada) | `apps/api/prisma/schema.prisma` + migración | 4 | ✅ `739a411` |
-| S6-T5 | Puerto `HintRequestRepository` + adaptador en memoria | `hint-requests.repository.ts`, `in-memory-hint-requests.repository.ts` | 5 | ⬜ |
+| S6-T5 | Puerto `HintRequestRepository` + adaptador en memoria | `hint-requests.repository.ts`, `in-memory-hint-requests.repository.ts` | 5 | ✅ `26c5849` |
 | S6-T6 | Adaptador Prisma de `HintRequestRepository` | `prisma-hint-requests.repository.ts` | 6 | ⬜ |
 | S6-T7 | `HintsService`: sirve la pista del nivel pedido y registra el uso | `hints.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 7 | ⬜ |
 | S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec, `exercises.repository.ts`, `prisma-exercises.repository.ts` | 8 | ⬜ |
@@ -217,6 +217,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T2 | `npm run test -w @codeai/shared -- hint` → `Test Files 1 passed (1)`, `Tests 15 passed (15)`. `npm run typecheck -w @codeai/shared` → exit 0. `npm run lint -w @codeai/shared` → exit 0 con `--max-warnings 0`. | `hintLevelSchema` es unión de literales 1–3; los tres esquemas son estrictos. La prueba de tipo usa `expectTypeOf` y `tsc` la valida. | `ca0a889` |
 | S6-T3 | `npm run test -w @codeai/api -- hint-selection` → `Test Files 1 passed (1)`, `Tests 14 passed (14)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | Progresión 1→2→3 completa (no sólo el nivel inmediatamente anterior); `nextLevelAvailable` refleja huecos del catálogo; la idempotencia del registro queda para T5. | `30730df` |
 | S6-T4 | `npm run db:migrate -w @codeai/api -- --name hint_requests` → migración `20261027192622_hint_requests` creada y aplicada, Prisma Client regenerado. `npx prisma validate` y `npx prisma migrate status` (desde `apps/api`) → schema válido y `Database schema is up to date!`. `npm run typecheck -w @codeai/api` → exit 0. | Añadí `requests` y `lastRequestedAt` además del mínimo: el primero audita el pedido repetido sin crear fila y el segundo permite a T9 contar niveles distintos desde el envío anterior. El SQL generado confirma `ON DELETE CASCADE` en ambas FKs. | `739a411` |
+| S6-T5 | `npm run test -w @codeai/api -- hint-requests` → `Test Files 1 passed (1)`, `Tests 8 passed (8)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | El puerto expone `findUsedLevels`, `findLevelsRequestedSince` (estricto, para no contar dos veces el envío anterior) y `recordRequest`. El adaptador copia fechas y filas del dataset, así que ninguna prueba puede mutar el estado del llamador. | `26c5849` |
 
 ---
 
