@@ -26,6 +26,8 @@ import { cn } from "@/lib/cn";
 
 import { CodeEditor } from "./CodeEditor";
 import type { CodeSurfaceProps } from "./CodeEditor";
+import { HintPanel } from "./HintPanel";
+import type { RequestHint } from "./HintPanel";
 
 /**
  * Laboratorio de código (S5-T13): enunciado, editor, «Ejecutar» y «Enviar».
@@ -34,7 +36,8 @@ import type { CodeSurfaceProps } from "./CodeEditor";
  * con `id`, así que la primera petición resuelve el slug dentro de la unidad.
  * Ejecutar usa `/sandbox/run` (sin pruebas: sólo comprueba que el código corre
  * en el mock) y enviar usa `/exercises/:id/submissions`, que sí evalúa las
- * pruebas visibles y persiste el envío.
+ * pruebas visibles y persiste el envío. Además pide pistas graduadas contra
+ * `POST /api/exercises/:id/hints` desde el panel de pistas.
  */
 
 /** Nombre del archivo que se manda al sandbox; el mock lo cita en `stderr`. */
@@ -214,9 +217,14 @@ function SubmissionPanel({
           Este ejercicio no declara pruebas visibles.
         </p>
       )}
-      <p className="mt-3 text-xs text-slate-500">
-        El nivel alcanzado y las pistas usadas se publican en el siguiente
-        sprint.
+      <p className="mt-3 text-xs text-slate-400">
+        {submission.achievedLevel === null
+          ? "Nivel alcanzado: sin nivel"
+          : `Nivel alcanzado: ${submission.achievedLevel}/4`}
+        {" · "}
+        {submission.hintsUsed === 1
+          ? "1 pista usada"
+          : `${submission.hintsUsed} pistas usadas`}
       </p>
     </div>
   );
@@ -233,6 +241,7 @@ interface LabWorkspaceProps {
     exerciseId: string,
     input: CreateSubmissionInput,
   ) => Promise<SubmissionSummary>;
+  readonly requestHint?: RequestHint;
 }
 
 /** Estado del laboratorio una vez el ejercicio está cargado. */
@@ -243,6 +252,7 @@ function LabWorkspace({
   editorSurface,
   runCode,
   submitSolution,
+  requestHint,
 }: LabWorkspaceProps) {
   const [code, setCode] = useState(() => exercise.starterCode ?? "");
   const [selfExplanation, setSelfExplanation] = useState("");
@@ -379,6 +389,12 @@ function LabWorkspace({
               </ul>
             </div>
           ) : null}
+
+          <HintPanel
+            exerciseId={exercise.id}
+            hintsAvailable={exercise.hintsAvailable}
+            requestHint={requestHint}
+          />
         </section>
 
         <section aria-labelledby="laboratorio" className="space-y-4">
@@ -471,6 +487,7 @@ export interface ExerciseLabProps {
     exerciseId: string,
     input: CreateSubmissionInput,
   ) => Promise<SubmissionSummary>;
+  readonly requestHint?: RequestHint;
 }
 
 /** Una URL mal formada y un ejercicio no publicado son el mismo caso. */
@@ -493,6 +510,7 @@ export function ExerciseLab({
   runCode = (input) => sandboxApi.run(input),
   submitSolution = (exerciseId, input) =>
     exercisesApi.submit(exerciseId, input),
+  requestHint,
 }: ExerciseLabProps) {
   const load = useCallback(
     (signal: AbortSignal) => loadLab(unitCode, slug, signal),
@@ -548,6 +566,7 @@ export function ExerciseLab({
     <LabWorkspace
       editorSurface={editorSurface}
       exercise={state.data.exercise}
+      requestHint={requestHint}
       runCode={runCode}
       submitSolution={submitSolution}
       unitCode={unitCode}

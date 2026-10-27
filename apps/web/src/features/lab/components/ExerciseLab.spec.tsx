@@ -1,6 +1,8 @@
 import type {
   CreateSubmissionInput,
   ExerciseDetail,
+  HintLevel,
+  HintResponse,
   SandboxRunRequest,
   SandboxRunResponse,
   SubmissionSummary,
@@ -12,6 +14,7 @@ import { ApiError } from "@/lib/api-client";
 
 import { ExerciseLab } from "./ExerciseLab";
 import type { ExerciseLabContent } from "./ExerciseLab";
+import type { RequestHint } from "./HintPanel";
 
 const STARTER = "export function sumar(a: number, b: number) {\n  return a + b;\n}";
 
@@ -49,12 +52,18 @@ const RUN: SandboxRunResponse = {
   durationMs: 12,
 };
 
+const HINT: HintResponse = {
+  level: 1,
+  text: "Valida el tipo antes de sumar.",
+  nextLevelAvailable: false,
+};
+
 const SUBMISSION: SubmissionSummary = {
   id: "sub_1",
   outcome: "PARTIAL",
   score: 50,
-  achievedLevel: null,
-  hintsUsed: 0,
+  achievedLevel: 2,
+  hintsUsed: 3,
   results: [
     { testId: "t1", name: "suma dos positivos", passed: true },
     { testId: "t2", name: "rechaza texto", passed: false },
@@ -67,6 +76,10 @@ function renderLab({
   content = CONTENT,
   runCode = vi.fn(async () => RUN),
   submitSolution = vi.fn(async () => SUBMISSION),
+  requestHint = vi.fn(async (_exerciseId: string, level: HintLevel) => ({
+    ...HINT,
+    level,
+  })),
 }: {
   content?: ExerciseLabContent;
   runCode?: (input: SandboxRunRequest) => Promise<SandboxRunResponse>;
@@ -74,11 +87,13 @@ function renderLab({
     id: string,
     input: CreateSubmissionInput,
   ) => Promise<SubmissionSummary>;
+  requestHint?: RequestHint;
 } = {}) {
   render(
     <ExerciseLab
       editorSurface={null}
       loadLab={async () => content}
+      requestHint={requestHint}
       runCode={runCode}
       slug="suma-segura"
       submitSolution={submitSolution}
@@ -86,7 +101,7 @@ function renderLab({
     />,
   );
 
-  return { runCode, submitSolution };
+  return { runCode, submitSolution, requestHint };
 }
 
 describe("ExerciseLab", () => {
@@ -159,6 +174,23 @@ describe("ExerciseLab", () => {
     expect(
       screen.getByText("1 de 2 pruebas visibles superadas."),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Nivel alcanzado: 2\/4/)).toBeInTheDocument();
+    expect(screen.getByText(/3 pistas usadas/)).toBeInTheDocument();
+  });
+
+  it("pide la pista del ejercicio desde el panel del laboratorio", async () => {
+    const { requestHint } = renderLab();
+
+    await screen.findByRole("heading", { name: "Suma segura", level: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Pedir pista 1" }));
+
+    expect(
+      await screen.findByText("Valida el tipo antes de sumar."),
+    ).toBeInTheDocument();
+    expect(requestHint).toHaveBeenCalledWith("ex_1", 1);
+    expect(
+      screen.getByRole("button", { name: "Pedir pista 2" }),
+    ).toBeDisabled();
   });
 
   it("traduce el 429 de la cuota a un aviso con segundos de espera", async () => {
