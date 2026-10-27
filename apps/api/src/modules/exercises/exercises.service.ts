@@ -8,6 +8,7 @@ import type {
   SandboxRunResponse,
   SandboxTestResult,
   SubmissionListResponse,
+  SubmissionOutcome,
   SubmissionResponse,
 } from "@codeai/shared";
 import { sandboxLanguageSchema } from "@codeai/shared";
@@ -54,6 +55,23 @@ const SANDBOX_UNAVAILABLE =
  */
 const RUN_LIMITS = { timeoutMs: 5_000, memoryMb: 256 } as const;
 
+/**
+ * Puerto mínimo del repaso (S7): el laboratorio no conoce SM-2 ni la cola, sólo
+ * avisa de que un envío quedó corregido. `ReviewModule` aporta la
+ * implementación real y las pruebas un doble que registra la llamada.
+ */
+export const REVIEW_SCHEDULER = Symbol("REVIEW_SCHEDULER");
+
+export interface ReviewScheduler {
+  scheduleFromSubmission(params: {
+    userId: string;
+    exerciseId: string;
+    outcome: SubmissionOutcome;
+    score: number;
+    hintsUsed: number;
+  }): Promise<boolean>;
+}
+
 /** El sandbox no elige el nombre del archivo: lo fija el lenguaje del ejercicio. */
 const FILE_NAME_BY_LANGUAGE: Record<SandboxRunRequest["language"], string> = {
   typescript: "index.ts",
@@ -79,6 +97,7 @@ export class ExercisesService {
     @Inject(SANDBOX_SERVICE) private readonly sandbox: SandboxService,
     @Inject(HINT_REQUESTS_REPOSITORY)
     private readonly hintRequests: HintRequestRepository,
+    @Inject(REVIEW_SCHEDULER) private readonly reviews: ReviewScheduler,
   ) {}
 
   async listByUnit(
@@ -193,6 +212,16 @@ export class ExercisesService {
       // Sólo las visibles: el historial no debe filtrar nombres de pruebas ocultas.
       results: toTestResults(run, visibleTests),
     } satisfies CreateSubmissionRow);
+
+    // S7: el repaso se programa con el resultado ya persistido. Un fallo del
+    // ejercicio vuelve a mover su ítem en el siguiente envío.
+    await this.reviews.scheduleFromSubmission({
+      userId,
+      exerciseId,
+      outcome: grade.outcome,
+      score: grade.score,
+      hintsUsed,
+    });
 
     return { submission: toSubmissionSummary(row, grade.feedback) };
   }

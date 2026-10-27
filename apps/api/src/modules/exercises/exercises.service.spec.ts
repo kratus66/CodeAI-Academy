@@ -2,6 +2,7 @@ import type {
   ExerciseDetail,
   SandboxRunRequest,
   SandboxRunResponse,
+  SubmissionOutcome,
 } from "@codeai/shared";
 import {
   BadRequestException,
@@ -17,6 +18,7 @@ import type { ExerciseRow } from "./exercises.repository";
 import type { HintRequestRepository } from "./hint-requests.repository";
 import type { SubmissionSeed } from "./in-memory-exercises.repository";
 import { InMemoryExercisesRepository } from "./in-memory-exercises.repository";
+import type { ReviewScheduler } from "./exercises.service";
 import { ExercisesService } from "./exercises.service";
 
 const LIST_QUERY = { page: 1, pageSize: 20 } as const;
@@ -97,6 +99,31 @@ function stubHints(
   };
 }
 
+/** Llamada que el servicio hace al puerto de repaso tras corregir un envío. */
+interface ScheduledReviewCall {
+  userId: string;
+  exerciseId: string;
+  outcome: SubmissionOutcome;
+  score: number;
+  hintsUsed: number;
+}
+
+/** Puerto de repaso guionizado: sólo registra lo que el laboratorio le cuenta. */
+function stubReviews(): ReviewScheduler & {
+  readonly calls: ScheduledReviewCall[];
+} {
+  const calls: ScheduledReviewCall[] = [];
+
+  return {
+    calls,
+    scheduleFromSubmission: (params) => {
+      calls.push(params);
+
+      return Promise.resolve(true);
+    },
+  };
+}
+
 function seededSubmission(overrides: Partial<SubmissionSeed> = {}): SubmissionSeed {
   return {
     id: "sub_seed",
@@ -118,10 +145,12 @@ function serviceWith(
   unitCodes?: readonly string[],
   hints: ReturnType<typeof stubHints> = stubHints(),
   submissions: readonly SubmissionSeed[] = [],
+  reviews: ReturnType<typeof stubReviews> = stubReviews(),
 ): {
   readonly service: ExercisesService;
   readonly repository: InMemoryExercisesRepository;
   readonly hints: ReturnType<typeof stubHints>;
+  readonly reviews: ReturnType<typeof stubReviews>;
 } {
   const repository = new InMemoryExercisesRepository({
     exercises,
@@ -129,7 +158,12 @@ function serviceWith(
     ...(unitCodes === undefined ? {} : { unitCodes }),
   });
 
-  return { service: new ExercisesService(repository, sandbox, hints), repository, hints };
+  return {
+    service: new ExercisesService(repository, sandbox, hints, reviews),
+    repository,
+    hints,
+    reviews,
+  };
 }
 
 describe("ExercisesService: catálogo", () => {
@@ -220,6 +254,80 @@ describe("ExercisesService: envío", () => {
       "2 de 2 pruebas visibles superadas. Nivel máximo 2: el ejercicio es guiado y el escalón limita el nivel.",
     );
     expect(submission.results).toHaveLength(2);
+  });
+
+  it("avisa al repaso con el resultado corregido del envío", async () => {
+    const reviews = stubReviews();
+    const { service } = serviceWith(
+      [row()],
+      undefined,
+      undefined,
+      undefined,
+      [],
+      reviews,
+    );
+
+    await service.submit("user_a", "ex_1", {
+      code: "const a = 1;",
+      selfExplanation: "Valido el status antes de parsear.",
+    });
+
+    expect(reviews.calls).toEqual([
+      {
+        userId: "user_a",
+        exerciseId: "ex_1",
+        outcome: "PASSED",
+        score: 100,
+        hintsUsed: 0,
+      },
+    ]);
+  });
+
+  it("programa el repaso también cuando el envío falla", async () => {
+    const reviews = stubReviews();
+    const { service } = serviceWith(
+      [row()],
+      stubSandbox(() =>
+        Promise.resolve({
+          outcome: "FAILED",
+          score: 0,
+          stdout: "",
+          stderr: "AssertionError",
+          durationMs: 10,
+          results: [],
+        }),
+      ),
+      undefined,
+      undefined,
+      [],
+      reviews,
+    );
+
+    const { submission } = await service.submit("user_a", "ex_1", { code: "x" });
+
+    expect(submission.outcome).toBe("FAILED");
+    expect(reviews.calls[0]?.outcome).toBe("FAILED");
+    expect(reviews.calls[0]?.score).toBe(0);
+  });
+
+  it("no avisa al repaso si el sandbox no llega a corregir", async () => {
+    const reviews = stubReviews();
+    const { service } = serviceWith(
+      [row()],
+      {
+        run: () => Promise.reject(new Error("sandbox caído")),
+        status: () => ({ provider: "stub", mode: "mock" }),
+      },
+      undefined,
+      undefined,
+      [],
+      reviews,
+    );
+
+    await expect(service.submit("user_a", "ex_1", { code: "x" })).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(reviews.calls).toHaveLength(0);
   });
 
   it("puntúa con el peso de cada prueba y marca PARTIAL si falla una", async () => {
