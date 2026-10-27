@@ -1,0 +1,171 @@
+# Sprint 03 — Plataforma de aprendizaje
+
+> **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅ y S2 ✅
+> **Avance:** 0/11 tareas · 0/10 criterios de aceptación.
+> **Terminal por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
+
+---
+
+## 1. Objetivo
+
+El estudiante **navega la ruta** (etapa → módulo → unidad) dentro de la aplicación y **lee lecciones** con el contenido que sirve la API, sin contenido duplicado en el frontend.
+
+Al cerrar el sprint, la plataforma puede asumir:
+
+1. Existe un **shell autenticado** en `/learn/*`: sin sesión se redirige a `/login` y no se pinta contenido privado.
+2. El **catálogo** lista las etapas publicadas y cada etapa muestra sus módulos con sus unidades, todo desde `GET /api/content/*`.
+3. La **vista de unidad** muestra objetivo, prerrequisitos, lecciones y ejercicios, con navegación **anterior/siguiente** dentro de la etapa.
+4. El **lector de lección** renderiza los bloques de contenido, los 7 pasos y los recursos verificados.
+5. Cada vista declara sus **estados de carga, error y vacío**; ningún texto de currículo está escrito en el frontend.
+
+---
+
+## 2. Alcance
+
+| Incluye | No incluye (queda para otro sprint) |
+|---------|-------------------------------------|
+| Unidades dentro del módulo en `GET /api/content/stages/:id` | Endpoint nuevo `GET /api/content/modules/:code` |
+| `stageId` en `UnitSummary` (contexto para migas y navegación) | `?sort=` y búsqueda de texto completo |
+| Cliente `contentApi` en la web con validación Zod de cada respuesta | Caché, ETag y streaming (S11) |
+| Shell autenticado, catálogo, vista de etapa, vista de unidad y lector de lección | Progreso, desbloqueos y porcentaje (S4) |
+| Estados de carga, error, vacío y `404` de contenido | Laboratorio de código y editor (S5) |
+| Verificación HTTP real contra PostgreSQL local | Panel de instructor y mutaciones de contenido |
+
+**Fuera de alcance explícito (heredado de S1):** el guard de roles, el decorador `@Public` y el módulo `users` no se implementan en este sprint porque **no tienen consumidor** (no hay rutas de administración ni listado de usuarios hasta S9/S11). Se reprograman y se documentan en §8. Es una decisión reversible: no se borra ni se deja a medias nada de S1.
+
+**Brecha de contenido declarada:** la semilla de S2 siembra etapas, módulos y unidades, pero **cero lecciones**. Este sprint entrega el lector y lo prueba con el repositorio en memoria; la primera lección real requiere autoría pedagógica con revisión humana y queda como tarea S3-T12 (⬜). No se inventa contenido curricular para «poder demostrar» la pantalla.
+
+---
+
+## 3. Decisiones de arquitectura
+
+| Decisión | Motivo | Alternativa descartada |
+|----------|--------|------------------------|
+| Las **unidades viajan dentro de cada módulo** en `GET /stages/:id` | Una petición pinta la etapa completa; evita N+1 y un endpoint nuevo | `GET /modules/:code` + una petición por módulo |
+| Añadir `units` a `ModuleSummary` y `stageId` a `UnitSummary` | Es un cambio **compatible** (campos nuevos, §7 de `contratos-api.md`): no rompe v1 | Renombrar o reordenar el contrato existente |
+| `stageId` en la unidad, no deducido del código `U0.1.1` | El cliente no debe parsear códigos curriculares | Parsear `moduleCode`/`code` en la web |
+| Navegación **anterior/siguiente dentro de la etapa** | Es lo que la etapa ya devuelve ordenado; el recorrido global depende de progreso (S4) | Navegación global con una consulta nueva al backend |
+| La sesión se resuelve **en cliente** (`SessionProvider` de S1) | La cookie httpOnly la emite la API en otro origen; el servidor de Next no la reenvía hoy | Proxy de cookies en Next (cambio de infraestructura) |
+| Los componentes reciben el **loader por props** | Prueba sin red y sin mocks de `fetch`; el loader estable evita efectos repetidos | `fetch` dentro del componente |
+| Cada respuesta se **valida con el esquema Zod de `shared`** | Un cambio de contrato falla en la web, no en producción | Tipar con `as` |
+| El lector muestra estado vacío cuando la unidad no tiene lecciones | La API es la única fuente de verdad del catálogo | Sembrar lecciones de relleno |
+
+---
+
+## 4. Contrato
+
+### 4.1 Cambios en `packages/shared`
+
+```ts
+interface UnitSummary {
+  id: string; code: string; title: string; objective: string;
+  estimatedMin: number | null; order: number;
+  stageId: number;          // nuevo: etapa a la que pertenece
+  moduleCode: string; prerequisiteIds: string[];
+}
+
+interface ModuleSummary {
+  id: string; code: string; title: string; order: number;
+  unitCount: number;
+  units: UnitSummary[];     // nuevo: unidades publicadas del módulo
+}
+```
+
+`GET /api/content/stages/:id` mantiene su forma `{ stage: StageDetail }`; dentro de cada módulo aparece `units` ordenado por `order` ascendente y sin elementos no publicados.
+
+### 4.2 Rutas de la web
+
+| Ruta | Contenido | Fuente |
+|------|-----------|--------|
+| `/learn` | Catálogo de etapas publicadas | `GET /api/content/stages` |
+| `/learn/stages/:id` | Etapa con módulos y unidades | `GET /api/content/stages/:id` |
+| `/learn/units/:code` | Unidad, prerrequisitos, lecciones y ejercicios | `GET /api/content/units/:code` + `GET /api/content/stages/:stageId` |
+| `/learn/lessons/:slug` | Lección: bloques, 7 pasos y recursos | `GET /api/content/lessons/:slug` |
+
+Toda ruta de `/learn/*` exige sesión: mientras se restaura, se anuncia `role="status"`; sin sesión se redirige a `/login`.
+
+### 4.3 Errores esperados en la web
+
+| Caso | Comportamiento |
+|------|----------------|
+| `404 NOT_FOUND` | Mensaje «No encontramos …» con enlace al catálogo, sin traza interna |
+| `400 VALIDATION_ERROR` | Igual que `404` desde la perspectiva del estudiante (la URL está mal formada) |
+| Error de red o `5xx` | `role="alert"` con botón «Reintentar»; nunca se pinta un estado vacío engañoso |
+| Respuesta fuera de contrato | Error de contrato con `traceId` si existe |
+
+---
+
+## 5. Tareas
+
+Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna se da por cerrada sin su comando de verificación y su salida real.
+
+| ID | Tarea | Archivos principales | Estado |
+|----|-------|----------------------|--------|
+| S3-T1 | Contratos compartidos: `units` en el módulo y `stageId` en la unidad | `packages/shared/src/schemas/content.ts`, `content.spec.ts` | ⬜ |
+| S3-T2 | Mapper y adaptador Prisma: módulos con sus unidades publicadas | `content.mapper.ts`, `prisma-content.repository.ts`, `content.service.spec.ts` | ⬜ |
+| S3-T3 | Cliente `contentApi` con validación Zod de las respuestas | `apps/web/src/lib/api-client.ts`, `api-client.spec.ts` | ⬜ |
+| S3-T4 | Shell autenticado: guard de sesión y layout de aprendizaje | `features/learning/components/SessionGate.tsx` + spec, `app/(learning)/learn/layout.tsx` | ⬜ |
+| S3-T5 | Catálogo de etapas con carga, error y vacío | `features/learning/components/StageCatalog.tsx` + spec, `learn/page.tsx` | ⬜ |
+| S3-T6 | Vista de etapa: módulos y unidades | `features/learning/components/StageOutline.tsx` + spec, `learn/stages/[id]/page.tsx` | ⬜ |
+| S3-T7 | Navegación anterior/siguiente como función pura | `features/learning/lib/navigation.ts` + spec | ⬜ |
+| S3-T8 | Vista de unidad con prerrequisitos y navegación | `features/learning/components/UnitView.tsx` + spec, `learn/units/[code]/page.tsx` | ⬜ |
+| S3-T9 | Lector de lección: bloques, 7 pasos y recursos | `features/learning/components/LessonReader.tsx` + spec, `learn/lessons/[slug]/page.tsx` | ⬜ |
+| S3-T10 | Verificación HTTP real y compilación de la web | — (guion de comandos) | ⬜ |
+| S3-T11 | Cierre documental: contratos, roadmap y bitácora | docs | ⬜ |
+| S3-T12 | Autoría de la primera lección real (requiere revisión pedagógica) | `apps/api/prisma/seed/content.seed.json` | ⬜ |
+
+> **Regla de tamaño:** ninguna tarea de código toca más de 3 archivos. Si necesita más, se parte antes de empezar.
+
+---
+
+## 6. Criterios de aceptación
+
+- [ ] `GET /api/content/stages/1` devuelve, para cada módulo, `units` ordenadas por `order` y solo publicadas.
+- [ ] `GET /api/content/units/U0.1.1` incluye `stageId` correcto; ninguna respuesta expone `solution` ni `sources`.
+- [ ] `packages/shared` valida el contrato nuevo y rechaza un módulo sin `units`.
+- [ ] `/learn` sin sesión redirige a `/login` y no muestra etapas.
+- [ ] `/learn` con sesión lista las 4 etapas publicadas con datos de la API.
+- [ ] `/learn/stages/0` muestra los módulos de E0 con sus unidades enlazadas.
+- [ ] `/learn/units/U0.1.1` muestra objetivo y prerrequisitos, y deshabilita «Anterior» en la primera unidad de la etapa.
+- [ ] `/learn/units/U0.1.2` ofrece «Anterior» (U0.1.1) y «Siguiente» (U0.1.3).
+- [ ] `/learn/lessons/no-existe` muestra el estado de error con enlace al catálogo, no una página en blanco.
+- [ ] `npm run typecheck`, `npm run lint`, `npm test` y `npm run build` terminan en 0.
+
+---
+
+## 7. Riesgos y mitigaciones
+
+| Riesgo | Mitigación |
+|--------|-----------|
+| Cambiar `ModuleSummary` rompe consumidores de S2 | Es un campo añadido; se actualizan fixtures y la prueba de servicio en la misma tarea |
+| Doble petición en la vista de unidad (unidad + etapa) | Ambas caben en la misma navegación; la alternativa (endpoint nuevo) se descartó a propósito |
+| Sin lecciones sembradas, el lector no se demuestra | Se prueba con dataset en memoria y la UI declara el vacío; tarea S3-T12 abierta |
+| Redirección en cliente provoca parpadeo | `SessionGate` anuncia `role="status"` y no monta contenido hasta tener sesión |
+| API caída durante la verificación | `npm run db:up` y arranque de la API con `node dist/main.js` antes del `curl` |
+
+---
+
+## 8. Fuera de alcance (a propósito)
+
+- Progreso, porcentaje y desbloqueos por prerrequisitos: S4. En S3 los prerrequisitos solo se **muestran**.
+- Guard de roles, `@Public` y módulo `users`: sin consumidor hasta S9/S11 (ver §2).
+- Contenido de lecciones: autoría pedagógica separada (S3-T12).
+- Editor de código, envíos y corrección: S5–S6.
+
+---
+
+## 9. Bitácora de ejecución
+
+| Tarea | Verificación ejecutada | Resultado | Commit |
+|-------|------------------------|-----------|--------|
+| — | — | Pendiente de ejecución | — |
+
+---
+
+## Documentos relacionados
+
+- [`../roadmap-sprints.md`](../roadmap-sprints.md)
+- [`sprint-02-contenido.md`](sprint-02-contenido.md)
+- [`../../03-arquitectura/contratos-api.md`](../../03-arquitectura/contratos-api.md)
+- [`../../03-arquitectura/arquitectura-general.md`](../../03-arquitectura/arquitectura-general.md)
+- [`../../05-orquestacion/plantilla-tarea.md`](../../05-orquestacion/plantilla-tarea.md)
