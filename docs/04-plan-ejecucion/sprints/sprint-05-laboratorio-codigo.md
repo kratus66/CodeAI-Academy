@@ -1,7 +1,7 @@
 # Sprint 05 — Laboratorio de código
 
-> **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S2 ✅ (contenido) y S3 🔄 (unidad servida); de S4 sólo hereda el vocabulario de progreso, no su código.
-> **Avance:** 7/14 tareas · 6/13 criterios de aceptación.
+> **Estado:** ✅ cerrado · **Inicio:** 2026-10-27 · **Cierre:** 2026-10-27 · **Depende de:** S2 ✅ (contenido) y S3 🔄 (unidad servida); de S4 sólo hereda el vocabulario de progreso, no su código.
+> **Avance:** 14/14 tareas · 13/13 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -51,6 +51,11 @@ Al cerrar el sprint, la plataforma puede asumir:
 | `POST /api/sandbox/run` y `GET /api/sandbox/status` exigen sesión y cuota de 20 ejecuciones/minuto | `contratos-api.md` §4.6 («límite por minuto») y `sandbox-ejecucion.md` §7 | Sandbox abierto a anónimos |
 | El resumen del laboratorio se llama `ExerciseListItem`, no `ExerciseSummary` | `schemas/content.ts` ya exporta `ExerciseSummary` para el ejercicio del detalle de unidad; dos `export *` con el mismo nombre dejarían el símbolo ambiguo en `index.ts` | Renombrar el de contenido, rompiendo S3 y la web |
 | La paginación del laboratorio replica `pageQuerySchema` en vez de importarlo | `pageQuerySchema` no se exporta desde `content.ts` y esta tarea no debía tocar un cuarto archivo; se extraerá a `common.ts` cuando un tercer contrato la necesite | Exportarlo desde `content.ts` en esta tarea |
+| `GET /api/exercises/units/:code` responde `404` si la unidad no existe o no está publicada | Una lista vacía se lee como «esta unidad no tiene ejercicios», que no es lo mismo que una unidad inexistente (`contratos-api.md` §4.3); el puerto expone `unitExists` para no duplicar la condición de publicación | Devolver `200` con `data: []` en ambos casos |
+| Monaco se sirve desde el bundle local con `monaco-editor` **0.51** y sólo el API del editor | En 0.57 el worker se emite con `new URL(…, import.meta.url)` y `next build` falla al minificarlo («`import`/`export` cannot be used outside of module code»); 0.51 resuelve el worker con `MonacoEnvironment` y cae al hilo principal, que es todo lo que S5 necesita | Cargar Monaco desde CDN (descartado en T12) o desactivar el parseo de `new URL` en `next.config` |
+| La web resuelve `slug` → `id` pidiendo el detalle de la unidad | El contrato del laboratorio no expone `slug`, y las URLs del curso ya usan slug; una petición extra a cambio de enlaces estables y compartibles | Exponer `slug` en `ExerciseListItem` desde el mapper |
+| `CodeEditor` recibe la superficie por prop (`surface`), con Monaco por defecto | Sin esa costura la reserva a `textarea` no se puede probar sin cargar el chunk de Monaco en jsdom; `null` fuerza la degradación y un componente que lanza prueba el límite de error | `vi.mock` del módulo de Monaco en cada prueba |
+| «Ejecutar» no manda `tests` al sandbox; el envío sí evalúa las visibles | El botón sólo comprueba que el código corre: mostrar un `100` de `/sandbox/run` se confundiría con la nota del ejercicio | Ejecutar las pruebas visibles también en `/sandbox/run` |
 | La migración `exercises_and_submissions` sólo añade **un** enum (`SubmissionOutcome`) | `ExerciseType` y `Ladder` ya existen desde S2; la ficha cuenta cinco modelos y dos enums porque incluye `Exercise`, que tampoco se crea aquí | Duplicar enums ya definidos, que Prisma rechaza |
 | Los `select` de Prisma se declaran con `satisfies`, no con `as const` | `as const` vuelve `readonly` el `orderBy` anidado y Prisma exige un arreglo mutable; `satisfies` valida y conserva los literales para deducir la fila | Tipar las filas a mano y perder la comprobación contra el esquema |
 
@@ -144,13 +149,13 @@ interface SubmissionSummary {
 | S5-T5 | `SANDBOX_MODE` en `loadEnv`: en producción sólo `docker` | `apps/api/src/config/env.ts` + `env.spec.ts` | 5 | ✅ `5003dcf` |
 | S5-T6 | Mapper del ejercicio (filtra `solution` y tests ocultos) y puerto de repositorio | `exercises.mapper.ts` + spec, `exercises.repository.ts` | 6 | ✅ `379bc72` |
 | S5-T7 | Adaptadores de repositorio: memoria y Prisma | `in-memory-exercises.repository.ts`, `prisma-exercises.repository.ts` | 7 | ✅ `43dc91c` |
-| S5-T8 | `ExercisesService`: listado por unidad, detalle y envío | `exercises.service.ts` + spec | 8 | ⬜ |
-| S5-T9 | `/api/sandbox` con cuota por usuario y estado del servicio | `sandbox.controller.ts`, `sandbox.module.ts`, `app.module.ts` | 9 | ⬜ |
-| S5-T10 | `/api/exercises` y registro del módulo | `exercises.controller.ts`, `exercises.module.ts`, `app.module.ts` | 10 | ⬜ |
-| S5-T11 | `codeApi` en la web con validación Zod | `apps/web/src/lib/api-client.ts` + spec | 11 | ⬜ |
-| S5-T12 | `CodeEditor`: Monaco en carga dinámica con reserva accesible | `features/lab/components/CodeEditor.tsx` + spec | 12 | ⬜ |
-| S5-T13 | `ExerciseLab` (ejecutar, enviar, resultado) y ruta de la unidad | `features/lab/components/ExerciseLab.tsx` + spec, `learn/units/[code]/exercises/[slug]/page.tsx` | 13 | ⬜ |
-| S5-T14 | Verificación HTTP real con dos usuarios y cierre documental | — (guion de comandos) y docs | 14 | ⬜ |
+| S5-T8 | `ExercisesService`: listado por unidad, detalle y envío | `exercises.service.ts` + spec | 8 | ✅ `6c88dd3` |
+| S5-T9 | `/api/sandbox` con cuota por usuario y estado del servicio | `sandbox.controller.ts`, `sandbox.module.ts`, `app.module.ts` | 9 | ✅ `6c88dd3` |
+| S5-T10 | `/api/exercises` y registro del módulo | `exercises.controller.ts`, `exercises.module.ts`, `app.module.ts` | 10 | ✅ `6c88dd3` |
+| S5-T11 | `codeApi` en la web con validación Zod | `apps/web/src/lib/api-client.ts` + spec | 11 | ✅ `e7c0b83` |
+| S5-T12 | `CodeEditor`: Monaco en carga dinámica con reserva accesible | `features/lab/components/CodeEditor.tsx` + spec | 12 | ✅ `e7c0b83` |
+| S5-T13 | `ExerciseLab` (ejecutar, enviar, resultado) y ruta de la unidad | `features/lab/components/ExerciseLab.tsx` + spec, `learn/units/[code]/exercises/[slug]/page.tsx` | 13 | ✅ `e7c0b83` |
+| S5-T14 | Verificación HTTP real con dos usuarios y cierre documental | — (guion de comandos) y docs | 14 | ✅ este documento |
 
 > **Regla de tamaño:** ninguna tarea toca más de 3 archivos. Si una tarea necesita más, se parte antes de empezar.
 
@@ -166,15 +171,15 @@ interface SubmissionSummary {
 - [x] `MockSandboxService` es determinista: el mismo código produce el mismo `outcome`, y el código con `TODO` devuelve `FAILED` con puntuación 0.
 - [x] `SANDBOX_MODE=subprocess` con `NODE_ENV=production` impide arrancar; fuera de producción se acepta.
 - [x] El detalle de un ejercicio **nunca** incluye `solution` ni el nombre de un test con `isHidden: true` (prueba del mapper).
-- [ ] `POST /api/exercises/:id/submissions` persiste el envío y devuelve sólo pruebas visibles; `achievedLevel` es `null`.
-- [ ] Dos usuarios con sesión ven exclusivamente sus propios envíos (prueba de aislamiento).
-- [ ] `GET /api/exercises/*` y `POST /api/sandbox/run` responden `401` sin cookie, `404` con ejercicio inexistente y `429` al superar 20 ejecuciones por minuto.
-- [ ] Todas las respuestas incluyen `x-trace-id` y los errores respetan el formato único de `contratos-api.md` §2.
-- [ ] La web permite escribir, ejecutar, enviar y ver el resultado del ejercicio, con estados de carga, error y vacío.
-- [ ] Sin `@monaco-editor/react` disponible, `CodeEditor` sigue siendo usable con un área de texto monoespaciada (prueba de reserva).
-- [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
+- [x] `POST /api/exercises/:id/submissions` persiste el envío y devuelve sólo pruebas visibles; `achievedLevel` es `null`.
+- [x] Dos usuarios con sesión ven exclusivamente sus propios envíos (prueba de aislamiento).
+- [x] `GET /api/exercises/*` y `POST /api/sandbox/run` responden `401` sin cookie, `404` con ejercicio inexistente y `429` al superar 20 ejecuciones por minuto.
+- [x] Todas las respuestas incluyen `x-trace-id` y los errores respetan el formato único de `contratos-api.md` §2.
+- [x] La web permite escribir, ejecutar, enviar y ver el resultado del ejercicio, con estados de carga, error y vacío.
+- [x] Sin `@monaco-editor/react` disponible, `CodeEditor` sigue siendo usable con un área de texto monoespaciada (prueba de reserva).
+- [x] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 6/13 verificados.
+**Estado:** 13/13 verificados.
 
 ---
 
@@ -212,6 +217,32 @@ interface SubmissionSummary {
 | S5-T5 | `npx vitest run src/config/env.spec.ts` (12) · `npx vitest run` (API 151) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: en producción `SANDBOX_MODE=subprocess` y el valor por defecto `mock` lanzan `Variables de entorno inválidas → SANDBOX_MODE: …` y sólo `docker` arranca; fuera de producción `mock`, `subprocess` y `test` se aceptan; un modo desconocido (`firecracker`) se rechaza. `typecheck`, `lint` y `build` en 0 | `5003dcf` |
 | S5-T6 | `npx vitest run src/modules/exercises/exercises.mapper.spec.ts` (9) · `npx vitest run` (API 160) · `npm run typecheck` · `npm run lint` · `npm run build` | Verde: el detalle no contiene `solution` ni el nombre del test oculto, y la comprobación se hace sobre el JSON serializado; `publicTests` sólo lista `t1` y `t2`; `hintsAvailable` cuenta los niveles; `starterCode` sale de `config` y es `null` si falta; `config` no objeto se sirve como `{}`; un lenguaje `python` se publica como `null`; el envío resuelve nombres, omite `durationMs` nulo y deriva `1 de 2`/`2 de 2`/vacío. `typecheck`, `lint` y `build` en 0 | `379bc72` |
 | S5-T7 | `npm run typecheck` → primer intento con 5 errores `TS2344`/`TS2322` por `as const` en los `select`; corregido con `satisfies` sin tocar la consulta. `npx vitest run` (API 160) · `npm run lint` · `npm run build` | Verde: `typecheck`, `lint` y `build` en 0; el adaptador Prisma resuelve `unitCode` por relación, ordena las pruebas visibles antes de las ocultas y nombra los resultados del historial con un `Map` de `ExerciseTest`; el adaptador en memoria pagina, ordena por fecha descendente y acepta reloj inyectable | `43dc91c` |
+| S5-T8 | `npx vitest run src/modules/exercises src/modules/sandbox` (60) · `npx vitest run` (API 179) · `npx tsc --noEmit` · `npx eslint . --ext .ts --max-warnings 0` · `npx nest build` | Verde: el listado pagina con `pageSize` 20 y responde `404` si la unidad no existe o no está publicada, dejando `data: []` sólo en una unidad publicada sin ejercicios; el detalle no contiene `solution` ni nombres ocultos; el envío evalúa sólo pruebas visibles con `achievedLevel: null` y `hintsUsed: 0`; un `ERROR` del sandbox anula todas las pruebas; un puerto caído devuelve `503` sin persistir nada. `typecheck`, `lint` y `build` en 0 | `6c88dd3` |
+| S5-T9 | `npx vitest run src/modules/sandbox/sandbox.controller.spec.ts` (5) · arranque real con `node dist/main.js` y dos sesiones | Verde: `/api/sandbox/run` y `/api/sandbox/status` exigen sesión (`401` sin cookie); el estado publica `{ status: "ok", provider: "mock", mode: "mock" }`; el contador en memoria corta la ejecución 21 del minuto con `429` y `Retry-After: 59`, y todas las respuestas llevan `x-trace-id` | `6c88dd3` |
+| S5-T10 | arranque real + rutas mapeadas en el log de Nest | Verde: `{/api/exercises/units/:code, GET}`, `{/api/exercises/:id, GET}`, `{/api/exercises/:id/submissions, GET}`, `{/api/exercises/:id/submissions, POST}`, `{/api/sandbox/run, POST}` y `{/api/sandbox/status, GET}`; `units/:code` se declara antes de `:id` y valida con `unitCodeParamsSchema` | `6c88dd3` |
+| S5-T11 | `npx vitest run src/lib/api-client.spec.ts` (30) · `npx vitest run` (web 113) · `npx tsc --noEmit` · `npx next lint --max-warnings 0` | Verde: `exercisesApi` valida con Zod y desenvuelve `data`/`meta`/`exercise`/`submission`; un `outcome` fuera del contrato se convierte en `INTERNAL_ERROR` con el mensaje de contrato; `sandboxApi.run` publica `retryAfterSeconds: 47` desde el `Retry-After` del `429`. `typecheck` y `lint` en 0 | `e7c0b83` |
+| S5-T12 | `npx vitest run src/features/lab` (11) · `npx next build` | Verde: 5 pruebas de `CodeEditor` —reserva monoespaciada con etiqueta y lenguaje, edición que propaga el texto, `aria-describedby`/`readOnly`/`rows`, superficie inyectada y vuelta a la reserva cuando el chunk falla—; el build compila con `ƒ /learn/units/[code]/exercises/[slug]` (5.47 kB) y Monaco en chunks aparte. Primera corrida del build en rojo por el worker ESM de `monaco-editor` 0.57; resuelto con 0.51 (§3) | `e7c0b83` |
+| S5-T13 | `npx vitest run src/features/lab src/features/learning/components/UnitView.spec.tsx` (17) · `npx next build` | Verde: 6 pruebas de `ExerciseLab` —enunciado y pruebas visibles, petición `{ language, files: [{ path: "index.ts" }], tests: [], limits: { timeoutMs: 5000, memoryMb: 256 } }`, botones deshabilitados sin código, envío con `selfExplanation` recortada, `429` traducido a «Vuelve a intentarlo en 47 s.» y slug no publicado como «No encontramos este ejercicio»—; `UnitView` enlaza cada ejercicio con `/learn/units/<código>/exercises/<slug>` | `e7c0b83` |
+| S5-T14 | Guion HTTP con `curl.exe` sobre `node dist/main.js`, fixture SQL de abajo y dos sesiones reales | Verde en 21 comprobaciones: `401` sin cookie; sesión independiente por usuario; listado `data=1`; detalle con `publicTests=2`, `hintsAvailable=2`, sin `solution` ni «oculta» y `starterCode` con `TODO`; `/sandbox/run` `FAILED`/`0` con `stderr: "La solución contiene un TODO sin resolver en index.ts"` y `PASSED`/`100` sin `TODO`; envío `FAILED`/`0` con 2 resultados visibles, `achievedLevel` nulo y `hintsUsed: 0`; envío correcto `PASSED`/`100` con «2 de 2 pruebas visibles superadas.»; historial A=4 y B=0; `404` de ejercicio y de unidad inexistentes; `400` con `code` vacío; `429` en la ejecución 21 con `Retry-After: 59`; `x-trace-id` presente | este documento |
+
+**Fixture de la verificación HTTP (T14).** La migración `exercises_and_submissions` no siembra ejercicios, así que la corrida creó un `LAB` temporal con dos pruebas visibles y una oculta —y lo borró al terminar—:
+
+```sql
+INSERT INTO "Exercise" (id, "unitId", slug, type, title, statement, config, solution,
+  ladder, difficulty, concepts, competencies, "estimatedMin", language, sources,
+  "maxAttempts", "isPublished", "order", "createdAt", "updatedAt")
+SELECT 'ex_s5_verif', id, 'suma-segura', 'LAB', 'Suma segura',
+  'Implementa una suma que valide sus entradas.',
+  '{"starterCode":"export function sumar(a: number, b: number) {\n  // TODO\n}"}'::jsonb,
+  '{"code":"return a + b;"}'::jsonb, 'GUIDED', 2, ARRAY['funciones'], ARRAY['C1'],
+  30, 'typescript', ARRAY[]::text[], NULL, true, 1, now(), now()
+FROM "Unit" WHERE code = 'U0.1.1';
+
+INSERT INTO "ExerciseTest" (id, "exerciseId", name, spec, "isHidden", weight) VALUES
+  ('t1', 'ex_s5_verif', 'suma dos positivos', '{"code":"expect(sumar(1,2)).toBe(3)"}'::jsonb, false, 1),
+  ('t2', 'ex_s5_verif', 'suma negativos', '{"code":"expect(sumar(-1,-1)).toBe(-2)"}'::jsonb, false, 1),
+  ('t3', 'ex_s5_verif', 'oculta: rechaza texto', '{"code":"expect(() => sumar(\"a\",1)).toThrow()"}'::jsonb, true, 1);
+```
 
 > **Artefacto de verificación:** en este entorno el aviso `The CJS build of Vite's Node API is deprecated` llega por stderr y el *harness* de comandos corta la ejecución a mitad; las corridas se hicieron con `VITE_CJS_IGNORE_WARNING=true`, que solo silencia ese aviso.
 

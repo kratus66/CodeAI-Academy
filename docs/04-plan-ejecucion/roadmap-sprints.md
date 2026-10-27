@@ -26,7 +26,7 @@
 | **S2** | Modelo de datos y API de contenido | E1 | `content` | ✅ |
 | **S3** | Plataforma de aprendizaje (catálogo y lección) | E1–E3 | `content` (lectura) | 🔄 |
 | **S4** | Progreso, desbloqueos y competencias | E1–E4 | `progress` | ✅ |
-| **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ⬜ |
+| **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ✅ |
 | **S6** | Corrección automática y pistas graduadas | E2–E7 | `exercises` | ⬜ |
 | **S7** | Repaso espaciado (SM-2) | E2–E7 | `review` | ⬜ |
 | **S8** | Capa de IA intercambiable y tutor socrático | E8–E9 | `ai` | ⬜ |
@@ -90,6 +90,8 @@
 - **Objetivo:** el estudiante escribe y ejecuta código contra un sandbox en modo `mock`.
 - **Entregables:** `exercises` (enunciado, casos de prueba), `sandbox` con interfaz y adaptador mock, editor Monaco cargado dinámicamente, envío y resultado.
 - **Criterio de salida:** flujo escribir → ejecutar → enviar con pruebas; la app funciona sin sandbox real.
+- **Cierre:** 14/14 tareas ✅ · 13/13 criterios de aceptación ✅ · verificación HTTP real con dos usuarios (aislamiento de envíos, `404` de unidad y ejercicio, `429` con `Retry-After`) · suite completa verde (shared 97 · API 179 · web 113).
+- **Ficha:** [`sprints/sprint-05-laboratorio-codigo.md`](sprints/sprint-05-laboratorio-codigo.md).
 
 ### S6 — Corrección automática y pistas graduadas
 
