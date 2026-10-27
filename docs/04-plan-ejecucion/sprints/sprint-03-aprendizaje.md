@@ -1,7 +1,7 @@
 # Sprint 03 — Plataforma de aprendizaje
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅ y S2 ✅
-> **Avance:** 0/11 tareas · 0/10 criterios de aceptación.
+> **Avance:** 1/11 tareas · 0/10 criterios de aceptación.
 > **Terminal por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -101,20 +101,20 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 
 | ID | Tarea | Archivos principales | Estado |
 |----|-------|----------------------|--------|
-| S3-T1 | Contratos compartidos: `units` en el módulo y `stageId` en la unidad | `packages/shared/src/schemas/content.ts`, `content.spec.ts` | ⬜ |
-| S3-T2 | Mapper y adaptador Prisma: módulos con sus unidades publicadas | `content.mapper.ts`, `prisma-content.repository.ts`, `content.service.spec.ts` | ⬜ |
-| S3-T3 | Cliente `contentApi` con validación Zod de las respuestas | `apps/web/src/lib/api-client.ts`, `api-client.spec.ts` | ⬜ |
-| S3-T4 | Shell autenticado: guard de sesión y layout de aprendizaje | `features/learning/components/SessionGate.tsx` + spec, `app/(learning)/learn/layout.tsx` | ⬜ |
-| S3-T5 | Catálogo de etapas con carga, error y vacío | `features/learning/components/StageCatalog.tsx` + spec, `learn/page.tsx` | ⬜ |
-| S3-T6 | Vista de etapa: módulos y unidades | `features/learning/components/StageOutline.tsx` + spec, `learn/stages/[id]/page.tsx` | ⬜ |
-| S3-T7 | Navegación anterior/siguiente como función pura | `features/learning/lib/navigation.ts` + spec | ⬜ |
-| S3-T8 | Vista de unidad con prerrequisitos y navegación | `features/learning/components/UnitView.tsx` + spec, `learn/units/[code]/page.tsx` | ⬜ |
-| S3-T9 | Lector de lección: bloques, 7 pasos y recursos | `features/learning/components/LessonReader.tsx` + spec, `learn/lessons/[slug]/page.tsx` | ⬜ |
-| S3-T10 | Verificación HTTP real y compilación de la web | — (guion de comandos) | ⬜ |
-| S3-T11 | Cierre documental: contratos, roadmap y bitácora | docs | ⬜ |
-| S3-T12 | Autoría de la primera lección real (requiere revisión pedagógica) | `apps/api/prisma/seed/content.seed.json` | ⬜ |
+| S3-T1 | Contrato y API: `units` en el módulo, `stageId` en la unidad | `packages/shared/src/schemas/content.ts` + spec, `content.mapper.ts`, `prisma-content.repository.ts`, `content.service.spec.ts` | ✅ `1d02d14` |
+| S3-T2 | Cliente `contentApi` con validación Zod de las respuestas | `apps/web/src/lib/api-client.ts`, `api-client.spec.ts` | ⬜ |
+| S3-T3 | Shell autenticado: guard de sesión y layout de aprendizaje | `features/learning/components/SessionGate.tsx` + spec, `app/(learning)/learn/layout.tsx` | ⬜ |
+| S3-T4 | Catálogo de etapas con carga, error y vacío | `features/learning/components/StageCatalog.tsx` + spec, `learn/page.tsx` | ⬜ |
+| S3-T5 | Vista de etapa: módulos y unidades | `features/learning/components/StageOutline.tsx` + spec, `learn/stages/[id]/page.tsx` | ⬜ |
+| S3-T6 | Navegación anterior/siguiente como función pura | `features/learning/lib/navigation.ts` + spec | ⬜ |
+| S3-T7 | Vista de unidad con prerrequisitos y navegación | `features/learning/components/UnitView.tsx` + spec, `learn/units/[code]/page.tsx` | ⬜ |
+| S3-T8 | Lector de lección: bloques, 7 pasos y recursos | `features/learning/components/LessonReader.tsx` + spec, `learn/lessons/[slug]/page.tsx` | ⬜ |
+| S3-T9 | Verificación HTTP real y compilación de la web | — (guion de comandos) | ⬜ |
+| S3-T10 | Cierre documental: contratos, roadmap y bitácora | docs | ⬜ |
+| S3-T11 | Autoría de la primera lección real (requiere revisión pedagógica) | `apps/api/prisma/seed/content.seed.json` | ⬜ |
 
-> **Regla de tamaño:** ninguna tarea de código toca más de 3 archivos. Si necesita más, se parte antes de empezar.
+> **Regla de tamaño:** cada tarea se parte hasta que **su commit deja `typecheck`, `lint` y `test` en verde**. El límite orientativo es de 3 archivos; S3-T1 lo supera a propósito porque un campo obligatorio nuevo en `shared` rompe el mapper y el adaptador en el mismo instante, y separarlos dejaría un commit rojo.
+
 
 ---
 
@@ -158,7 +158,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 
 | Tarea | Verificación ejecutada | Resultado | Commit |
 |-------|------------------------|-----------|--------|
-| — | — | Pendiente de ejecución | — |
+| S3-T1 | `npm run test -w @codeai/shared` (rojo 4 fallos → verde 45), `npm run test -w @codeai/api` (68), `npm run typecheck`, `npm run lint` | Verde: módulos con `units` ordenadas, `stageId` validado en [0, 11] y requerido, `unitCount` derivado de la lista | `1d02d14` |
 
 ---
 
