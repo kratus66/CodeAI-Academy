@@ -1,7 +1,7 @@
 # Sprint 06 — Corrección automática y pistas graduadas
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S5 🔄 (envío persistido y `SandboxService` con su puerto); hereda de S4 sólo el vocabulario de progreso, no su código.
-> **Avance:** 8/16 tareas · 9/14 criterios de aceptación.
+> **Avance:** 9/16 tareas · 12/14 criterios de aceptación.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -41,6 +41,7 @@ Al cerrar el sprint, la plataforma puede asumir:
 1. **T7** añade `findHint(exerciseId, level)` al puerto `ExercisesRepository` y a sus dos adaptadores. El listado del ejercicio sólo expone `hintsAvailable`; el texto de la pista se lee de `ExerciseHint` en el momento de servirla, de modo que el catálogo sigue siendo la única fuente y la respuesta no puede inventar texto.
 2. **T9** **extiende** el flujo de envío que S5 ya centraliza en `ExercisesService`, en vez de extraer un `submissions.service.ts`. Mover el flujo exigiría duplicar los helpers de sandbox y crearía un ciclo `SubmissionsService → ExercisesService → SubmissionsService`. La tarea se verifica sobre `exercises.service.ts` y su spec.
 3. **T11** ya está implementado por S5 (`GET /api/exercises/:id/submissions` con paginación y aislamiento por usuario). No se crea `submissions.module.ts` para no envolver un módulo que ya exporta todo lo necesario; la tarea se limita a verificar el criterio y a completar la prueba que falte.
+4. **T9** toca un sexto archivo, `exercises.mapper.ts`: el `feedback` del evaluador es el único texto que explica el motivo del tope de nivel, y el mapper es el punto único por el que pasa todo envío hacia el cliente. Sin ese cambio, el motivo se perdería al serializar y el historial no podría reconstruirlo. Los adaptadores siguen siendo dos.
 
 **Regla de tamaño ratificada:** ≤ 3 archivos por tarea; ≤ 5 cuando la tarea incluya un puerto compartido y sus dos adaptadores (T7, T8, T9). El resto de la ficha no cambia.
 
@@ -146,7 +147,7 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T6 | Adaptador Prisma de `HintRequestRepository` | `prisma-hint-requests.repository.ts` | 6 | ✅ `1315554` |
 | S6-T7 | `HintsService`: sirve la pista del nivel pedido y registra el uso | `hints.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 7 | ✅ `ad9fc8c` |
 | S6-T8 | Límite de intentos y numeración del intento (`maxAttempts`) | `submit-limits.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 8 | ✅ `d9e7c17` |
-| S6-T9 | Corrección completa en `ExercisesService`: nivel, `hintsUsed`, historial | `exercises.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma | 9 | ⬜ |
+| S6-T9 | Corrección completa en `ExercisesService`: nivel, `hintsUsed`, historial | `exercises.service.ts` + spec, `exercises.repository.ts`, adaptadores `in-memory` y Prisma, `exercises.mapper.ts` | 9 | ✅ `44d25d6` |
 | S6-T10 | Endpoint `POST /api/exercises/:id/hints` y registro en el módulo | `exercises.controller.ts`, `exercises.module.ts` | 10 | ⬜ |
 | S6-T11 | Verificación de `GET /api/exercises/:id/submissions` (historial propio paginado) | Sin archivos nuevos: implementado en S5; se completa la prueba si falta | 11 | ⬜ |
 | S6-T12 | Cuota de pistas por minuto y traducción de la regla de progresión a `422` | `hints-rate-limit.guard.ts` + spec | 12 | ⬜ |
@@ -172,14 +173,14 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 - [x] `S6-T3`: pedir el nivel 2 sin el 1 devuelve `422 RULE_VIOLATION`; pedir el 1 dos veces devuelve la misma pista sin duplicar el registro.
 - [x] La pista servida es **exactamente** el texto del catálogo: ni `solution` ni código del estudiante en la respuesta.
 - [x] La migración `hint_requests` crea `HintRequest` con cascada desde `User` y `Exercise` y unicidad `[userId, exerciseId, level]`.
-- [ ] `hintsUsed` persistido es el número de niveles distintos usados desde el intento anterior, calculado en el servidor.
-- [ ] El envío se corrige con pruebas ocultas: una oculta fallida baja el `score` aunque todas las visibles pasen.
-- [ ] Superar `maxAttempts` devuelve `409 CONFLICT` sin crear `Submission`.
+- [x] `hintsUsed` persistido es el número de niveles distintos usados desde el intento anterior, calculado en el servidor.
+- [x] El envío se corrige con pruebas ocultas: una oculta fallida baja el `score` aunque todas las visibles pasen.
+- [x] Superar `maxAttempts` devuelve `409 CONFLICT` sin crear `Submission`.
 - [ ] El historial devuelve sólo los envíos del usuario autenticado, en orden descendente y paginado.
 - [ ] La web muestra la pista pedida, el motivo del tope y el historial, con estados de carga, error y vacío.
 - [ ] Suite del monorepo verde: `typecheck`, `lint`, `test` y `build`.
 
-**Estado:** 9/14 verificados.
+**Estado:** 12/14 verificados.
 
 ---
 
@@ -221,6 +222,8 @@ Los errores respetan el formato único de `contratos-api.md` §2 y usan sólo c�
 | S6-T6 | `npx prisma generate` → Prisma Client v6.19.3 regenerado. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | El `upsert` usa el `where` compuesto `userId_exerciseId_level`, que sólo compila si la unicidad de T4 existe. Sin spec propia: los adaptadores Prisma del repositorio no la tienen y la semántica ya la cubre el adaptador en memoria. | `1315554` |
 | S6-T7 | `npm run test -w @codeai/api -- hints` → `Test Files 1 passed (1)`, `Tests 12 passed (12)`. `npm run test -w @codeai/api` → `Test Files 22 passed (22)`, `Tests 213 passed (213)` (S5 sigue verde). `npm run typecheck -w @codeai/api` → exit 0 `tsc -p tsconfig.json --noEmit`. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | `findHint` entra en el puerto y en los dos adaptadores sin tocar `ExerciseRow`: los fixtures de S5 compilan intactos y el dataset en memoria gana `hintTexts` opcional. El servicio lee el texto del catálogo, lo devuelve sin interpolar y sólo registra el uso cuando la pista se sirve; un `404`/`422` deja `findUsedLevels` vacío. `UnprocessableEntityException` sale como `422 RULE_VIOLATION` por el filtro global. | `ad9fc8c` |
 | S6-T8 | `npm run test -w @codeai/api -- submit-limits` → `Test Files 1 passed (1)`, `Tests 9 passed (9)`. `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 92 passed (92)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | `checkAttemptLimit` no lanza: devuelve `attemptNumber` (1-based) y `allowed`, y el `409` lo decide T9. `maxAttempts` nulo, no entero o menor que 1 se trata como sin límite, y entra en `ExerciseRow` como opcional para no romper los fixtures de S5. `countSubmissions` se añade al puerto y a los dos adaptadores. | `d9e7c17` |
+| S6-T9 | `npm run test -w @codeai/api -- exercises` → `Test Files 7 passed (7)`, `Tests 101 passed (101)` (`exercises.service.spec.ts`: 23). `npm run test -w @codeai/api` → `Test Files 23 passed (23)`, `Tests 231 passed (231)`. `npm run typecheck -w @codeai/api` → exit 0. `npm run lint -w @codeai/api` → exit 0 con `--max-warnings 0`. | El envío comprueba el tope antes de tocar el sandbox, cuenta `hintsUsed` desde `lastRequestedAt` posterior al envío anterior y corrige con las pruebas ocultas. Sólo las visibles se persisten, así que el historial no filtra nombres ocultos. Cambiaron cuatro esperados de S5 (los ids del sandbox, el `achievedLevel` ya no es `null`, el `score` de pesos incluye la oculta y el `feedback` añade el tope de escalón). El subproceso detectó que `Array.map` pasaría el índice como `feedback` y lo evitó con un envoltorio explícito. | `44d25d6` |
+
 
 
 ---
