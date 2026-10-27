@@ -1,7 +1,7 @@
 # Sprint 03 — Plataforma de aprendizaje
 
 > **Estado:** 🔄 en curso · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅ y S2 ✅
-> **Avance:** 2/11 tareas · 0/10 criterios de aceptación.
+> **Avance:** 3/11 tareas · 0/10 criterios de aceptación.
 > **Terminal por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -103,7 +103,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 |----|-------|----------------------|--------|
 | S3-T1 | Contrato y API: `units` en el módulo, `stageId` en la unidad | `packages/shared/src/schemas/content.ts` + spec, `content.mapper.ts`, `prisma-content.repository.ts`, `content.service.spec.ts` | ✅ `1d02d14` |
 | S3-T2 | Cliente `contentApi` con validación Zod de las respuestas | `apps/web/src/lib/api-client.ts`, `api-client.spec.ts` | ✅ `85fcca0` |
-| S3-T3 | Shell autenticado: guard de sesión y layout de aprendizaje | `features/learning/components/SessionGate.tsx` + spec, `app/(learning)/learn/layout.tsx` | ⬜ |
+| S3-T3 | Shell autenticado: guard de sesión y layout de aprendizaje | `features/learning/components/SessionGate.tsx` + spec, `app/(learning)/learn/layout.tsx` | ✅ `56a1bc6` |
 | S3-T4 | Catálogo de etapas con carga, error y vacío | `features/learning/components/StageCatalog.tsx` + spec, `learn/page.tsx` | ⬜ |
 | S3-T5 | Vista de etapa: módulos y unidades | `features/learning/components/StageOutline.tsx` + spec, `learn/stages/[id]/page.tsx` | ⬜ |
 | S3-T6 | Navegación anterior/siguiente como función pura | `features/learning/lib/navigation.ts` + spec | ⬜ |
@@ -160,6 +160,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 |-------|------------------------|-----------|--------|
 | S3-T1 | `npm run test -w @codeai/shared` (rojo 4 fallos → verde 45), `npm run test -w @codeai/api` (68), `npm run typecheck`, `npm run lint` | Verde: módulos con `units` ordenadas, `stageId` validado en [0, 11] y requerido, `unitCount` derivado de la lista | `1d02d14` |
 | S3-T2 | `npm run test -w @codeai/web` (rojo: import sin exportar → verde 36), `npm test` (11 + 6 + 4 archivos), `npm run typecheck`, `npm run lint` | Verde: `contentApi` pide `/content/stages`, `/content/stages/:id`, `/content/units/:code` y `/content/lessons/:slug`; una etapa con módulo sin `units` se rechaza como `INTERNAL_ERROR` y el `404` de la API llega intacto con `traceId` | `85fcca0` |
+| S3-T3 | `npm run test -w @codeai/web` (rojo: `./SessionGate` inexistente → verde 39), `npm run typecheck`, `npm run lint` | Verde: `role="status"` mientras se restaura, `role="alert"` + `router.replace("/login")` sin sesión, contenido privado solo con sesión; lint de Next sin avisos | `56a1bc6` |
 
 ---
 
