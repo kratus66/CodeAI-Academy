@@ -1,24 +1,30 @@
 import {
   DEFAULT_ERROR_MESSAGE_BY_CODE,
   ERROR_CODE_BY_HTTP_STATUS,
+  competencyProgressSchema,
   errorResponseSchema,
   lessonDetailSchema,
   paginatedSchema,
+  progressOverviewSchema,
   stageDetailSchema,
   stageSummarySchema,
   unitDetailSchema,
+  unitProgressSummarySchema,
   userResponseSchema,
 } from "@codeai/shared";
 import type {
+  CompetencyProgress,
   ErrorCode,
   ErrorDetail,
   LessonDetail,
   LoginInput,
   PaginationMeta,
+  ProgressOverview,
   RegisterInput,
   StageDetail,
   StageSummary,
   UnitDetail,
+  UnitProgressSummary,
   UserPublic,
 } from "@codeai/shared";
 import { z } from "zod";
@@ -223,6 +229,59 @@ export const contentApi = {
     );
 
     return response.lesson;
+  },
+};
+
+const unitProgressListSchema = z.object({ units: z.array(unitProgressSummarySchema) });
+const competencyListSchema = z.object({
+  competencies: z.array(competencyProgressSchema),
+});
+const unitProgressResponseSchema = z.object({ unit: unitProgressSummarySchema });
+
+/**
+ * Progreso del estudiante autenticado (`contratos-api.md` §4.4). Toda petición
+ * viaja con cookies de sesión y la API responde `401` si no hay sesión válida,
+ * así que el cliente no necesita conocer el token.
+ */
+export const progressApi = {
+  async getOverview(signal?: AbortSignal): Promise<ProgressOverview> {
+    return requestParsed(progressOverviewSchema, "/progress/overview", signal);
+  },
+
+  async listUnits(signal?: AbortSignal): Promise<UnitProgressSummary[]> {
+    const response = await requestParsed(
+      unitProgressListSchema,
+      "/progress/units",
+      signal,
+    );
+
+    return response.units;
+  },
+
+  async listCompetencies(signal?: AbortSignal): Promise<CompetencyProgress[]> {
+    const response = await requestParsed(
+      competencyListSchema,
+      "/progress/competencies",
+      signal,
+    );
+
+    return response.competencies;
+  },
+
+  /** Idempotente en el servidor: repetir la misma lección no cambia el avance. */
+  async completeLesson(
+    unitId: string,
+    lessonId: string,
+  ): Promise<UnitProgressSummary> {
+    const response = parseContract(
+      unitProgressResponseSchema,
+      await apiRequest<unknown>(
+        `/progress/units/${encodeURIComponent(unitId)}/complete-lesson`,
+        { method: "POST", body: { lessonId } },
+      ),
+    );
+
+    return response.unit;
   },
 };
 

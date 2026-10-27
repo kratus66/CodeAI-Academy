@@ -5,6 +5,7 @@ import {
   ApiError,
   authApi,
   contentApi,
+  progressApi,
   resolveApiBaseUrl,
   restoreSession,
 } from "./api-client";
@@ -344,6 +345,113 @@ describe("contentApi", () => {
     expect(error.status).toBe(404);
     expect(error.code).toBe("NOT_FOUND");
     expect(error.traceId).toBe("trace-404");
+  });
+});
+
+const UNIT_PROGRESS = {
+  unitId: "unit_1",
+  unitCode: "U0.1.1",
+  state: "IN_PROGRESS",
+  progressPct: 50,
+  lessonsDone: 1,
+  exercisesDone: 0,
+  bestScore: null,
+  lastActivityAt: "2026-10-26T14:30:00.000Z",
+  completedAt: null,
+} as const;
+
+const OVERVIEW = {
+  user: { id: "usr_1", name: "Ana" },
+  currentStage: 0,
+  overallPct: 16.7,
+  units: { mastered: 0, inProgress: 1, needsReview: 0, locked: 2 },
+  competencies: [{ code: "C1", level: 3, evidenceCount: 14 }],
+  dueReviews: 0,
+} as const;
+
+describe("progressApi", () => {
+  it("devuelve el resumen global del contrato", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(OVERVIEW));
+
+    const overview = await progressApi.getOverview();
+
+    expect(overview.overallPct).toBe(16.7);
+    expect(overview.units.locked).toBe(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/progress/overview",
+    );
+  });
+
+  it("desenvuelve la lista de unidades", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ units: [UNIT_PROGRESS] }));
+
+    const units = await progressApi.listUnits();
+
+    expect(units).toHaveLength(1);
+    expect(units[0]?.unitCode).toBe("U0.1.1");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/progress/units",
+    );
+  });
+
+  it("desenvuelve el mapa de competencias", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ competencies: OVERVIEW.competencies }),
+    );
+
+    const competencies = await progressApi.listCompetencies();
+
+    expect(competencies[0]).toEqual({ code: "C1", level: 3, evidenceCount: 14 });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/progress/competencies",
+    );
+  });
+
+  it("marca una lección vista con POST y devuelve el resumen de la unidad", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ unit: UNIT_PROGRESS }));
+
+    const unit = await progressApi.completeLesson("unit_1", "lesson_1");
+
+    expect(unit.progressPct).toBe(50);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/progress/units/unit_1/complete-lesson",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ lessonId: "lesson_1" }),
+    });
+  });
+
+  it("propaga el 409 de una unidad bloqueada", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "CONFLICT",
+            message: "La unidad está bloqueada",
+            traceId: "trace-409",
+          },
+        },
+        { status: 409 },
+      ),
+    );
+
+    const error = await captureApiError(
+      progressApi.completeLesson("unit_1", "lesson_1"),
+    );
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("CONFLICT");
+    expect(error.traceId).toBe("trace-409");
+  });
+
+  it("rechaza un estado fuera del contrato sin tocar la vista", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ units: [{ ...UNIT_PROGRESS, state: "DONE" }] }));
+
+    const error = await captureApiError(progressApi.listUnits());
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe("INTERNAL_ERROR");
   });
 });
 
