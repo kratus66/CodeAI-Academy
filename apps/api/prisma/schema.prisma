@@ -41,6 +41,7 @@ model User {
   unitProgress       UnitProgress[]
   competencyProgress CompetencyProgress[]
   submissions        Submission[]
+  hintRequests       HintRequest[]
 
   @@index([role])
 }
@@ -223,9 +224,10 @@ model Exercise {
 
   unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
-  hints       ExerciseHint[]
-  tests       ExerciseTest[]
-  submissions Submission[]
+  hints        ExerciseHint[]
+  tests        ExerciseTest[]
+  submissions  Submission[]
+  hintRequests HintRequest[]
 
   @@index([unitId, type])
   @@index([isPublished])
@@ -258,6 +260,27 @@ model ExerciseTest {
 
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
+  @@index([exerciseId])
+}
+
+/// Solicitud de pista de un estudiante (S6). Una fila por usuario, ejercicio y
+/// nivel: volver a pedir la misma pista no duplica el registro.
+model HintRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  exerciseId      String
+  level           Int // 1..3
+  /// Veces que se pidió este nivel; auditoría del uso repetido.
+  requests        Int      @default(1)
+  /// T9 cuenta los niveles distintos usados desde el envío anterior con esta fecha.
+  lastRequestedAt DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, exerciseId, level])
+  @@index([userId, exerciseId])
   @@index([exerciseId])
 }
 
