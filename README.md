@@ -34,7 +34,7 @@ CodeAI Academy es a la vez:
 | **S10** | Simulaciones de entrevista | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
 | **S11** | Analítica, rendimiento y lanzamiento | ⬜ ficha redactada, sin código |
 
-**Contenido sembrado (2026-10-28):** 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas y 34 recursos. El seed ya trae 864 ejercicios publicados para E0–E2 (sin revisión humana; el sandbox actual es `mock`, así que los laboratorios no certifican); E3–E11 siguen sin ejercicios, deuda pedagógica declarada en [`banco-ejercicios.md`](docs/02-contenido/banco-ejercicios.md) §5. La revisión pedagógica de las lecciones (qué se corrigió y qué sigue abierto) está en [`revision-pedagogica.md`](docs/02-contenido/revision-pedagogica.md).
+**Contenido sembrado (2026-10-28):** 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas y 34 recursos. El seed ya trae 3.189 ejercicios publicados (E0–E11, sin revisión humana; el sandbox actual es `mock`, así que los laboratorios de E0–E2 no certifican; E3–E11 solo tienen quizzes, tarjetas y reflexiones), deuda pedagógica declarada en [`banco-ejercicios.md`](docs/02-contenido/banco-ejercicios.md) §5. La revisión pedagógica de las lecciones (qué se corrigió y qué sigue abierto) está en [`revision-pedagogica.md`](docs/02-contenido/revision-pedagogica.md).
 
 Detalle y criterios de cierre en [`docs/04-plan-ejecucion/roadmap-sprints.md`](docs/04-plan-ejecucion/roadmap-sprints.md).
 

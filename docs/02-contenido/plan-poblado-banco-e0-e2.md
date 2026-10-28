@@ -38,7 +38,8 @@ Por eso los ejercicios se escriben ahora con `isPublished: false` y una guarda (
 | T4 | Web: `QuizPlayer`, `FlashcardPlayer` y `ExercisePlayer` (despacha por tipo) | ✅ |
 | T5 | E0 completo (14 unidades) | ✅ escrito y publicado; **sin revisión humana** |
 | T6 | E1 y E2 (`LAB` y `DEBUG` con solución ejecutada en prueba, como el piloto `js-async-00x`) | ✅ escrito y publicado; **sin revisión humana** |
-| T7 | Recursos de E2–E11 (hoy 38 recursos; 175 lecciones sin enlace) | ⬜ los agentes de autoría no podían abrir páginas, así que no añadieron ninguno |
+| T7 | Recursos de E2–E11 (hoy 204 recursos) | ✅ 2026-10-28: las 207 lecciones tienen al menos un recurso oficial (uno por unidad en E2–E11), con URL comprobada (200) y título leído; **contenido no leído completo** |
+| T9 | Ejercicios de E3–E11 (155 unidades) | ✅ escrito y publicado 2026-10-28: 8 `QUIZ` + 6 `FLASHCARD` + 1 `REFLECT` por unidad (2.325 ejercicios), sin `LAB`/`DEBUG` por no haber sandbox real; **sin revisión humana** |
 | T8 | Publicar | ✅ por decisión del responsable (2026-10-28) se publicó todo sin esperar revisión ni sandbox real, con aviso en los laboratorios |
 
 **Excepción por revisar (T1b):** U0.1.1 es conceptual y no admite `LAB` ni `DEBUG` con código sin forzarlos. El mínimo de §5 debe decir cómo se cubren las unidades conceptuales; propuesta: `LAB` guiado y autónomo pasan a ser un `AUDIT`/`DEBUG` de texto (p. ej. corregir un conjunto de criterios de aceptación mal escritos), con la rúbrica de la unidad.
