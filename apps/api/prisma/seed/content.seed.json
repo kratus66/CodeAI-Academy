@@ -14832,35 +14832,1642 @@
       "level": 3,
       "estimatedMin": 2400,
       "order": 9,
-      "isPublished": false,
+      "isPublished": true,
       "modules": [
         {
           "code": "M8.1",
           "title": "Cómo funcionan los modelos",
           "order": 1,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U8.1.1",
+              "title": "Tokens, ventana de contexto y generación probabilística",
+              "objective": "Explicar cómo un modelo de lenguaje convierte texto en tokens y genera la siguiente palabra probabilísticamente dentro de una ventana de contexto limitada",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "tokens-ventana-de-contexto-y-generacion-probabilistica",
+                  "title": "Tokens, ventana de contexto y generación probabilística",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "En E0 viste que un modelo de lenguaje genera texto de forma probabilística, no porque 'entienda' en el sentido humano. Esta unidad va un nivel más técnico: un modelo no procesa letras ni palabras completas, sino tokens, fragmentos de texto (a veces una palabra, a veces parte de una palabra, a veces un solo carácter) que un tokenizador produce a partir del texto de entrada. El modelo recibe esa secuencia de tokens y, en cada paso, calcula una distribución de probabilidad sobre qué token vendría después, eligiendo uno (con algo de aleatoriedad controlada) y repitiendo el proceso. La ventana de contexto es el número máximo de tokens (entrada más lo que va generando) que el modelo puede 'tener en cuenta' a la vez: todo lo que queda fuera de esa ventana, el modelo literalmente no lo ve en ese momento, sin importar cuán relevante fuera."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las tres piezas técnicas",
+                      "items": [
+                        "Token: la unidad mínima que procesa el modelo; una palabra común puede ser un token, una palabra rara o un identificador de código puede dividirse en varios.",
+                        "Generación probabilística: en cada paso, el modelo calcula probabilidades sobre el siguiente token y elige uno, no 'busca la respuesta correcta' en una base de datos.",
+                        "Ventana de contexto: el límite de tokens que el modelo puede considerar simultáneamente (entrada + lo generado); medida en tokens, no en caracteres ni palabras.",
+                        "Si la conversación o el documento supera la ventana de contexto, la parte más antigua deja de estar disponible para el modelo, aunque siga siendo relevante para la tarea."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "La palabra 'tokenización' podría dividirse en tokens como 'token', 'iza' y 'ción' (la división exacta depende del tokenizador específico del modelo), mientras que una palabra muy común como 'el' es casi siempre un solo token. Esto explica un fenómeno práctico real: pedirle a un modelo que cuente letras exactas dentro de una palabra a veces falla, porque el modelo no 've' letras individuales directamente, ve tokens, que no siempre coinciden con los límites de las letras que un humano percibe."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: asumir que la ventana de contexto se mide en 'mensajes' o 'páginas'",
+                      "text": "Causa: pensar en la conversación como si tuviera un límite de turnos, en vez de un límite de tokens acumulados. Cómo detectarlo: una conversación con mensajes cortos cabe mucho más tiempo que una con unos pocos mensajes muy largos (pegar un archivo de código completo, por ejemplo), aunque ambas tengan 'pocos mensajes'. Solución: piensa en el límite como tokens totales acumulados (todo lo que se pegó, escribió y generó), no como cantidad de intercambios."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: pedirle al modelo que recuerde algo que ya salió de la ventana de contexto",
+                      "text": "Causa: suponer que, como 'se dijo antes en la conversación', el modelo todavía lo tiene presente. Cómo detectarlo: el modelo responde de forma inconsistente con una instrucción dada mucho antes, o simplemente no la sigue, no porque la 'olvidó' en el sentido humano, sino porque ya no está dentro de la ventana que puede procesar. Solución: en conversaciones largas, repite explícitamente la información crítica que necesitas que el modelo siga considerando, en vez de asumir que 'ya lo sabe'."
+                    },
+                    {
+                      "type": "diagram",
+                      "title": "Entrada, tokens y ventana de contexto",
+                      "text": "Texto: \"El gato duerme\"\nTokens aproximados: [\"El\", \" gato\", \" duer\", \"me\"]\n\nVentana de contexto (ej. 128,000 tokens):\n[------------------ todo lo que el modelo puede 'ver' ahora ------------------]\n  ^ entrada + conversación previa          ^ lo que está generando ahora\n\nSi el total supera el límite, lo más antiguo queda fuera de esta ventana."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Conceptos y su efecto práctico",
+                      "items": [
+                        "Token: unidad de procesamiento; afecta cuánto 'cuesta' (en límite de contexto) un texto dado",
+                        "Ventana de contexto: límite de tokens simultáneos; se mide en tokens, no en mensajes ni páginas",
+                        "Generación probabilística: elige el siguiente token con algo de aleatoriedad, por eso la misma pregunta puede dar respuestas levemente distintas",
+                        "Información fuera de la ventana: el modelo no la tiene disponible, aunque sea relevante"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás explicar qué es un token, por qué la ventana de contexto se mide en tokens (no en mensajes), y predecir en qué situaciones una conversación larga podría 'perder de vista' información relevante dada al inicio."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la palabra 'tokenización' dividida en varios tokens. Relaciona esto con lo visto en E0 sobre generación probabilística: ahora sabes sobre qué unidad exacta opera esa probabilidad."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Usa una herramienta de tokenización (muchos proveedores de modelos ofrecen una pública) para contar cuántos tokens produce un párrafo corto en español y el mismo párrafo traducido a inglés. Compara los resultados. Criterio de paso: documentas el conteo real de ambos y una hipótesis razonable de por qué podrían diferir."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña un experimento con un asistente de IA real: dale una instrucción específica al inicio de una conversación larga (por ejemplo, 'responde siempre en una sola frase'), continúa la conversación con muchos intercambios largos, y observa en qué punto (si ocurre) el modelo deja de seguir esa instrucción inicial. Documenta tu observación. Criterio de paso: tu experimento y observación son concretos, no hipotéticos."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que explique qué es un token y una ventana de contexto. Verifica su explicación contrastándola con lo que observaste en tus propios experimentos de esta lección (la tokenización real y el comportamiento en conversación larga). Anota si la explicación coincide con la evidencia que recogiste."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué es un token? 2) ¿En qué unidad se mide la ventana de contexto? 3) ¿Por qué la misma pregunta puede dar respuestas levemente distintas en dos ocasiones? 4) ¿Qué pasa con la información que queda fuera de la ventana de contexto? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Entender tokens y ventana de contexto explica por qué, al construir aplicaciones con modelos de IA (tema central de la Etapa 9), hay que diseñar deliberadamente qué información entra en cada petición, en vez de 'pegar todo y esperar que funcione'. En una entrevista pueden preguntarte: '¿por qué un modelo de IA puede fallar en contar letras de una palabra?'. Variante: necesitas procesar un documento mucho más largo que la ventana de contexto del modelo disponible (pista: eso es exactamente el problema que resuelve la recuperación de información, tema de la Etapa 9). Pregunta de cierre: ¿cuándo una ventana de contexto más grande no resuelve realmente el problema que parece resolver?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.1.2",
+              "title": "Modelos de chat, de razonamiento y de código",
+              "objective": "Distinguir modelos de chat, de razonamiento y de código según el tipo de tarea para la que están optimizados",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "modelos-de-chat-razonamiento-y-codigo",
+                  "title": "Modelos de chat, de razonamiento y de código",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "No todos los modelos de lenguaje están optimizados para lo mismo, y elegir el tipo equivocado para una tarea produce peores resultados sin que el modelo esté 'roto'. Los modelos de chat/propósito general están afinados para conversación natural y seguir instrucciones variadas. Los modelos de razonamiento dedican más 'pasos internos' (a veces visibles como una cadena de razonamiento, a veces no) antes de responder, mejor para problemas que requieren varios pasos lógicos encadenados (matemáticas, depuración compleja), a costa de más tiempo y costo por respuesta. Los modelos de código están afinados específicamente sobre grandes volúmenes de código y suelen ser mejores en tareas de programación específicas que un modelo de propósito general equivalente, aunque los modelos de chat modernos más capaces también programan bien."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cuándo conviene cada tipo (como tendencia general, no regla absoluta)",
+                      "items": [
+                        "Chat/propósito general: conversación, explicaciones, tareas variadas sin un patrón de razonamiento profundo necesario.",
+                        "Razonamiento: problemas con varios pasos lógicos dependientes entre sí, donde un error temprano arruina el resultado final (matemáticas complejas, depurar un bug sutil con múltiples causas posibles).",
+                        "Código: generación y explicación de código, especialmente en lenguajes y patrones bien representados en su entrenamiento.",
+                        "Costo y velocidad: los modelos de razonamiento suelen ser más lentos y costosos por respuesta, precisamente por el trabajo interno adicional; no conviene usarlos para todo por defecto."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pedir a un modelo 'redacta un correo de bienvenida para nuevos usuarios' es una tarea de chat de propósito general: no necesita razonamiento multi-paso. Pedir 'encuentra por qué esta función de ordenamiento falla solo con arreglos de más de 1000 elementos, considerando que el bug podría estar en tres lugares distintos del código' se beneficia de un modelo de razonamiento, que puede explorar varias hipótesis antes de concluir, en vez de responder con la primera explicación plausible que un modelo más rápido generaría de inmediato."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: usar siempre el modelo más 'potente' y costoso para cualquier tarea",
+                      "text": "Causa: suponer que 'más capaz siempre es mejor', sin considerar el costo y tiempo de respuesta. Cómo detectarlo: tareas simples y rápidas (como reformatear un texto corto) tardan y cuestan más de lo necesario, sin ninguna mejora real en calidad sobre un modelo más simple y rápido para ese caso. Solución: iguala el tipo y tamaño del modelo a la complejidad real de la tarea; reserva los modelos de razonamiento más costosos para problemas que de verdad lo requieren."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: esperar razonamiento multi-paso robusto de un modelo rápido optimizado para chat casual",
+                      "text": "Causa: no distinguir el tipo de modelo detrás de una interfaz de chat genérica. Cómo detectarlo: el modelo da una respuesta rápida y segura a un problema matemático o lógico complejo, pero la respuesta es incorrecta porque no exploró suficientes pasos intermedios. Solución: para problemas que requieren varios pasos lógicos dependientes, usa (si está disponible) un modelo específicamente de razonamiento, o pide explícitamente al modelo que muestre su razonamiento paso a paso antes de concluir."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Elegir el tipo según la tarea",
+                      "items": [
+                        "Conversación, explicaciones, tareas variadas: chat de propósito general",
+                        "Problemas con varios pasos lógicos dependientes: modelo de razonamiento",
+                        "Generación/explicación de código en lenguajes bien representados: modelo de código (o chat moderno capaz)",
+                        "Tarea simple y rápida: el modelo más simple disponible, no el más costoso por defecto"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "Pedir razonamiento explícito paso a paso",
+                      "language": "text",
+                      "code": "En vez de: \"¿Por qué falla esta función?\"\n\nPide: \"Antes de concluir, enumera al menos tres hipótesis posibles sobre\npor qué esta función falla con arreglos grandes. Para cada una, explica\ncómo la verificarías. Solo después de considerar las tres, da tu\nconclusión más probable.\""
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás elegir, para una tarea dada, si conviene un modelo de chat general, de razonamiento o de código, justificando la elección según la complejidad y tipo de la tarea, no por defecto el más potente disponible."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del correo de bienvenida frente al bug con tres causas posibles. Identifica qué característica de cada tarea determina qué tipo de modelo conviene más."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Clasifica cinco tareas que te den (traducir un párrafo, depurar un algoritmo con una condición de carrera sutil, generar una función simple de utilidad, resumir un artículo, resolver un problema matemático de varios pasos) según qué tipo de modelo convendría más para cada una. Criterio de paso: las cinco clasificaciones son razonables y justificadas."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Elige un problema real con varios pasos lógicos (puede ser un bug que hayas enfrentado en los ejercicios de este curso) y pide a un asistente que muestre explícitamente varias hipótesis antes de concluir, como en el ejemplo de esta lección. Compara esa respuesta con pedir directamente 'dime la respuesta' sin ese andamiaje. Criterio de paso: documentas una diferencia real observada entre ambos enfoques."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que resuelva un problema con varios pasos lógicos dependientes, sin pedirle explícitamente que muestre su razonamiento. Verifica su respuesta paso a paso tú mismo: ¿consideró las alternativas relevantes, o saltó directo a una conclusión? Si saltó, vuelve a pedirle la misma tarea exigiendo que muestre el razonamiento antes de concluir, y compara."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Para qué tipo de tarea conviene más un modelo de razonamiento? 2) ¿Qué costo tiene usar un modelo de razonamiento para todo por defecto? 3) ¿Qué distingue a un modelo de código? 4) Da un ejemplo propio de tarea que no necesita razonamiento multi-paso. Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Elegir el modelo adecuado para cada tarea es una decisión de costo-beneficio real al construir aplicaciones con IA (tema de la Etapa 9): usar siempre el modelo más caro para cada petición de una aplicación con miles de usuarios tiene un impacto económico directo y medible. En una entrevista pueden preguntarte: '¿cómo elegirías qué modelo usar para esta funcionalidad?'. Variante: la misma aplicación necesita respuestas rápidas para la mayoría de casos pero razonamiento profundo para un subconjunto específico de consultas complejas (pista: eso sugiere enrutar dinámicamente a distintos modelos según la complejidad detectada de cada petición). Pregunta de cierre: ¿cuándo valdría la pena usar siempre el modelo más costoso, sin optimizar por tarea?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.1.3",
+              "title": "Limitaciones: alucinación, conocimiento desactualizado, sesgo",
+              "objective": "Reconocer cuándo una respuesta de IA alucina, usa conocimiento desactualizado o refleja un sesgo, y verificarla en consecuencia",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "limitaciones-alucinacion-conocimiento-desactualizado-y-sesgo",
+                  "title": "Limitaciones: alucinación, conocimiento desactualizado y sesgo",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "En E0 viste estas limitaciones de forma introductoria; aquí se profundiza en cómo detectarlas y mitigarlas de forma sistemática, ahora que tienes más herramientas técnicas. Una alucinación es una afirmación generada con total confianza aparente que es falsa o inventada (una API que no existe, una cita de un paper que nunca se escribió, un dato estadístico inventado); el modelo no 'miente' deliberadamente, genera el texto estadísticamente más plausible, que no siempre coincide con la verdad. Conocimiento desactualizado significa que el modelo no sabe sobre eventos posteriores a su fecha de entrenamiento (salvo que tenga acceso a herramientas de búsqueda en tiempo real). Sesgo significa que las respuestas pueden reflejar patrones desproporcionados presentes en los datos de entrenamiento (por ejemplo, asociaciones estereotipadas entre profesiones y géneros), de forma sutil y no siempre evidente a primera vista."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo detectar cada limitación",
+                      "items": [
+                        "Alucinación: sospecha especialmente de afirmaciones muy específicas y verificables (nombres de funciones exactas, cifras precisas, citas); verifica contra una fuente independiente antes de confiar.",
+                        "Conocimiento desactualizado: pregunta explícitamente la fecha de corte de conocimiento del modelo que usas, y asume que cualquier evento posterior requiere una fuente actual, no la memoria del modelo.",
+                        "Sesgo: presta atención a patrones repetidos en respuestas sobre grupos de personas, roles o características demográficas que no tendrían por qué correlacionarse con el tema de la pregunta.",
+                        "Ninguna de las tres se 'arregla' preguntando '¿estás seguro?': el modelo puede responder con la misma confianza aparente la segunda vez, correcta o no."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pedir a un asistente 'qué método usa la librería X para validar un email' y recibir `X.validateEmail()` con total naturalidad, cuando esa librería en realidad no tiene ese método (quizás se llama `X.isValidEmail()`, o no existe ninguno). Verificar contra la documentación real de la librería (como se practicó en E3-U3.3.4) revela la alucinación antes de que el código falle en ejecución. Esto no es un caso aislado: es precisamente el mecanismo de generación probabilística de la U8.1.1, que produce el nombre de método más 'plausible' estadísticamente, no necesariamente el que existe de verdad."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: pedir confirmación ('¿seguro que esto es correcto?') en vez de verificar externamente",
+                      "text": "Causa: parece razonable darle al modelo la oportunidad de corregirse. Cómo detectarlo: el modelo responde 'sí, estoy seguro' con la misma confianza, aunque la afirmación original fuera una alucinación; la confianza expresada por el modelo no es una señal confiable de corrección. Solución: verifica contra una fuente externa independiente (documentación oficial, ejecución real del código, una búsqueda), no contra la propia opinión del modelo sobre sí mismo."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: asumir que un sesgo detectado en un ejemplo significa que el modelo es 'inútil' en general",
+                      "text": "Causa: una reacción extrema ante evidencia de sesgo. Cómo detectarlo: se descarta por completo el uso de IA para una tarea donde en realidad el sesgo específico detectado no es relevante (por ejemplo, generar código no tiene el mismo riesgo de sesgo demográfico que generar descripciones de personas). Solución: identifica el sesgo específico y su relevancia para la tarea concreta que estás haciendo, en vez de una conclusión binaria de 'confiable' o 'no confiable' para todo uso."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Verificar una afirmación específica contra una fuente real",
+                      "language": "bash",
+                      "code": "# El asistente afirmó: \"la librería X tiene un método validateEmail()\"\n# Verificación real, no solo preguntarle de nuevo al modelo:\nnpm view libreria-x\nnode -e \"console.log(Object.keys(require('libreria-x')))\"\n# Si validateEmail no aparece en la lista real: era una alucinación."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué hacer ante cada limitación",
+                      "items": [
+                        "Alucinación sospechada: verifica contra documentación oficial o ejecución real, nunca solo preguntando de nuevo",
+                        "Conocimiento desactualizado: usa una fuente actual (búsqueda, documentación reciente) para hechos posteriores a la fecha de corte",
+                        "Sesgo detectado: identifica su relevancia específica para la tarea, no generalices a 'no sirve para nada'",
+                        "En los tres casos: la confianza expresada por el modelo no es evidencia de corrección"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás identificar, en una respuesta de IA, si hay riesgo de alucinación, conocimiento desactualizado o sesgo, y aplicar la verificación específica correspondiente en vez de confiar en la confianza expresada por el modelo."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del método inventado de una librería. Relaciona esto con la generación probabilística de U8.1.1: el modelo generó el nombre más plausible, no el que verificó que existe."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Pide a un asistente de IA que describa la API de una librería que conozcas (o una que uses en este curso). Verifica cada método o función que mencione contra la documentación real o el código fuente instalado. Documenta cuántas afirmaciones verificaste y cuántas, si alguna, resultaron ser inexactas. Criterio de paso: verificaste cada afirmación específica, no solo la impresión general."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Pide a un asistente información sobre un evento o dato que sepas que ocurrió después de su fecha de corte de conocimiento (pregúntale esa fecha primero si no la sabes). Observa cómo responde: ¿lo reconoce explícitamente, o inventa una respuesta con confianza? Criterio de paso: tu observación documenta el comportamiento real, no una suposición."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te explique cómo detectar sus propias alucinaciones. Evalúa si su respuesta sugiere 'preguntarle de nuevo' (insuficiente, según esta lección) o verificación externa (correcto). Si sugiere lo primero, señala por qué no es suficiente con el ejemplo de esta lección."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué es una alucinación, técnicamente, en términos de generación probabilística? 2) ¿Por qué preguntar '¿estás seguro?' no es una verificación válida? 3) ¿Cómo se detecta conocimiento desactualizado? 4) ¿Por qué el sesgo no se resuelve con una conclusión binaria de 'confiable/no confiable'? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Estas tres limitaciones son precisamente las que cualquier aplicación real construida sobre modelos de IA (tema de la Etapa 9) debe diseñar para mitigar explícitamente, con validación de salidas, fuentes verificables y pruebas específicas de sesgo, no solo confiar en que 'el modelo mejorará con el tiempo'. En una entrevista pueden preguntarte: '¿cómo mitigarías el riesgo de alucinación en una aplicación que usa un LLM?'. Variante: la aplicación necesita dar respuestas sobre eventos muy recientes (pista: eso requiere conectar el modelo a una fuente de búsqueda en tiempo real, no confiar en su conocimiento de entrenamiento). Pregunta de cierre: ¿cuándo el costo de verificar exhaustivamente cada afirmación de un modelo supera el valor de usarlo para esa tarea?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.1.4",
+              "title": "Por qué \"funciona en el ejemplo\" no implica corrección",
+              "objective": "Explicar por qué un ejemplo que funciona no demuestra que una solución generada sea correcta en general",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "por-que-funciona-en-el-ejemplo-no-implica-correccion",
+                  "title": "Por qué \"funciona en el ejemplo\" no implica corrección",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Que un código generado por IA produzca el resultado esperado para el ejemplo con el que lo probaste no demuestra que sea correcto en general: solo demuestra que funciona para ese caso particular. Esta confusión entre 'funciona en un ejemplo' y 'está probado' es la misma que ya se trabajó con pruebas unitarias en E7 (casos límite, casos de error), pero aquí aplica específicamente a código que viene de un modelo que puede generar con total naturalidad una solución que solo cubre el camino feliz, o que hace suposiciones implícitas no declaradas (como asumir que una lista nunca está vacía) que el ejemplo probado no expuso."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Por qué el ejemplo que probaste no es suficiente",
+                      "items": [
+                        "El ejemplo que elegiste para probar probablemente es un caso típico, no un caso límite (vacío, máximo, negativo, con datos inesperados).",
+                        "El código puede tener una suposición implícita que el ejemplo probado cumple por casualidad, pero que otros datos reales no cumplirían.",
+                        "Un modelo puede generar código sintácticamente correcto y plausible que, sin embargo, resuelve mal una parte de la lógica que el ejemplo no ejercitó.",
+                        "La confianza con la que el modelo presenta el código no tiene relación con cuán exhaustivamente fue verificado; viene del mismo mecanismo de generación probabilística visto en U8.1.1 y U8.1.3."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un asistente genera una función `obtenerPrimerElemento(lista)` que devuelve `lista[0]`. Se prueba con `obtenerPrimerElemento([1, 2, 3])` y funciona (devuelve 1): 'funciona en el ejemplo'. Pero la función no maneja el caso de una lista vacía (`lista[0]` sería `undefined`, y si el código que la usa espera un número, eso puede causar un error más adelante, lejos de donde ocurrió la causa real). El ejemplo probado, al tener elementos, nunca expuso esa suposición implícita (lista no vacía) que el modelo nunca declaró ni verificó."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: aceptar código generado después de probarlo solo con el caso 'obvio'",
+                      "text": "Causa: el caso obvio es el primero que se nos ocurre probar, y 'funcionó' se siente como suficiente. Cómo detectarlo: el código falla en producción con datos reales que incluyen el caso vacío, el valor límite o el formato inesperado que nunca se probó durante el desarrollo. Solución: aplica el mismo checklist de casos límite de E7-U7.2.1 (vacío, límite, inválido, dependencia que falla) a cualquier código generado, no solo al que escribes tú mismo."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: confundir 'el modelo explicó su razonamiento con seguridad' con 'el razonamiento es correcto'",
+                      "text": "Causa: una explicación detallada y articulada se siente más confiable que una respuesta escueta. Cómo detectarlo: una explicación extensa y bien estructurada puede justificar, con total coherencia interna, una solución que de todas formas tiene un defecto real no cubierto por el ejemplo probado. Solución: la calidad de la explicación no sustituye la verificación con casos de prueba reales; evalúa el código por lo que hace cuando se ejecuta, no por qué tan convincente suena la explicación que lo acompaña."
+                    },
+                    {
+                      "type": "code",
+                      "title": "El mismo código, probado más allá del ejemplo obvio",
+                      "language": "typescript",
+                      "code": "function obtenerPrimerElemento(lista: number[]): number {\n  return lista[0]; // funciona con [1, 2, 3], pero...\n}\n\n// \"Funciona en el ejemplo\":\nobtenerPrimerElemento([1, 2, 3]); // 1\n\n// Casos no probados que revelan el problema real:\nobtenerPrimerElemento([]); // undefined, no un error claro\n// Corrección: declarar explícitamente el caso vacío\nfunction obtenerPrimerElementoSeguro(lista: number[]): number {\n  if (lista.length === 0) throw new Error(\"La lista no puede estar vacía\");\n  return lista[0];\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Preguntas antes de aceptar código generado por el ejemplo que 'funcionó'",
+                      "items": [
+                        "¿Probé el caso vacío o mínimo, no solo el típico?",
+                        "¿Probé el caso límite exacto (el máximo permitido, el borde de un rango)?",
+                        "¿Probé una entrada inválida o inesperada?",
+                        "¿Qué suposición implícita tiene este código que el ejemplo probado nunca puso a prueba?"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás, dado un código generado por IA que 'funciona' con un ejemplo dado, identificar al menos una suposición implícita no probada y un caso límite que podría revelar un defecto, aplicando el mismo criterio de E7-U7.2.1."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de obtenerPrimerElemento con una lista vacía. Identifica exactamente qué suposición implícita (la lista nunca está vacía) nunca se declaró ni se verificó."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Pide a un asistente de IA que genere una función para calcular el promedio de una lista de números. Pruébala primero con el ejemplo 'obvio' que te daría el modelo. Después, aplica el checklist de casos límite de E7: lista vacía, lista con un solo elemento, lista con valores negativos. Documenta cuáles casos, si alguno, revelan un problema no evidente en el primer ejemplo. Criterio de paso: identificas correctamente si la función maneja o no el caso de la lista vacía (división por cero)."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Toma código generado por IA que hayas usado en un ejercicio anterior de este curso (o genera uno nuevo para una tarea real). Documenta: el ejemplo con el que 'funcionó' originalmente, al menos dos casos límite adicionales que no se habían probado, y el resultado de probarlos. Criterio de paso: tu documentación distingue claramente 'funcionó en el ejemplo original' de 'está verificado con casos límite'."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que genere código para una tarea. Antes de aceptarlo, pídele explícitamente: '¿qué casos límite no cubre este código?'. Compara su respuesta con tu propio análisis usando el checklist de casos límite; verifica si el modelo mismo reconoce limitaciones reales o minimiza el riesgo."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué 'funciona en el ejemplo' no es lo mismo que 'está probado'? 2) Da un ejemplo propio de una suposición implícita que un ejemplo típico no revelaría. 3) ¿Qué checklist de E7 aplica aquí igual que a código propio? 4) ¿Por qué una explicación convincente no sustituye la verificación? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Esta distinción entre 'funciona en una demo' y 'está verificado' es, según reportes recurrentes de la industria sobre adopción de asistentes de IA, una de las causas más citadas de incidentes en producción con código generado: el ejemplo de la demo pasó, el caso límite real en producción no se había probado nunca. En una entrevista pueden pedirte: 'este código generado por IA pasó la demo, ¿qué más verificarías antes de aceptarlo?'. Variante: el código generado incluye sus propias pruebas, también generadas por IA (pista: esas pruebas también pueden tener el mismo sesgo hacia el caso obvio, y merecen el mismo escrutinio de casos límite). Pregunta de cierre: ¿cuándo 'funciona en el ejemplo' sería en realidad suficiente evidencia para aceptar un cambio?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M8.2",
           "title": "Ingeniería de prompts",
           "order": 2,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U8.2.1",
+              "title": "Anatomía de una instrucción eficaz",
+              "objective": "Escribir una instrucción que incluya contexto, tarea, restricciones y formato esperado",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "anatomia-de-una-instruccion-eficaz",
+                  "title": "Anatomía de una instrucción eficaz",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Una instrucción vaga ('mejora este código') produce una respuesta vaga, porque el modelo tiene que adivinar qué significa 'mejorar' para ti en este contexto específico. Una instrucción eficaz suele incluir cuatro partes, aunque no siempre en ese orden ni con esa extensión exacta: contexto (qué es esto, para qué se usa), tarea (qué debe hacer exactamente), restricciones (qué no debe hacer, qué límites respetar) y formato esperado (cómo quieres la respuesta: código solo, con explicación, en una lista, etc.). Esto no es una fórmula mágica ni burocracia: es simplemente reducir la ambigüedad que el modelo tendría que llenar adivinando, de la misma forma que un buen issue (E3-U3.2.4) reduce la ambigüedad para una persona que lo toma."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las cuatro partes de una instrucción eficaz",
+                      "items": [
+                        "Contexto: qué es este código/proyecto, para qué se usa, qué tecnologías involucra.",
+                        "Tarea: qué resultado específico necesitas, en un verbo de acción claro (no 'ayúdame con esto', sino 'agrega validación de que el email tenga el formato correcto').",
+                        "Restricciones: qué no debe cambiar, qué convenciones debe seguir, qué está fuera de alcance.",
+                        "Formato esperado: cómo quieres la respuesta (solo código, con explicación de las decisiones, como una lista de pasos, etc.)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Vaga: 'mejora este código'. Eficaz: 'Contexto: esta es una función de validación de formularios en una API NestJS que usa Zod para validar (no class-validator). Tarea: agrega validación de que el campo edad sea un entero entre 0 y 120. Restricciones: no cambies la forma del esquema existente ni agregues class-validator; sigue el estilo de los demás campos del mismo esquema. Formato: muéstrame solo el fragmento del esquema modificado, no el archivo completo.' La segunda versión elimina casi toda la ambigüedad que el modelo tendría que adivinar."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: omitir las restricciones, dejando que el modelo decida límites que en realidad ya estaban decididos",
+                      "text": "Causa: parece obvio (para quien ya conoce el proyecto) que 'no se debe usar class-validator aquí', y se omite mencionarlo. Cómo detectarlo: el modelo propone una solución técnicamente razonable en general, pero que contradice una decisión de arquitectura ya tomada en el proyecto (como vimos con Zod frente a class-validator en E5-U5.1.4), simplemente porque nunca se le dijo esa restricción. Solución: incluye explícitamente las decisiones ya tomadas que el modelo no tiene forma de conocer solo con el código que le muestras."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no especificar el formato de respuesta esperado, recibiendo más (o menos) de lo necesario",
+                      "text": "Causa: asumir que el modelo 'sabrá' qué tan extensa debe ser la respuesta. Cómo detectarlo: recibes un archivo completo reescrito cuando solo necesitabas un fragmento, o una explicación extensa cuando solo necesitabas el código, dificultando revisar exactamente qué cambió. Solución: especifica el formato esperado explícitamente ('solo el fragmento modificado', 'con una breve explicación de cada cambio')."
+                    },
+                    {
+                      "type": "code",
+                      "title": "De instrucción vaga a instrucción eficaz",
+                      "language": "text",
+                      "code": "Vaga:\n\"Mejora este código\"\n\nEficaz:\n\"Contexto: función de validación de formularios en NestJS, usa Zod (no\nclass-validator). Tarea: agrega validación de que 'edad' sea un entero\nentre 0 y 120. Restricciones: no cambies la forma del esquema existente,\nno agregues class-validator, sigue el estilo de los campos existentes.\nFormato: muéstrame solo el fragmento del esquema modificado.\""
+                    },
+                    {
+                      "type": "table",
+                      "title": "Checklist rápido antes de enviar una instrucción",
+                      "items": [
+                        "¿Expliqué qué es este código/proyecto, no solo pegué el código?",
+                        "¿La tarea tiene un verbo de acción claro, no una petición vaga?",
+                        "¿Mencioné restricciones o decisiones ya tomadas que el modelo no puede adivinar?",
+                        "¿Especifiqué cómo quiero la respuesta?"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás reescribir una instrucción vaga incluyendo contexto, tarea específica, restricciones relevantes y formato esperado, reduciendo la ambigüedad que el modelo tendría que adivinar."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la instrucción vaga frente a la eficaz sobre el esquema de validación. Identifica qué decisión específica del proyecto (Zod, no class-validator) habría sido imposible de adivinar sin mencionarla."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Te damos tres instrucciones vagas ('arregla este bug', 'agrega una función útil aquí', 'haz esto más rápido'). Reescribe cada una con las cuatro partes de una instrucción eficaz, inventando un contexto razonable si no se te dio uno. Criterio de paso: las tres instrucciones reescritas incluyen las cuatro partes de forma específica, no genérica."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Toma una instrucción real que hayas usado con un asistente de IA en este curso (o en cualquier contexto) y evalúala contra el checklist de esta lección. Reescríbela si le falta alguna parte, y pruébala de nuevo con el asistente real, comparando la calidad de ambas respuestas. Criterio de paso: documentas una diferencia real observada entre la instrucción original y la mejorada."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te ayude a mejorar una instrucción vaga que le des. Revisa si su versión mejorada cubre las cuatro partes (contexto, tarea, restricciones, formato), o si solo reformula sin agregar la información que realmente faltaba."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las cuatro partes de una instrucción eficaz? 2) ¿Por qué omitir restricciones puede llevar a una respuesta que contradice decisiones ya tomadas? 3) ¿Qué pasa si no se especifica el formato esperado? 4) ¿En qué se parece esto a escribir un buen issue (E3)? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "La diferencia entre una instrucción vaga y una eficaz es, en la práctica diaria de cualquiera que use asistentes de IA para programar, la diferencia entre iterar varias veces frustrantemente o obtener algo útil en el primer intento. En una entrevista pueden pedirte: '¿cómo le pedirías esto a un asistente de IA de forma efectiva?'. Variante: la tarea es tan compleja que una sola instrucción, sin importar cuán bien estructurada, no sería suficiente (pista: eso conecta con la siguiente unidad, sobre especificar requisitos y criterios de aceptación con más detalle, y con iterar en vez de esperar la respuesta perfecta al primer intento). Pregunta de cierre: ¿cuándo una instrucción muy detallada podría ser contraproducente?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.2.2",
+              "title": "Especificar requisitos, restricciones y criterios de aceptación",
+              "objective": "Especificar requisitos y criterios de aceptación verificables en una instrucción para reducir la ambigüedad de la respuesta",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "especificar-requisitos-restricciones-y-criterios-de-aceptacion",
+                  "title": "Especificar requisitos, restricciones y criterios de aceptación",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Para tareas con más de una restricción o condición, enumerar criterios de aceptación explícitos y verificables (el mismo concepto exacto visto en E3-U3.2.4 para issues) es más efectivo que una descripción narrativa de lo que se necesita. Cada criterio debería poder responderse con sí o no observando el resultado, lo que además te da, sin esfuerzo adicional, una checklist lista para verificar la respuesta del modelo cuando llegue: si un criterio no se cumple, sabes exactamente cuál y puedes señalarlo específicamente en una iteración siguiente, en vez de decir vagamente 'no es lo que quería'."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo convertir un requisito en criterios verificables",
+                      "items": [
+                        "Cada criterio se puede responder sí/no observando el resultado, nunca es una opinión subjetiva ('que se vea bien').",
+                        "Los criterios cubren tanto el comportamiento esperado como los casos límite relevantes (igual que en E7-U7.2.1).",
+                        "Las restricciones (qué NO debe hacer, qué no debe cambiar) son tan importantes como los requisitos positivos.",
+                        "Los criterios sirven dos veces: primero guían la generación, después sirven como checklist para verificar la respuesta recibida."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "En vez de 'agrega validación de contraseña segura', especifica: 'Criterios: 1) mínimo 8 caracteres; 2) al menos una mayúscula y un número; 3) rechaza contraseñas que coincidan exactamente con el email del usuario; 4) el mensaje de error indica específicamente qué regla falló, no un genérico \"contraseña inválida\"; 5) no cambia la forma del DTO existente.' Al recibir la respuesta, cada uno de estos cinco puntos se puede verificar directamente contra el código generado, sin ambigüedad sobre si 'cumplió' o no."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: escribir criterios que en realidad son opiniones, no verificables",
+                      "text": "Causa: es más natural describir una impresión general ('que sea intuitivo', 'que funcione bien') que una condición observable. Cómo detectarlo: al revisar la respuesta, dos personas distintas no se pondrían de acuerdo en si ese criterio se cumplió o no, porque depende de interpretación subjetiva. Solución: reformula cada criterio como algo observable directamente en el resultado (un comportamiento específico, un mensaje exacto, un límite numérico), siguiendo el mismo criterio de E3-U3.2.4."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: omitir restricciones negativas, asumiendo que 'obviamente' no se va a romper algo",
+                      "text": "Causa: parece innecesario decir explícitamente 'no cambies X' cuando parece obvio que no debería cambiar. Cómo detectarlo: la respuesta cumple todos los requisitos positivos pero, en el proceso, modifica algo que no debía tocarse (reordena un archivo completo cuando solo se pedía un cambio puntual, por ejemplo). Solución: incluye explícitamente qué no debe cambiar, especialmente en tareas sobre código existente que ya funciona."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Criterios de aceptación como checklist verificable",
+                      "language": "text",
+                      "code": "Tarea: agregar validación de contraseña segura al registro.\n\nCriterios de aceptación:\n[ ] Mínimo 8 caracteres\n[ ] Al menos una mayúscula y un número\n[ ] Rechaza contraseñas iguales al email del usuario\n[ ] El mensaje de error especifica qué regla falló\n[ ] No cambia la forma del DTO existente\n\n(Cada casilla se marca al revisar la respuesta recibida.)"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Criterio verificable frente a opinión",
+                      "items": [
+                        "'Rechaza contraseñas de menos de 8 caracteres': verificable (sí/no)",
+                        "'Que la validación sea robusta': opinión, no verificable directamente",
+                        "'El mensaje de error dice exactamente qué regla falló': verificable",
+                        "'Que el código sea limpio': opinión, reformúlalo en algo concreto si es importante (ej. 'sin duplicar la lógica de validación')"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás convertir un requisito descrito de forma narrativa en una lista de criterios de aceptación verificables (incluyendo restricciones negativas), y usarlos como checklist para evaluar una respuesta de IA recibida."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de los cinco criterios para la validación de contraseña. Identifica por qué cada uno se puede verificar directamente contra el código generado, sin ambigüedad."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Convierte el requisito narrativo 'el sistema debe paginar los resultados de forma eficiente' en al menos cuatro criterios de aceptación verificables, incluyendo al menos una restricción negativa. Criterio de paso: cada uno de tus cuatro criterios se puede responder sí/no observando un resultado concreto."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Elige una tarea real de este curso (un ejercicio del laboratorio, por ejemplo) y escribe sus criterios de aceptación como si fueras a pedírsela a un asistente de IA. Pídesela con esos criterios explícitos, y usa la misma lista para verificar la respuesta recibida, marcando qué se cumplió y qué no. Criterio de paso: tu verificación identifica correctamente cualquier criterio no cumplido, si lo hay."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente una tarea con una instrucción que incluya criterios de aceptación explícitos. Revisa la respuesta contra cada criterio, uno por uno, sin asumir que 'en general se ve bien'. Si algún criterio no se cumple, pide específicamente que lo corrija, señalando cuál."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué hace que un criterio de aceptación sea verificable? 2) ¿Por qué incluir restricciones negativas, no solo requisitos positivos? 3) ¿Para qué sirven los criterios una segunda vez, después de guiar la generación? 4) Da un ejemplo de un criterio mal formulado (opinión) y corrígelo. Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Especificar criterios de aceptación verificables es la misma habilidad, aplicada a instrucciones de IA, que convertir un requisito de negocio ambiguo en un issue accionable (E3); quien domina una, domina la otra con poco esfuerzo adicional. En una entrevista pueden pedirte: '¿cómo especificarías esta tarea para un asistente de IA de forma que puedas verificar objetivamente si la cumplió?'. Variante: los criterios de aceptación de la tarea cambian a mitad de la iteración con el asistente (pista: eso es normal; actualiza la lista explícitamente y vuelve a verificar contra la versión actualizada). Pregunta de cierre: ¿cuándo una tarea es tan simple que especificar criterios formales sería exagerado?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.2.3",
+              "title": "Ejemplos de referencia (few-shot) y formatos estructurados",
+              "objective": "Usar ejemplos de referencia y formatos estructurados para guiar la salida de un modelo",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "ejemplos-de-referencia-few-shot-y-formatos-estructurados",
+                  "title": "Ejemplos de referencia (few-shot) y formatos estructurados",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "A veces describir el formato o estilo deseado con palabras es menos efectivo que simplemente mostrar un ejemplo de referencia (técnica conocida como 'few-shot', en contraste con 'zero-shot', sin ejemplos). Mostrar uno o dos ejemplos de entrada-salida deseada comunica patrones (estilo de nombres, estructura, nivel de detalle, formato exacto) que serían tediosos de describir completamente en palabras, y reduce la variabilidad de la respuesta: el modelo tiene un patrón concreto que seguir, no solo una descripción abstracta que interpretar. Pedir un formato estructurado explícito (JSON con campos específicos, una tabla con columnas definidas) en vez de 'una respuesta bien organizada' logra el mismo efecto: menos interpretación, más consistencia."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cuándo usar ejemplos de referencia y formato estructurado",
+                      "items": [
+                        "Few-shot: cuando el estilo o patrón deseado es más fácil de mostrar que de describir completamente en palabras.",
+                        "Un ejemplo bien elegido debe representar el caso típico, no un caso atípico que generalice mal.",
+                        "Formato estructurado (JSON, tabla, lista con campos fijos): cuando necesitas que la respuesta sea fácil de procesar después (por código, o simplemente para comparar consistentemente varias respuestas).",
+                        "Combinar ambos (un ejemplo en el formato estructurado exacto que esperas) suele dar los resultados más consistentes."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pedir 'genera 5 preguntas de opción múltiple sobre este tema' sin ejemplo puede producir preguntas con formato inconsistente entre sí (algunas con 3 opciones, otras con 5, algunas sin indicar la respuesta correcta). Pedir lo mismo mostrando un ejemplo de referencia exacto: `{ \"pregunta\": \"...\", \"opciones\": [\"A\", \"B\", \"C\", \"D\"], \"correcta\": \"B\" }` y pidiendo 'genera 5 preguntas en este mismo formato JSON' produce resultados mucho más consistentes y, al estar en JSON, directamente procesables por código sin tener que parsear texto libre."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: dar un ejemplo atípico o de mala calidad como referencia",
+                      "text": "Causa: usar el primer ejemplo que se tiene a mano, sin evaluar si representa bien el patrón general deseado. Cómo detectarlo: las respuestas generadas copian fielmente alguna peculiaridad específica del ejemplo (una longitud inusual, un caso borde) que no era representativa de lo que realmente se quería generalizar. Solución: elige un ejemplo típico y de buena calidad como referencia; si el patrón tiene variación legítima, considera dar dos ejemplos distintos para mostrar ese rango."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: pedir un formato estructurado sin especificar qué hacer ante datos faltantes o ambiguos",
+                      "text": "Causa: el formato parece autoexplicativo, así que no se piensa en los casos ambiguos. Cómo detectarlo: el modelo inventa un valor para un campo que no tenía información real para llenar, en vez de usar un valor explícito que indique 'desconocido' o 'no aplica'. Solución: especifica qué hacer con campos sin información clara (null, una cadena vacía, omitir el campo), para que el formato estructurado no se convierta en una fuente adicional de alucinación por rellenar huecos."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Few-shot con formato estructurado",
+                      "language": "text",
+                      "code": "Genera 5 preguntas de opción múltiple sobre closures en JavaScript,\nen este formato JSON exacto:\n\n{ \"pregunta\": \"¿Qué captura un closure?\",\n  \"opciones\": [\"Solo variables globales\", \"Variables de su alcance externo\",\n               \"Solo parámetros\", \"Nada, es un mito\"],\n  \"correcta\": 1 }\n\nSi no puedes generar una opción plausible y distinta para alguna\npregunta, indícalo con \"opciones\": null en vez de inventar una."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Zero-shot, few-shot y formato estructurado",
+                      "items": [
+                        "Zero-shot: sin ejemplos, solo la descripción; suficiente para tareas simples y bien definidas",
+                        "Few-shot: con uno o dos ejemplos de referencia; mejor para patrones de estilo o formato específicos",
+                        "Formato estructurado (JSON, tabla): mejor cuando la respuesta se procesará por código después",
+                        "Combinado (ejemplo en el formato estructurado exacto): el más consistente para tareas repetitivas"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás usar un ejemplo de referencia (few-shot) y un formato estructurado explícito para reducir la variabilidad de una respuesta generada, especificando qué hacer ante datos faltantes o ambiguos."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de las preguntas de opción múltiple sin y con formato de referencia. Identifica qué inconsistencias específicas desaparecen al mostrar el ejemplo exacto en JSON."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Pide a un asistente de IA que genere tres descripciones de producto sin ningún ejemplo de referencia (zero-shot). Después, pide las mismas tres mostrando un ejemplo de referencia con el formato y longitud exactos que deseas. Compara la consistencia entre las tres respuestas en cada caso. Criterio de paso: documentas una diferencia real de consistencia entre ambos enfoques."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña un prompt con formato estructurado JSON para generar datos de prueba (por ejemplo, usuarios ficticios con nombre, email y rol) que luego podrías usar directamente en un script. Especifica explícitamente qué hacer si el modelo no puede generar un valor plausible para algún campo. Criterio de paso: el JSON resultante es válido y parseable directamente sin edición manual."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que genere varias respuestas en un formato estructurado sin darle un ejemplo. Revisa si el formato es consistente entre las distintas respuestas. Si varía, agrega un ejemplo de referencia exacto y repite, comparando la mejora en consistencia."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué es few-shot y en qué se diferencia de zero-shot? 2) ¿Cuándo conviene pedir un formato estructurado? 3) ¿Qué riesgo tiene dar un ejemplo atípico como referencia? 4) ¿Cómo evitas que el modelo invente datos para campos sin información real? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Pedir salidas en formato estructurado (JSON validable con un esquema, como se trabajará a fondo en la Etapa 9) es la base de cualquier aplicación que use un modelo de IA como parte de un flujo automatizado, donde un humano no puede leer e interpretar cada respuesta manualmente. En una entrevista pueden pedirte: '¿cómo asegurarías que las respuestas de un modelo sean consistentes y procesables por código?'. Variante: necesitas que el modelo mismo valide su salida contra un esquema antes de devolverla (pista: eso ya conecta con salidas estructuradas y validación con Zod, tema central de la Etapa 9). Pregunta de cierre: ¿cuándo dar demasiados ejemplos de referencia podría ser contraproducente?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.2.4",
+              "title": "Iteración y comparación de resultados",
+              "objective": "Iterar una instrucción comparando resultados sucesivos en vez de aceptar la primera respuesta",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "iteracion-y-comparacion-de-resultados",
+                  "title": "Iteración y comparación de resultados",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "La primera respuesta de un modelo rara vez es la única posible ni necesariamente la mejor: dada la generación probabilística (U8.1.1), pedir lo mismo de nuevo (o con un ajuste específico) puede producir una respuesta distinta, a veces mejor. Iterar bien significa ajustar la instrucción basándose en qué faltó o falló específicamente en la respuesta anterior (usando los criterios de aceptación de U8.2.2 como guía concreta de qué corregir), no simplemente repetir 'hazlo mejor' sin especificar qué. Comparar varias respuestas (pedir dos o tres variantes, o cambiar un parámetro como la temperatura si está disponible) antes de elegir es especialmente valioso para decisiones donde no hay una única respuesta correcta obvia."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo iterar con intención",
+                      "items": [
+                        "Identifica específicamente qué criterio de aceptación no se cumplió, no una impresión vaga de 'no es lo que quería'.",
+                        "La siguiente instrucción referencia ese criterio específico: 'la respuesta anterior no manejó el caso de lista vacía, corrígelo manteniendo el resto igual'.",
+                        "Para decisiones sin una única respuesta correcta (nombres, enfoques de diseño), comparar 2-3 variantes generadas puede revelar opciones que no se te habrían ocurrido pidiendo solo una.",
+                        "No hay garantía de que la segunda iteración sea mejor que la primera en todos los aspectos; verifica también que no se haya roto algo que sí funcionaba antes."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Primera respuesta: una función de validación que cumple 4 de 5 criterios de aceptación (le falta el mensaje de error específico por regla). Iteración efectiva: 'La función cumple todo excepto el criterio 4: el mensaje de error debe decir específicamente qué regla falló (longitud, mayúscula, etc.), no un mensaje genérico. Corrige solo eso, sin cambiar el resto de la lógica que ya funciona.' Esto es mucho más específico y productivo que 'mejora el manejo de errores', que deja al modelo adivinar qué parte exactamente corregir y con el riesgo de que reescriba más de lo necesario."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: iterar con instrucciones igualmente vagas que la primera vez",
+                      "text": "Causa: la frustración de una respuesta incompleta lleva a repetir con más énfasis ('¡hazlo bien esta vez!') sin más especificidad. Cómo detectarlo: la segunda respuesta tiene problemas distintos a la primera, en vez de corregir específicamente lo que faltaba, porque la instrucción no señaló qué corregir exactamente. Solución: cada iteración debe señalar específicamente qué criterio no se cumplió y pedir que se corrija eso, preservando lo que sí funcionaba."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no verificar que una iteración no rompió algo que la versión anterior sí hacía bien",
+                      "text": "Causa: centrarse solo en si se corrigió el problema señalado, sin volver a revisar el resto. Cómo detectarlo: la nueva versión corrige el problema pedido pero, en el proceso, introduce un defecto nuevo en una parte que antes funcionaba correctamente. Solución: vuelve a verificar todos los criterios de aceptación después de cada iteración, no solo el que motivó el cambio."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Una iteración específica basada en criterios",
+                      "language": "text",
+                      "code": "Respuesta anterior: cumple criterios 1, 2, 3, 5. No cumple el 4\n(mensaje de error específico por regla que falló).\n\nSiguiente instrucción:\n\"La función cumple todo excepto el criterio 4: el mensaje de error\ndebe indicar específicamente qué regla falló (ej. 'Debe tener al\nmenos 8 caracteres', no 'Contraseña inválida'). Corrige solo eso,\nsin modificar el resto de la lógica que ya es correcta.\""
+                    },
+                    {
+                      "type": "table",
+                      "title": "Iteración efectiva frente a repetición vaga",
+                      "items": [
+                        "'Hazlo mejor': vago, el modelo adivina qué cambiar",
+                        "'El criterio 4 no se cumple porque X, corrígelo manteniendo el resto': específico y verificable",
+                        "Pedir una sola respuesta y aceptarla sin comparar: rápido, pero pierde variantes posiblemente mejores",
+                        "Pedir 2-3 variantes para una decisión sin respuesta única correcta: más lento, pero más informado"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás iterar una instrucción señalando específicamente qué criterio de aceptación no se cumplió en la respuesta anterior, y comparar varias respuestas candidatas antes de elegir cuando la tarea no tiene una única respuesta correcta."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la iteración específica sobre el criterio 4. Identifica por qué esa instrucción de seguimiento es más productiva que simplemente repetir la tarea desde cero."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Pide a un asistente de IA que resuelva una tarea con 4-5 criterios de aceptación explícitos (de la unidad anterior). Verifica la respuesta contra cada criterio. Si alguno no se cumple, escribe una instrucción de iteración que señale específicamente ese criterio, y verifica que la nueva respuesta lo corrige sin romper los que sí se cumplían. Criterio de paso: la segunda respuesta cumple todos los criterios, incluyendo los que ya cumplía la primera."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Para una decisión de diseño sin una única respuesta correcta (por ejemplo, nombrar una función o elegir una estructura de datos para un problema), pide a un asistente 2-3 variantes distintas. Compara los trade-offs de cada una y justifica cuál elegirías. Criterio de paso: tu comparación identifica al menos una ventaja y una desventaja real de cada variante, no solo una preferencia arbitraria."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA una solución, identifica deliberadamente qué le falta, y pide una iteración específica. Revisa cuidadosamente si la iteración corrigió solo lo pedido o si también cambió algo que no debía cambiar, usando el checklist completo de criterios, no solo el que motivó el cambio."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué la primera respuesta de un modelo no es necesariamente la única o la mejor? 2) ¿Qué hace que una iteración sea efectiva en vez de vaga? 3) ¿Cuándo vale la pena comparar varias respuestas candidatas? 4) ¿Qué riesgo hay que verificar después de cada iteración? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Iterar con criterios específicos en vez de repetir vagamente es la diferencia práctica entre resolver una tarea con un asistente de IA en dos o tres intentos bien dirigidos, frente a diez intentos frustrantes sin rumbo claro. En una entrevista pueden pedirte: '¿cómo refinarías una respuesta de IA que no cumple del todo lo que necesitas?'. Variante: necesitas que el proceso de iteración sea automático dentro de una aplicación, no manual (pista: eso es exactamente el patrón de validar la salida contra un esquema y reintentar automáticamente si falla, tema de la Etapa 9). Pregunta de cierre: ¿cuándo deberías abandonar la iteración y escribir la solución a mano en vez de seguir intentando con el asistente?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M8.3",
           "title": "Diseño de contexto",
           "order": 3,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U8.3.1",
+              "title": "Qué contexto aportar: repositorio, convenciones, documentación",
+              "objective": "Decidir qué contexto del repositorio y sus convenciones aportar a un asistente para que su respuesta sea útil",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "que-contexto-aportar-repositorio-convenciones-y-documentacion",
+                  "title": "Qué contexto aportar: repositorio, convenciones y documentación",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un asistente sin contexto del proyecto real responde con las convenciones 'genéricas' más comunes en su entrenamiento, que no necesariamente coinciden con las decisiones específicas ya tomadas en tu repositorio (como Zod en vez de class-validator, visto repetidamente en este curso). Decidir qué contexto aportar es un ejercicio de selección, no de 'cuanto más, mejor': dado que la ventana de contexto es limitada (U8.1.1) y cuesta tiempo y dinero procesarla, aportar código irrelevante diluye lo importante entre ruido. El contexto más valioso suele ser: el archivo o módulo directamente relacionado, las convenciones documentadas del proyecto (como `convenciones-codigo.md` de este mismo proyecto), y ejemplos de cómo se resolvió algo similar antes en el mismo repositorio."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué contexto suele valer la pena aportar",
+                      "items": [
+                        "El archivo o módulo directamente relevante a la tarea, no el repositorio completo.",
+                        "Convenciones documentadas del proyecto (guías de estilo, decisiones de arquitectura ya tomadas como ADRs).",
+                        "Un ejemplo similar ya resuelto en el mismo repositorio (cómo se hizo algo parecido en otro módulo).",
+                        "El contrato o esquema relevante (como un esquema Zod compartido), si la tarea involucra datos con una forma específica ya definida."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pedir 'agrega un endpoint para listar comentarios paginados' sin contexto puede producir un endpoint con `LIMIT/OFFSET` simple, class-validator, y un formato de respuesta inventado. Aportar como contexto el archivo `contratos-api.md` §7 (paginación `{ data, meta }`), un ejemplo real de otro endpoint paginado del proyecto (como `content.controller.ts`), y la convención de usar `ZodValidationPipe`, lleva a una respuesta consistente con el resto del proyecto desde el primer intento, en vez de requerir varias iteraciones para alinear estilo y convenciones."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: pegar el repositorio completo (o archivos irrelevantes) 'por si acaso'",
+                      "text": "Causa: parece más seguro dar 'todo el contexto posible' que elegir. Cómo detectarlo: la ventana de contexto se llena de código no relacionado con la tarea, dejando menos espacio disponible para la conversación real, y potencialmente diluyendo la atención del modelo sobre lo que sí importa entre mucho ruido irrelevante. Solución: selecciona deliberadamente el contexto más relevante (el módulo directo, las convenciones, un ejemplo similar), no todo lo que técnicamente podrías incluir."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no mencionar una convención no escrita en ningún documento, asumiendo que 'se nota en el código'",
+                      "text": "Causa: una convención real del equipo nunca se documentó formalmente, solo vive implícita en cómo se escribió el código existente. Cómo detectarlo: el modelo sigue un patrón técnicamente razonable que, sin embargo, contradice una convención real del equipo que nunca se le mencionó ni mostró con un ejemplo. Solución: si una convención importa y no está documentada, muestra un ejemplo del código existente que la ilustre, o documéntala explícitamente (beneficio adicional: ayuda también a las próximas personas del equipo, no solo al asistente)."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué incluir según el tipo de tarea",
+                      "items": [
+                        "Agregar un endpoint nuevo: el contrato/esquema relevante, un endpoint similar ya existente como referencia",
+                        "Corregir un bug: el archivo específico con el bug, no el módulo completo si no es necesario",
+                        "Refactorizar siguiendo un patrón: un ejemplo del patrón ya aplicado en otra parte del código",
+                        "Seguir una convención de estilo: el documento de convenciones si existe, o un ejemplo representativo del código actual"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "Contexto selectivo frente a 'todo el repositorio'",
+                      "language": "text",
+                      "code": "En vez de pegar todo el repositorio, aporta:\n\n1. El archivo directamente relevante: content.controller.ts\n2. La convención aplicable: \"Paginación: { data, meta } (contratos-api.md §7)\"\n3. Un ejemplo similar ya resuelto: el endpoint de listado de etapas,\n   que ya implementa este mismo patrón de paginación."
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás seleccionar deliberadamente qué contexto de un repositorio (archivo relevante, convenciones, ejemplo similar) aportar a un asistente para una tarea dada, evitando tanto la falta de contexto como el exceso irrelevante."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del endpoint de comentarios paginados. Identifica las tres piezas de contexto específicas que marcaron la diferencia frente a no aportar ninguna."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Pide a un asistente de IA que implemente una funcionalidad de un proyecto de práctica (o de este curso) sin ningún contexto adicional más allá de la instrucción. Después, pide lo mismo aportando el archivo relevante y un ejemplo similar ya resuelto en el proyecto. Compara ambas respuestas. Criterio de paso: documentas una diferencia real de alineación con las convenciones del proyecto entre ambos intentos."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Para una tarea real de este curso, decide específicamente qué tres piezas de contexto aportarías (y por qué, no 'todo lo relacionado') antes de pedírsela a un asistente. Pruébalo y evalúa si tu selección fue suficiente o si faltó algo. Criterio de paso: tu selección es específica (archivos y documentos nombrados), no una categoría vaga."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente algo sobre un proyecto que conoces, dándole deliberadamente contexto irrelevante además del relevante. Observa si su respuesta se distrae con el contexto irrelevante o lo ignora apropiadamente. Documenta tu observación."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué 'más contexto siempre es mejor' no es cierto? 2) ¿Qué tres tipos de contexto suelen ser más valiosos? 3) ¿Qué pasa si una convención real nunca se documenta ni se muestra con ejemplo? 4) ¿Qué relación tiene esto con la ventana de contexto (U8.1.1)? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Seleccionar bien el contexto es exactamente lo que distingue a un uso productivo de asistentes de IA en un repositorio real y grande, donde pegar 'todo' ni siquiera es técnicamente posible dentro de la ventana de contexto disponible. En una entrevista pueden pedirte: '¿qué contexto le darías a un asistente para esta tarea en un repositorio grande?'. Variante: la tarea requiere entender una decisión de arquitectura que atraviesa muchos archivos distintos (pista: ahí un documento de arquitectura o un ADR resumido es más valioso que mostrar los muchos archivos individuales). Pregunta de cierre: ¿cuándo sí convendría aportar un contexto amplio, casi completo, en vez de selectivo?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.3.2",
+              "title": "Archivos de instrucciones para agentes",
+              "objective": "Escribir un archivo de instrucciones (como CLAUDE.md) que guíe el comportamiento de un agente en un repositorio",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "archivos-de-instrucciones-para-agentes",
+                  "title": "Archivos de instrucciones para agentes",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "En vez de repetir el mismo contexto (convenciones, decisiones de arquitectura, qué comandos ejecutar para verificar) en cada instrucción nueva, varios asistentes y agentes de código leen automáticamente un archivo de instrucciones del repositorio (convenciones distintas lo llaman de formas distintas, como `CLAUDE.md` o `AGENTS.md`) al empezar a trabajar en él. Este archivo documenta, una sola vez, lo que cualquier persona (o agente) necesitaría saber para trabajar correctamente en ese proyecto: convenciones de código, comandos de verificación, decisiones ya tomadas que no deben revertirse sin discusión, y reglas específicas del flujo de trabajo del equipo. Es, en esencia, el mismo README (E3-U3.3.1) pero orientado específicamente a instruir el comportamiento de un agente autónomo, no solo a documentar cómo ejecutar el proyecto."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué suele incluir un buen archivo de instrucciones para agentes",
+                      "items": [
+                        "Comandos de verificación exactos (typecheck, lint, test, build) y en qué orden ejecutarlos.",
+                        "Convenciones de código específicas del proyecto (nombres, estructura de carpetas, decisiones ya tomadas como Zod frente a class-validator).",
+                        "Qué NO hacer sin preguntar primero (acciones destructivas, cambios a decisiones de arquitectura ya documentadas).",
+                        "Dónde encontrar documentación más detallada si se necesita (enlaces a ADRs, guías de arquitectura)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este mismo curso documenta, en `docs/05-orquestacion/guia-orquestador-claude.md` y `guia-constructor-deepseek.md`, instrucciones específicas para que agentes de IA trabajen en este repositorio: qué comandos ejecutar para verificar una tarea, el formato esperado de los mensajes de commit, y la regla de que cada tarea se implementa y verifica en una invocación aislada con su salida real documentada. Un agente que lee estas instrucciones antes de empezar no necesita que cada instrucción individual repita 'recuerda ejecutar npm run typecheck antes de terminar': ya lo sabe, porque está en el archivo que consulta al iniciar."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: un archivo de instrucciones desactualizado respecto al proyecto real",
+                      "text": "Causa: el proyecto evoluciona (cambia una convención, se agrega un comando nuevo de verificación) pero el archivo de instrucciones no se actualiza en el mismo cambio. Cómo detectarlo: un agente sigue instrucciones que ya no aplican (ejecuta un comando que ya no existe, o sigue una convención que el proyecto abandonó), produciendo resultados inconsistentes con el estado real del código. Solución: trata el archivo de instrucciones como código: se actualiza en el mismo cambio que modifica la convención o el comando que describe, no en una revisión aparte posterior."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: un archivo de instrucciones tan largo y detallado que se vuelve difícil de mantener actualizado",
+                      "text": "Causa: intentar documentar absolutamente todo en un solo archivo. Cómo detectarlo: el archivo crece indefinidamente, mezclando información crítica (comandos de verificación) con detalles menores, dificultando mantenerlo sincronizado con la realidad del proyecto. Solución: el archivo de instrucciones principal se mantiene conciso con lo esencial y enlaza a documentación más detallada (como hace este mismo proyecto con sus carpetas en docs/), en vez de intentar contenerlo todo en un solo lugar."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Fragmento mínimo de un archivo de instrucciones para agentes",
+                      "language": "markdown",
+                      "code": "# Instrucciones para agentes en este repositorio\n\n## Verificación antes de considerar una tarea terminada\n```\nnpm run typecheck && npm run lint && npm test && npm run build\n```\n\n## Convenciones\n- Validación con Zod + ZodValidationPipe (nunca class-validator, ver ADR en sprint-01-auth.md)\n- Tipos derivados de esquemas Zod con z.infer, nunca declarados a mano\n\n## Nunca sin confirmar primero\n- Cambios al esquema de base de datos sin una migración versionada\n- git push --force"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué va en el archivo de instrucciones frente a documentación aparte",
+                      "items": [
+                        "En el archivo de instrucciones: comandos de verificación, convenciones críticas, qué nunca hacer sin confirmar",
+                        "En documentación aparte (enlazada): el razonamiento detallado de cada decisión (ADRs), guías extensas",
+                        "Actualizar el archivo de instrucciones: en el mismo cambio que modifica lo que describe",
+                        "Revisar periódicamente: que siga coincidiendo con el estado real del proyecto"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás escribir un archivo de instrucciones conciso para agentes en un repositorio, incluyendo comandos de verificación, convenciones críticas y qué nunca hacer sin confirmar, manteniéndolo actualizado junto con los cambios que describe."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de las guías de orquestación de este mismo proyecto. Identifica qué información específica evita que un agente tenga que preguntar o adivinar en cada tarea nueva."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Escribe un archivo de instrucciones para un proyecto de práctica (o uno propio): comandos de verificación exactos, al menos dos convenciones reales del proyecto, y al menos una acción que un agente nunca debería hacer sin confirmar. Criterio de paso: cada comando que incluyes es real y ejecutable (lo probaste tú mismo)."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Revisa un archivo de instrucciones real de este proyecto (en docs/05-orquestacion/). Identifica si está actualizado respecto al estado real del código (por ejemplo, verifica que los comandos de verificación que menciona realmente funcionan tal como están escritos). Documenta cualquier discrepancia que encuentres. Criterio de paso: tu verificación es precisa, ejecutando realmente los comandos mencionados."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que redacte un archivo de instrucciones para un proyecto que le describas. Revisa si incluye comandos de verificación genéricos e inventados (que no corresponden a tu proyecto real) en vez de pedirte los comandos reales. Corrige para que use exactamente los comandos verificables de tu proyecto."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué propósito tiene un archivo de instrucciones para agentes? 2) ¿Qué debería incluir, como mínimo? 3) ¿Por qué debe actualizarse en el mismo cambio que modifica lo que describe? 4) ¿Qué pasa si se vuelve demasiado extenso y detallado? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Cada vez más equipos de ingeniería mantienen este tipo de archivo precisamente porque reduce fricción real: menos repetir el mismo contexto en cada tarea, y agentes (o personas nuevas en el equipo) que producen trabajo más consistente desde el principio. En una entrevista pueden preguntarte: '¿cómo estructurarías la documentación para que un agente de IA trabaje efectivamente en este repositorio?'. Variante: el repositorio tiene varios subproyectos con convenciones distintas entre sí (pista: algunos agentes soportan archivos de instrucciones anidados por carpeta, con reglas más específicas que sobreescriben las generales). Pregunta de cierre: ¿cuándo una instrucción puntual en el momento sería mejor que agregar algo permanente al archivo de instrucciones?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.3.3",
+              "title": "Delimitar el alcance: tareas pequeñas y verificables",
+              "objective": "Delimitar una tarea para un agente de forma pequeña y verificable en vez de ambigua y amplia",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "delimitar-el-alcance-tareas-pequenas-y-verificables",
+                  "title": "Delimitar el alcance: tareas pequeñas y verificables",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Pedirle a un agente 'implementa todo el sistema de autenticación' es análogo a la 'regla de tamaño' que este mismo proyecto aplica a sus propias tareas (documentada en varios sprints: una tarea se parte hasta que su commit deja todo en verde): una tarea demasiado grande y ambigua es difícil de verificar como un todo, difícil de revisar, y si algo sale mal, difícil de ubicar qué parte específica falló. Delimitar el alcance en pasos pequeños, cada uno con un resultado verificable (pasa cierto comando, cumple cierto criterio concreto), permite revisar y corregir en cada paso antes de acumular más trabajo sobre una base que podría estar mal, exactamente el mismo principio que una buena tarea atómica en cualquier flujo de trabajo de ingeniería, humano o asistido."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo delimitar bien una tarea para un agente",
+                      "items": [
+                        "Una tarea, un resultado verificable: algo que puedas confirmar con un comando o una observación concreta, no 'se ve bien'.",
+                        "Si la tarea requiere tocar más de 3-4 archivos sin relación directa, considera dividirla (la misma regla orientativa de tamaño de este proyecto).",
+                        "Verifica después de cada paso pequeño, no acumules varios pasos sin verificación antes de revisar nada.",
+                        "Una tarea bien delimitada es más fácil de revisar también para un humano: el diff es pequeño y enfocado, no una mezcla de muchos cambios sin relación."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "En vez de 'implementa el sistema de repaso espaciado completo', este mismo proyecto dividió esa funcionalidad en 14 tareas atómicas (documentadas en `sprint-07-repaso-espaciado.md`): el contrato compartido, el motor SM-2 puro, el intercalado de la cola, el modelo de datos con su migración, el puerto y adaptadores, el servicio, las rutas, el cliente web, la UI, y la verificación de cierre, cada una con su propio commit y su propia verificación ('su commit deja typecheck, lint y test en verde'). Un agente (o una persona) que recibe la tarea 7 ('rutas de repaso y registro del módulo') sabe exactamente qué debe producir y cómo verificarlo, sin necesitar entender ni rehacer las otras 13 tareas a la vez."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: pedir una funcionalidad completa de una sola vez, sin dividir en pasos verificables",
+                      "text": "Causa: parece más eficiente pedir todo junto que dividir en pasos. Cómo detectarlo: cuando algo falla en el resultado final, es difícil ubicar en qué parte específica del trabajo extenso ocurrió el problema, porque no hubo puntos de verificación intermedios. Solución: divide en pasos pequeños con verificación propia, siguiendo la misma regla orientativa de tamaño que una tarea de ingeniería bien planificada ('se parte hasta que deja todo en verde')."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: delimitar tareas tan pequeñas que pierden sentido por sí mismas",
+                      "text": "Causa: llevar la división al extremo opuesto, fragmentando en pasos tan diminutos que ninguno tiene un resultado verificable coherente por sí solo. Cómo detectarlo: una tarea individual no se puede verificar de forma independiente porque depende de otra tarea que todavía no existe (por ejemplo, 'crea solo el tipo, sin ninguna función que lo use'), generando fragmentación sin beneficio real. Solución: el límite de tamaño es orientativo, no absoluto; una tarea debe ser lo bastante pequeña para verificarse con confianza, pero lo bastante completa para tener sentido y un resultado verificable por sí misma."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Señales de que una tarea para un agente está bien delimitada",
+                      "items": [
+                        "Tiene un resultado verificable con un comando o una observación concreta",
+                        "Toca un número acotado de archivos relacionados entre sí, no dispersos",
+                        "Se puede revisar en un diff enfocado, no una mezcla de cambios sin relación",
+                        "No depende de adivinar decisiones que en realidad ya deberían estar tomadas antes de empezar"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "De una tarea gigante a pasos verificables",
+                      "language": "text",
+                      "code": "Tarea gigante: \"implementa el sistema de repaso espaciado\"\n\nDividida en pasos verificables (como hizo este proyecto en S7):\n1. Contrato compartido del repaso espaciado -> npm test -w @codeai/shared\n2. Motor SM-2 puro -> pruebas del algoritmo en aislamiento\n3. Modelo de datos + migración -> npx prisma migrate dev\n4. Puerto y adaptadores (Prisma + memoria) -> pruebas con ambos\n5. Servicio con la lógica de cola y respuesta\n..."
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás dividir una funcionalidad amplia en tareas pequeñas para un agente, cada una con un resultado verificable concreto, siguiendo el mismo principio de tamaño de tarea que ya aplica este proyecto en su propio flujo de trabajo."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de las 14 tareas del sprint de repaso espaciado. Identifica cómo cada tarea individual tiene su propio comando de verificación, documentado en la bitácora del sprint."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Toma una funcionalidad amplia hipotética ('agregar un sistema de comentarios con moderación') y divídela en al menos 5 tareas pequeñas, cada una con su propio resultado verificable específico. Criterio de paso: cada tarea tiene un criterio de verificación concreto (un comando, una prueba, una observación), no una descripción vaga de 'funciona'."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Elige una tarea real de este curso (o un ejercicio de laboratorio) y evalúa si, tal como está planteada, sería lo bastante pequeña para pedírsela de una vez a un agente, o si convendría dividirla más. Justifica tu evaluación con el criterio de esta lección (archivos tocados, resultado verificable). Criterio de paso: tu justificación aplica correctamente el criterio, no es solo una opinión general de 'es compleja'."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un agente de IA que implemente una funcionalidad amplia de una sola vez, sin dividirla. Observa el resultado y evalúa si fue más difícil de revisar o verificar que si se hubiera pedido en pasos pequeños. Documenta tu comparación."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué una tarea demasiado grande es difícil de verificar como un todo? 2) ¿Qué hace que un paso sea 'verificable'? 3) ¿Qué riesgo tiene dividir demasiado, en pasos excesivamente pequeños? 4) ¿Qué beneficio adicional (más allá del agente) tiene un diff pequeño y enfocado? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "La misma disciplina de dividir en tareas atómicas verificables que un equipo de ingeniería aplica a su propio trabajo (y que este proyecto documenta explícitamente en cada sprint) es la que hace que dirigir un agente de programación sea productivo en vez de generar trabajo difícil de revisar y corregir. En una entrevista pueden pedirte: '¿cómo dividirías esta funcionalidad en tareas para un agente de IA?'. Variante: dos de las tareas divididas resultan tener una dependencia que no se había anticipado (pista: eso es normal; se reordena o se ajusta el plan, el objetivo es verificación incremental, no un plan perfecto de antemano). Pregunta de cierre: ¿cuándo una tarea pequeña y aislada no tiene sentido verificarla sola, y necesita agruparse con otra?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.3.4",
+              "title": "Cuándo NO usar IA",
+              "objective": "Reconocer las situaciones donde no conviene delegar una tarea a un asistente de IA",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "cuando-no-usar-ia",
+                  "title": "Cuándo NO usar IA",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "En E0 se introdujo un criterio inicial de cuándo delegar con confianza, con revisión estricta, o nunca sin supervisión experta. Esta unidad lo retoma con más experiencia técnica acumulada: hay situaciones donde el costo de verificar exhaustivamente una respuesta de IA (dado todo lo visto sobre alucinación, suposiciones implícitas no probadas, y sesgo) supera el tiempo que tomaría resolverlo directamente; donde el riesgo de un error no detectado es demasiado alto (seguridad, dinero, datos personales) para aceptar la incertidumbre adicional; o donde la tarea es, precisamente, la que debes dominar tú mismo para aprender (resolver los ejercicios de este curso sin IA es la forma de verificar que realmente entendiste, no solo que copiaste algo que funcionó)."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Señales de que NO conviene delegar a IA (o de que requiere la máxima cautela)",
+                      "items": [
+                        "El costo de verificar exhaustivamente supera el tiempo de resolverlo tú mismo directamente.",
+                        "El área es de alto riesgo si hay un error no detectado: autenticación, permisos, manejo de dinero, datos personales sensibles (coherente con el criterio de E0).",
+                        "La tarea es, precisamente, el ejercicio de aprendizaje que necesitas hacer tú mismo para desarrollar la habilidad (resolver los labs de este curso).",
+                        "No tienes forma de verificar la respuesta de forma independiente (no conoces el dominio lo suficiente para evaluar si una afirmación es plausible o una alucinación)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Resolver un ejercicio del laboratorio de este curso pidiéndole la solución completa a un asistente de IA técnicamente 'funciona' (el código puede pasar las pruebas), pero elimina por completo el propósito del ejercicio: que tú construyas la habilidad de resolver ese tipo de problema. La plantilla pedagógica de este curso lo declara explícitamente en su paso de 'depuración y revisión con IA': se usa IA para revisar o depurar código con un defecto, nunca para generar la solución original del ejercicio desde cero en los pasos de práctica guiada e independiente."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: delegar a IA una tarea de seguridad crítica sin revisión experta adicional",
+                      "text": "Causa: la IA puede generar código de autenticación o manejo de permisos con total fluidez y aparente corrección. Cómo detectarlo: el código 'funciona' en las pruebas que se le ocurrieron a quien lo pidió, pero tiene una falla de seguridad sutil (como las vistas en E7-M7.3) que solo alguien con criterio experto en seguridad notaría al revisarlo. Solución: en áreas de alto riesgo, usa IA como apoyo (explicar, generar un borrador inicial), pero exige revisión experta humana adicional antes de considerar el trabajo terminado, no solo verificación automatizada."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: usar IA para resolver ejercicios de aprendizaje y considerar que 'ya se aprendió'",
+                      "text": "Causa: ver el código funcionando se siente como progreso, aunque no se haya construido la habilidad de producirlo sin ayuda. Cómo detectarlo: al enfrentar un problema similar sin acceso a un asistente (como en una entrevista técnica real, tema de la Etapa 11), no se puede resolver, revelando que la habilidad nunca se desarrolló realmente. Solución: en contextos de aprendizaje deliberado, resuelve primero por tu cuenta, y usa IA para revisar o explicar después, no para generar la solución original."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Checklist antes de delegar una tarea a IA",
+                      "items": [
+                        "¿Puedo verificar la respuesta de forma independiente y con confianza?",
+                        "¿El costo de un error no detectado aquí es alto (seguridad, dinero, datos sensibles)?",
+                        "¿Esta tarea es, precisamente, lo que necesito aprender a hacer yo mismo ahora?",
+                        "¿El tiempo de verificar exhaustivamente supera el tiempo de resolverlo directamente?"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "El mismo patrón de este curso, aplicado conscientemente",
+                      "language": "text",
+                      "code": "Práctica guiada / independiente de un ejercicio de este curso:\n  -> Resuelve tú mismo, sin pedirle la solución a un asistente.\n\nPaso de 'Depuración y revisión con IA' (siempre presente en cada lección):\n  -> Aquí sí se usa IA, pero para revisar código CON UN DEFECTO\n     y verificar la respuesta, nunca para generar la solución original."
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás aplicar un checklist explícito para decidir si una tarea dada debería delegarse a IA, delegarse con revisión experta adicional, o resolverse directamente sin IA, justificando la decisión según el riesgo y el propósito de aprendizaje."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de por qué la plantilla pedagógica de este curso reserva el uso de IA para el paso de depuración, no para la práctica guiada e independiente. Relaciona esto con tu propia experiencia resolviendo los ejercicios hasta ahora."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Te damos cinco tareas (resolver un ejercicio nuevo de este curso, generar un borrador de documentación, implementar la lógica de autorización de un sistema de pagos, explicar un concepto que ya dominas, depurar un código ajeno con un defecto conocido). Clasifica cada una según el checklist: delegar con confianza, delegar con revisión experta, o no delegar. Criterio de paso: las cinco clasificaciones son correctas y justificadas con el checklist."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Reflexiona sobre tu propio uso de IA hasta ahora en este curso: identifica si alguna vez usaste un asistente para algo que, según el criterio de esta lección, debiste resolver tú mismo primero. Si es así, documenta qué harías distinto; si no, documenta qué decisión tomaste correctamente y por qué. Criterio de paso: tu reflexión es honesta y específica, no una respuesta genérica."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te ayude a decidir si delegarle una tarea de seguridad crítica que le describas. Evalúa si su propia respuesta reconoce honestamente el riesgo (recomendando revisión experta adicional) o minimiza el riesgo asumiendo que su solución sería suficiente sin más revisión."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué señal indica que el costo de verificar supera el de resolver directamente? 2) ¿Por qué resolver ejercicios de aprendizaje con IA generándola elimina el propósito del ejercicio? 3) ¿Qué áreas requieren revisión experta adicional, no solo verificación automatizada? 4) ¿Cómo conecta esto con el criterio de delegación visto en E0? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Saber cuándo NO usar IA es, según encuestas de adopción de IA en ingeniería de software, una habilidad tan valorada como saber usarla bien: distingue a quien delega con criterio de quien delega todo indiscriminadamente, con el riesgo que eso implica en áreas críticas. En una entrevista pueden preguntarte: '¿en qué situaciones no delegarías una tarea a un asistente de IA?'. Variante: el equipo tiene una política organizacional que prohíbe el uso de IA en cierto tipo de código (como criptografía) (pista: ahí la decisión ya está tomada institucionalmente, y el criterio personal se subordina a esa política). Pregunta de cierre: ¿cuándo delegar a IA, incluso en un área de riesgo, sería razonable si se combina con la revisión experta adecuada?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M8.4",
           "title": "Asistentes en el flujo real",
           "order": 4,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U8.4.1",
+              "title": "Asistentes dentro del editor",
+              "objective": "Usar un asistente de IA integrado en el editor para completar, explicar y refactorizar código sin perder el control del cambio",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "asistentes-dentro-del-editor",
+                  "title": "Asistentes dentro del editor",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un asistente integrado en el editor (autocompletado inline, un panel de chat lateral, comandos de 'explicar' o 'refactorizar' sobre una selección) opera a una escala distinta de un agente autónomo (visto en la siguiente unidad): sugiere, tú decides si aceptar línea por línea o bloque por bloque, y el control del cambio permanece contigo en todo momento, de forma similar a cómo ya usabas el editor en E0-U0.2.2, ahora con una capa de sugerencias generadas. El valor real no está en aceptar todo lo que sugiere automáticamente, sino en usarlo como un colaborador rápido para patrones repetitivos (código boilerplate, tests obvios) mientras mantienes revisión activa sobre la lógica que de verdad importa."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Usos productivos de un asistente en el editor",
+                      "items": [
+                        "Autocompletado de patrones repetitivos: boilerplate, tests con una estructura similar a otros ya escritos.",
+                        "Explicar una selección de código ajeno o complejo, como punto de partida para entenderlo (verificando después, como en E3-U3.3.4).",
+                        "Refactorizar con una instrucción puntual sobre una selección específica, revisando el diff resultante antes de aceptar.",
+                        "Nunca aceptar una sugerencia completa sin leerla, incluso si 'parece' correcta a primera vista por su formato familiar."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Escribiendo una prueba más para un patrón ya repetido varias veces en el mismo archivo (como las pruebas de casos límite de E7-U7.2.1), el autocompletado del editor puede sugerir correctamente la siguiente prueba siguiendo el mismo patrón visible en las anteriores, ahorrando tipeo repetitivo. Pero si se usa el mismo autocompletado para escribir la lógica de validación de un nuevo caso de negocio que no sigue ningún patrón visible anterior, la sugerencia tiene mucho más riesgo de ser una suposición plausible pero incorrecta (el mismo mecanismo de generación probabilística de U8.1.1), y merece la misma revisión cuidadosa que cualquier código generado por IA."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: aceptar automáticamente cualquier sugerencia por costumbre (tecla Tab reflexiva)",
+                      "text": "Causa: aceptar sugerencias repetidamente genera un hábito automático de presionar 'aceptar' sin leer. Cómo detectarlo: código con errores sutiles (una condición invertida, un caso límite no manejado) se integra al proyecto porque 'se veía como el tipo de código correcto', sin haberse leído realmente. Solución: lee cada sugerencia antes de aceptarla, con la misma atención que tendrías escribiéndola tú mismo, especialmente en lógica que no es puramente repetitiva."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: usar el asistente del editor para generar lógica de negocio compleja de una sola sugerencia grande",
+                      "text": "Causa: el asistente puede sugerir bloques extensos de código de una vez, y aceptar todo junto parece más eficiente. Cómo detectarlo: un bloque grande aceptado de golpe contiene al menos un defecto no evidente a simple vista, difícil de localizar después de haberlo integrado completo sin revisión incremental. Solución: para lógica no trivial, revisa y acepta en fragmentos más pequeños, o usa el asistente para un primer borrador que luego revisas línea por línea, no como la versión final directamente."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Cuándo el autocompletado es de bajo riesgo frente a alto riesgo",
+                      "items": [
+                        "Patrón repetitivo visible en el mismo archivo (otra prueba similar, otro campo de un DTO): bajo riesgo",
+                        "Boilerplate estándar del lenguaje o framework: bajo riesgo",
+                        "Lógica de negocio nueva sin patrón previo visible: alto riesgo, requiere lectura cuidadosa",
+                        "Cualquier cosa relacionada con seguridad, permisos o dinero: alto riesgo siempre, sin excepción"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás usar un asistente integrado en el editor para patrones repetitivos de bajo riesgo, manteniendo lectura activa de cada sugerencia antes de aceptarla, especialmente en lógica de negocio no trivial."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la prueba repetida frente a la lógica de negocio nueva. Identifica qué hace que el primer caso sea de bajo riesgo y el segundo merezca revisión cuidadosa."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Usa el autocompletado de tu editor para escribir una prueba adicional siguiendo el patrón de otras ya existentes en un archivo de práctica. Lee la sugerencia completa antes de aceptarla y verifica que realmente sigue el patrón correcto (no solo se parece superficialmente). Criterio de paso: identificas, leyendo con atención, si la sugerencia es textualmente correcta para el nuevo caso o solo parece correcta."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Usa el comando de 'explicar' de un asistente integrado sobre un fragmento de código complejo que no hayas escrito tú (puede ser de este mismo proyecto). Verifica la explicación recibida contra tu propia lectura cuidadosa del código, y documenta si encontraste alguna imprecisión en la explicación generada. Criterio de paso: tu verificación es específica línea por línea, no una aceptación general de la explicación."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Deja que el autocompletado de tu editor sugiera una línea o bloque para una lógica de negocio nueva (no un patrón repetido). Antes de aceptar, revisa deliberadamente si maneja los casos límite relevantes (checklist de E7-U7.2.1). Documenta si encontraste algún hueco que habrías aceptado sin esa revisión deliberada."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué diferencia de riesgo hay entre aceptar un patrón repetitivo y lógica de negocio nueva? 2) ¿Por qué aceptar sugerencias por costumbre (sin leer) es riesgoso? 3) ¿Qué estrategia reduce el riesgo de aceptar un bloque grande de una sola vez? 4) ¿En qué se diferencia esto de un agente autónomo (próxima unidad)? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "El uso de asistentes integrados en el editor es, según encuestas de adopción, la forma más extendida de usar IA en programación profesional diaria; usarlo bien (lectura activa, no aceptación automática) es la diferencia entre acelerar el trabajo real y acumular código sin revisar genuina. En una entrevista pueden preguntarte: '¿cómo usas asistentes de IA en tu flujo de trabajo diario?'. Variante: el equipo mide la 'tasa de aceptación' de sugerencias como métrica de productividad (pista: una tasa de aceptación alta no es necesariamente buena si las sugerencias no se están revisando con cuidado). Pregunta de cierre: ¿cuándo desactivarías temporalmente el autocompletado de IA mientras trabajas?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.4.2",
+              "title": "Agentes de programación: planificar, implementar, revisar",
+              "objective": "Dirigir un agente de programación a través de planificar, implementar y revisar un cambio",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "agentes-de-programacion-planificar-implementar-revisar",
+                  "title": "Agentes de programación: planificar, implementar, revisar",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un agente de programación, a diferencia del autocompletado de U8.4.1, puede ejecutar varios pasos de forma más autónoma (leer archivos, escribir código en varios lugares, ejecutar comandos) para completar una tarea delimitada (U8.3.3), no solo sugerir una línea a la vez. El ciclo que produce mejores resultados tiene tres fases explícitas: planificar (que el agente proponga un plan antes de tocar código, que tú revisas y apruebas o ajustas), implementar (el agente ejecuta el plan aprobado), y revisar (verificas el resultado real con los mismos criterios de aceptación definidos antes, no solo confías en que 'el agente dijo que terminó'). Saltarse la fase de planificación para ahorrar tiempo suele costar más tiempo después, al descubrir a mitad de la implementación que el enfoque elegido no era el correcto."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las tres fases del ciclo",
+                      "items": [
+                        "Planificar: el agente propone un enfoque (qué archivos tocará, en qué orden, qué decisiones de diseño toma) antes de escribir código; tú lo revisas y ajustas si algo no te convence.",
+                        "Implementar: el agente ejecuta el plan aprobado, idealmente en pasos verificables (U8.3.3), no todo de una vez sin checkpoints.",
+                        "Revisar: verificas el resultado contra los criterios de aceptación definidos (U8.2.2), ejecutando tú mismo las verificaciones (pruebas, typecheck), no solo confiando en el reporte del agente de que 'todo funciona'.",
+                        "Si la fase de revisión encuentra un problema, se corrige con una iteración específica (U8.2.4), no reiniciando toda la tarea desde cero."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pedirle a un agente 'agrega paginación al endpoint de comentarios' sin pedir primero un plan puede llevar a que el agente elija unilateralmente paginación por offset cuando el proyecto ya estableció un patrón de cursor en otro lugar (E6-U6.2.4), descubriéndolo solo al revisar el código terminado. Pidiendo primero '¿qué plan seguirías, incluyendo qué estrategia de paginación usarías y por qué?', puedes corregir esa decisión antes de que se escriba ninguna línea de código, ahorrando una reescritura completa después."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: saltar la fase de planificación para 'ir más rápido'",
+                      "text": "Causa: pedir un plan se siente como un paso extra antes de llegar al resultado real. Cómo detectarlo: el agente implementa completo con un enfoque que, al revisarlo, resulta estar equivocado de raíz (una decisión de diseño incorrecta desde el principio), obligando a descartar y reiniciar gran parte del trabajo ya hecho. Solución: para cualquier tarea no trivial, pide el plan primero y revísalo; el tiempo de revisar un plan es mucho menor que el de rehacer una implementación completa equivocada."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: confiar en el reporte de 'terminado' del agente sin verificar tú mismo",
+                      "text": "Causa: el agente reporta con confianza que todo funciona y pasa las pruebas. Cómo detectarlo: al ejecutar tú mismo los comandos de verificación (no confiar en el resumen del agente), descubres que en realidad algo falla, o que el agente interpretó mal un criterio de aceptación. Solución: siempre ejecuta tú mismo (o verifica explícitamente) los comandos de verificación reales, con la misma disciplina de 'cada tarea se verifica con su comando real' que este proyecto documenta en cada una de sus bitácoras de sprint."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Pedir el plan antes de implementar",
+                      "language": "text",
+                      "code": "Primera instrucción: \"Antes de escribir código, propón un plan para agregar\npaginación al endpoint de comentarios: qué estrategia usarías (número\nu offset, o por cursor) y por qué, qué archivos tocarías, y en qué orden.\nNo implementes todavía.\"\n\n(Revisas el plan, ajustas si es necesario)\n\nSegunda instrucción: \"El plan se ve bien, pero usa paginación por cursor\npara ser consistente con el resto del proyecto. Implementa ese plan\nahora.\""
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué verificar en cada fase",
+                      "items": [
+                        "Planificar: ¿el enfoque es consistente con decisiones ya tomadas en el proyecto?",
+                        "Implementar: ¿se está ejecutando en pasos verificables, no todo de golpe?",
+                        "Revisar: ¿ejecutaste tú mismo los comandos de verificación, o solo confías en el reporte del agente?",
+                        "Si falla la revisión: ¿la corrección es una iteración específica, o un reinicio completo innecesario?"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás dirigir a un agente de programación a través de un plan revisado antes de implementar, y verificar el resultado ejecutando tú mismo los comandos de verificación reales, no solo confiando en el reporte del agente."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la paginación por offset frente a cursor. Identifica en qué momento exacto (planificación, no después de implementar) se detecta y corrige la decisión equivocada con menor costo."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Pide a un agente de programación que implemente una funcionalidad de práctica, exigiendo primero un plan explícito antes de cualquier código. Revisa el plan y ajústalo si algo no coincide con una convención o decisión que ya conoces. Solo después de aprobarlo, pide la implementación. Al terminar, ejecuta tú mismo los comandos de verificación (no confíes en el resumen del agente). Criterio de paso: ejecutaste personalmente al menos un comando de verificación y confirmaste su resultado real."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Reflexiona sobre una tarea de este curso (o de este mismo historial de sesión, si usaste un agente para content.seed.json) donde el ciclo planificar-implementar-revisar se aplicó explícitamente o no. Documenta si hubo una fase de verificación explícita (comandos reales ejecutados), y qué habría pasado sin ella. Criterio de paso: tu reflexión identifica correctamente si hubo o no verificación independiente real."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un agente que reporte que una tarea está 'completa y verificada'. Antes de aceptar ese reporte, ejecuta tú mismo los comandos de verificación relevantes (typecheck, lint, test) y compara el resultado real con lo que el agente afirmó. Documenta si coincidieron."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las tres fases del ciclo con un agente de programación? 2) ¿Por qué pedir un plan primero puede ahorrar tiempo en vez de agregarlo? 3) ¿Por qué no basta con confiar en el reporte de 'terminado' del agente? 4) ¿Qué se hace si la fase de revisión encuentra un problema? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "El ciclo planificar-implementar-revisar con verificación independiente es, en esencia, la misma disciplina que este curso documenta para sus propias tareas de desarrollo (bitácoras con comandos reales ejecutados), aplicada ahora a dirigir un agente en vez de a ti mismo escribiendo código directamente. En una entrevista pueden preguntarte: '¿cómo trabajarías con un agente de programación en una tarea compleja?'. Variante: el agente propone un plan razonable pero tú no tienes suficiente experiencia en esa área para evaluarlo con confianza (pista: ahí conviene pedir que explique el porqué de cada decisión del plan, y verificar esas justificaciones contra documentación o una fuente externa). Pregunta de cierre: ¿cuándo saltarte la fase de planificación explícita sería razonable?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.4.3",
+              "title": "Verificación independiente del código generado",
+              "objective": "Verificar código generado de forma independiente antes de aceptarlo, sin confiar en la confianza aparente de la respuesta",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "verificacion-independiente-del-codigo-generado",
+                  "title": "Verificación independiente del código generado",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Esta unidad consolida en un método explícito algo que se ha practicado repetidamente en lecciones anteriores (E3-U3.3.4 para commits, E7-U7.2.1 para casos límite, U8.1.4 de esta misma etapa): verificar código generado significa ejecutarlo con casos reales, confirmar que las APIs que usa existen de verdad, y entender cada línea lo suficiente para explicarla, no simplemente leerlo y que 'se vea razonable'. 'Verificación independiente' significa específicamente que la evidencia viene de una fuente distinta a la propia respuesta del modelo: ejecutar el código (no preguntarle si funciona), consultar documentación oficial (no preguntarle si una API existe), y escribir una prueba que fallaría si el código estuviera mal (no solo leerlo con atención)."
+                    },
+                    {
+                      "type": "list",
+                      "title": "El método de verificación independiente",
+                      "items": [
+                        "Ejecutar con casos reales, incluyendo casos límite (E7-U7.2.1), no solo leer el código.",
+                        "Verificar que cada API o función que usa existe realmente, contra documentación oficial o el código fuente instalado (E3-U3.3.4), no preguntándole al modelo.",
+                        "Escribir una prueba que fallaría si el código tuviera el defecto que sospechas, no solo confirmar que 'parece' correcto.",
+                        "Entender cada línea lo suficiente para explicarla a otra persona; si no puedes explicar por qué una línea hace lo que hace, no la has verificado, solo la has leído."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un agente genera una función de cálculo de impuestos con una explicación extensa y convincente de su lógica. Verificación independiente real: ejecutarla con al menos tres casos (un valor típico, cero, un valor en el límite exacto de un tramo impositivo), comparando el resultado contra un cálculo hecho a mano o una fuente oficial de tablas impositivas, no contra la propia explicación del modelo de por qué su cálculo es correcto. Si el modelo usó alguna función de una librería de cálculo financiero, se confirma que existe y funciona como se describe, consultando la documentación real de esa librería."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: confundir una explicación detallada y segura con verificación real",
+                      "text": "Causa: una respuesta articulada y con razonamiento aparente se siente más confiable que una escueta (ya visto en U8.1.4). Cómo detectarlo: el código tiene un defecto real que la explicación, aunque coherente internamente, nunca expuso porque la propia explicación viene de la misma fuente potencialmente equivocada. Solución: la verificación siempre viene de una fuente independiente del modelo mismo (ejecución real, documentación externa, una prueba), nunca de pedirle al modelo que se autoevalúe."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: verificar solo la sintaxis (que compile o pase el typecheck) y detenerse ahí",
+                      "text": "Causa: la ausencia de errores de compilación se confunde con corrección funcional (ya visto en E3-U3.3.4). Cómo detectarlo: el código compila perfectamente pero produce un resultado incorrecto con datos reales, porque typecheck verifica tipos, no lógica de negocio. Solución: pasar el typecheck es el mínimo indispensable, no la prueba de que el código funciona; siempre se necesita ejecución con casos reales además."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Fuente de evidencia válida frente a inválida",
+                      "items": [
+                        "Válida: ejecutar el código con un caso real y observar el resultado",
+                        "Válida: documentación oficial de una librería o API",
+                        "Válida: una prueba automatizada que fallaría si el código estuviera mal",
+                        "Inválida (por sí sola): preguntarle al modelo si su propia respuesta es correcta"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "Verificación independiente de una función generada",
+                      "language": "typescript",
+                      "code": "// El modelo generó calcularImpuesto(ingreso) con una explicación extensa.\n// Verificación independiente, no solo leer la explicación:\n\ntest(\"calcula correctamente el impuesto en el límite exacto del tramo\", () => {\n  // Valor verificado contra una tabla oficial, no contra la explicación del modelo\n  expect(calcularImpuesto(50000)).toBe(valorOficialConocido);\n});\n\n// Y verificar que cualquier función de librería que usó realmente existe:\n// node -e \"console.log(Object.keys(require('libreria-impuestos')))\""
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás aplicar un método explícito de verificación independiente (ejecución con casos reales, confirmación de APIs contra documentación, pruebas que fallarían si hay un defecto) a código generado, distinguiendo evidencia independiente de la mera confianza expresada por el modelo."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del cálculo de impuestos. Identifica por qué verificar contra una tabla oficial es cualitativamente distinto de verificar leyendo la explicación del propio modelo."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Pide a un asistente de IA que genere una función con alguna complejidad real (por ejemplo, calcular días hábiles entre dos fechas). Verifícala con el método completo: ejecútala con al menos tres casos (incluyendo un fin de semana y un feriado si aplica), confirma que cualquier función de librería que use existe realmente, y escribe una prueba que fallaría si el cálculo estuviera mal en el caso límite. Criterio de paso: tu verificación usa al menos dos fuentes de evidencia independientes del modelo mismo."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Revisa código generado por IA que hayas usado anteriormente en este curso. Para al menos un fragmento, aplica retroactivamente el método completo de verificación independiente y documenta si habría cambiado tu confianza en ese código (¿encontraste algo que no habías verificado antes?). Criterio de paso: tu revisión retroactiva es específica y honesta sobre lo que encontraste."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente que te explique por qué su propio código es correcto. Evalúa si esa autoexplicación constituye verificación independiente real (no lo es) y aplica tú mismo el método de esta lección (ejecución, documentación, prueba) para confirmar o refutar su afirmación."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué hace que una fuente de evidencia sea 'independiente'? 2) ¿Por qué pasar el typecheck no es verificación suficiente? 3) Nombra las tres formas de verificación independiente de esta lección. 4) ¿Por qué una explicación detallada del modelo no sustituye ninguna de las tres? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Este método de verificación independiente es, en esencia, el mismo principio del método científico aplicado a código: la evidencia válida viene de observación y experimentación (ejecutar, probar, consultar fuentes externas), no de la convicción con que se presenta una afirmación. En una entrevista pueden preguntarte: '¿cómo verificarías que este código generado por IA es correcto?'. Variante: el código genera resultados correctos en todos los casos que probaste, pero tiene un problema de rendimiento no evidente en pruebas pequeñas (pista: eso requiere un tipo de verificación distinto, medición de rendimiento con datos a escala real, E7-U7.4.6). Pregunta de cierre: ¿cuándo la verificación exhaustiva de este método sería excesiva para el riesgo real de la tarea?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U8.4.4",
+              "title": "Privacidad, propiedad intelectual y seguridad",
+              "objective": "Evaluar riesgos de privacidad, propiedad intelectual y seguridad al usar asistentes de IA con código y datos reales",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "privacidad-propiedad-intelectual-y-seguridad",
+                  "title": "Privacidad, propiedad intelectual y seguridad",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Enviar código o datos a un asistente de IA externo (a través de una API o una interfaz web) significa que esa información sale de tu control directo hacia la infraestructura de un tercero, con implicaciones que van más allá de si la respuesta es correcta. Privacidad: muchos proveedores pueden usar las conversaciones para entrenar modelos futuros salvo que se configure explícitamente lo contrario (relevante especialmente para datos personales de usuarios reales, no solo código). Propiedad intelectual: el código fuente de una empresa puede estar sujeto a acuerdos de confidencialidad que compartirlo con un tercero externo violaría, independientemente de si ese tercero es una persona o un servicio de IA. Seguridad: pegar un secreto real (una clave de API, una contraseña, visto en E3-U3.3.3) en una conversación con un asistente externo lo expone de la misma forma que confirmarlo en un commit de Git."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Riesgos específicos y cómo mitigarlos",
+                      "items": [
+                        "Privacidad de datos personales: nunca pegues datos reales de usuarios (nombres, emails, datos de salud) en una conversación con un asistente externo; usa datos ficticios o anonimizados para explicar el problema.",
+                        "Propiedad intelectual: verifica la política de la organización antes de compartir código propietario con servicios externos; algunas organizaciones solo permiten asistentes con contratos específicos de confidencialidad.",
+                        "Secretos y credenciales: nunca pegues una clave de API, contraseña o token real en una conversación, exactamente igual que nunca los confirmarías en un commit (E3-U3.3.3).",
+                        "Configuración del proveedor: revisa si la configuración de tu cuenta/organización excluye explícitamente las conversaciones del entrenamiento de modelos futuros, si eso es una preocupación relevante para tu contexto."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Para depurar un error relacionado con el registro de un usuario, en vez de pegar el registro real de un usuario con su email y nombre verdaderos, se reemplazan esos datos por valores ficticios (`ada@ejemplo.com`, `Usuario de Prueba`) que preservan la estructura del problema sin exponer datos personales reales. De la misma forma, si el error involucra una clave de API, se reemplaza por un valor de ejemplo (`sk-...xxxx`) antes de pegar el fragmento, preservando el problema técnico (el formato, el contexto del error) sin exponer el secreto real."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: pegar datos reales de usuarios 'solo para depurar más rápido'",
+                      "text": "Causa: reemplazar datos por valores ficticios toma un paso extra, y la urgencia de resolver el problema lleva a omitirlo. Cómo detectarlo: datos personales reales de usuarios terminan en el historial de conversaciones de un servicio de IA externo, potencialmente sujeto a políticas de privacidad distintas a las de tu propia organización. Solución: siempre reemplaza datos reales por ficticios que preserven la estructura del problema, con la misma disciplina que evitarías pegar una contraseña real."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: asumir que todos los asistentes de IA tienen la misma política de privacidad y uso de datos",
+                      "text": "Causa: tratar 'usar IA' como una categoría uniforme sin revisar las políticas específicas del servicio concreto que se usa. Cómo detectarlo: se descubre después de un tiempo que las conversaciones de un servicio específico sí se usaban para entrenamiento, cuando se asumía (sin verificar) que no era el caso. Solución: revisa explícitamente la política de privacidad y de uso de datos del servicio específico que usas (y la configuración de tu cuenta/organización), no asumas que todos operan igual."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué nunca compartir con un asistente externo (sin anonimizar/reemplazar primero)",
+                      "items": [
+                        "Claves de API, contraseñas, tokens reales (mismo criterio que E3-U3.3.3)",
+                        "Datos personales reales de usuarios (nombres, emails, datos de salud o financieros)",
+                        "Código propietario sujeto a acuerdos de confidencialidad, sin verificar la política organizacional primero",
+                        "Cualquier dato que no confirmarías en un commit público de Git"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás identificar qué información (secretos, datos personales, código propietario) no debe compartirse directamente con un asistente de IA externo, y reemplazarla por valores ficticios que preserven el problema técnico sin exponer datos reales."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del registro de usuario con datos reemplazados por valores ficticios. Identifica qué estructura del problema se preservó y qué información sensible se eliminó."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Te damos un mensaje de error real que incluye (de forma simulada) un email de usuario, un nombre completo y un fragmento de una clave de API. Reescribe el mensaje reemplazando cada dato sensible por un valor ficticio equivalente, preservando el problema técnico original para poder pedir ayuda sobre él. Criterio de paso: ningún dato sensible real queda en tu versión reescrita, y el problema técnico sigue siendo reproducible con los valores ficticios."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Investiga (en la documentación pública de un proveedor de IA real que uses) su política sobre uso de conversaciones para entrenamiento, y si existe una configuración para excluir tus datos de ese uso. Documenta lo que encuentres. Criterio de paso: tu investigación cita la política real del proveedor, no una suposición."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Revisa una conversación anterior que hayas tenido con un asistente de IA (de este curso o de otro contexto). Verifica si en algún momento pegaste información que, según el criterio de esta lección, debería haberse reemplazado por un valor ficticio. Si encuentras algo, documenta qué harías distinto la próxima vez."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué tipo de información nunca debería pegarse en una conversación con un asistente externo? 2) ¿Qué relación tiene esto con la unidad de secretos de la Etapa 3? 3) ¿Por qué no se puede asumir que todos los proveedores de IA tienen la misma política de privacidad? 4) ¿Cómo se preserva un problema técnico sin exponer datos reales? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Las políticas organizacionales sobre uso de IA con código propietario son cada vez más comunes y específicas (algunas empresas prohíben ciertos servicios, otras exigen contratos de confidencialidad específicos), y violarlas sin saberlo puede tener consecuencias legales o contractuales reales, no solo técnicas. En una entrevista pueden preguntarte: '¿qué cuidados tendrías al usar IA con código de una empresa?'. Variante: tu organización usa un proveedor de IA con un contrato empresarial que garantiza que los datos no se usan para entrenamiento (pista: eso cambia el cálculo de riesgo para código propietario, pero no para datos personales de usuarios reales, que merecen cuidado adicional independientemente del contrato). Pregunta de cierre: ¿cuándo la anonimización de datos no sería suficiente para compartir algo con un asistente externo?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     },
