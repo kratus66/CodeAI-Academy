@@ -6,8 +6,9 @@
 // S4 (progreso): UnitProgress + CompetencyProgress.
 // S5–S6: ejercicios, envíos, pruebas y pistas.
 // S7 (repaso): ReviewItem + ReviewLog (SM-2).
-// Las relaciones con proyectos, entrevistas e IA se añaden en los sprints que
-// crean esas tablas (S8–S10), nunca antes.
+// S9 (proyectos): Project + ProjectSubmission + enum ProjectSubmissionStatus.
+// Las relaciones con entrevistas e IA se añaden en los sprints que crean esas
+// tablas (S8 y S10), nunca antes.
 
 generator client {
   provider = "prisma-client-js"
@@ -45,6 +46,11 @@ model User {
   submissions        Submission[]
   hintRequests       HintRequest[]
   reviewItems        ReviewItem[]
+  projectSubmissions ProjectSubmission[]  @relation("ProjectSubmissions")
+  projectReviews     ProjectSubmission[]  @relation("ProjectSubmittedReviews")
+  aiInteractions     AiInteraction[]
+  interviewSessions  InterviewSession[]   @relation("InterviewSessions")
+  interviewReviews   InterviewSession[]   @relation("InterviewReviews")
 
   @@index([role])
 }
@@ -76,7 +82,8 @@ model Stage {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  modules Module[]
+  modules  Module[]
+  projects Project[]
 
   @@index([level])
 }
@@ -317,8 +324,8 @@ model Submission {
   aiInteractionId String?
   createdAt       DateTime          @default(now())
 
-  user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exercise Exercise              @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  user     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise               @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
   results  SubmissionTestResult[]
 
   @@index([userId, createdAt])
@@ -409,8 +416,8 @@ model ReviewItem {
   priority       Int       @default(0)
   createdAt      DateTime  @default(now())
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise    @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
   logs     ReviewLog[]
 
   @@unique([userId, exerciseId])
@@ -429,4 +436,181 @@ model ReviewLog {
   reviewItem ReviewItem @relation(fields: [reviewItemId], references: [id], onDelete: Cascade)
 
   @@index([reviewItemId, reviewedAt])
+}
+
+// ─────────────────────────── PROYECTOS ───────────────────────────
+
+/// Estado de una entrega: nace `SUBMITTED` y sólo la revisión la cierra.
+/// Una entrega revisada no se reabre: el estudiante entrega de nuevo.
+enum ProjectSubmissionStatus {
+  SUBMITTED
+  REVIEWED
+}
+
+/// Proyecto evaluable de una etapa (`modelo-datos.md` §6 y
+/// `sprint-09-proyectos-rubricas.md` §3). `rubric` es `Json` y se valida con
+/// `projectRubricSchema`: cinco criterios, pesos enteros que suman 100 y
+/// cuatro anclajes por criterio (niveles 1–4).
+/// `competencies` son los códigos C1..C14 que reciben evidencia en
+/// `CompetencyProgress` cuando la nota revisada llega a 80.
+model Project {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  stageId      Int
+  title        String
+  brief        String
+  /// Enunciado del entregable: al menos un requisito (`string[]` en la API).
+  requirements String[]
+  rubric       Json
+  competencies String[]
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  stage       Stage               @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  submissions ProjectSubmission[]
+
+  @@index([stageId, isPublished])
+}
+
+/// Entrega de un proyecto. A diferencia de `Submission` (append-only), la
+/// revisión y la publicación la modifican: `status`, `score`, `rubricScores`,
+/// `feedback` y `reviewedAt` los escribe el instructor; `isPublic` el autor.
+/// `repoUrl` es obligatorio porque una entrega sin repositorio no es
+/// evaluable (`sprint-09-proyectos-rubricas.md` §3).
+model ProjectSubmission {
+  id           String                  @id @default(cuid())
+  projectId    String
+  userId       String
+  status       ProjectSubmissionStatus @default(SUBMITTED)
+  repoUrl      String
+  deployUrl    String?
+  notes        String?
+  /// 0..100 con dos decimales; `null` mientras no hay revisión.
+  score        Float?
+  /// Niveles 0..4 por criterio, validados con `projectRubricScoresSchema`.
+  rubricScores Json?
+  feedback     String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  isPublic     Boolean                 @default(false)
+  publishedAt  DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User    @relation("ProjectSubmissions", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?   @relation("ProjectSubmittedReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  /// Historial propio y portafolio (público o del dueño), más reciente primero.
+  @@index([userId, isPublic, publishedAt])
+  /// Bandeja de revisión y conteo de entregas por proyecto.
+  @@index([projectId, status])
+}
+
+// --------------------------- CAPA DE IA ---------------------------
+
+/// Libro de llamadas reales al proveedor de IA (`modelo-datos.md` §6). Es
+/// append-only: la caché y la degradación no escriben filas.
+model AiInteraction {
+  id           String   @id @default(cuid())
+  userId       String?
+  /// "tutor" | "explain" en S8; "hint", "grade", "interview" y "review" después.
+  module       String
+  provider     String
+  model        String
+  promptTokens Int      @default(0)
+  outputTokens Int      @default(0)
+  costUsd      Float    @default(0)
+  latencyMs    Int?
+  success      Boolean  @default(true)
+  errorCode    String?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([module, createdAt])
+}
+
+// ─────────────────────────── ENTREVISTAS ───────────────────────────
+
+/// Estado de una sesión de entrevista (`sprint-10-entrevistas.md` §3.1):
+/// `IN_PROGRESS → COMPLETED → REVIEWED`, con `ABANDONED` al leer una sesión
+/// inactiva durante 48 h. Las transiciones viven en el servicio.
+enum InterviewSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  REVIEWED
+  ABANDONED
+}
+
+/// Escenario de entrevista del catálogo. `phases` y `rubric` son `Json` y se
+/// validan con `interviewScenarioSchema` al sembrar y al leer; la solución de
+/// referencia solo existe aquí y nunca se mapea a una respuesta HTTP.
+model InterviewScenario {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  title             String
+  /// `backend` | `frontend` | `fullstack` | `data` | `qa`.
+  role              String
+  /// `junior` | `semi-senior` | `senior`.
+  level             String
+  /// `ts` | `py` | `java` | `go`.
+  language          String
+  competencies      String[]
+  /// `[{ phase, maxTurns, objective }]`; el servidor avanza la fase por conteo.
+  phases            Json
+  /// Pesos por criterio de `rubricas-evaluacion.md` §2.6; suman 100.
+  rubric            Json
+  /// Material privado para el filtro de fuga de S8; nunca se sirve al cliente.
+  referenceSolution String
+  estimatedMinutes  Int      @default(45)
+  isPublished       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  sessions InterviewSession[]
+
+  @@index([isPublished, role, level, language])
+}
+
+/// Sesión de entrevista de un estudiante. `transcript`, `scores` y `selfScores`
+/// son `Json` validados al leer (`readTranscript` / `readInterviewScores`):
+/// una fila corrupta responde `422` de dominio, no tumba el proceso.
+model InterviewSession {
+  id            String                 @id @default(cuid())
+  userId        String
+  scenarioId    String
+  status        InterviewSessionStatus @default(IN_PROGRESS)
+  /// Fase actual del guion; la decide el servidor por conteo de turnos.
+  phase         String                 @default("warmup")
+  /// Turnos del candidato, 0..40.
+  turns         Int                    @default(0)
+  /// `[{ role, phase, content, at }]`, completo y en orden.
+  transcript    Json                   @default("[]")
+  /// `{ rubric, levels, score }`; conserva la rúbrica aplicada.
+  scores        Json?
+  /// Niveles 0..4 de la autoevaluación + `score` y `reflection`.
+  selfScores    Json?
+  feedback      String?
+  /// Alguna respuesta se sirvió del guion estático o del filtro de fuga.
+  degraded      Boolean                @default(false)
+  reviewedById  String?
+  startedAt     DateTime               @default(now())
+  lastTurnAt    DateTime?
+  finishedAt    DateTime?
+  reviewedAt    DateTime?
+  updatedAt     DateTime               @updatedAt
+
+  user       User             @relation("InterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
+  scenario   InterviewScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  reviewedBy User?            @relation("InterviewReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  /// Historial propio y sesión abierta por escenario.
+  @@index([userId, status])
+  /// Intentos de un escenario y bandeja de revisión.
+  @@index([scenarioId, status])
+  /// Historial comparativo, más reciente primero.
+  @@index([userId, startedAt])
 }

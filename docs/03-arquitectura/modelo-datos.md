@@ -38,6 +38,8 @@
 
 `HintRequest` (S6) cuelga de `User` y de `Exercise`: registra qué niveles de pista pidió cada estudiante, sin duplicar filas.
 
+Las entidades de S9 y S10 cuelgan de `User` además del contenido: `Project`/`ProjectSubmission` (una entrega por intento), `InterviewScenario`/`InterviewSession` (guion y transcripción por intento) y `AiInteraction` (auditoría de cada llamada real al proveedor). El detalle está en §6.
+
 ---
 
 ## 2. Esquema Prisma — núcleo de identidad y contenido
@@ -486,46 +488,117 @@ model Project {
   stageId      Int
   title        String
   brief        String
-  requirements Json
+  /// Enunciado del entregable: al menos un requisito (`string[]` en la API).
+  requirements String[]
+  /// Rúbrica validada con `projectRubricSchema`: 5 criterios, pesos que suman 100.
   rubric       Json
+  /// Competencias C1–C14 que reciben evidencia al aprobar con nota ≥ 80.
+  competencies String[]
   isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  stage       Stage               @relation(fields: [stageId], references: [id], onDelete: Cascade)
   submissions ProjectSubmission[]
+
+  @@index([stageId, isPublished])
 }
 
 model ProjectSubmission {
-  id           String    @id @default(cuid())
+  id           String                  @id @default(cuid())
   projectId    String
   userId       String
-  repoUrl      String?
+  status       ProjectSubmissionStatus @default(SUBMITTED)
+  /// Obligatorio: una entrega sin repositorio no es evaluable.
+  repoUrl      String
   deployUrl    String?
   notes        String?
+  /// 0–100 con dos decimales; `null` mientras no hay revisión.
   score        Float?
+  /// Niveles 0–4 por criterio, validados con `projectRubricScoresSchema`.
   rubricScores Json?
+  feedback     String?
+  /// Última revisión: no hay historial de notas (deuda declarada en S9).
+  reviewedById String?
   reviewedAt   DateTime?
-  createdAt    DateTime  @default(now())
+  isPublic     Boolean                 @default(false)
+  publishedAt  DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User    @relation("ProjectSubmissions", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?   @relation("ProjectSubmittedReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
 
-  @@index([userId])
+  @@index([userId, isPublic, publishedAt])
+  @@index([projectId, status])
 }
 
+enum ProjectSubmissionStatus {
+  SUBMITTED
+  REVIEWED
+}
+
+enum InterviewSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  REVIEWED
+  ABANDONED
+}
+
+/// Escenario del catálogo (S10). `phases` y `rubric` son `Json` validados con
+/// `interviewScenarioSchema`; la solución de referencia **no** se sirve al cliente.
+model InterviewScenario {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  title             String
+  role              String   // backend | frontend | fullstack | data | qa
+  level             String   // junior | semi-senior | senior
+  language          String   // ts | py | java | go
+  competencies      String[]
+  phases            Json     // [{ phase, maxTurns, objective }]
+  rubric            Json     // pesos §2.6, suman 100
+  referenceSolution String
+  estimatedMinutes  Int      @default(45)
+  isPublished       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  sessions InterviewSession[]
+
+  @@index([isPublished, role, level, language])
+}
+
+/// Sesión de entrevista con transcripción completa. Los tres `Json` se validan
+/// al leer (`readTranscript`, `readInterviewScores`, `readSelfReview`): una fila
+/// corrupta responde `422` de dominio, no tumba el proceso.
+/// `scores` guarda `{ rubric, levels, score }` y conserva la rúbrica aplicada.
 model InterviewSession {
-  id         String    @id @default(cuid())
-  userId     String
-  scenarioId String
-  role       String
-  language   String    @default("es")
-  status     String    @default("in_progress")
-  transcript Json?
-  scores     Json?
-  startedAt  DateTime  @default(now())
-  finishedAt DateTime?
+  id           String                 @id @default(cuid())
+  userId       String
+  scenarioId   String
+  status       InterviewSessionStatus @default(IN_PROGRESS)
+  phase        String                 @default("warmup")
+  turns        Int                    @default(0) // 0..40
+  transcript   Json                   @default("[]")
+  scores       Json?
+  selfScores   Json? // { scores, score, reflection }
+  feedback     String?
+  degraded     Boolean                @default(false)
+  reviewedById String?
+  startedAt    DateTime               @default(now())
+  lastTurnAt   DateTime?
+  finishedAt   DateTime?
+  reviewedAt   DateTime?
+  updatedAt    DateTime               @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User              @relation("InterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
+  scenario   InterviewScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  reviewedBy User?             @relation("InterviewReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
 
-  @@index([userId])
+  @@index([userId, status])
+  @@index([scenarioId, status])
+  @@index([userId, startedAt])
 }
 
 model AiInteraction {
@@ -562,6 +635,11 @@ model AiInteraction {
 | Intentos | Un `Submission` nunca se modifica; solo se crean nuevos |
 | Unicidad de repaso | `@@unique([userId, exerciseId])` garantiza un ítem por ejercicio |
 | Pistas pedidas | `@@unique([userId, exerciseId, level])`: repetir un nivel incrementa `requests` y `lastRequestedAt` sin crear fila |
+| Entregas de proyecto | Acumulables: cada envío crea una fila; `repoUrl` obligatorio y `@@unique([slug])` en `Project` |
+| Privacidad del portafolio | `isPublic` y `publishedAt` son estado explícito y reversible; lo privado nunca sale en `/api/portfolio/:userId` |
+| Evidencia por proyecto | Una revisión con nota ≥ 80 sube `CompetencyProgress.level` a 3 como mínimo e incrementa `evidenceCount`, sin bajar el nivel ya alcanzado |
+| Sesión de entrevista | Una sola `IN_PROGRESS` por usuario y escenario; la fase y los turnos los decide el servidor; `transcript`, `scores` y `selfScores` se validan al leer |
+| Evidencia por entrevista | La revisión humana con nota ≥ 80 acredita **C10** en el autor; una invalidación escribe nota 0 y no deja evidencia |
 
 ---
 
@@ -572,7 +650,10 @@ model AiInteraction {
 - Historial: `@@index([userId, createdAt])` en `Submission`.
 - Pistas: `@@index([userId, exerciseId])` en `HintRequest` — calcular `hintsUsed` desde el envío anterior sin recorrer la tabla.
 - Catálogo: `@@index([unitId, type])` para listar ejercicios por unidad.
+- Proyectos: `@@index([stageId, isPublished])` para el catálogo y `@@index([projectId, status])` para la bandeja de revisión.
+- Portafolio: `@@index([userId, isPublic, publishedAt])` resuelve la vista pública y la propia sin recorrer entregas ajenas.
 - Coste IA: `@@index([module, createdAt])` para reportes mensuales.
+- Entrevistas: `@@index([isPublished, role, level, language])` para el catálogo, `@@index([userId, status])` para la sesión abierta y el historial, `@@index([scenarioId, status])` para los intentos y la bandeja de revisión, y `@@index([userId, startedAt])` para el orden comparativo.
 
 **Regla:** toda consulta nueva sobre más de 10 000 filas potenciales debe justificar su índice.
 

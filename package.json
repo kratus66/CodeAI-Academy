@@ -7,6 +7,9 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "dompurify": "3.4.17"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -28,7 +31,11 @@
     "db:down": "docker compose down",
     "db:migrate": "npm run db:migrate -w apps/api",
     "db:seed": "npm run db:seed -w apps/api",
-    "db:reset": "npm run db:reset -w apps/api"
+    "db:seed:projects": "npm run db:seed:projects -w apps/api",
+    "db:seed:interviews": "npm run db:seed:interviews -w apps/api",
+    "db:reset": "npm run db:reset -w apps/api",
+    "audit": "npm audit",
+    "audit:prod": "npm audit --omit=dev"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

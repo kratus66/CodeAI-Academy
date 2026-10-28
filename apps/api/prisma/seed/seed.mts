@@ -42,6 +42,34 @@ function describeIssues(issues: readonly { path: (string | number)[]; message: s
     .join("\n");
 }
 
+type SeedExercise = Awaited<ReturnType<typeof readSeed>>["stages"][number]["modules"][number]["units"][number]["exercises"][number];
+
+/** Lo que el cliente puede ver del ejercicio: nunca la respuesta ni las explicaciones. */
+function exerciseConfig(exercise: SeedExercise) {
+  if (exercise.quiz !== null) {
+    return { options: exercise.quiz.options.map(({ id, text }) => ({ id, text })) };
+  }
+
+  return exercise.starterCode === null ? {} : { starterCode: exercise.starterCode };
+}
+
+/** Lo que solo conoce el servidor: solución, respuesta correcta y explicaciones. */
+function exerciseSolution(exercise: SeedExercise) {
+  if (exercise.quiz !== null) {
+    return {
+      correctOptionId: exercise.quiz.correctOptionId,
+      explanations: Object.fromEntries(
+        exercise.quiz.options.map((option) => [option.id, option.explanation]),
+      ),
+    };
+  }
+  if (exercise.flashcard !== null) {
+    return { back: exercise.flashcard.back };
+  }
+
+  return exercise.solution ?? undefined;
+}
+
 async function readSeed() {
   const raw: unknown = JSON.parse(await readFile(SEED_FILE, "utf8"));
   const result = contentSeedSchema.safeParse(raw);
@@ -137,6 +165,75 @@ async function main(): Promise<void> {
             update: unitFields,
           });
 
+          for (const exercise of unit.exercises) {
+            const exerciseFields = {
+              unitId: storedUnit.id,
+              type: exercise.type,
+              title: exercise.title,
+              statement: exercise.statement,
+              config: exerciseConfig(exercise),
+              solution: exerciseSolution(exercise),
+              ladder: exercise.ladder,
+              difficulty: exercise.difficulty,
+              concepts: exercise.concepts,
+              competencies: exercise.competencies,
+              estimatedMin: exercise.estimatedMin,
+              language: exercise.language,
+              sources: exercise.sources,
+              maxAttempts: exercise.maxAttempts,
+              isPublished: exercise.isPublished,
+              order: exercise.order,
+            };
+
+            const storedExercise = await prisma.exercise.upsert({
+              where: { slug: exercise.slug },
+              create: { slug: exercise.slug, ...exerciseFields },
+              update: exerciseFields,
+            });
+
+            // Pistas y pruebas se reconcilian con la semilla: lo retirado del JSON
+            // desaparece de la base de datos y lo demás se actualiza en su sitio.
+            await prisma.exerciseHint.deleteMany({
+              where: {
+                exerciseId: storedExercise.id,
+                level: { notIn: exercise.hints.map((hint) => hint.level) },
+              },
+            });
+
+            for (const hint of exercise.hints) {
+              await prisma.exerciseHint.upsert({
+                where: {
+                  exerciseId_level: { exerciseId: storedExercise.id, level: hint.level },
+                },
+                create: { exerciseId: storedExercise.id, level: hint.level, text: hint.text },
+                update: { text: hint.text },
+              });
+            }
+
+            await prisma.exerciseTest.deleteMany({
+              where: {
+                exerciseId: storedExercise.id,
+                name: { notIn: exercise.tests.map((test) => test.name) },
+              },
+            });
+
+            for (const test of exercise.tests) {
+              const testFields = { isHidden: test.isHidden, weight: test.weight, spec: test.spec };
+              const existing = await prisma.exerciseTest.findFirst({
+                where: { exerciseId: storedExercise.id, name: test.name },
+                select: { id: true },
+              });
+
+              if (existing) {
+                await prisma.exerciseTest.update({ where: { id: existing.id }, data: testFields });
+              } else {
+                await prisma.exerciseTest.create({
+                  data: { exerciseId: storedExercise.id, name: test.name, ...testFields },
+                });
+              }
+            }
+          }
+
           for (const lesson of unit.lessons) {
             const lessonFields = {
               title: lesson.title,
@@ -189,11 +286,12 @@ async function main(): Promise<void> {
 
     // Los conteos se leen de la base de datos: es la prueba de idempotencia
     // que se repite en S2-T9 al ejecutar la semilla dos veces seguidas.
-    const [stages, modules, units, publishedStages] = await Promise.all([
+    const [stages, modules, units, publishedStages, exercises] = await Promise.all([
       prisma.stage.count(),
       prisma.module.count(),
       prisma.unit.count(),
       prisma.stage.count({ where: { isPublished: true } }),
+      prisma.exercise.count(),
     ]);
 
     const expected = {
@@ -207,7 +305,7 @@ async function main(): Promise<void> {
     };
 
     console.log(
-      `Semilla aplicada: ${stages} etapas (${publishedStages} publicadas), ${modules} módulos, ${units} unidades.`,
+      `Semilla aplicada: ${stages} etapas (${publishedStages} publicadas), ${modules} módulos, ${units} unidades, ${exercises} ejercicios.`,
     );
     console.log(
       `Declarado en content.seed.json: ${expected.stages} etapas, ${expected.modules} módulos, ${expected.units} unidades.`,

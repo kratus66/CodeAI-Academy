@@ -1,0 +1,433 @@
+{
+  "scenarios": [
+    {
+      "slug": "backend-junior",
+      "title": "Backend junior: API de tareas",
+      "role": "backend",
+      "level": "junior",
+      "language": "ts",
+      "competencies": [
+        "C4",
+        "C10"
+      ],
+      "estimatedMinutes": 45,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Romper el hielo y conocer un problema técnico resuelto."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 4,
+          "objective": "Comprobar fundamentos de HTTP, validación y errores."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 5,
+          "objective": "Agrupar tareas por estado explicando casos límite."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 3,
+          "objective": "Detectar un riesgo en un controlador que muta el array de entrada."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 3,
+          "objective": "Repreguntar sobre validación y concurrencia."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "export function groupByStatus(tasks: Task[]): Record<string, Task[]> {\n  return tasks.reduce((acc, task) => {\n    acc[task.status] = [...(acc[task.status] ?? []), task];\n    return acc;\n  }, {} as Record<string, Task[]>);\n}",
+      "isPublished": true,
+      "phaseCount": 6
+    },
+    {
+      "slug": "backend-semi-senior",
+      "title": "Backend semi-senior: idempotencia en pagos",
+      "role": "backend",
+      "level": "semi-senior",
+      "language": "ts",
+      "competencies": [
+        "C4",
+        "C9",
+        "C10"
+      ],
+      "estimatedMinutes": 60,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Entender el contexto de un servicio con reintentos."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 4,
+          "objective": "Diferenciar idempotencia, exactly-once y deduplicación."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 6,
+          "objective": "Diseñar una clave de idempotencia y su almacenamiento."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 4,
+          "objective": "Revisar un reintento que cobra dos veces por una condición de carrera."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 3,
+          "objective": "Profundizar en expiración de claves y observabilidad."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "async function chargeOnce(key: string, amount: number) {\n  const claimed = await store.claim(key);\n  if (!claimed) return store.result(key);\n  const result = await gateway.charge(amount);\n  await store.save(key, result);\n  return result;\n}",
+      "isPublished": true,
+      "phaseCount": 6
+    },
+    {
+      "slug": "backend-senior",
+      "title": "Backend senior: consistencia de caché",
+      "role": "backend",
+      "level": "senior",
+      "language": "ts",
+      "competencies": [
+        "C4",
+        "C9",
+        "C10"
+      ],
+      "estimatedMinutes": 75,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Situar una arquitectura con caché distribuida."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 5,
+          "objective": "Discutir coherencia, invalidación y tolerancia a fallos."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 6,
+          "objective": "Escribir una lectura con caché y single-flight."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 4,
+          "objective": "Analizar una invalidación que pierde escrituras concurrentes."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 4,
+          "objective": "Profundizar en métricas, degradación y coste."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "async function readThrough(key: string, load: () => Promise<Value>) {\n  const hit = await cache.get(key);\n  if (hit !== null) return hit;\n  const pending = inflight.get(key) ?? load();\n  inflight.set(key, pending);\n  try {\n    const value = await pending;\n    await cache.set(key, value, ttlSeconds);\n    return value;\n  } finally {\n    inflight.delete(key);\n  }\n}",
+      "isPublished": true,
+      "phaseCount": 6
+    },
+    {
+      "slug": "frontend-junior",
+      "title": "Frontend junior: lista con estados",
+      "role": "frontend",
+      "level": "junior",
+      "language": "ts",
+      "competencies": [
+        "C5",
+        "C10"
+      ],
+      "estimatedMinutes": 45,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Conocer una interfaz que haya construido el candidato."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 4,
+          "objective": "Comprobar estado, props y renderizado condicional."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 5,
+          "objective": "Representar carga, error y vacío sin parpadeos."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 3,
+          "objective": "Detectar un estado derivado guardado de más."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 3,
+          "objective": "Repreguntar sobre accesibilidad y teclado."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "function TaskList({ state }: TaskListProps) {\n  if (state.status === \"loading\") return <p role=\"status\">Cargando…</p>;\n  if (state.status === \"error\") return <p role=\"alert\">No pudimos cargar.</p>;\n  if (state.items.length === 0) return <p>Sin tareas todavía.</p>;\n  return <ul>{state.items.map((task) => <li key={task.id}>{task.title}</li>)}</ul>;\n}",
+      "isPublished": true,
+      "phaseCount": 6
+    },
+    {
+      "slug": "frontend-semi-senior",
+      "title": "Frontend semi-senior: formulario accesible",
+      "role": "frontend",
+      "level": "semi-senior",
+      "language": "ts",
+      "competencies": [
+        "C5",
+        "C7",
+        "C10"
+      ],
+      "estimatedMinutes": 60,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Contextualizar un formulario con validación y errores."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 4,
+          "objective": "Discutir accesibilidad, foco y anuncios de error."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 6,
+          "objective": "Escribir el manejo de envío y errores por campo."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 4,
+          "objective": "Revisar un formulario que pierde el foco tras fallar."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 3,
+          "objective": "Profundizar en validación cliente/servidor y pruebas."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "async function onSubmit(values: FormValues) {\n  setErrors({});\n  const result = await save(values);\n  if (!result.ok) {\n    setErrors(result.fieldErrors);\n    firstInvalidField.current?.focus();\n    return;\n  }\n  announce(\"Guardado correctamente\");\n}",
+      "isPublished": true,
+      "phaseCount": 6
+    },
+    {
+      "slug": "frontend-senior",
+      "title": "Frontend senior: rendimiento de una tabla",
+      "role": "frontend",
+      "level": "senior",
+      "language": "ts",
+      "competencies": [
+        "C5",
+        "C9",
+        "C10"
+      ],
+      "estimatedMinutes": 75,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Entender el problema de rendimiento y cómo se midió."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 5,
+          "objective": "Discutir renderizado, memoización y virtualización."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 6,
+          "objective": "Reducir trabajo por fila sin romper la semántica."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 4,
+          "objective": "Detectar una optimización que introduce un bug de orden."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 4,
+          "objective": "Profundizar en medición, presupuesto y regresiones."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "const visibleRows = useMemo(\n  () => sortRows(rows, sortKey).slice(start, start + pageSize),\n  [rows, sortKey, start, pageSize],\n);",
+      "isPublished": true,
+      "phaseCount": 6
+    },
+    {
+      "slug": "data-junior",
+      "title": "Datos junior: limpieza de un CSV",
+      "role": "data",
+      "level": "junior",
+      "language": "py",
+      "competencies": [
+        "C8",
+        "C10"
+      ],
+      "estimatedMinutes": 45,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Conocer un análisis pequeño que haya hecho el candidato."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 4,
+          "objective": "Comprobar tipos, valores nulos y validación de datos."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 5,
+          "objective": "Limpiar filas inválidas sin perder trazabilidad."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 3,
+          "objective": "Detectar una limpieza que descarta errores en silencio."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 3,
+          "objective": "Repreguntar sobre valores atípicos y reproducibilidad."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "def clean(rows):\n    valid = []\n    rejected = []\n    for row in rows:\n        if row.get(\"amount\") is None or row[\"amount\"] < 0:\n            rejected.append(row)\n        else:\n            valid.append(row)\n    return valid, rejected",
+      "isPublished": true,
+      "phaseCount": 6
+    },
+    {
+      "slug": "data-semi-senior",
+      "title": "Datos semi-senior: pipeline incremental",
+      "role": "data",
+      "level": "semi-senior",
+      "language": "py",
+      "competencies": [
+        "C8",
+        "C9",
+        "C10"
+      ],
+      "estimatedMinutes": 60,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Contextualizar un pipeline que se ejecuta a diario."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 4,
+          "objective": "Discutir marcas de agua, late data y reprocesos."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 6,
+          "objective": "Escribir una carga incremental idempotente."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 4,
+          "objective": "Revisar una ventana que duplica filas al reintentar."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 3,
+          "objective": "Profundizar en calidad, alertas y coste."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "def load_incremental(spark, watermark):\n    incoming = spark.read.parquet(SOURCE).filter(f\"updated_at > '{watermark}'\")\n    incoming.dropDuplicates([\"id\"]).write.mode(\"append\").saveAsTable(TARGET)\n    return incoming.agg({\"updated_at\": \"max\"}).first()[0]",
+      "isPublished": true,
+      "phaseCount": 6
+    },
+    {
+      "slug": "data-senior",
+      "title": "Datos senior: calidad y linaje",
+      "role": "data",
+      "level": "senior",
+      "language": "py",
+      "competencies": [
+        "C3",
+        "C8",
+        "C10"
+      ],
+      "estimatedMinutes": 75,
+      "phases": [
+        {
+          "phase": "warmup",
+          "maxTurns": 2,
+          "objective": "Situar una plataforma de datos con varios equipos."
+        },
+        {
+          "phase": "conceptual",
+          "maxTurns": 5,
+          "objective": "Discutir contratos de datos, linaje y propiedad."
+        },
+        {
+          "phase": "live-coding",
+          "maxTurns": 6,
+          "objective": "Diseñar una comprobación de calidad que bloquee la publicación."
+        },
+        {
+          "phase": "code-review",
+          "maxTurns": 4,
+          "objective": "Analizar un test de calidad que nunca puede fallar."
+        },
+        {
+          "phase": "follow-ups",
+          "maxTurns": 4,
+          "objective": "Profundizar en gobierno, incidentes y comunicación."
+        },
+        {
+          "phase": "candidate-questions",
+          "maxTurns": 2,
+          "objective": "Cerrar con una pregunta del candidato."
+        }
+      ],
+      "referenceSolution": "def publish_if_valid(df, contract):\n    report = contract.validate(df)\n    if not report.ok:\n        raise QualityGateFailed(report.failures)\n    write_table(df, contract.target)\n    record_lineage(contract.source, contract.target, report)",
+      "isPublished": true,
+      "phaseCount": 6
+    }
+  ]
+}
