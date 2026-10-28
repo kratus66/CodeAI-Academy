@@ -1,13 +1,21 @@
-import { LESSON_STEP_KINDS } from "@codeai/shared";
+import {
+  DEFAULT_INTERVIEW_RUBRIC,
+  DEFAULT_PROJECT_RUBRIC,
+  LESSON_STEP_KINDS,
+} from "@codeai/shared";
 import type { SandboxRunRequest } from "@codeai/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  aiApi,
   ApiError,
   authApi,
   contentApi,
   exercisesApi,
+  interviewsApi,
+  portfolioApi,
   progressApi,
+  projectsApi,
   resolveApiBaseUrl,
   restoreSession,
   reviewApi,
@@ -28,6 +36,60 @@ const UNAUTHENTICATED = {
     message: "La sesión no es válida o ha expirado",
     traceId: "trace-401",
   },
+} as const;
+
+const PROJECT = {
+  id: "prj_1",
+  slug: "entorno-reproducible",
+  stageId: 0,
+  title: "Entorno reproducible",
+  brief: "Deja un repositorio que arranque en cualquier máquina.",
+  requirements: ["README con requisitos", "Script de verificación"],
+  isPublished: true,
+  submitted: false,
+} as const;
+
+const PROJECT_DETAIL = {
+  ...PROJECT,
+  rubric: DEFAULT_PROJECT_RUBRIC,
+  competencies: ["C1"],
+  bestScore: null,
+  mySubmissions: [],
+} as const;
+
+const PROJECT_SUBMISSION = {
+  id: "psub_1",
+  projectId: "prj_1",
+  projectSlug: "entorno-reproducible",
+  projectTitle: "Entorno reproducible",
+  stageId: 0,
+  userId: "usr_1",
+  status: "SUBMITTED",
+  repoUrl: "https://github.com/ana/entorno",
+  deployUrl: null,
+  notes: "Documenté el arranque",
+  score: null,
+  rubricScores: null,
+  feedback: null,
+  reviewedAt: null,
+  isPublic: false,
+  publishedAt: null,
+  createdAt: "2026-10-28T10:00:00.000Z",
+} as const;
+
+const REVIEWED_SUBMISSION = {
+  ...PROJECT_SUBMISSION,
+  status: "REVIEWED",
+  score: 85,
+  rubricScores: {
+    correctitud: 4,
+    calidad: 4,
+    pruebas: 4,
+    seguridad: 4,
+    justificacion: 0,
+  },
+  feedback: "Falta la explicación propia",
+  reviewedAt: "2026-10-28T11:00:00.000Z",
 } as const;
 
 const STAGE = {
@@ -824,6 +886,605 @@ describe("reviewApi", () => {
     const error = await captureApiError(reviewApi.answer("item_1", { quality: 4 }));
 
     expect(error.code).toBe("INTERNAL_ERROR");
+  });
+});
+
+const AI_TUTOR_RESPONSE = {
+  reply: "¿Qué devuelve fetch cuando el estado es 404?",
+  suggestedHints: ["promesas"],
+  tokensUsed: 412,
+  budgetRemainingUsd: 4.98,
+  source: "provider",
+  filtered: false,
+} as const;
+
+describe("aiApi", () => {
+  it("envía lessonId, mensaje e historial al tutor y valida la respuesta", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(AI_TUTOR_RESPONSE));
+
+    const result = await aiApi.tutor({ lessonId: "les_1", message: "No entiendo el await" });
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+
+    expect(url).toBe("http://localhost:3001/api/ai/tutor");
+    expect(init?.method).toBe("POST");
+    expect(init?.credentials).toBe("include");
+    expect(init?.body).toBe(JSON.stringify({ lessonId: "les_1", message: "No entiendo el await" }));
+    expect(result).toEqual(AI_TUTOR_RESPONSE);
+  });
+
+  it("pide la explicación de un envío por su id", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        explanation: "Tu función devuelve antes de esperar la promesa.",
+        errorCategory: "async",
+        suggestedHints: [],
+        tokensUsed: 214,
+        budgetRemainingUsd: 4.97,
+        source: "cache",
+        filtered: false,
+      }),
+    );
+
+    const result = await aiApi.explainError("sub_1");
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+
+    expect(url).toBe("http://localhost:3001/api/ai/explain-error");
+    expect(init?.body).toBe(JSON.stringify({ submissionId: "sub_1" }));
+    expect(result.errorCategory).toBe("async");
+  });
+
+  it("lee el gasto del mes", async () => {
+    const usage = {
+      month: "2026-10",
+      spentUsd: 3.62,
+      budgetUsd: 5,
+      remainingUsd: 1.38,
+      percentUsed: 72.4,
+      level: "economy",
+      interactions: 27,
+    };
+    fetchMock.mockResolvedValue(jsonResponse(usage));
+
+    expect(await aiApi.usage()).toEqual(usage);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:3001/api/ai/usage");
+  });
+
+  it("propaga el 429 con la espera de Retry-After", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { error: { code: "RATE_LIMITED", message: "Demasiadas peticiones", traceId: "trace-429" } },
+        { status: 429, headers: { "Retry-After": "120" } },
+      ),
+    );
+
+    const error = await captureApiError(aiApi.tutor({ lessonId: "les_1", message: "hola" }));
+
+    expect(error.status).toBe(429);
+    expect(error.code).toBe("RATE_LIMITED");
+    expect(error.retryAfterSeconds).toBe(120);
+  });
+
+  it("propaga el 401 sin sesión", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(UNAUTHENTICATED, { status: 401 }));
+
+    const error = await captureApiError(aiApi.usage());
+
+    expect(error.status).toBe(401);
+    expect(error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("rechaza una respuesta del tutor fuera de contrato", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ ...AI_TUTOR_RESPONSE, suggestedHints: ["a", "b", "c", "d"] }),
+    );
+
+    const error = await captureApiError(aiApi.tutor({ lessonId: "les_1", message: "hola" }));
+
+    expect(error.code).toBe("INTERNAL_ERROR");
+  });
+});
+
+describe("projectsApi", () => {
+  it("lista el catálogo con filtros y desenvuelve `data`/`meta`", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [PROJECT],
+        meta: { page: 2, pageSize: 5, total: 6, totalPages: 2 },
+      }),
+    );
+
+    const page = await projectsApi.list({ stage: 0, page: 2, pageSize: 5 });
+
+    expect(page.projects).toEqual([PROJECT]);
+    expect(page.meta).toEqual({
+      page: 2,
+      pageSize: 5,
+      total: 6,
+      totalPages: 2,
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/projects?stage=0&page=2&pageSize=5",
+    );
+  });
+
+  it("pide `/projects` sin query cuando no hay filtros", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [],
+        meta: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+      }),
+    );
+
+    await projectsApi.list();
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/projects",
+    );
+  });
+
+  it("devuelve el detalle con la rúbrica y las entregas propias", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        ...PROJECT_DETAIL,
+        mySubmissions: [REVIEWED_SUBMISSION],
+        bestScore: 85,
+      }),
+    );
+
+    const detail = await projectsApi.getDetail("entorno-reproducible");
+
+    expect(detail.rubric.criteria).toHaveLength(5);
+    expect(detail.mySubmissions[0]).toEqual(REVIEWED_SUBMISSION);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/projects/entorno-reproducible",
+    );
+  });
+
+  it("rechaza un detalle cuya rúbrica no cumple el contrato", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        ...PROJECT_DETAIL,
+        rubric: { criteria: [], correctitudGate: false },
+      }),
+    );
+
+    const error = await captureApiError(
+      projectsApi.getDetail("entorno-reproducible"),
+    );
+
+    expect(error.status).toBe(500);
+    expect(error.message).toContain("contrato");
+  });
+
+  it("envía la entrega con POST y devuelve el estado resultante", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(PROJECT_SUBMISSION, { status: 201 }));
+
+    const submission = await projectsApi.submit("entorno-reproducible", {
+      repoUrl: "https://github.com/ana/entorno",
+      notes: "Documenté el arranque",
+    });
+
+    expect(submission.status).toBe("SUBMITTED");
+    const call = fetchMock.mock.calls[0];
+    expect(call?.[0]).toBe(
+      "http://localhost:3001/api/projects/entorno-reproducible/submissions",
+    );
+    expect(call?.[1]?.method).toBe("POST");
+    expect(call?.[1]?.body).toBe(
+      JSON.stringify({
+        repoUrl: "https://github.com/ana/entorno",
+        notes: "Documenté el arranque",
+      }),
+    );
+  });
+
+  it("propaga el 400 con el campo culpable de una entrega inválida", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Datos de entrada inválidos",
+            details: [
+              {
+                field: "repoUrl",
+                message: "La URL del repositorio debe apuntar a http o https",
+              },
+            ],
+            traceId: "trace-400",
+          },
+        },
+        { status: 400 },
+      ),
+    );
+
+    const error = await captureApiError(
+      projectsApi.submit("entorno-reproducible", { repoUrl: "ftp://ana" }),
+    );
+
+    expect(error.status).toBe(400);
+    expect(error.fieldErrors()).toEqual({
+      repoUrl: "La URL del repositorio debe apuntar a http o https",
+    });
+  });
+});
+
+describe("projectsApi — revisión y publicación", () => {
+  it("envía la revisión con POST y devuelve la nota persistida", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(REVIEWED_SUBMISSION));
+
+    const reviewed = await projectsApi.review("psub_1", {
+      rubricScores: {
+        correctitud: 4,
+        calidad: 4,
+        pruebas: 4,
+        seguridad: 4,
+        justificacion: 0,
+      },
+      feedback: "Falta la explicación propia",
+    });
+
+    expect(reviewed.status).toBe("REVIEWED");
+    expect(reviewed.score).toBe(85);
+    const call = fetchMock.mock.calls[0];
+    expect(call?.[0]).toBe(
+      "http://localhost:3001/api/projects/submissions/psub_1/review",
+    );
+    expect(call?.[1]?.method).toBe("POST");
+  });
+
+  it("propaga el 422 de una rúbrica incompleta con su mensaje", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "RULE_VIOLATION",
+            message:
+              "La revisión debe puntuar los cinco criterios con niveles enteros de 0 a 4",
+            traceId: "trace-422",
+          },
+        },
+        { status: 422 },
+      ),
+    );
+
+    const error = await captureApiError(
+      projectsApi.review("psub_1", {
+        rubricScores: {
+          correctitud: 4,
+          calidad: 4,
+          pruebas: 4,
+          seguridad: 4,
+          justificacion: 4,
+        },
+      }),
+    );
+
+    expect(error.status).toBe(422);
+    expect(error.code).toBe("RULE_VIOLATION");
+    expect(error.message).toContain("cinco criterios");
+  });
+
+  it("publica y despublica con POST sin cuerpo", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...REVIEWED_SUBMISSION,
+          isPublic: true,
+          publishedAt: "2026-10-28T12:00:00.000Z",
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(REVIEWED_SUBMISSION));
+
+    const published = await projectsApi.publish("psub_1");
+    const unpublished = await projectsApi.unpublish("psub_1");
+
+    expect(published).toMatchObject({
+      isPublic: true,
+      publishedAt: "2026-10-28T12:00:00.000Z",
+    });
+    expect(unpublished).toMatchObject({ isPublic: false, publishedAt: null });
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      "http://localhost:3001/api/projects/submissions/psub_1/publish",
+      "http://localhost:3001/api/projects/submissions/psub_1/unpublish",
+    ]);
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBeUndefined();
+  });
+});
+
+describe("portfolioApi", () => {
+  const PORTFOLIO = {
+    user: { id: "usr_1", name: "Ana", avatarUrl: null },
+    entries: [
+      {
+        ...REVIEWED_SUBMISSION,
+        isPublic: true,
+        publishedAt: "2026-10-28T12:00:00.000Z",
+      },
+    ],
+    publicCount: 1,
+  } as const;
+
+  it("lee el portafolio público sin cookie y con las entregas publicadas", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(PORTFOLIO));
+
+    const portfolio = await portfolioApi.get("usr_1");
+
+    expect(portfolio).toEqual(PORTFOLIO);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/portfolio/usr_1",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]?.credentials).toBe("include");
+  });
+
+  it("lee el portafolio propio desde `/portfolio/me`", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ ...PORTFOLIO, entries: [PROJECT_SUBMISSION], publicCount: 0 }),
+    );
+
+    const portfolio = await portfolioApi.getMine();
+
+    expect(portfolio.entries[0]?.id).toBe("psub_1");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/portfolio/me",
+    );
+  });
+
+  it("rechaza un portafolio que intenta filtrar el correo del autor", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        ...PORTFOLIO,
+        user: { ...PORTFOLIO.user, email: "ana@example.com" },
+      }),
+    );
+
+    const error = await captureApiError(portfolioApi.get("usr_1"));
+
+    expect(error.status).toBe(500);
+    expect(error.message).toContain("contrato");
+  });
+});
+
+describe("interviewsApi", () => {
+  const SUMMARY = {
+    slug: "backend-junior",
+    title: "Backend junior",
+    role: "backend",
+    level: "junior",
+    language: "ts",
+    competencies: ["C4", "C10"],
+    phaseCount: 2,
+    estimatedMinutes: 45,
+    attempts: 2,
+  } as const;
+
+  const SCENARIO = {
+    ...SUMMARY,
+    phases: [
+      { phase: "warmup", maxTurns: 2, objective: "Conocer al candidato." },
+      { phase: "conceptual", maxTurns: 3, objective: "Comprobar fundamentos." },
+    ],
+    rubric: DEFAULT_INTERVIEW_RUBRIC,
+  };
+
+  const SESSION = {
+    id: "ses_1",
+    scenarioSlug: "backend-junior",
+    scenarioTitle: "Backend junior",
+    status: "IN_PROGRESS",
+    phase: "warmup",
+    turns: 0,
+    startedAt: "2026-10-28T12:00:00.000Z",
+    finishedAt: null,
+    durationMinutes: null,
+    score: null,
+    selfScore: null,
+    transcript: [
+      {
+        role: "interviewer",
+        phase: "warmup",
+        content: "Empecemos.",
+        at: "2026-10-28T12:00:00.000Z",
+      },
+    ],
+    selfScores: null,
+    scores: null,
+    feedback: null,
+    degraded: false,
+  } as const;
+
+  const SELF = {
+    scores: {
+      razonamiento: 4,
+      correctitud: 4,
+      comunicacion: 4,
+      seguimiento: 3,
+      limites: 3,
+    },
+    reflection: "a".repeat(200),
+  };
+
+  it("lista escenarios con filtros y valida el sobre paginado", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [SUMMARY],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      }),
+    );
+
+    const page = await interviewsApi.list({
+      role: "backend",
+      level: "junior",
+    });
+
+    expect(page.scenarios[0]?.slug).toBe("backend-junior");
+    expect(fetchMock.mock.calls[0]?.[0]).toContain(
+      "/interviews/scenarios?",
+    );
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("role=backend");
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("level=junior");
+  });
+
+  it("lee el detalle sin la solución de referencia y rechaza un fugado", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(SCENARIO));
+
+    const scenario = await interviewsApi.getScenario("backend-junior");
+
+    expect(scenario.phases).toHaveLength(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/interviews/scenarios/backend-junior",
+    );
+
+    fetchMock.mockResolvedValue(
+      jsonResponse({ ...SCENARIO, referenceSolution: "return values;" }),
+    );
+
+    const error = await captureApiError(
+      interviewsApi.getScenario("backend-junior"),
+    );
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe("INTERNAL_ERROR");
+  });
+
+  it("arranca la sesión con POST y devuelve el primer turno", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(SESSION, { status: 201 }));
+
+    const session = await interviewsApi.start({
+      scenarioSlug: "backend-junior",
+    });
+
+    expect(session.status).toBe("IN_PROGRESS");
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ scenarioSlug: "backend-junior" }),
+    });
+  });
+
+  it("propaga el 409 de una sesión ya abierta", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "CONFLICT",
+            message: "SESSION_IN_PROGRESS: Ya hay una entrevista abierta",
+            traceId: "trace-409",
+          },
+        },
+        { status: 409 },
+      ),
+    );
+
+    const error = await captureApiError(
+      interviewsApi.start({ scenarioSlug: "backend-junior" }),
+    );
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("CONFLICT");
+    expect(error.message).toContain("SESSION_IN_PROGRESS");
+  });
+
+  it("envía un turno degradado con fase y turnos restantes", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        reply: "Réplica del guion.",
+        phase: "conceptual",
+        turn: 1,
+        turnsRemaining: 39,
+        degraded: true,
+        budgetRemainingUsd: 4.5,
+      }),
+    );
+
+    const turn = await interviewsApi.sendMessage("ses_1", {
+      message: "Empezaría por el caso vacío.",
+    });
+
+    expect(turn).toMatchObject({ degraded: true, turnsRemaining: 39 });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/interviews/sessions/ses_1/messages",
+    );
+  });
+
+  it("propaga el 429 del tope de turnos con su espera", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "RATE_LIMITED",
+            message: "TURN_LIMIT_REACHED: La sesión alcanzó el tope",
+            traceId: "trace-429",
+          },
+        },
+        { status: 429, headers: { "Retry-After": "3600" } },
+      ),
+    );
+
+    const error = await captureApiError(
+      interviewsApi.sendMessage("ses_1", { message: "Otra idea." }),
+    );
+
+    expect(error.status).toBe(429);
+    expect(error.retryAfterSeconds).toBe(3600);
+  });
+
+  it("lee el historial con mejor nota y promedio", async () => {
+    const {
+      transcript: _transcript,
+      selfScores: _selfScores,
+      scores: _scores,
+      feedback: _feedback,
+      degraded: _degraded,
+      ...summary
+    } = SESSION;
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        items: [{ ...summary, status: "REVIEWED", score: 85 }],
+        best: { score: 85, sessionId: "ses_1" },
+        average: 85,
+      }),
+    );
+
+    const history = await interviewsApi.history();
+
+    expect(history.best).toEqual({ score: 85, sessionId: "ses_1" });
+    expect(history.average).toBe(85);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/interviews/sessions/me",
+    );
+  });
+
+  it("envía la autoevaluación y la revisión con los cuerpos del contrato", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ ...SESSION, status: "COMPLETED" }),
+    );
+
+    await interviewsApi.selfReview("ses_1", SELF);
+
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify(SELF),
+    });
+
+    fetchMock.mockResolvedValue(
+      jsonResponse({ ...SESSION, status: "REVIEWED", score: 85 }),
+    );
+
+    await interviewsApi.review("ses_1", {
+      scores: SELF.scores,
+      feedback: "Buen razonamiento.",
+    });
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      "http://localhost:3001/api/interviews/sessions/ses_1/review",
+    );
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        scores: SELF.scores,
+        feedback: "Buen razonamiento.",
+      }),
+    });
   });
 });
 

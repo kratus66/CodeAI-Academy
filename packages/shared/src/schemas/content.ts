@@ -4,6 +4,7 @@ import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from "../constants/pagination";
 import { EXERCISE_TYPES, LADDERS } from "../enums/exercise";
 import { RESOURCE_STATUSES, RESOURCE_TYPES } from "../enums/resource";
 import { paginatedSchema } from "./common";
+import { sandboxLanguageSchema } from "./sandbox";
 
 /** Etapas del currículo maestro: E0…E11. */
 export const CURRICULUM_STAGE_COUNT = 12;
@@ -351,6 +352,81 @@ export const contentSeedLessonSchema = z.object({
 
 export type ContentSeedLesson = z.infer<typeof contentSeedLessonSchema>;
 
+/** Pista de un ejercicio sembrado (`plantilla-ejercicio.md`: concepto → dirección → fragmento). */
+export const contentSeedExerciseHintSchema = z.object({
+  level: z.number().int().min(1).max(3),
+  text: z.string().min(1),
+});
+
+/**
+ * Prueba de un ejercicio sembrado. `spec.code` es el cuerpo de la prueba (se
+ * añade tras el código del estudiante); un adaptador de sandbox real decide
+ * cómo ejecutarlo. Las ocultas nunca salen del servidor.
+ */
+export const contentSeedExerciseTestSchema = z.object({
+  name: z.string().min(1).max(200),
+  isHidden: z.boolean(),
+  weight: z.number().positive().default(1),
+  spec: z.object({ code: z.string().min(1) }),
+});
+
+/**
+ * Pregunta de opción múltiple. `plantilla-ejercicio.md`: «cada distractor tiene
+ * explicación propia; prohibido verdadero/falso sin justificación». La correcta
+ * y las explicaciones no salen del servidor hasta que hay un intento.
+ */
+export const contentSeedQuizSchema = z.object({
+  options: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[a-d]$/, "El id de opción es una letra a–d"),
+        text: z.string().min(1),
+        explanation: z.string().min(1),
+      }),
+    )
+    .min(3, "Un quiz ofrece de 3 a 4 opciones")
+    .max(4, "Un quiz ofrece de 3 a 4 opciones"),
+  correctOptionId: z.string().regex(/^[a-d]$/),
+});
+
+/** Tarjeta de recuperación: el frente es el `statement`; el reverso se revela tras un intento. */
+export const contentSeedFlashcardSchema = z.object({
+  back: z.string().min(1).max(400, "El reverso de una tarjeta es breve (máx. 400 caracteres)"),
+});
+
+const COMPETENCY_CODE = /^C([1-9]|1[0-4])$/;
+
+/**
+ * Ejercicio sembrado (`plantilla-ejercicio.md`, `banco-ejercicios.md` §6). Las
+ * reglas duras de la plantilla se validan en el esquema de la semilla completa.
+ */
+export const contentSeedExerciseSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug en minúsculas separado por guiones"),
+  type: z.enum(EXERCISE_TYPES),
+  title: z.string().min(1).max(200),
+  statement: z.string().min(1),
+  ladder: z.enum(LADDERS),
+  difficulty: z.number().int().min(1).max(4),
+  concepts: z.array(z.string().min(1)).min(1, "Declara al menos un concepto (alimenta el repaso)"),
+  competencies: z
+    .array(z.string().regex(COMPETENCY_CODE, "La competencia debe ser un código entre C1 y C14"))
+    .min(1),
+  estimatedMin: estimatedMinSchema.default(null),
+  language: sandboxLanguageSchema.nullable().default(null),
+  starterCode: z.string().min(1).nullable().default(null),
+  solution: z.object({ code: z.string().min(1) }).nullable().default(null),
+  quiz: contentSeedQuizSchema.nullable().default(null),
+  flashcard: contentSeedFlashcardSchema.nullable().default(null),
+  sources: z.array(z.string().url()).min(1, "La documentación oficial es obligatoria"),
+  maxAttempts: z.number().int().positive().nullable().default(null),
+  isPublished: z.boolean(),
+  order: z.number().int().positive(),
+  hints: z.array(contentSeedExerciseHintSchema).default([]),
+  tests: z.array(contentSeedExerciseTestSchema).default([]),
+});
+
+export type ContentSeedExercise = z.infer<typeof contentSeedExerciseSchema>;
+
 export const contentSeedUnitSchema = z.object({
   code: unitCodeSchema,
   title: z.string().min(1),
@@ -360,6 +436,7 @@ export const contentSeedUnitSchema = z.object({
   isPublished: z.boolean(),
   prerequisiteIds: z.array(unitCodeSchema).default([]),
   lessons: z.array(contentSeedLessonSchema).default([]),
+  exercises: z.array(contentSeedExerciseSchema).default([]),
 });
 
 export type ContentSeedUnit = z.infer<typeof contentSeedUnitSchema>;
@@ -406,6 +483,71 @@ export const contentSeedResourceSchema = z.object({
 
 export type ContentSeedResource = z.infer<typeof contentSeedResourceSchema>;
 
+/** Tipos que se resuelven escribiendo código y necesitan sandbox, solución y pruebas. */
+const CODE_EXERCISE_TYPES: readonly string[] = ["LAB", "DEBUG"];
+
+/**
+ * Reglas duras de `plantilla-ejercicio.md` que un esquema por campo no puede
+ * expresar: pistas por escalón, pruebas visibles y ocultas, solución oculta.
+ */
+export function exerciseRuleViolations(exercise: ContentSeedExercise): string[] {
+  const problems: string[] = [];
+  const hintLevels = exercise.hints.map((hint) => hint.level);
+
+  if (new Set(hintLevels).size !== hintLevels.length) {
+    problems.push("las pistas repiten nivel");
+  }
+  if (CODE_EXERCISE_TYPES.includes(exercise.type) && exercise.ladder === "GUIDED" && new Set(hintLevels).size !== 3) {
+    problems.push("un LAB/DEBUG guiado declara las 3 pistas progresivas");
+  }
+  if (exercise.ladder === "AUTONOMOUS" && exercise.hints.length > 0) {
+    problems.push("un ejercicio autónomo (Nivel 3) no puede tener pistas");
+  }
+
+  const names = exercise.tests.map((test) => test.name);
+  if (new Set(names).size !== names.length) {
+    problems.push("hay pruebas con el mismo nombre");
+  }
+
+  if (exercise.type === "QUIZ") {
+    const quiz = exercise.quiz;
+
+    if (quiz === null) {
+      problems.push("un QUIZ requiere quiz (opciones y respuesta)");
+    } else {
+      const ids = quiz.options.map((option) => option.id);
+      const texts = quiz.options.map((option) => option.text.trim().toLowerCase());
+
+      if (new Set(ids).size !== ids.length) problems.push("las opciones repiten id");
+      if (!ids.includes(quiz.correctOptionId)) problems.push("la opción correcta no existe");
+      if (texts.some((text) => /^(verdadero|falso)\.?$/.test(text))) {
+        problems.push("prohibido verdadero/falso");
+      }
+      if (texts.some((text) => /(todas|ninguna) (de )?las anteriores/.test(text))) {
+        problems.push("prohibido «todas/ninguna de las anteriores»");
+      }
+    }
+  } else if (exercise.quiz !== null) {
+    problems.push("solo un QUIZ declara quiz");
+  }
+
+  if (exercise.type === "FLASHCARD") {
+    if (exercise.flashcard === null) problems.push("una FLASHCARD requiere flashcard.back");
+  } else if (exercise.flashcard !== null) {
+    problems.push("solo una FLASHCARD declara flashcard");
+  }
+
+  if (CODE_EXERCISE_TYPES.includes(exercise.type)) {
+    if (exercise.language === null) problems.push("requiere language");
+    if (exercise.starterCode === null) problems.push("requiere starterCode");
+    if (exercise.solution === null) problems.push("requiere la solución oficial");
+    if (!exercise.tests.some((test) => !test.isHidden)) problems.push("requiere una prueba visible");
+    if (!exercise.tests.some((test) => test.isHidden)) problems.push("requiere una prueba oculta");
+  }
+
+  return problems;
+}
+
 /**
  * Valida la semilla completa: además de los tipos, comprueba que los
  * identificadores son únicos, que cada módulo/unidad pertenece a su etapa, que
@@ -433,6 +575,7 @@ export const contentSeedSchema = z
     };
 
     const resourceSlugs = new Set<string>();
+    const exerciseSlugs = new Set<string>();
 
     for (const [resourceIndex, resource] of seed.resources.entries()) {
       const path: (string | number)[] = ["resources", resourceIndex, "slug"];
@@ -500,6 +643,19 @@ export const contentSeedSchema = z
           }
           unitOrders.add(unit.order);
           unitCodes.add(unit.code);
+
+          for (const [exerciseIndex, exercise] of unit.exercises.entries()) {
+            const exercisePath = [...unitPath, "exercises", exerciseIndex];
+
+            if (exerciseSlugs.has(exercise.slug)) {
+              fail(`Ejercicio duplicado: slug ${exercise.slug}`, [...exercisePath, "slug"]);
+            }
+            exerciseSlugs.add(exercise.slug);
+
+            for (const message of exerciseRuleViolations(exercise)) {
+              fail(`Ejercicio ${exercise.slug}: ${message}`, exercisePath);
+            }
+          }
 
           for (const [lessonIndex, lesson] of unit.lessons.entries()) {
             for (const [resourceLinkIndex, link] of lesson.resources.entries()) {

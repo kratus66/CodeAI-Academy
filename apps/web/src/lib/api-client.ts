@@ -1,14 +1,30 @@
 import {
   DEFAULT_ERROR_MESSAGE_BY_CODE,
   ERROR_CODE_BY_HTTP_STATUS,
+  aiExplainErrorResponseSchema,
+  aiTutorResponseSchema,
+  aiUsageResponseSchema,
   competencyProgressSchema,
   errorResponseSchema,
   exerciseDetailResponseSchema,
   exerciseListResponseSchema,
+  flashcardRatingResponseSchema,
+  flashcardRevealResponseSchema,
   hintResponseEnvelopeSchema,
+  interviewHistoryResponseSchema,
+  interviewScenarioListResponseSchema,
+  interviewScenarioSchema,
+  interviewSessionSchema,
+  interviewTurnResponseSchema,
   lessonDetailSchema,
   paginatedSchema,
+  portfolioResponseSchema,
+  quizAnswerResponseSchema,
+  reflectionResponseSchema,
   progressOverviewSchema,
+  projectDetailSchema,
+  projectListResponseSchema,
+  projectSubmissionSchema,
   reviewAnswerResultSchema,
   reviewQueueResponseSchema,
   sandboxRunEnvelopeSchema,
@@ -21,26 +37,52 @@ import {
   userResponseSchema,
 } from "@codeai/shared";
 import type {
+  AiExplainErrorResponse,
+  AiTutorRequest,
+  AiTutorResponse,
+  AiUsageResponse,
   CompetencyProgress,
+  CreateProjectSubmissionInput,
   CreateSubmissionInput,
   ErrorCode,
   ErrorDetail,
   ExerciseDetail,
   ExerciseListItem,
+  FlashcardRatingResponse,
+  FlashcardRevealResponse,
   HintLevel,
   HintResponse,
+  InterviewHistoryResponse,
+  InterviewLevel,
+  InterviewLanguage,
+  InterviewRole,
+  InterviewScenario,
+  InterviewScenarioSummary,
+  InterviewSession,
+  InterviewTurnResponse,
   LessonDetail,
   LoginInput,
   PaginationMeta,
+  PortfolioResponse,
   ProgressOverview,
+  ProjectDetail,
+  ProjectSubmission,
+  ProjectSummary,
+  QuizAnswerResult,
+  ReflectionResponse,
   RegisterInput,
   ReviewAnswerInput,
   ReviewAnswerResult,
+  ReviewInterviewInput,
+  ReviewProjectSubmissionInput,
   ReviewQueueResponse,
   SandboxRunRequest,
   SandboxRunResponse,
+  SelfReviewInput,
+  SendInterviewMessageInput,
   StageDetail,
   StageSummary,
+  StartInterviewSessionInput,
   SubmissionSummary,
   UnitDetail,
   UnitProgressSummary,
@@ -377,6 +419,50 @@ export const exercisesApi = {
     return page.data;
   },
 
+  /** Corrección de un quiz: la respuesta correcta llega solo después del intento. */
+  async answerQuiz(id: string, optionId: string): Promise<QuizAnswerResult> {
+    const response = parseContract(
+      quizAnswerResponseSchema,
+      await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/quiz-answers`, {
+        method: "POST",
+        body: { optionId },
+      }),
+    );
+
+    return response.result;
+  },
+
+  /** El reverso de una tarjeta solo se revela tras registrar un intento. */
+  async revealFlashcard(id: string, attempt: string): Promise<FlashcardRevealResponse> {
+    return parseContract(
+      flashcardRevealResponseSchema,
+      await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/flashcard-reveal`, {
+        method: "POST",
+        body: { attempt },
+      }),
+    );
+  },
+
+  async submitReflection(id: string, text: string): Promise<ReflectionResponse> {
+    return parseContract(
+      reflectionResponseSchema,
+      await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/reflections`, {
+        method: "POST",
+        body: { text },
+      }),
+    );
+  },
+
+  async rateFlashcard(id: string, quality: number): Promise<FlashcardRatingResponse> {
+    return parseContract(
+      flashcardRatingResponseSchema,
+      await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/flashcard-ratings`, {
+        method: "POST",
+        body: { quality },
+      }),
+    );
+  },
+
   async submit(
     id: string,
     input: CreateSubmissionInput,
@@ -442,6 +528,266 @@ export const reviewApi = {
 };
 
 /**
+ * Capa de IA (`contratos-api.md` §4.7). Las tres rutas responden `200` incluso
+ * degradadas (`source: "fallback"`): sólo `401`, `404`, `422` y `429` llegan
+ * como `ApiError`. Con `429`, `retryAfterSeconds` trae la espera en segundos.
+ */
+export const aiApi = {
+  async tutor(input: AiTutorRequest, signal?: AbortSignal): Promise<AiTutorResponse> {
+    return parseContract(
+      aiTutorResponseSchema,
+      await apiRequest<unknown>("/ai/tutor", {
+        method: "POST",
+        body: input,
+        ...(signal ? { signal } : {}),
+      }),
+    );
+  },
+
+  async explainError(submissionId: string): Promise<AiExplainErrorResponse> {
+    return parseContract(
+      aiExplainErrorResponseSchema,
+      await apiRequest<unknown>("/ai/explain-error", {
+        method: "POST",
+        body: { submissionId },
+      }),
+    );
+  },
+
+  async usage(signal?: AbortSignal): Promise<AiUsageResponse> {
+    return requestParsed(aiUsageResponseSchema, "/ai/usage", signal);
+  },
+};
+
+/**
+ * Entrevistas (`contratos-api.md` §4.12).
+ *
+ * El catálogo y las sesiones se validan con el contrato compartido antes de
+ * tocar la vista. `start` puede responder `409 SESSION_IN_PROGRESS`; la sala lo
+ * resuelve buscando la sesión abierta en `history`. Un turno degradado sigue
+ * siendo `200`: `degraded` lo explica en la interfaz.
+ */
+export interface InterviewCatalogPage {
+  readonly scenarios: readonly InterviewScenarioSummary[];
+  readonly meta: PaginationMeta;
+}
+
+export interface InterviewListParams {
+  readonly role?: InterviewRole;
+  readonly level?: InterviewLevel;
+  readonly language?: InterviewLanguage;
+  readonly page?: number;
+  readonly pageSize?: number;
+}
+
+export const interviewsApi = {
+  async list(
+    query: InterviewListParams = {},
+    signal?: AbortSignal,
+  ): Promise<InterviewCatalogPage> {
+    const page = await requestParsed(
+      interviewScenarioListResponseSchema,
+      `/interviews/scenarios${toInterviewQueryString(query)}`,
+      signal,
+    );
+
+    return { scenarios: page.data, meta: page.meta };
+  },
+
+  async getScenario(
+    slug: string,
+    signal?: AbortSignal,
+  ): Promise<InterviewScenario> {
+    return requestParsed(
+      interviewScenarioSchema,
+      `/interviews/scenarios/${encodeURIComponent(slug)}`,
+      signal,
+    );
+  },
+
+  async start(input: StartInterviewSessionInput): Promise<InterviewSession> {
+    return parseContract(
+      interviewSessionSchema,
+      await apiRequest<unknown>("/interviews/sessions", {
+        method: "POST",
+        body: input,
+      }),
+    );
+  },
+
+  async history(signal?: AbortSignal): Promise<InterviewHistoryResponse> {
+    return requestParsed(interviewHistoryResponseSchema, "/interviews/sessions/me", signal);
+  },
+
+  async getSession(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): Promise<InterviewSession> {
+    return requestParsed(
+      interviewSessionSchema,
+      `/interviews/sessions/${encodeURIComponent(sessionId)}`,
+      signal,
+    );
+  },
+
+  async sendMessage(
+    sessionId: string,
+    input: SendInterviewMessageInput,
+    signal?: AbortSignal,
+  ): Promise<InterviewTurnResponse> {
+    return parseContract(
+      interviewTurnResponseSchema,
+      await apiRequest<unknown>(
+        `/interviews/sessions/${encodeURIComponent(sessionId)}/messages`,
+        { method: "POST", body: input, ...(signal ? { signal } : {}) },
+      ),
+    );
+  },
+
+  async finish(sessionId: string): Promise<InterviewSession> {
+    return parseContract(
+      interviewSessionSchema,
+      await apiRequest<unknown>(
+        `/interviews/sessions/${encodeURIComponent(sessionId)}/finish`,
+        { method: "POST" },
+      ),
+    );
+  },
+
+  async selfReview(
+    sessionId: string,
+    input: SelfReviewInput,
+  ): Promise<InterviewSession> {
+    return parseContract(
+      interviewSessionSchema,
+      await apiRequest<unknown>(
+        `/interviews/sessions/${encodeURIComponent(sessionId)}/self-review`,
+        { method: "POST", body: input },
+      ),
+    );
+  },
+
+  async review(
+    sessionId: string,
+    input: ReviewInterviewInput,
+  ): Promise<InterviewSession> {
+    return parseContract(
+      interviewSessionSchema,
+      await apiRequest<unknown>(
+        `/interviews/sessions/${encodeURIComponent(sessionId)}/review`,
+        { method: "POST", body: input },
+      ),
+    );
+  },
+};
+
+/**
+ * Proyectos, rúbricas y portafolio (`contratos-api.md` §4.11).
+ *
+ * El catálogo y el detalle se validan con el contrato compartido; las acciones
+ * (`submit`, `review`, `publish`, `unpublish`) devuelven la entrega resultante y
+ * dejan subir el `ApiError` (`400`, `403`, `404`, `422`) para que la vista lo
+ * explique con el texto de la API.
+ */
+export interface ProjectCatalogPage {
+  readonly projects: readonly ProjectSummary[];
+  readonly meta: PaginationMeta;
+}
+
+export interface ProjectListParams {
+  readonly stage?: number;
+  readonly page?: number;
+  readonly pageSize?: number;
+}
+
+export const projectsApi = {
+  async list(
+    query: ProjectListParams = {},
+    signal?: AbortSignal,
+  ): Promise<ProjectCatalogPage> {
+    const page = await requestParsed(
+      projectListResponseSchema,
+      `/projects${toQueryString(query)}`,
+      signal,
+    );
+
+    return { projects: page.data, meta: page.meta };
+  },
+
+  async getDetail(
+    slug: string,
+    signal?: AbortSignal,
+  ): Promise<ProjectDetail> {
+    return requestParsed(
+      projectDetailSchema,
+      `/projects/${encodeURIComponent(slug)}`,
+      signal,
+    );
+  },
+
+  async submit(
+    slug: string,
+    input: CreateProjectSubmissionInput,
+  ): Promise<ProjectSubmission> {
+    return parseContract(
+      projectSubmissionSchema,
+      await apiRequest<unknown>(
+        `/projects/${encodeURIComponent(slug)}/submissions`,
+        { method: "POST", body: input },
+      ),
+    );
+  },
+
+  async review(
+    submissionId: string,
+    input: ReviewProjectSubmissionInput,
+  ): Promise<ProjectSubmission> {
+    return parseContract(
+      projectSubmissionSchema,
+      await apiRequest<unknown>(
+        `/projects/submissions/${encodeURIComponent(submissionId)}/review`,
+        { method: "POST", body: input },
+      ),
+    );
+  },
+
+  async publish(submissionId: string): Promise<ProjectSubmission> {
+    return parseContract(
+      projectSubmissionSchema,
+      await apiRequest<unknown>(
+        `/projects/submissions/${encodeURIComponent(submissionId)}/publish`,
+        { method: "POST" },
+      ),
+    );
+  },
+
+  async unpublish(submissionId: string): Promise<ProjectSubmission> {
+    return parseContract(
+      projectSubmissionSchema,
+      await apiRequest<unknown>(
+        `/projects/submissions/${encodeURIComponent(submissionId)}/unpublish`,
+        { method: "POST" },
+      ),
+    );
+  },
+};
+
+/** Portafolio propio y público; el público es la única ruta sin cookie. */
+export const portfolioApi = {
+  async getMine(signal?: AbortSignal): Promise<PortfolioResponse> {
+    return requestParsed(portfolioResponseSchema, "/portfolio/me", signal);
+  },
+
+  async get(userId: string, signal?: AbortSignal): Promise<PortfolioResponse> {
+    return requestParsed(
+      portfolioResponseSchema,
+      `/portfolio/${encodeURIComponent(userId)}`,
+      signal,
+    );
+  },
+};
+
+/**
  * Sesión inicial de la aplicación: usa `/auth/me` y, si el access token caducó,
  * rota el refresh una sola vez. Devuelve `null` cuando no hay sesión válida.
  */
@@ -465,6 +811,39 @@ export async function restoreSession(
 
     throw error;
   }
+}
+
+/** Query string de `/projects`: sólo incluye los filtros presentes. */
+function toQueryString(query: ProjectListParams): string {
+  const params = new URLSearchParams();
+
+  if (query.stage !== undefined) {
+    params.set("stage", String(query.stage));
+  }
+  if (query.page !== undefined) {
+    params.set("page", String(query.page));
+  }
+  if (query.pageSize !== undefined) {
+    params.set("pageSize", String(query.pageSize));
+  }
+
+  const serialized = params.toString();
+
+  return serialized ? `?${serialized}` : "";
+}
+
+function toInterviewQueryString(query: InterviewListParams): string {
+  const params = new URLSearchParams();
+
+  if (query.role !== undefined) params.set("role", query.role);
+  if (query.level !== undefined) params.set("level", query.level);
+  if (query.language !== undefined) params.set("language", query.language);
+  if (query.page !== undefined) params.set("page", String(query.page));
+  if (query.pageSize !== undefined) params.set("pageSize", String(query.pageSize));
+
+  const serialized = params.toString();
+
+  return serialized ? `?${serialized}` : "";
 }
 
 function normalizePath(path: string): string {

@@ -187,6 +187,11 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 | POST | `/:id/hints` | ✅ | Solicita pista. Body: `{ level }` |
 | POST | `/:id/submissions` | ✅ | Envía solución |
 | GET | `/:id/submissions` | ✅ | Historial propio |
+| POST | `/:id/quiz-answers` | ✅ | Corrige un `QUIZ` en el servidor. Body: `{ optionId }` (`a`–`d`). Responde `{ result: { correct, correctOptionId, explanation, correctExplanation } }`; la respuesta correcta y las explicaciones salen **solo después** del intento. `400` si no es un quiz o la opción no existe; `409` si agotó `maxAttempts` |
+| POST | `/:id/flashcard-reveal` | ✅ | Registra el intento de recuerdo y devuelve el reverso. Body: `{ attempt }` (no vacío). Responde `{ back }` |
+| POST | `/:id/flashcard-ratings` | ✅ | Autocalificación SM-2. Body: `{ quality }` (0–5). Solo válida justo después de revelar (`409` si no); responde `{ scheduled }` y reprograma el ítem de repaso |
+
+QUIZ y FLASHCARD no usan el sandbox. Sus envíos se guardan como `Submission` (opción elegida, intento o `quality:N`), por lo que cuentan para `maxAttempts` y para el repaso.
 
 **POST `/api/exercises/:id/submissions`**
 
@@ -333,11 +338,55 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
   "reply": "Antes de responderte: ¿qué crees que devuelve fetch cuando el estado es 404?",
   "suggestedHints": ["respuesta-http", "promesas"],
   "tokensUsed": 412,
-  "budgetRemainingUsd": 48.2
+  "budgetRemainingUsd": 4.98,
+  "source": "provider",
+  "filtered": false
 }
 ```
 
-> El tutor **no entrega la solución completa**. El prompt del sistema lo prohíbe explícitamente (ver [`capa-ia.md`](capa-ia.md)).
+- `source`: `provider` (llamada real), `cache` (misma pregunta en la lección en 24 h, `tokensUsed: 0`) o `fallback` (presupuesto agotado o proveedor caído, `tokensUsed: 0`). La degradación **siempre** responde `200`.
+- `filtered: true` indica que el backend sustituyó la respuesta por una pista segura (solución literal o bloque de código casi idéntico a la oficial).
+- `suggestedHints` ≤ 3 y siempre subconjunto de `Exercise.concepts` de la unidad.
+- Errores: `400 VALIDATION_ERROR` (mensaje vacío o > 2000, `history` > 10, `role: "system"`), `401`, `404` (lección inexistente o no publicada), `429 RATE_LIMITED` con `Retry-After`.
+
+**POST `/api/ai/explain-error`**
+
+```json
+// Request
+{ "submissionId": "ck..." }
+
+// 200 Response
+{
+  "explanation": "Tu función devuelve antes de esperar la promesa. ¿Qué imprime el console.log de la línea 4?",
+  "errorCategory": "async",
+  "suggestedHints": ["funciones", "promesas"],
+  "tokensUsed": 214,
+  "budgetRemainingUsd": 4.97,
+  "source": "provider",
+  "filtered": false
+}
+```
+
+Sólo explica envíos **propios**: un `submissionId` ajeno o inexistente es `404`; un envío sin código (quiz, reflexión) es `422 RULE_VIOLATION`.
+
+**GET `/api/ai/usage`**
+
+```json
+// 200 Response
+{
+  "month": "2026-10",
+  "spentUsd": 3.62,
+  "budgetUsd": 5,
+  "remainingUsd": 1.38,
+  "percentUsed": 72.4,
+  "level": "economy",
+  "interactions": 27
+}
+```
+
+`level`: `normal` (< 70 %), `economy` (70–90 %), `tutor_only` (90–100 %), `disabled` (≥ 100 %). El mes es UTC y `interactions` sólo cuenta llamadas reales (la caché no).
+
+> El tutor **no entrega la solución completa**. El prompt del sistema lo prohíbe explícitamente y los filtros del backend lo refuerzan (ver [`capa-ia.md`](capa-ia.md)).
 
 ### 4.8 Analítica (`/api/analytics`)
 
@@ -375,6 +424,277 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 
 ---
 
+### 4.10 Usuarios (`/api/users`) — ✅ implementado (2026-10-28)
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/me` | ✅ | Perfil del usuario del token |
+| PATCH | `/me` | ✅ | Nombre, avatar o idioma |
+| GET | `/` | 🎓 `ADMIN` | Listado paginado con filtro por rol y búsqueda |
+
+**GET `/api/users/me` → 200**
+
+```json
+{
+  "user": {
+    "id": "ckv9x1",
+    "email": "ana@example.com",
+    "name": "Ana",
+    "role": "STUDENT",
+    "createdAt": "2026-10-20T09:00:00.000Z",
+    "avatarUrl": null,
+    "locale": "es"
+  }
+}
+```
+
+**PATCH `/api/users/me`** — cuerpo con **al menos un** campo; `.strict()` rechaza claves desconocidas:
+
+```json
+{ "name": "Ana Ruiz", "avatarUrl": "https://cdn.example.com/ana.png", "locale": "es-ES" }
+```
+
+| Campo | Regla |
+|-------|-------|
+| `name` | 2–80 caracteres, el mismo `nameSchema` del registro |
+| `avatarUrl` | `http(s)` y ≤ 2048 caracteres, o `null` para borrarlo; omitirlo lo conserva |
+| `locale` | Etiqueta BCP 47 corta (`es`, `es-ES`, `en`), ≤ 15 caracteres |
+
+**GET `/api/users?role&search&page&pageSize` → 200**
+
+```json
+{
+  "data": [
+    {
+      "id": "ckv9x1",
+      "email": "ana@example.com",
+      "name": "Ana",
+      "role": "STUDENT",
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "avatarUrl": null,
+      "locale": "es"
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 41, "totalPages": 3 }
+}
+```
+
+**Reglas:**
+
+- El `userId` **solo** sale del token (`AccessTokenPayload.sub`): no existe `/users/:id` y ningún cuerpo o parámetro puede apuntar a otro usuario. `GET /api/users` es la única ruta de alcance global y exige `ADMIN`.
+- Un token todavía vigente de una cuenta desactivada responde `404 NOT_FOUND` con el mismo texto que un usuario inexistente: el estado de la cuenta no se filtra (`getProfile` y `updateProfile` lo comprueban antes de escribir).
+- `PATCH` vacío, con clave desconocida o con `avatarUrl` no http(s) → `400 VALIDATION_ERROR`. Se rechazan `data:` y `javascript:` porque el avatar acaba en un `<img src>`.
+- `GET /api/users` sin cookie → `401 UNAUTHENTICATED`; con `STUDENT` o `INSTRUCTOR` → `403 FORBIDDEN`. `search` exige ≥ 2 caracteres y `pageSize` no pasa de 100; nunca se listan cuentas inactivas.
+- El rol se lee del **token**, no de la base: cambiar el rol de un usuario surte efecto cuando renueva la sesión (15 min de access token). Es la misma regla de `RolesGuard` en S9.
+- Contrato en `packages/shared/src/schemas/user.ts` (`userProfileSchema`, `updateProfileSchema`, `userListQuerySchema`, `userListResponseSchema`); `userProfileSchema` **amplía** `userPublicSchema` de S1 sin cambiarlo, así que `/api/auth/*` sigue devolviendo `UserPublic`.
+
+---
+
+### 4.11 Proyectos, rúbricas y portafolio (`/api/projects`, `/api/portfolio`) — ✅ implementado (2026-10-28)
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/api/projects?stage&page&pageSize` | ✅ | Catálogo paginado de proyectos publicados |
+| GET | `/api/projects/:slug` | ✅ | Enunciado, rúbrica, competencias y entregas propias |
+| POST | `/api/projects/:slug/submissions` | ✅ | Registrar una entrega (acumulable) |
+| POST | `/api/projects/submissions/:id/review` | 🎓 `INSTRUCTOR`/`ADMIN` | Revisar con la rúbrica completa |
+| POST | `/api/projects/submissions/:id/publish` | ✅ autor | Publicar la entrega en el portafolio |
+| POST | `/api/projects/submissions/:id/unpublish` | ✅ autor | Retirarla del portafolio |
+| GET | `/api/portfolio/me` | ✅ | Portafolio propio, incluidas las privadas |
+| GET | `/api/portfolio/:userId` | — público | Portafolio público, sólo entregas publicadas |
+
+**Tipos.** `ProjectCriterion` es `correctitud | calidad | pruebas | seguridad | justificacion`; `ProjectSubmissionStatus` es `SUBMITTED | REVIEWED`. La rúbrica (`Project.rubric`) es `Json` y se valida con `projectRubricSchema`: exactamente **5 criterios distintos**, pesos enteros que **suman 100**, y **cuatro anclajes** por criterio en orden 1–4 (`anchor` ≤ 280 caracteres). `correctitudGate` debe ser `true`.
+
+**GET `/api/projects` → 200**
+
+```json
+{
+  "data": [
+    {
+      "id": "prj_1",
+      "slug": "entorno-reproducible",
+      "stageId": 0,
+      "title": "Entorno reproducible",
+      "brief": "Deja un repositorio que arranque en cualquier máquina.",
+      "requirements": ["README con requisitos", "Script de verificación"],
+      "isPublished": true,
+      "submitted": false
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 1, "totalPages": 1 }
+}
+```
+
+Sólo se listan proyectos publicados. `submitted` se calcula con las entregas del **usuario del token**, nunca de otro.
+
+**GET `/api/projects/:slug` → 200 (ProjectDetail)** añade `rubric`, `competencies` (C1–C14 declaradas), `bestScore` (mejor nota propia, `null` sin revisión) y `mySubmissions` (sólo del autor, más reciente primero). La rúbrica se valida antes de publicarse: una fila corrupta responde `500`, no una nota inventada.
+
+**POST `/api/projects/:slug/submissions` → 201 (ProjectSubmission)** con `.strict()`:
+
+```json
+{
+  "repoUrl": "https://github.com/ana/entorno",
+  "deployUrl": "https://entorno.vercel.app",
+  "notes": "Elegí un script único de verificación."
+}
+```
+
+| Campo | Regla |
+|-------|-------|
+| `repoUrl` | **Obligatorio**, `http(s)`, ≤ 500 caracteres |
+| `deployUrl` | Opcional, `http(s)` o `null`, ≤ 500 caracteres |
+| `notes` | Opcional, ≤ 2000 caracteres; vacía se guarda como `null` |
+
+`repoUrl` ausente, no http(s) o > 500 → `400 VALIDATION_ERROR` con `details[].field`. Proyecto inexistente o no publicado → `404 NOT_FOUND`. Cada llamada crea una fila nueva: las entregas no se sobrescriben.
+
+**POST `/api/projects/submissions/:id/review` → 200 (ProjectSubmission)** con `.strict()`:
+
+```json
+{
+  "rubricScores": {
+    "correctitud": 4,
+    "calidad": 4,
+    "pruebas": 4,
+    "seguridad": 4,
+    "justificacion": 0
+  },
+  "feedback": "Falta explicar las decisiones del README."
+}
+```
+
+| Regla | Respuesta |
+|-------|-----------|
+| Faltan criterios, sobran o un nivel no es entero 0–4 | `422 RULE_VIOLATION` (rúbrica incompleta) |
+| `correctitud = 0` | `422 RULE_VIOLATION`; **no se persiste** y la entrega conserva su estado y nota anteriores |
+| Rol `STUDENT` | `403 FORBIDDEN` |
+| Nota resultante ≥ 80 | Escribe evidencia en `CompetencyProgress` del autor (nivel ≥ 3, `evidenceCount` +1, sin bajar el nivel alcanzado) |
+
+**Cálculo de la nota** (`readRubric` + `scoreSubmission`, `apps/api/src/modules/projects/rubric.ts`):
+
+```
+nota(criterio) = peso(criterio) × nivel(criterio) / 4
+score          = round(Σ nota, 2)
+```
+
+- Sin explicación propia en la entrega, `justificacion` vale **0** aunque el instructor la puntúe: resta el 15 % completo de la rúbrica base.
+- Todos en nivel 3 → `75`; todos en 4 → `100`; 4/4/4/4 y sin explicación → `85`.
+
+**Publicar y despublicar** son `POST` sin cuerpo y responden `200` con la entrega resultante. Sólo el autor puede hacerlo; un tercero recibe `404 NOT_FOUND` (no se confirma que la entrega exista). Despublicar limpia `publishedAt` y conserva la nota.
+
+**GET `/api/portfolio/:userId` → 200 (PortfolioResponse)** es la primera ruta pública fuera de auth y contenido: no acepta cookie, sólo incluye entregas con `isPublic = true` ordenadas por `publishedAt` descendente y nunca devuelve `email` ni el rol del autor.
+
+```json
+{
+  "user": { "id": "usr_1", "name": "Ana", "avatarUrl": null },
+  "entries": [],
+  "publicCount": 0
+}
+```
+
+`GET /api/portfolio/me` exige sesión, incluye las privadas y `publicCount` cuenta sólo las públicas incluidas. Un `userId` inexistente → `404 NOT_FOUND`; un usuario sin entregas públicas → `200` con `entries: []`.
+
+**Reglas:** `userId` sale siempre del token; las rutas `submissions/*` se declaran antes de `:slug/submissions` en el controlador; límite de **120 peticiones/minuto** por usuario en `/projects/*` y por IP en `/portfolio/:userId` (`429 RATE_LIMITED` con `Retry-After`). Contrato en `packages/shared/src/schemas/project.ts`.
+
+---
+
+### 4.12 Entrevistas (`/api/interviews`) — ✅ implementado (2026-10-28)
+
+Entrevistas técnicas de práctica en texto: el servidor impone un guion de **seis fases** (`warmup`, `conceptual`, `live-coding`, `code-review`, `follow-ups`, `candidate-questions`), el estudiante responde y el instructor emite la nota con la rúbrica de `rubricas-evaluacion.md` §2.6. Todas las rutas exigen `JwtAuthGuard`; **`userId` sale siempre del token**. Sólo la revisión exige rol.
+
+| Método | Ruta | Auth | Respuesta |
+|--------|------|------|-----------|
+| `GET` | `/api/interviews/scenarios?role&level&language&page&pageSize` | ✅ | `200` sobre `{ data, meta }` con escenarios publicados e `attempts` propios |
+| `GET` | `/api/interviews/scenarios/:slug` | ✅ | `200` con fases y rúbrica; **nunca** `referenceSolution` |
+| `POST` | `/api/interviews/sessions` | ✅ | `201` sesión `IN_PROGRESS` + primer turno del entrevistador |
+| `GET` | `/api/interviews/sessions/me` | ✅ | `200` historial propio con `best` y `average` |
+| `GET` | `/api/interviews/sessions/:id` | ✅ dueño · 🎓 | `200` con transcripción; ajeno → `404` idéntico a inexistente |
+| `POST` | `/api/interviews/sessions/:id/messages` | ✅ dueño | `200` réplica del entrevistador |
+| `POST` | `/api/interviews/sessions/:id/finish` | ✅ dueño | `200` sesión `COMPLETED` (idempotente) |
+| `POST` | `/api/interviews/sessions/:id/self-review` | ✅ dueño | `200` con `selfScores` y `selfScore` |
+| `POST` | `/api/interviews/sessions/:id/review` | 🎓 `INSTRUCTOR`/`ADMIN` | `200` sesión `REVIEWED` con nota y `feedback` |
+
+**Escenario** (`GET …/scenarios/:slug`):
+
+```json
+{
+  "slug": "backend-junior",
+  "title": "Backend junior: API de tareas",
+  "role": "backend",
+  "level": "junior",
+  "language": "ts",
+  "competencies": ["C4", "C10"],
+  "phaseCount": 6,
+  "estimatedMinutes": 45,
+  "attempts": 2,
+  "phases": [
+    { "phase": "warmup", "maxTurns": 2, "objective": "Romper el hielo." }
+  ],
+  "rubric": {
+    "razonamiento": 30,
+    "correctitud": 25,
+    "comunicacion": 20,
+    "seguimiento": 15,
+    "limites": 10
+  }
+}
+```
+
+`role` ∈ `{ backend, frontend, fullstack, data, qa }`, `level` ∈ `{ junior, semi-senior, senior }`, `language` ∈ `{ ts, py, java, go }`. La rúbrica es **fija** (§2.6), suma 100 y no viaja al prompt del modelo.
+
+**Sesión** (`POST /sessions` → `201`): estado `IN_PROGRESS → COMPLETED → REVIEWED`, con `ABANDONED` al leer una sesión sin actividad durante **48 h**. Una sola sesión `IN_PROGRESS` por usuario y escenario. `durationMinutes` se calcula al cerrar entre 1 y 240 minutos. La respuesta incluye `transcript` (`{ role: "interviewer" | "candidate", phase, content, at }[]`), `degraded`, `selfScores`, `scores` y `feedback`.
+
+**Turno** (`POST …/messages` con `{ message }`, 1–2 000 caracteres y ≤ 400 líneas):
+
+```json
+{
+  "reply": "Bien. Antes de escribir código: ¿qué harías si la lista tiene 10^6 elementos?",
+  "phase": "conceptual",
+  "turn": 3,
+  "turnsRemaining": 37,
+  "degraded": false,
+  "budgetRemainingUsd": 4.82
+}
+```
+
+- La fase y el turno los decide el **servidor por conteo** (`maxTurns` de cada fase), nunca el modelo.
+- Tope duro de **40 turnos** por sesión; el 41 responde `429 TURN_LIMIT_REACHED` **antes** de llamar al proveedor.
+- `degraded: true` cuando no hay proveedor (`AI_PROVIDER=mock`), el presupuesto está agotado, la respuesta se filtró por fuga o el proveedor falló. En ese caso la réplica es la estática de la fase y la sesión sigue siendo evaluable.
+- El prompt recibe escenario, nivel, lenguaje y fase actual; **no** recibe rúbrica, nota ni solución de referencia. El filtro de fuga de S8 compara contra `referenceSolution`.
+
+**Autoevaluación** (`POST …/self-review`) exige la sesión `COMPLETED`, los cinco criterios con enteros 0–4 y una `reflection` de 200–2 000 caracteres. La nota autoevaluada usa la fórmula de S9 **sin** la puerta de correctitud. Con 199 caracteres → `400 VALIDATION_ERROR`.
+
+**Revisión** (`POST …/review`) exige `INSTRUCTOR`/`ADMIN`, autoevaluación previa y una sola emisión:
+
+```json
+{
+  "scores": { "razonamiento": 4, "correctitud": 4, "comunicacion": 3, "seguimiento": 2, "limites": 3 },
+  "feedback": "Razonamiento sólido; cuida el seguimiento.",
+  "invalidate": false
+}
+```
+
+- `feedback` es obligatorio salvo `invalidate: true`; una invalidación deja nota `0` y **no** escribe evidencia.
+- `correctitud = 0` → `422 RULE_VIOLATION`; la revisión no se persiste.
+- Nota ≥ **80** escribe evidencia de **C10** en `CompetencyProgress` del **autor** (nivel ≥ 3, `evidenceCount` +1, sin bajar el nivel alcanzado). Por debajo de 80 no escribe nada.
+- La sesión guarda `scores = { rubric, levels, score }`: la rúbrica aplicada queda congelada con la nota.
+
+**Errores propios** (el catálogo HTTP sigue siendo el de §2; el código específico va en el mensaje):
+
+| Código | HTTP | Cuándo |
+|--------|------|--------|
+| `SCENARIO_NOT_FOUND` | `404` | Escenario inexistente o no publicado |
+| `SESSION_NOT_FOUND` | `404` | Sesión inexistente **o ajena** (mismo texto) |
+| `SESSION_IN_PROGRESS` | `409` | Ya hay una sesión abierta de ese escenario |
+| `SESSION_CLOSED` | `409` | Turno/cierre/autoevaluación sobre una sesión cerrada o abandonada |
+| `SESSION_ALREADY_REVIEWED` | `409` | Segunda revisión o cierre de una sesión ya revisada |
+| `SELF_REVIEW_REQUIRED` | `409` | Revisión antes de la autoevaluación |
+| `TURN_LIMIT_REACHED` | `429` | 40 turnos consumidos |
+| `RATE_LIMITED` | `429` | Cuota horaria de la capa de IA |
+
+**Límites:** 120 peticiones/minuto por usuario en catálogo y ciclo de sesión; **120 turnos/hora** por usuario (el tope real de 40 es por sesión). Contrato en `packages/shared/src/schemas/interview.ts`.
+
+---
+
 ## 5. Reglas de autorización
 
 | Recurso | Regla |
@@ -384,9 +704,15 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 | `Submission` | Solo el propietario o un `INSTRUCTOR` |
 | `Progress` | Solo el propietario |
 | Contenido (mutaciones) | `INSTRUCTOR` o `ADMIN` |
+| Perfil propio (`/api/users/me`) | Solo el propietario; el `userId` sale del token |
 | Usuarios (listado) | `ADMIN` |
+| Proyectos (catálogo y detalle) | Requiere sesión; `submitted`, `bestScore` y `mySubmissions` sólo del usuario del token |
+| Entregas de proyecto | Sólo el autor publica o despublica; la revisión exige `INSTRUCTOR` o `ADMIN` |
+| Portafolio público (`/api/portfolio/:userId`) | Sin sesión; sólo entregas publicadas y sin `email` |
 
 > Toda ruta protegida se cubre con **una prueba de aislamiento**: usuario A no puede leer datos de usuario B.
+
+**Implementación (2026-10-28).** `JwtAuthGuard` valida el token y adjunta `request.user`; `RolesGuard` compara `request.user.role` con los roles de `@Roles(...)` y responde `401 UNAUTHENTICATED` sin usuario y `403 FORBIDDEN` si el rol no alcanza. Sin `@Roles`, el guard no restringe la ruta. El rol viene firmado en el token, así que un cambio de rol en la base aplica al renovar la sesión — no se consulta `User.role` en cada petición.
 
 ---
 
@@ -398,6 +724,8 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 | `/auth/register` | 3 / hora por IP |
 | `/sandbox/run` | 20 / min por usuario |
 | `/exercises/:id/hints` | 20 / min por usuario |
+| `/projects/*` | 120 / min por usuario |
+| `/portfolio/:userId` | 120 / min por IP |
 | `/ai/tutor` | 30 / hora por usuario |
 | Resto | 120 / min por usuario |
 
@@ -441,6 +769,65 @@ export const userPublicSchema = z.object({
 });
 
 export type UserPublic = z.infer<typeof userPublicSchema>;
+```
+
+```ts
+// packages/shared/src/schemas/user.ts — perfil (S3, 2026-10-28)
+export const userProfileSchema = userPublicSchema.extend({
+  avatarUrl: z.string().url().max(2048).refine(httpOrHttps).nullable(),
+  locale: z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/).max(15),
+});
+
+export const updateProfileSchema = z
+  .object({
+    name: nameSchema.optional(),
+    avatarUrl: avatarUrlSchema.optional(),
+    locale: localeSchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0);
+
+export const userListQuerySchema = z
+  .object({
+    role: z.enum(ROLES).optional(),
+    search: z.string().trim().min(2).max(80).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(PAGE_SIZE_MAX).default(PAGE_SIZE_DEFAULT),
+  })
+  .strict();
+
+export const userListResponseSchema = paginatedSchema(userProfileSchema);
+```
+
+```ts
+// packages/shared/src/schemas/project.ts — proyectos y portafolio (S9, 2026-10-28)
+export const projectRubricSchema = z
+  .object({
+    criteria: z.array(projectRubricCriterionSchema).length(5),
+    correctitudGate: z.literal(true),
+  })
+  .strict();
+
+export const createProjectSubmissionSchema = z
+  .object({
+    repoUrl: projectRepoUrlSchema, // obligatorio, http(s), ≤ 500
+    deployUrl: projectDeployUrlSchema.optional(), // http(s) | null
+    notes: projectNotesSchema.nullable().optional(), // ≤ 2000
+  })
+  .strict();
+
+export const reviewProjectSubmissionSchema = z
+  .object({
+    rubricScores: projectRubricScoresSchema, // los 5 criterios, entero 0..4
+    feedback: projectFeedbackSchema.nullable().optional(),
+  })
+  .strict();
+
+export const portfolioResponseSchema = z.object({
+  user: portfolioUserSchema, // id, name, avatarUrl; nunca email
+  entries: z.array(projectSubmissionSchema),
+  publicCount: z.number().int().nonnegative(),
+});
 ```
 
 **Uso en el backend:** el `ValidationPipe` valida contra el esquema Zod del `shared`.

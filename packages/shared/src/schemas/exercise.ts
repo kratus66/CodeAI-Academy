@@ -4,6 +4,7 @@ import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from "../constants/pagination";
 import { EXERCISE_TYPES, LADDERS, SUBMISSION_OUTCOMES } from "../enums/exercise";
 import { paginatedSchema } from "./common";
 import { competencyCodeSchema } from "./progress";
+import { reviewQualitySchema } from "./review";
 import { sandboxLanguageSchema } from "./sandbox";
 
 /**
@@ -154,6 +155,79 @@ export const exerciseListQuerySchema = z
   .strict();
 
 export type ExerciseListQuery = z.infer<typeof exerciseListQuerySchema>;
+
+/**
+ * `POST /api/exercises/:id/quiz-answers`. La respuesta correcta y las
+ * explicaciones solo salen del servidor **después** de un intento registrado
+ * (`fundamentos-pedagogicos.md` §3.2).
+ */
+export const quizAnswerSchema = z.object({
+  optionId: z
+    .string({ required_error: "La opción es obligatoria", invalid_type_error: "La opción debe ser texto" })
+    .regex(/^[a-d]$/, "La opción debe ser una letra de la a a la d"),
+});
+
+export type QuizAnswerInput = z.infer<typeof quizAnswerSchema>;
+
+export const quizAnswerResultSchema = z.object({
+  correct: z.boolean(),
+  correctOptionId: z.string().min(1),
+  /** Por qué la opción elegida es correcta o incorrecta. */
+  explanation: z.string().min(1),
+  /** Por qué es correcta la opción correcta (igual a `explanation` si acertó). */
+  correctExplanation: z.string().min(1),
+});
+
+export type QuizAnswerResult = z.infer<typeof quizAnswerResultSchema>;
+
+export const quizAnswerResponseSchema = z.object({ result: quizAnswerResultSchema });
+
+export type QuizAnswerResponse = z.infer<typeof quizAnswerResponseSchema>;
+
+/** `POST /api/exercises/:id/flashcard-reveal`: sin un intento no hay reverso. */
+export const flashcardRevealSchema = z.object({
+  attempt: z
+    .string({
+      required_error: "Escribe lo que recuerdas antes de ver la respuesta",
+      invalid_type_error: "El intento debe ser texto",
+    })
+    .trim()
+    .min(1, "Escribe lo que recuerdas antes de ver la respuesta")
+    .max(SELF_EXPLANATION_MAX_CHARS, `El intento no puede superar ${SELF_EXPLANATION_MAX_CHARS} caracteres`),
+});
+
+export type FlashcardRevealInput = z.infer<typeof flashcardRevealSchema>;
+
+export const flashcardRevealResponseSchema = z.object({ back: z.string().min(1) });
+
+export type FlashcardRevealResponse = z.infer<typeof flashcardRevealResponseSchema>;
+
+/** `POST /api/exercises/:id/flashcard-ratings`: autocalificación 0–5 que alimenta SM-2. */
+export const flashcardRatingSchema = z.object({ quality: reviewQualitySchema });
+
+export type FlashcardRatingInput = z.infer<typeof flashcardRatingSchema>;
+
+export const flashcardRatingResponseSchema = z.object({ scheduled: z.boolean() });
+
+export type FlashcardRatingResponse = z.infer<typeof flashcardRatingResponseSchema>;
+
+/**
+ * `POST /api/exercises/:id/reflections`: respuesta abierta de elaboración. Se
+ * registra como intento del estudiante; la valoración llega con la rúbrica (S9).
+ */
+export const reflectionSchema = z.object({
+  text: z
+    .string({ required_error: "Escribe tu reflexión", invalid_type_error: "La reflexión debe ser texto" })
+    .trim()
+    .min(1, "Escribe tu reflexión")
+    .max(SELF_EXPLANATION_MAX_CHARS, `La reflexión no puede superar ${SELF_EXPLANATION_MAX_CHARS} caracteres`),
+});
+
+export type ReflectionInput = z.infer<typeof reflectionSchema>;
+
+export const reflectionResponseSchema = z.object({ recorded: z.boolean() });
+
+export type ReflectionResponse = z.infer<typeof reflectionResponseSchema>;
 
 export const exerciseListResponseSchema = paginatedSchema(exerciseListItemSchema);
 export const exerciseDetailResponseSchema = z.object({ exercise: exerciseDetailSchema });
