@@ -29,12 +29,14 @@
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ✅ |
 | **S6** | Corrección automática y pistas graduadas | E2–E7 | `exercises` | ✅ |
 | **S7** | Repaso espaciado (SM-2) | E2–E7 | `review` | ✅ |
-| **S8** | Capa de IA intercambiable y tutor socrático | E8–E9 | `ai` | ⬜ |
-| **S9** | Proyectos, rúbricas y portafolio | E9–E11 | `projects` | ⬜ |
+| **S8** | Capa de IA intercambiable y tutor socrático | E8–E9 | `ai` | ⬜ ficha, sin código |
+| **S9** | Proyectos, rúbricas y portafolio | E9–E11 | `projects` | ⬜ ficha, sin código |
 | **S10** | Simulaciones de entrevista | E11 | `interviews` | ⬜ |
 | **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | ⬜ |
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
+>
+> **Verificación (2026-10-28):** `typecheck` y `test` en verde (shared 132 · API 280 · web 144). Contenido sembrado: 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas y 34 recursos (E3–E11 añadidas tras el cierre de S2/S3). El seed no incluye ejercicios. No existen módulos `ai`, `projects`, `interviews` ni `analytics`.
 >
 > **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 ✅ 16/16 tareas y 15/15 criterios** · **S7 ✅ 14/14 tareas y 12/12 criterios**.
 
@@ -73,7 +75,7 @@
 - **Entregables:** shell autenticado, catálogo de etapas/módulos, vista de unidad con navegación anterior/siguiente, lector de lección (bloques, 7 pasos y recursos) y estados de carga y error.
 - **Criterio de salida:** recorrido completo etapa → módulo → unidad con datos reales de la API; sin contenido hardcodeado.
 - **Estado (2026-10-27):** cierre técnico. Contrato ampliado (`units` en el módulo y `stageId` en la unidad), cliente `contentApi` con validación Zod, shell autenticado, catálogo, vista de etapa, vista de unidad y lector de lección implementados con 81 pruebas de web; verificado por HTTP contra PostgreSQL local y con `npm run build` en 0 (cuatro rutas nuevas).
-- **Cierre:** 10/11 tareas ✅ · 5/10 criterios de aceptación ✅ (los cinco restantes exigen navegador con sesión) · pendiente S3-T11, autoría de la primera lección real con revisión pedagógica.
+- **Cierre:** 10/11 tareas ✅ · 5/10 criterios de aceptación ✅ (los cinco restantes exigen navegador con sesión) · S3-T11 superada por el volumen: la semilla ya trae 207 lecciones publicadas (2026-10-28), aún sin revisión pedagógica humana registrada.
 - **Ficha:** [`sprints/sprint-03-aprendizaje.md`](sprints/sprint-03-aprendizaje.md).
 
 ### S4 — Progreso, desbloqueos y competencias ✅

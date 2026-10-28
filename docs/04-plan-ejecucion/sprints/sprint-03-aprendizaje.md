@@ -164,7 +164,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 **Desviado.** Nada del plan se recortó. Se añadieron dos piezas no previstas: `unit-view-loader.ts` (compone unidad + etapa en una sola carga, sin vistas parciales) y el `useContentLoader` compartido (carga, error, `Reintentar` y `AbortSignal`), que evitó repetir la misma lógica en las cuatro vistas.
 
 **Pendiente.**
-- S3-T11: primera lección real. La semilla siembra 0 lecciones, así que el lector se demuestra con dataset en memoria; escribir contenido curricular exige autoría y revisión pedagógica humana.
+- S3-T11: **actualización 2026-10-28.** La semilla ya siembra 207 lecciones publicadas (commits de E0–E11), así que el lector tiene datos reales. Falta dejar constancia de la revisión pedagógica humana y recorrer el lector con ellas en el navegador.
 - Los criterios de navegador (sesión, listado, etapa, unidad y vecinos de unidad) se comprueban en la revisión manual con la web y la API levantadas.
 
 ---
