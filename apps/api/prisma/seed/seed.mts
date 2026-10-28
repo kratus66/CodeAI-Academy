@@ -63,6 +63,32 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient();
 
   try {
+    const resourceIdBySlug = new Map<string, string>();
+
+    for (const resource of seed.resources) {
+      const resourceFields = {
+        title: resource.title,
+        provider: resource.provider,
+        url: resource.url,
+        type: resource.type,
+        language: resource.language,
+        level: resource.level,
+        durationMin: resource.durationMin,
+        license: resource.license,
+        embedAllowed: resource.embedAllowed,
+        status: resource.status,
+        notes: resource.notes,
+      };
+
+      const storedResource = await prisma.resource.upsert({
+        where: { slug: resource.slug },
+        create: { slug: resource.slug, ...resourceFields },
+        update: resourceFields,
+      });
+
+      resourceIdBySlug.set(resource.slug, storedResource.id);
+    }
+
     for (const stage of seed.stages) {
       const stageFields = {
         slug: stage.slug,
@@ -122,11 +148,40 @@ async function main(): Promise<void> {
               unitId: storedUnit.id,
             };
 
-            await prisma.lesson.upsert({
+            const storedLesson = await prisma.lesson.upsert({
               where: { slug: lesson.slug },
               create: { slug: lesson.slug, ...lessonFields },
               update: lessonFields,
             });
+
+            const linkedResourceIds = lesson.resources.map((link) => {
+              const resourceId = resourceIdBySlug.get(link.resourceSlug);
+
+              if (resourceId === undefined) {
+                throw new Error(
+                  `Recurso sin resolver: ${link.resourceSlug} (lección ${lesson.slug})`,
+                );
+              }
+
+              return resourceId;
+            });
+
+            // Reemplaza todos los enlaces de la lección por los declarados en la
+            // semilla: evita que un recurso retirado del JSON quede huérfano en BD.
+            await prisma.lessonResource.deleteMany({
+              where: { lessonId: storedLesson.id, resourceId: { notIn: linkedResourceIds } },
+            });
+
+            for (const [index, link] of lesson.resources.entries()) {
+              const resourceId = linkedResourceIds[index]!;
+              const linkFields = { order: link.order, note: link.note };
+
+              await prisma.lessonResource.upsert({
+                where: { lessonId_resourceId: { lessonId: storedLesson.id, resourceId } },
+                create: { lessonId: storedLesson.id, resourceId, ...linkFields },
+                update: linkFields,
+              });
+            }
           }
         }
       }

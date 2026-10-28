@@ -329,6 +329,15 @@ const unitCodeSchema = z
   .string()
   .regex(unitCodePattern, "El código de unidad debe tener la forma U0.1.1");
 
+/** Referencia de un recurso (del catálogo `resources` de la semilla) dentro de una lección. */
+export const contentSeedLessonResourceSchema = z.object({
+  resourceSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug en minúsculas separado por guiones"),
+  order: z.number().int().nonnegative(),
+  note: z.string().min(1).nullable().default(null),
+});
+
+export type ContentSeedLessonResource = z.infer<typeof contentSeedLessonResourceSchema>;
+
 export const contentSeedLessonSchema = z.object({
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug en minúsculas separado por guiones"),
   title: z.string().min(1),
@@ -337,6 +346,7 @@ export const contentSeedLessonSchema = z.object({
   isPublished: z.boolean(),
   content: lessonContentSchema,
   steps: lessonStepsSchema,
+  resources: z.array(contentSeedLessonResourceSchema).default([]),
 });
 
 export type ContentSeedLesson = z.infer<typeof contentSeedLessonSchema>;
@@ -378,13 +388,33 @@ export const contentSeedStageSchema = z.object({
 
 export type ContentSeedStage = z.infer<typeof contentSeedStageSchema>;
 
+/** Recurso externo del catálogo de la semilla (`docs/02-contenido/catalogo-recursos.md`). */
+export const contentSeedResourceSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug en minúsculas separado por guiones"),
+  title: z.string().min(1),
+  provider: z.string().min(1),
+  url: z.string().url(),
+  type: z.enum(RESOURCE_TYPES),
+  language: z.string().min(1).default("es"),
+  level: z.string().min(1).nullable().default(null),
+  durationMin: z.number().int().positive().nullable().default(null),
+  license: z.string().min(1).nullable().default(null),
+  embedAllowed: z.boolean().default(false),
+  status: z.enum(RESOURCE_STATUSES).default("VERIFIED"),
+  notes: z.string().min(1).nullable().default(null),
+});
+
+export type ContentSeedResource = z.infer<typeof contentSeedResourceSchema>;
+
 /**
  * Valida la semilla completa: además de los tipos, comprueba que los
- * identificadores son únicos, que cada módulo/unidad pertenece a su etapa y que
- * los prerrequisitos apuntan a unidades declaradas.
+ * identificadores son únicos, que cada módulo/unidad pertenece a su etapa, que
+ * los prerrequisitos apuntan a unidades declaradas y que cada lección solo
+ * enlaza recursos declarados en el catálogo `resources`.
  */
 export const contentSeedSchema = z
   .object({
+    resources: z.array(contentSeedResourceSchema).default([]),
     stages: z
       .array(contentSeedStageSchema)
       .length(
@@ -401,6 +431,17 @@ export const contentSeedSchema = z
     const fail = (message: string, path: (string | number)[]): void => {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message, path });
     };
+
+    const resourceSlugs = new Set<string>();
+
+    for (const [resourceIndex, resource] of seed.resources.entries()) {
+      const path: (string | number)[] = ["resources", resourceIndex, "slug"];
+
+      if (resourceSlugs.has(resource.slug)) {
+        fail(`Recurso duplicado: slug ${resource.slug}`, path);
+      }
+      resourceSlugs.add(resource.slug);
+    }
 
     for (const [stageIndex, stage] of seed.stages.entries()) {
       const stagePath: (string | number)[] = ["stages", stageIndex];
@@ -459,6 +500,17 @@ export const contentSeedSchema = z
           }
           unitOrders.add(unit.order);
           unitCodes.add(unit.code);
+
+          for (const [lessonIndex, lesson] of unit.lessons.entries()) {
+            for (const [resourceLinkIndex, link] of lesson.resources.entries()) {
+              if (!resourceSlugs.has(link.resourceSlug)) {
+                fail(
+                  `La lección ${lesson.slug} enlaza un recurso inexistente: ${link.resourceSlug}`,
+                  [...unitPath, "lessons", lessonIndex, "resources", resourceLinkIndex, "resourceSlug"],
+                );
+              }
+            }
+          }
         }
       }
     }
