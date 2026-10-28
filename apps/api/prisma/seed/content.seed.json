@@ -18140,35 +18140,1655 @@
       "level": 3,
       "estimatedMin": 2400,
       "order": 11,
-      "isPublished": false,
+      "isPublished": true,
       "modules": [
         {
           "code": "M10.1",
           "title": "De chatbot a agente",
           "order": 1,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U10.1.1",
+              "title": "Chatbot, flujo automatizado y agente: diferencias reales",
+              "objective": "Distinguir un chatbot, un flujo automatizado y un agente según quién controla las decisiones del proceso",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "chatbot-flujo-automatizado-y-agente-diferencias-reales",
+                  "title": "Chatbot, flujo automatizado y agente: diferencias reales",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Estos tres términos se usan a veces como sinónimos en marketing, pero describen arquitecturas con una diferencia real y precisa: quién decide qué paso sigue. Un chatbot (como el tutor socrático de E9) recibe un mensaje y genera una respuesta de texto; no ejecuta acciones ni decide un plan de varios pasos, solo conversa. Un flujo automatizado (pipeline) ejecuta una secuencia fija de pasos predefinidos por una persona (paso 1, luego 2, luego 3, siempre en ese orden), posiblemente usando IA dentro de algún paso individual, pero la secuencia misma la decidió un humano de antemano. Un agente decide dinámicamente, en tiempo real, qué pasos ejecutar y en qué orden, basándose en resultados intermedios que no se podían anticipar completamente: el modelo mismo participa en decidir el plan, no solo en generar texto dentro de un paso fijo."
+                    },
+                    {
+                      "type": "list",
+                      "title": "La pregunta clave para distinguir los tres",
+                      "items": [
+                        "¿Quién decidió la secuencia de pasos: una persona de antemano, o el modelo en tiempo de ejecución? Si fue una persona de antemano: chatbot o flujo automatizado. Si el modelo decide dinámicamente: agente.",
+                        "Chatbot: entrada de texto, salida de texto, sin ejecutar acciones externas (aunque pueda usar RAG para informarse, visto en E9-M9.3).",
+                        "Flujo automatizado: una secuencia fija de pasos (que puede incluir llamadas a un modelo en pasos específicos), donde el orden y la cantidad de pasos no cambian según lo que ocurra.",
+                        "Agente: usa herramientas (E9-U9.2.3) en una secuencia que el modelo mismo decide, pudiendo variar según los resultados intermedios (si la herramienta A falla, intenta B; si el resultado sugiere un paso adicional, lo agrega)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "'Explicar un error de código' (caso de uso `explain` de este proyecto, documentado en E9) es un chatbot: recibe el error como texto, genera una explicación como texto, sin ejecutar nada. 'Enviar un correo de bienvenida tras el registro' (E5-U5.4.3) es un flujo automatizado: siempre los mismos pasos (crear usuario, encolar correo, enviar), en ese orden fijo, sin que ninguna IA decida variar la secuencia. Un sistema que, dado 'revisa por qué falla este test', decide por sí mismo leer el archivo del test, después el código que prueba, después ejecutar el test para confirmar el fallo, y según el resultado decide si necesita leer un tercer archivo relacionado, es un agente: la secuencia de pasos (cuáles, cuántos, en qué orden) no estaba fijada de antemano."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: llamar 'agente' a cualquier cosa que use IA, incluyendo chatbots y flujos fijos",
+                      "text": "Causa: el término 'agente' se usa de forma imprecisa en mucho contenido de marketing y divulgación. Cómo detectarlo: se describe como 'agente' un sistema que en realidad sigue siempre la misma secuencia fija de pasos predefinidos, sin ninguna decisión dinámica real del modelo sobre el flujo. Solución: aplica la pregunta clave de esta lección (¿quién decidió la secuencia, una persona de antemano o el modelo en tiempo de ejecución?) antes de usar el término con precisión."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: construir un agente complejo para un problema que en realidad es un flujo fijo simple",
+                      "text": "Causa: la novedad y el atractivo de 'construir un agente' lleva a sobre-diseñar, cuando el problema real tiene una secuencia de pasos perfectamente predecible de antemano. Cómo detectarlo: el 'agente' construido siempre termina ejecutando exactamente los mismos pasos en el mismo orden para cualquier entrada, sin ninguna decisión dinámica real observable; toda la supuesta flexibilidad nunca se usa en la práctica. Solución: si la secuencia de pasos es siempre la misma, un flujo automatizado fijo es más simple, más predecible y más fácil de depurar que un agente; reserva el agente para cuando la secuencia genuinamente necesita variar según resultados intermedios (tema que se profundiza en la siguiente unidad)."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Comparación directa",
+                      "items": [
+                        "Chatbot: entrada texto -> salida texto, sin acciones externas",
+                        "Flujo automatizado: secuencia fija de pasos decidida por una persona, puede incluir IA en algún paso",
+                        "Agente: secuencia de pasos decidida dinámicamente por el modelo según resultados intermedios",
+                        "Los tres pueden usar el mismo modelo de IA por debajo; lo que cambia es quién controla el flujo"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "El mismo problema, resuelto como flujo fijo o como agente",
+                      "language": "text",
+                      "code": "Flujo automatizado (secuencia fija):\n  1. Leer archivo de test\n  2. Leer archivo de código probado\n  3. Ejecutar el test\n  4. Reportar resultado\n  (siempre estos 4 pasos, en este orden, sin excepción)\n\nAgente (secuencia decidida dinámicamente):\n  1. Leer archivo de test\n  2. [decide] ¿necesito ver algo más? -> sí, leer código probado\n  3. Ejecutar el test\n  4. [decide] ¿el fallo sugiere revisar otro archivo relacionado?\n     -> si sí, leerlo; si no, reportar directamente"
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás clasificar un sistema dado como chatbot, flujo automatizado o agente según quién controla la secuencia de pasos, y justificar la clasificación con esa pregunta clave, no con la presencia o ausencia de IA."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de los tres casos (explicar error, correo de bienvenida, revisar un test que falla). Identifica exactamente qué hace que el tercero sea un agente y los otros dos no, aunque los tres podrían usar IA."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Clasifica cinco sistemas descritos (un asistente que resume documentos, un proceso que siempre valida-guarda-notifica en ese orden, un sistema que investiga un bug probando varias hipótesis hasta encontrar la causa, un traductor de texto, un proceso que decide dinámicamente cuántas fuentes externas consultar según qué tan confiable sea cada resultado) como chatbot, flujo automatizado o agente. Criterio de paso: las cinco clasificaciones son correctas y justificadas con la pregunta clave de esta lección."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Describe el ciclo de trabajo del Orquestador documentado en guia-orquestador-claude.md de este proyecto (selección de tarea, redacción de ficha, entrega, verificación, aprobación o rechazo). Clasifica si ese proceso completo (humano + agente de IA trabajando juntos) corresponde más a un flujo automatizado o a un agente, justificando con la pregunta clave. Criterio de paso: tu clasificación distingue correctamente qué partes del ciclo son decisiones fijas (del humano orquestador) y cuáles son dinámicas (del agente constructor)."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te describa un sistema y te diga si es un 'agente'. Verifica su clasificación aplicando la pregunta clave de esta lección: ¿la secuencia de pasos la decide una persona de antemano o el modelo dinámicamente? Si la respuesta del asistente llama 'agente' a algo que en realidad es un flujo fijo, corrígela."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuál es la pregunta clave para distinguir chatbot, flujo automatizado y agente? 2) Da un ejemplo propio de cada uno. 3) ¿Pueden los tres usar el mismo modelo de IA por debajo? 4) ¿Por qué construir un agente para un problema de secuencia fija sería sobre-diseño? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Esta distinción es, cada vez más, una pregunta real de arquitectura en equipos que evalúan si automatizar algo con IA justifica la complejidad y menor previsibilidad de un agente, frente a un flujo fijo más simple y predecible. En una entrevista pueden preguntarte: '¿este sistema que describes es un chatbot, un flujo o un agente, y por qué?'. Variante: un sistema empieza como flujo fijo pero, con el tiempo, cada paso individual necesita más flexibilidad hasta que termina pareciéndose a un agente (pista: esa evolución gradual es normal, y en algún punto conviene reconocer explícitamente el cambio de arquitectura, no seguir llamándolo 'flujo' por costumbre). Pregunta de cierre: ¿cuándo valdría la pena construir un sistema intermedio, con algunos pasos fijos y solo un subconjunto con decisión dinámica?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.1.2",
+              "title": "Cuándo NO usar un agente (preferir determinismo)",
+              "objective": "Reconocer cuándo un flujo determinista resuelve mejor un problema que delegarlo a un agente autónomo",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "cuando-no-usar-un-agente-preferir-determinismo",
+                  "title": "Cuándo NO usar un agente (preferir determinismo)",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un agente es menos predecible que un flujo fijo por diseño: su valor está precisamente en decidir dinámicamente, lo que significa que ejecutar la misma tarea dos veces puede producir secuencias de pasos distintas. Esto es una ventaja genuina cuando el problema realmente varía de forma impredecible, pero es una desventaja real cuando el problema tiene una solución conocida y repetible: ahí, un flujo determinista es más rápido, más barato (sin el costo de que el modelo 'razone' en cada paso sobre qué hacer), más fácil de probar (E7-M7.2), y más fácil de depurar cuando algo falla. La regla de tamaño y planificación de este mismo proyecto (documentada para sus propias tareas de desarrollo) es, en esencia, una preferencia explícita por el determinismo: cada tarea se delimita y verifica de forma predecible, no se deja a la improvisación de un agente sin estructura."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Señales de que un flujo determinista es mejor que un agente",
+                      "items": [
+                        "La secuencia de pasos correcta es siempre la misma, conocida de antemano, sin variación real según la entrada.",
+                        "La tarea necesita ser perfectamente reproducible (la misma entrada siempre produce exactamente el mismo resultado), algo que un agente no garantiza por su naturaleza probabilística.",
+                        "El costo de ejecutar un agente (cada decisión requiere una llamada al modelo) es significativamente mayor que un flujo de código fijo para el mismo resultado.",
+                        "Verificar y probar la correctitud es más simple en un flujo determinista: las pruebas de E7 funcionan directamente, mientras que probar todas las posibles secuencias de decisión de un agente es inherentemente más difícil."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Calcular el intervalo del próximo repaso con el algoritmo SM-2 (E3/S7 de este proyecto) tiene una fórmula matemática exacta y conocida: no hay ninguna razón para delegarlo a un agente que 'decida' el intervalo con un modelo de IA, cuando una función determinista (ya implementada y probada con 18 casos en `sm2.spec.ts`) produce el resultado correcto, instantáneo, gratis y 100% reproducible cada vez. En cambio, 'investigar por qué un conjunto de pruebas específico empezó a fallar después de varios cambios no relacionados en el código' sí varía genuinamente según el caso (el archivo correcto a revisar depende del contexto específico del fallo), y ahí un agente que explora dinámicamente aporta valor real que un flujo fijo no podría anticipar de antemano."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: usar un agente para una tarea con solución algorítmica exacta ya conocida",
+                      "text": "Causa: la novedad del enfoque de agentes hace atractivo aplicarlo a todo, incluso a problemas que ya tienen una solución determinista perfecta. Cómo detectarlo: el 'agente' para esta tarea específica siempre converge al mismo resultado correcto que una función simple ya calcularía, pero con más costo, más latencia, y el riesgo (aunque bajo) de una respuesta incorrecta en algún caso raro. Solución: si existe una solución algorítmica determinista y correcta conocida, úsala; reserva el agente para problemas donde esa solución exacta no existe o no es practicable de codificar de antemano."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: delegar a un agente una tarea que requiere reproducibilidad exacta, como cálculos financieros o legales",
+                      "text": "Causa: subestimar la importancia de que el mismo caso, ejecutado dos veces, produzca exactamente el mismo resultado. Cómo detectarlo: dos ejecuciones del agente sobre la misma entrada producen resultados ligeramente distintos (por la naturaleza probabilística del modelo subyacente, E8-U8.1.1), lo que es inaceptable en un contexto donde la reproducibilidad exacta es un requisito (auditoría, cumplimiento legal, cálculos de dinero). Solución: para esos casos, usa código determinista verificable con pruebas, reservando IA (agente o no) para partes del proceso donde la variabilidad es aceptable o incluso deseable."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Determinista frente a agente, según el problema",
+                      "items": [
+                        "Secuencia de pasos siempre la misma, conocida de antemano: flujo determinista",
+                        "Necesita reproducibilidad exacta (cálculos, auditoría): flujo determinista",
+                        "La secuencia correcta varía genuinamente según el contexto, sin un patrón fijo anticipable: candidato a agente",
+                        "El costo de explorar dinámicamente se justifica porque ahorra más que lo que cuesta: candidato a agente"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "Determinista cuando existe una solución exacta",
+                      "language": "typescript",
+                      "code": "// No usar un agente para esto: hay una fórmula exacta y ya probada\nfunction calcularSiguienteIntervalo(calidad: number, intervaloAnterior: number): number {\n  // algoritmo SM-2, determinista, probado con 18 casos (sm2.spec.ts)\n  return calcularConFormulaSM2(calidad, intervaloAnterior);\n}\n\n// Sí es candidato a agente: la investigación varía según cada caso real\n// \"Investiga por qué fallan estas pruebas específicas y proponme una corrección\""
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás evaluar, para una tarea dada, si conviene resolverla con un flujo determinista o delegarla a un agente, usando como criterio la existencia de una solución conocida de antemano y la necesidad de reproducibilidad exacta."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del cálculo SM-2 frente a investigar un fallo de pruebas. Identifica qué característica específica de cada tarea determina la elección correcta."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Clasifica seis tareas (validar el formato de un email, generar un resumen de un documento largo, calcular el total de una factura con impuestos, diagnosticar por qué un servidor responde lento hoy, convertir una fecha entre zonas horarias, decidir qué pregunta hacer a continuación en una entrevista simulada) como 'flujo determinista' o 'candidato a agente', justificando cada una. Criterio de paso: las seis clasificaciones son correctas con justificación basada en el criterio de esta lección."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Busca en este mismo proyecto (en apps/api/src) una función que resuelve algo de forma completamente determinista (como el motor SM-2 o las reglas de desbloqueo de progreso) y explica por qué delegarla a un agente de IA sería, según el criterio de esta lección, una mala decisión de diseño. Criterio de paso: tu explicación cita la función real y aplica correctamente el criterio de reproducibilidad y costo."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que proponga resolver una tarea con un agente. Evalúa si la tarea realmente lo justifica según el criterio de esta lección, o si existe una solución determinista más simple y confiable. Si es así, señala la alternativa determinista y pide que la compare con su propuesta de agente."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué un agente es, por diseño, menos reproducible que un flujo determinista? 2) ¿Qué señal indica que conviene un flujo determinista? 3) Da un ejemplo propio de tarea que requiere reproducibilidad exacta. 4) ¿Qué ventaja de costo tiene un flujo determinista sobre un agente para la misma tarea simple? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Esta decisión (determinismo frente a agente) es, según reportes de adopción de IA en ingeniería, una de las más subestimadas en proyectos que adoptan agentes por tendencia sin evaluar si el problema realmente lo justifica, generando sistemas más costosos, lentos y difíciles de depurar que la alternativa determinista que habría funcionado igual o mejor. En una entrevista pueden pedirte: '¿usarías un agente para resolver esto, o preferirías un enfoque determinista?'. Variante: parte de una tarea es claramente determinista (un cálculo exacto) pero está embebida dentro de un proceso más amplio que sí necesita decisión dinámica (pista: un diseño híbrido, donde el agente invoca una herramienta determinista para esa sub-tarea específica en vez de intentar 'razonar' el cálculo él mismo, aprovecha lo mejor de ambos). Pregunta de cierre: ¿cuándo la variabilidad de un agente sería preferible incluso para una tarea con solución determinista conocida?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.1.3",
+              "title": "Uso de herramientas por modelos",
+              "objective": "Encadenar varias llamadas a herramientas dentro de un ciclo autónomo de un agente",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "uso-de-herramientas-por-modelos-en-un-agente",
+                  "title": "Uso de herramientas por modelos, en el contexto de un agente",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "E9-U9.2.3 ya cubrió el mecanismo básico de una llamada a herramienta: el modelo solicita invocar una función, tu código la ejecuta con validación y autorización, el resultado vuelve al modelo. Lo que distingue a un agente es que esto se repite en ciclo: el resultado de una herramienta puede llevar al modelo a decidir invocar otra herramienta distinta, basándose en lo que acaba de aprender, hasta que decide que ya tiene suficiente información o completó la tarea. Cada invocación individual sigue necesitando exactamente las mismas verificaciones de seguridad (validación de parámetros, autorización, mínimo privilegio) vistas en E9, pero ahora multiplicadas por cada paso del ciclo, y con el riesgo adicional de que una cadena larga de pasos puede desviarse del objetivo original si no se controla."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué cambia al encadenar herramientas en un agente",
+                      "items": [
+                        "Cada paso puede depender del resultado del paso anterior: la secuencia completa no se conoce de antemano, solo el objetivo final.",
+                        "Las mismas verificaciones de seguridad de E9-U9.2.3 (validación, autorización, mínimo privilegio) se aplican a CADA invocación de la cadena, no solo a la primera.",
+                        "El agente necesita un criterio para decidir cuándo detenerse (objetivo cumplido, o un límite de pasos alcanzado, tema de U10.3.3), no seguir invocando herramientas indefinidamente.",
+                        "Un error en un paso intermedio puede propagarse y desviar toda la cadena de pasos siguientes si no se verifica el resultado antes de continuar."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un agente que investiga por qué una prueba falla podría: (1) invocar `leerArchivo('test.spec.ts')`, (2) decidir, según el contenido, invocar `leerArchivo('implementacion.ts')`, (3) invocar `ejecutarPrueba('test.spec.ts')` para confirmar el fallo real y no solo suponerlo, (4) según el mensaje de error específico obtenido en el paso 3, decidir si necesita `leerArchivo` de un tercer archivo relacionado, o si ya tiene suficiente información para proponer una corrección. Ninguno de estos cuatro pasos estaba fijado de antemano como una secuencia obligatoria: cada uno se decidió según lo que el paso anterior reveló."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: validar y autorizar solo la primera llamada a herramienta de la cadena, relajando la vigilancia en las siguientes",
+                      "text": "Causa: la atención y el cuidado puesto en el primer paso disminuye a medida que la cadena avanza, asumiendo que 'si el primer paso fue seguro, el resto también lo será'. Cómo detectarlo: un paso intermedio de la cadena ejecuta una acción con parámetros no validados o sin verificar autorización, porque la disciplina de seguridad se aplicó solo al diseño del primer paso. Solución: cada invocación de herramienta en la cadena, sin excepción, pasa por las mismas validaciones y verificaciones de autorización, siguiendo el mismo rigor en el paso 10 que en el paso 1."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no verificar el resultado de un paso antes de usarlo para decidir el siguiente",
+                      "text": "Causa: asumir que el resultado de cada herramienta es siempre correcto y confiable. Cómo detectarlo: si una herramienta falla o devuelve un resultado inesperado (un archivo que no existe, una API que respondió con error), el agente continúa la cadena basándose en ese resultado erróneo, desviándose cada vez más del objetivo real sin que nadie lo note hasta el final. Solución: verifica el resultado de cada paso (igual que la verificación independiente de E8-U8.4.3) antes de que el agente lo use para decidir el siguiente paso; un fallo intermedio debería detener o redirigir la cadena, no propagarse silenciosamente."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un ciclo simplificado de uso encadenado de herramientas",
+                      "language": "typescript",
+                      "code": "async function investigarFallo(archivoTest: string, maxPasos = 5) {\n  let contexto = await ejecutarHerramientaValidada(\"leerArchivo\", { ruta: archivoTest });\n  let pasos = 1;\n\n  while (pasos < maxPasos) {\n    const decision = await proveedor.complete(construirMensajesConContexto(contexto));\n    if (decision.finalizado) return decision.conclusion;\n\n    // Cada invocación, sin excepción, pasa por la misma validación de E9\n    contexto = await ejecutarHerramientaValidada(decision.herramienta, decision.parametros);\n    pasos++;\n  }\n  return { conclusion: \"Límite de pasos alcanzado sin conclusión definitiva\" };\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué verificar en cada paso de la cadena",
+                      "items": [
+                        "¿Los parámetros de esta invocación específica están validados?",
+                        "¿El usuario/contexto tiene autorización para esta acción específica?",
+                        "¿El resultado de este paso es confiable antes de usarlo para decidir el siguiente?",
+                        "¿Hay un límite de pasos que detiene la cadena si no converge?"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás implementar un ciclo de uso encadenado de herramientas donde cada invocación se valida y autoriza independientemente, verificando el resultado de cada paso antes de usarlo para decidir el siguiente, con un límite explícito de pasos."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del agente que investiga un fallo de prueba. Identifica en qué punto exacto cada decisión dependía del resultado del paso anterior, no de un plan fijado desde el inicio."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa un agente simple de práctica que encadene al menos dos herramientas (por ejemplo, 'buscar un producto' y, según el resultado, 'consultar su inventario'), con validación independiente de cada invocación y un límite máximo de pasos. Prueba forzando que una herramienta intermedia devuelva un resultado inesperado y verifica que el agente no continúa ciegamente con datos erróneos. Criterio de paso: el agente detecta y maneja apropiadamente el resultado inesperado, sin propagarlo silenciosamente."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña la cadena de herramientas que necesitaría un agente para la tarea 'verifica si este pull request cumple los criterios de aceptación de su issue original' (sin necesidad de implementarla completa). Enumera cada herramienta necesaria y qué verificación de seguridad aplicarías a cada una. Criterio de paso: tu diseño incluye al menos tres pasos encadenados con sus respectivas verificaciones específicas."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe un agente con una cadena de herramientas. Revisa si aplica validación y autorización a cada paso individualmente, o solo al primero. Si relaja la vigilancia en pasos posteriores, señala el riesgo y pide que lo corrija."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué cambia al encadenar herramientas en un agente, respecto a una sola llamada aislada (E9)? 2) ¿Por qué cada paso necesita su propia validación, no solo el primero? 3) ¿Qué riesgo tiene no verificar el resultado de un paso intermedio? 4) ¿Qué detiene a un agente de invocar herramientas indefinidamente? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Los agentes de programación reales (como los que asisten en tareas de desarrollo, incluyendo el que generó parte del contenido de este mismo curso) operan exactamente con este patrón: leer, decidir, actuar, verificar, repetir, con cada acción individual sujeta a las mismas reglas de seguridad y verificación que cualquier acción directa. En una entrevista pueden pedirte: '¿cómo asegurarías que un agente no se desvíe del objetivo a través de una cadena larga de pasos?'. Variante: el agente necesita decidir entre varias herramientas posibles para el mismo paso, no solo una secuencia lineal (pista: eso requiere que el modelo evalúe cuál herramienta es más apropiada según el contexto actual, con el mismo criterio de elegir la herramienta correcta para el problema correcto). Pregunta de cierre: ¿cuándo convendría interrumpir la cadena para pedir confirmación humana antes de continuar, en vez de dejar que el agente decida solo hasta el final?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.1.4",
+              "title": "Ciclos de decisión y ejecución",
+              "objective": "Implementar el ciclo de percibir, decidir y actuar que repite un agente hasta completar su tarea",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "ciclos-de-decision-y-ejecucion",
+                  "title": "Ciclos de decisión y ejecución",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "El patrón general detrás de cualquier agente (más allá de los detalles de herramientas específicas vistos en U10.1.3) es un ciclo repetido de tres fases: percibir (observar el estado actual: resultado de la última acción, contexto disponible), decidir (el modelo determina la siguiente acción, basándose en su objetivo y lo percibido) y actuar (ejecutar esa acción, que produce un nuevo estado a percibir en la siguiente vuelta del ciclo). Este ciclo se repite hasta que se cumple una condición de parada: el objetivo se completó, se alcanzó un límite de pasos o presupuesto (U10.3.3), o el modelo determina que no puede progresar más y debe reportar esa situación en vez de continuar indefinidamente sin avanzar."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las tres fases y sus condiciones de parada",
+                      "items": [
+                        "Percibir: reunir el estado actual relevante (resultado de la acción anterior, contexto de la tarea) para la decisión siguiente.",
+                        "Decidir: el modelo determina la siguiente acción concreta, basándose en el objetivo original y lo percibido en este ciclo.",
+                        "Actuar: ejecutar la acción decidida (normalmente una herramienta, U10.1.3), produciendo un resultado que se percibirá en el ciclo siguiente.",
+                        "Parada: objetivo cumplido, límite de pasos/presupuesto alcanzado (U10.3.3), o el modelo detecta que no puede progresar y debe reportarlo, no seguir intentando indefinidamente."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Retomando el agente que investiga un fallo de prueba (U10.1.3): en cada vuelta del ciclo, percibe el resultado de la acción anterior (el contenido de un archivo, el resultado de ejecutar la prueba), decide la siguiente acción (leer otro archivo, ejecutar algo, o concluir), y actúa ejecutando esa decisión. La condición de parada 'exitosa' es cuando el modelo decide que tiene suficiente información para proponer una causa y corrección concretas; una condición de parada 'por límite' sería alcanzar el máximo de pasos configurado (en el ejemplo anterior, 5) sin haber llegado a esa conclusión, en cuyo caso debe reportar explícitamente que no pudo concluir, nunca inventar una conclusión solo para 'terminar'."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: un ciclo sin ninguna condición de parada explícita más allá de 'hasta que el modelo decida detenerse'",
+                      "text": "Causa: confiar únicamente en que el modelo reconocerá cuándo detenerse, sin un límite de respaldo. Cómo detectarlo: en algún caso (por un bucle de decisiones que no converge, o un objetivo mal especificado), el agente sigue ejecutando acciones indefinidamente sin nunca llegar a una conclusión, consumiendo tiempo y presupuesto sin límite. Solución: siempre define un límite de respaldo explícito (número máximo de pasos, presupuesto, o tiempo), independiente de que el modelo 'debería' saber cuándo parar."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: cuando se alcanza el límite de pasos, el agente inventa una conclusión en vez de reportar honestamente que no llegó a ninguna",
+                      "text": "Causa: presión (implícita en el diseño del prompt) de siempre 'dar una respuesta final', incluso cuando el ciclo no convergió genuinamente. Cómo detectarlo: al llegar al límite de pasos, el agente genera una conclusión con la misma confianza aparente que si hubiera investigado exhaustivamente, aunque en realidad nunca llegó a verificar la causa real (el mismo riesgo de alucinación con confianza visto en E8-U8.1.3). Solución: cuando se alcanza un límite sin haber cumplido el objetivo, el sistema debe reportarlo honestamente ('no se pudo determinar la causa en los pasos disponibles'), nunca disfrazarlo como una conclusión verificada."
+                    },
+                    {
+                      "type": "code",
+                      "title": "El ciclo percibir-decidir-actuar con parada explícita",
+                      "language": "typescript",
+                      "code": "async function cicloDelAgente(objetivo: string, maxPasos: number) {\n  let estado = { objetivo, historial: [] as string[] };\n\n  for (let paso = 0; paso < maxPasos; paso++) {\n    const percepcion = estado.historial.at(-1) ?? \"inicio\"; // PERCIBIR\n    const decision = await decidirSiguienteAccion(objetivo, percepcion); // DECIDIR\n\n    if (decision.tipo === \"completado\") return { exito: true, resultado: decision.resultado };\n\n    const resultado = await ejecutarAccion(decision.accion); // ACTUAR\n    estado.historial.push(resultado);\n  }\n\n  return { exito: false, mensaje: \"Límite de pasos alcanzado sin completar el objetivo\" }; // honesto, no inventa\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Las tres fases del ciclo",
+                      "items": [
+                        "Percibir: observar el estado actual relevante para decidir",
+                        "Decidir: el modelo elige la siguiente acción concreta según el objetivo",
+                        "Actuar: ejecutar esa acción, generando un nuevo estado para el siguiente ciclo",
+                        "Parada: objetivo cumplido, límite alcanzado (reportado honestamente), o progreso imposible detectado"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás implementar el ciclo percibir-decidir-actuar de un agente con una condición de parada explícita por límite de pasos, reportando honestamente cuando ese límite se alcanza sin completar el objetivo, en vez de inventar una conclusión."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de cicloDelAgente. Identifica las tres fases exactas que ocurren en cada vuelta del bucle, y qué pasa específicamente si se agota maxPasos."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa el ciclo percibir-decidir-actuar para una tarea de práctica (puede reutilizar el agente de la unidad anterior), con un límite explícito de pasos. Fuerza deliberadamente un caso donde el objetivo no se cumple dentro del límite y verifica que el sistema reporta honestamente ese fallo, sin inventar una conclusión falsa. Criterio de paso: el caso de límite alcanzado produce un reporte honesto de fallo, distinguible claramente de un caso de éxito real."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña las condiciones de parada (éxito, límite, progreso imposible) para un agente que ayuda a depurar un problema de rendimiento (E7-U7.4.6). Específicamente: ¿cómo detectaría el agente que 'no puede progresar más' en vez de seguir intentando indefinidamente? Criterio de paso: tu diseño de la condición de 'progreso imposible' es concreta y verificable, no vaga."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe el ciclo de un agente para una tarea. Revisa si define un límite explícito de pasos y qué pasa exactamente cuando se alcanza (¿reporta honestamente, o el diseño no lo contempla?). Si no lo contempla, pide que lo agregue."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las tres fases del ciclo de un agente? 2) ¿Por qué un ciclo necesita un límite de respaldo además de la condición de parada 'natural'? 3) ¿Qué debería hacer el agente si alcanza el límite sin cumplir el objetivo? 4) ¿Por qué inventar una conclusión en ese caso sería peligroso? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "El ciclo percibir-decidir-actuar es el patrón fundamental detrás de prácticamente cualquier framework real de construcción de agentes de IA, independientemente de los detalles de implementación específicos de cada herramienta o librería. En una entrevista pueden pedirte: 'describe el ciclo básico de funcionamiento de un agente autónomo'. Variante: el agente necesita poder pausar el ciclo y esperar una confirmación humana en un paso específico antes de continuar (pista: eso introduce una fase adicional de aprobación dentro del ciclo, tema de U10.3.1). Pregunta de cierre: ¿cuándo el límite de pasos debería ser dinámico (ajustarse según la complejidad detectada de la tarea) en vez de un número fijo?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M10.2",
           "title": "Estado y orquestación",
           "order": 2,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U10.2.1",
+              "title": "Estado, memoria y persistencia",
+              "objective": "Diseñar qué estado de un agente persiste entre pasos y entre ejecuciones distintas",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "estado-memoria-y-persistencia",
+                  "title": "Estado, memoria y persistencia",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Dentro del ciclo de un agente (U10.1.4), el estado (qué se ha hecho, qué se ha aprendido) necesita vivir en algún lugar para que la siguiente decisión pueda considerarlo, de forma similar a la gestión de contexto de una conversación vista en E9-U9.2.4, pero con una pregunta adicional: ¿ese estado sobrevive solo durante una ejecución del agente (memoria de trabajo, se descarta al terminar), o necesita persistir entre ejecuciones distintas, posiblemente separadas por días (memoria a largo plazo, guardada en una base de datos real)? Confundir estos dos tipos de memoria lleva a perder información que debería persistir, o a cargar innecesariamente información que solo era relevante para una ejecución específica ya terminada."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Memoria de trabajo frente a memoria persistente",
+                      "items": [
+                        "Memoria de trabajo (dentro de una ejecución): el historial de pasos de esta tarea específica, se descarta al terminar, igual que las variables locales de una función.",
+                        "Memoria persistente (entre ejecuciones): información que debe sobrevivir y estar disponible en ejecuciones futuras (preferencias aprendidas, decisiones pasadas relevantes), vive en una base de datos real.",
+                        "No toda la memoria de trabajo merece persistirse: la mayoría de los pasos intermedios de una tarea ya completada no son relevantes para tareas futuras distintas.",
+                        "Lo que sí se persiste debe diseñarse explícitamente (qué guardar, con qué estructura), no simplemente 'guardar todo por si acaso' (el mismo criterio de minimización de datos de E6-U6.4.4)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un agente que ayuda a depurar un problema en una sesión de trabajo mantiene en memoria de trabajo todo el historial de archivos leídos y pruebas ejecutadas durante esa sesión específica; al terminar (con éxito o sin él), ese historial detallado se descarta. Lo que podría merecer persistir, en una base de datos real, es un resumen de alto nivel ('el proyecto X tiene un patrón de bugs relacionado con validación de fechas'), útil para sesiones futuras distintas, sin necesitar cargar el detalle completo (cada archivo leído, cada prueba ejecutada) de la sesión original, que ya no es relevante."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: perder información valiosa al final de cada ejecución, sin persistir nada",
+                      "text": "Causa: tratar toda la memoria como de trabajo, descartándola completa al terminar cada ejecución. Cómo detectarlo: el agente 'repite errores' o vuelve a investigar desde cero algo que ya se descubrió en una ejecución anterior, porque esa información nunca se persistió. Solución: identifica deliberadamente qué información de cada ejecución merece persistirse para beneficiar ejecuciones futuras, y diséñala con una estructura explícita, no como un volcado completo del historial de trabajo."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: persistir el historial de trabajo completo y detallado de cada ejecución 'por si acaso'",
+                      "text": "Causa: parece más seguro guardar todo que decidir qué realmente merece persistirse. Cómo detectarlo: la base de datos de memoria persistente crece sin control, con información mayormente irrelevante que nunca se vuelve a consultar, y cargar 'todo el historial relevante' en una ejecución nueva se vuelve costoso e innecesariamente ruidoso (el mismo problema de contexto excesivo visto en E9-U9.2.4). Solución: aplica el mismo criterio de minimización (E6-U6.4.4): persiste solo lo que tiene un propósito identificado para el futuro, resumido si es necesario, no el detalle completo de cada ejecución pasada."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Separar memoria de trabajo de memoria persistente",
+                      "language": "typescript",
+                      "code": "interface MemoriaDeTrabajo {\n  pasosEjecutados: string[]; // solo dura esta ejecución\n}\n\ninterface MemoriaPersistente {\n  patronesAprendidos: { proyecto: string; patron: string }[]; // vive en base de datos\n}\n\nasync function finalizarEjecucion(trabajo: MemoriaDeTrabajo) {\n  const patronRelevante = extraerPatronSiExiste(trabajo.pasosEjecutados);\n  if (patronRelevante) {\n    await guardarEnMemoriaPersistente(patronRelevante); // solo lo que vale la pena\n  }\n  // El resto de trabajo.pasosEjecutados se descarta, no se persiste completo\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué persistir y qué descartar",
+                      "items": [
+                        "Persistir: resúmenes o patrones con valor para ejecuciones futuras distintas",
+                        "Descartar al terminar: el detalle completo de pasos intermedios de una tarea ya resuelta",
+                        "Persistir con estructura explícita, no un volcado sin procesar del historial completo",
+                        "Aplicar minimización (E6-U6.4.4): solo lo que tiene un propósito futuro identificado"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás distinguir qué estado de un agente debe vivir solo como memoria de trabajo de una ejecución, y qué información merece persistirse estructuradamente para beneficiar ejecuciones futuras, aplicando el criterio de minimización de datos."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del agente de depuración. Identifica por qué el resumen de alto nivel merece persistirse pero el historial detallado de archivos leídos no."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Diseña la memoria de trabajo y la memoria persistente para un agente que ayuda a revisar pull requests: ¿qué información de una revisión específica se descarta al terminar, y qué (si algo) merecería persistirse para revisiones futuras del mismo repositorio? Criterio de paso: tu diseño distingue claramente ambos tipos con al menos un ejemplo concreto de cada uno."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Evalúa si el historial de interacciones de IA de este proyecto (tabla AiInteraction, append-only, documentada en capa-ia.md) es más parecido a memoria de trabajo o a memoria persistente, y qué propósito futuro justifica guardarla (auditoría, análisis de costos, mejora del sistema). Criterio de paso: tu evaluación conecta correctamente el registro real del proyecto con los conceptos de esta lección."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe la memoria de un agente. Revisa si distingue explícitamente entre lo que se descarta al terminar y lo que persiste, o si propone guardar todo indiscriminadamente. Si propone guardar todo, pide que aplique el criterio de minimización."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué diferencia hay entre memoria de trabajo y memoria persistente? 2) ¿Por qué no conviene persistir todo el historial detallado de cada ejecución? 3) ¿Qué riesgo tiene no persistir nada? 4) ¿Qué criterio de una etapa anterior aplica para decidir qué persistir? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Diseñar bien la memoria persistente es lo que distingue a un agente que 'aprende' genuinamente de patrones repetidos a través del tiempo, de uno que resuelve cada ejecución desde cero sin ningún beneficio acumulado, un desperdicio real de valor en sistemas que se usan repetidamente sobre el mismo dominio. En una entrevista pueden pedirte: '¿cómo diseñarías la memoria de este agente para que mejore con el uso repetido?'. Variante: la memoria persistente de distintos usuarios o proyectos no debe mezclarse entre sí (pista: el mismo principio de aislamiento entre usuarios practicado desde E1, aplicado ahora a la memoria del agente). Pregunta de cierre: ¿cuándo la memoria persistente podría volverse un riesgo en sí misma, más allá del costo de almacenamiento?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.2.2",
+              "title": "Planificación y descomposición de tareas",
+              "objective": "Descomponer una tarea compleja en subtareas que un agente pueda ejecutar y verificar una por una",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "planificacion-y-descomposicion-de-tareas",
+                  "title": "Planificación y descomposición de tareas",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Este es el mismo principio de delimitar el alcance en tareas pequeñas y verificables, visto en E8-U8.3.3 para dirigir un agente desde fuera, pero ahora aplicado a que el agente mismo descomponga una tarea compleja en subtareas antes de empezar a ejecutar: en vez de intentar resolver todo de una vez, el agente (o el sistema que lo orquesta) primero genera un plan de pasos más pequeños, cada uno con un resultado verificable, y después ejecuta el plan paso a paso, pudiendo ajustar pasos siguientes según lo que revelen los anteriores (el mismo ciclo de U10.1.4, pero operando sobre un plan explícito en vez de decidir un solo paso a la vez sin ningún plan previo)."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Por qué planificar antes de ejecutar",
+                      "items": [
+                        "Un plan explícito es más fácil de revisar por un humano antes de que se ejecute ninguna acción real (el mismo patrón de 'planificar antes de implementar' de E8-U8.4.2).",
+                        "Descomponer en subtareas pequeñas permite verificar cada una independientemente, localizando errores más rápido que en una ejecución monolítica de un solo paso enorme.",
+                        "Un plan puede revelar, antes de ejecutar nada, que la tarea es más compleja de lo esperado o que falta información crítica, evitando trabajo desperdiciado.",
+                        "El plan no necesita ser inamovible: puede ajustarse según lo que revelen los primeros pasos ejecutados, pero empezar sin ningún plan hace que cada decisión se tome a ciegas sobre el panorama completo."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Para la tarea 'migra este endpoint de paginación por offset a paginación por cursor' (E6-U6.2.4), un agente que planifica primero generaría algo como: 1) identificar todos los lugares que llaman a este endpoint, 2) diseñar el nuevo formato de respuesta con cursor, 3) implementar el cambio en el backend manteniendo compatibilidad temporal (E5-U5.2.3), 4) actualizar los clientes que lo consumen, 5) verificar con pruebas que ambos formatos funcionan durante la transición. Revisar este plan antes de ejecutar permite detectar, por ejemplo, que el paso 4 afecta a más clientes de los que el agente inicialmente consideró, ajustando el plan antes de haber escrito ninguna línea de código."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: empezar a ejecutar directamente sobre una tarea compleja sin generar ningún plan explícito primero",
+                      "text": "Causa: parece más rápido 'simplemente empezar' que invertir tiempo en planificar. Cómo detectarlo: a mitad de la ejecución se descubre que el enfoque elegido para los primeros pasos no sirve para completar la tarea completa, obligando a descartar trabajo ya hecho (el mismo error visto en E8-U8.4.2 al saltar la fase de planificación). Solución: para cualquier tarea no trivial, genera un plan explícito de subtareas antes de ejecutar la primera, y revísalo (tú mismo, o un humano si el agente opera con supervisión) antes de proceder."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: un plan con subtareas demasiado grandes o demasiado vagas para verificar cada una",
+                      "text": "Causa: descomponer superficialmente, con pasos como 'implementar el backend' sin más detalle. Cómo detectarlo: cada 'subtarea' del plan en realidad sigue siendo lo bastante compleja y ambigua como para no tener un criterio claro de cuándo está terminada, perdiendo el beneficio real de la descomposición. Solución: aplica el mismo criterio de E8-U8.3.3 (una tarea, un resultado verificable concreto) a cada subtarea del plan, dividiendo más si una subtarea sigue siendo demasiado grande o ambigua para verificarse con confianza."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un plan con subtareas verificables",
+                      "language": "text",
+                      "code": "Tarea: \"Migra el endpoint de productos a paginación por cursor\"\n\nPlan generado:\n1. Identificar clientes actuales del endpoint\n   -> verificable: lista concreta de archivos/servicios que lo llaman\n2. Diseñar el nuevo contrato con cursor (siguiendo contratos-api.md)\n   -> verificable: esquema Zod del nuevo contrato, revisado\n3. Implementar manteniendo compatibilidad temporal (versión v1 y v2)\n   -> verificable: npm test pasa con ambos formatos soportados\n4. Migrar cada cliente identificado en el paso 1\n   -> verificable: cada cliente usa el nuevo formato, pruebas pasan"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Un buen plan de descomposición",
+                      "items": [
+                        "Cada subtarea tiene un resultado verificable concreto, no vago",
+                        "El plan completo se puede revisar antes de ejecutar ninguna acción real",
+                        "El plan puede ajustarse según lo que revelen los primeros pasos, no es rígido",
+                        "Ninguna subtarea sigue siendo tan grande que necesitaría su propio plan interno"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás descomponer una tarea compleja en un plan de subtareas verificables antes de ejecutar ninguna, revisando el plan completo y ajustándolo según lo que revelen los primeros pasos ejecutados."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el plan de cinco pasos para migrar el endpoint de paginación. Identifica qué información revela el paso 1 que podría cambiar cómo se ejecuta el paso 4."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Descompone la tarea 'agrega autenticación de dos factores al sistema de login' en un plan de al menos 5 subtareas verificables, siguiendo el formato del ejemplo (cada una con su criterio de verificación concreto). Criterio de paso: cada subtarea de tu plan tiene un resultado verificable específico, no una descripción vaga."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Compara tu plan con cómo este proyecto documenta sus propios sprints reales (por ejemplo, sprint-07-repaso-espaciado.md con sus 14 tareas atómicas). Identifica similitudes en el nivel de granularidad y verificabilidad de las subtareas. Criterio de paso: tu comparación identifica correctamente el patrón compartido (subtareas pequeñas, cada una con verificación propia)."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que genere un plan para una tarea compleja que le describas. Revisa si cada subtarea tiene un criterio de verificación concreto, o si algunas son vagas ('mejorar el rendimiento', sin más detalle). Pide que las divida más si son demasiado amplias."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué planificar antes de ejecutar ahorra tiempo en tareas complejas? 2) ¿Qué hace que una subtarea del plan sea útil (no vaga)? 3) ¿Puede un plan ajustarse durante la ejecución? 4) ¿Qué relación tiene esto con delimitar el alcance (E8-U8.3.3)? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "La planificación y descomposición explícita antes de ejecutar es, en esencia, la misma disciplina de ingeniería de software bien establecida (dividir en tareas pequeñas verificables) aplicada ahora a que un agente la genere automáticamente, en vez de que un humano la escriba a mano cada vez. En una entrevista pueden pedirte: '¿cómo descompondrías esta tarea compleja antes de empezar a trabajar en ella?'. Variante: el plan generado por el agente parece razonable pero tú, con más contexto del dominio, sabes que un paso específico no funcionará como está planteado (pista: esa es exactamente la oportunidad de revisión humana del plan antes de ejecutar, el mismo valor de E8-U8.4.2). Pregunta de cierre: ¿cuándo valdría la pena ejecutar sin plan explícito, directamente paso a paso?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.2.3",
+              "title": "Orquestación de varios pasos",
+              "objective": "Orquestar varios pasos o agentes especializados coordinados hacia un objetivo común",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "orquestacion-de-varios-pasos",
+                  "title": "Orquestación de varios pasos",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Una vez que existe un plan (U10.2.2), orquestar significa coordinar la ejecución real de sus pasos: en qué orden ejecutarlos (algunos pueden ser paralelos si no dependen entre sí, otros deben ser secuenciales porque un paso necesita el resultado del anterior), cómo pasar el resultado de un paso al siguiente, y qué hacer si un paso falla (reintentarlo, pasar al siguiente de todos modos, o detener todo el proceso). Este mismo proyecto implementa un patrón de orquestación real con roles separados y explícitos: el Orquestador (planifica, revisa, nunca implementa) y el Constructor (implementa exactamente lo que la ficha de tarea especifica, en una sesión limpia sin el contexto completo del proyecto), documentado en `guia-orquestador-claude.md`, precisamente para evitar los tres fallos de un agente único que planifica y ejecuta a la vez: pérdida de contexto, autoaprobación y deriva de alcance."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Decisiones de orquestación",
+                      "items": [
+                        "Secuencial frente a paralelo: los pasos que dependen del resultado de otro deben ejecutarse en orden; los independientes entre sí pueden ejecutarse en paralelo para ahorrar tiempo total.",
+                        "Paso de resultados: el resultado de un paso se convierte en parte del contexto o entrada del siguiente, de forma explícita y verificable.",
+                        "Manejo de fallos: decidir por adelantado si un paso fallido se reintenta, se omite, o detiene toda la orquestación (conecta con los patrones de resiliencia de E7-U7.4.6).",
+                        "Separación de roles (como Orquestador/Constructor de este proyecto): un rol planifica y revisa, otro ejecuta con alcance acotado, evitando que la misma 'mente' que diseñó el plan también se autoapruebe sin cuestionarlo."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "El ciclo de trabajo documentado en `guia-orquestador-claude.md` de este proyecto es, en sí mismo, una orquestación real: (1) el Orquestador selecciona la siguiente tarea no completada del sprint, (2) redacta una ficha completa y autocontenida (máximo 3 archivos), (3) la entrega a una sesión nueva y limpia del Constructor (sin el historial de decisiones previas, evitando que arrastre suposiciones no verificadas), (4) el Constructor reporta su resultado, (5) el Orquestador verifica ejecutando los comandos reales de la ficha (no solo lee el reporte) y aprueba o rechaza. Si rechaza, se genera una ficha de corrección acotada, no una repetición de toda la tarea desde cero."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: dejar que el mismo agente que generó el plan también lo ejecute y se autoapruebe sin ninguna verificación independiente",
+                      "text": "Causa: parece más simple (y más rápido) que un solo agente haga todo de principio a fin. Cómo detectarlo: un plan con un defecto de diseño se ejecuta completo sin que nadie lo cuestione, porque quien ejecutaba 'ya creía' que el plan era correcto al haberlo diseñado él mismo (exactamente el problema de 'autoaprobación' que este proyecto documenta explícitamente como motivo de la separación de roles). Solución: separa, al menos conceptualmente, quién planifica/revisa de quién ejecuta, o introduce una verificación independiente real (ejecutar comandos reales, no solo leer un reporte) antes de aprobar cualquier paso como terminado."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: ejecutar pasos independientes de forma secuencial innecesariamente, perdiendo tiempo",
+                      "text": "Causa: no analizar explícitamente qué pasos dependen realmente entre sí antes de decidir el orden de ejecución. Cómo detectarlo: dos pasos que no necesitan ningún resultado uno del otro se ejecutan uno después del otro de todas formas, multiplicando el tiempo total sin ninguna necesidad real. Solución: identifica explícitamente las dependencias reales entre pasos del plan; los que no dependen entre sí pueden ejecutarse en paralelo, reduciendo el tiempo total de la orquestación completa."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Orquestación con pasos paralelos y secuenciales",
+                      "language": "typescript",
+                      "code": "async function orquestarMigracion(plan: PasoDePlan[]) {\n  // Pasos 1 y 2 no dependen entre sí: en paralelo\n  const [clientesIdentificados, nuevoContrato] = await Promise.all([\n    ejecutarPaso(plan[0]),\n    ejecutarPaso(plan[1]),\n  ]);\n\n  // Paso 3 depende del resultado de ambos anteriores: secuencial\n  const implementacion = await ejecutarPaso(plan[2], { clientesIdentificados, nuevoContrato });\n\n  // Verificación independiente antes de considerar terminado (no autoaprobación)\n  const verificado = await ejecutarComandoReal(\"npm test\");\n  if (!verificado.exito) return { estado: \"rechazado\", motivo: verificado.detalle };\n\n  return { estado: \"aprobado\", implementacion };\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Decisiones clave de orquestación",
+                      "items": [
+                        "¿Este paso depende del resultado de otro?: si no, candidato a paralelizar",
+                        "¿Quién verifica el resultado de un paso antes de aprobarlo?: idealmente, no la misma 'mente' que lo ejecutó",
+                        "¿Qué pasa si un paso falla?: decidido de antemano (reintentar, omitir, detener todo)",
+                        "¿La sesión de ejecución de un paso arrastra contexto innecesario de pasos anteriores?: considera sesiones limpias y acotadas"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás orquestar un plan de varios pasos distinguiendo cuáles son paralelizables y cuáles secuenciales, con una verificación independiente (no autoaprobación) antes de considerar cada paso terminado."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ciclo de trabajo Orquestador/Constructor de este proyecto. Identifica exactamente en qué punto del ciclo ocurre la verificación independiente que evita la autoaprobación."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Toma el plan de 5 pasos que escribiste en U10.2.2 (migrar a paginación por cursor). Identifica cuáles pasos podrían ejecutarse en paralelo y cuáles deben ser secuenciales, justificando cada decisión con las dependencias reales entre ellos. Criterio de paso: tu análisis de dependencias es correcto; ningún paso paralelizado depende realmente de otro paralelizado junto a él."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña, para tu propio flujo de trabajo (con o sin agentes de IA), un mecanismo de verificación independiente antes de considerar una tarea terminada, inspirado en el patrón de este proyecto (ejecutar comandos reales, no solo confiar en un reporte). Describe específicamente qué verificarías y cómo evitarías autoaprobarte. Criterio de paso: tu mecanismo incluye una verificación ejecutable concreta, no solo una revisión visual."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que orqueste la ejecución de un plan de varios pasos. Revisa si distingue pasos paralelizables de secuenciales, y si incluye algún mecanismo de verificación independiente antes de aprobar el resultado final. Si falta, pide que lo agregue explícitamente."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué determina si dos pasos pueden ejecutarse en paralelo? 2) ¿Qué tres fallos previene la separación de roles Orquestador/Constructor de este proyecto? 3) ¿Por qué la autoaprobación es un riesgo? 4) ¿Qué se hace si un paso falla durante la orquestación? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "La separación de roles entre quien planifica/revisa y quien ejecuta es un principio de gobernanza que trasciende los agentes de IA (es la misma razón por la que el código se revisa antes de fusionarse, E3-U3.2.2), aplicado ahora explícitamente al trabajo de agentes autónomos en este mismo proyecto educativo. En una entrevista pueden pedirte: '¿cómo orquestarías la ejecución de este plan de varios pasos con agentes de IA?'. Variante: necesitas que varios agentes especializados (uno para investigar, otro para implementar, otro para revisar seguridad) colaboren en una misma tarea compleja (pista: eso es exactamente una extensión del mismo patrón de roles separados, con comunicación explícita entre agentes en vez de una sola 'mente' haciendo todo). Pregunta de cierre: ¿cuándo la separación estricta de roles añadiría más fricción de la que vale, para una tarea genuinamente simple?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.2.4",
+              "title": "MCP y mecanismos de integración de herramientas",
+              "objective": "Explicar qué resuelve un protocolo estándar como MCP para integrar herramientas con distintos agentes",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "mcp-y-mecanismos-de-integracion-de-herramientas",
+                  "title": "MCP y mecanismos de integración de herramientas",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Sin un estándar común, cada agente o asistente de IA necesitaría una integración específica y distinta para conectarse a cada herramienta externa (una base de datos, un sistema de archivos, una API de terceros), multiplicando el trabajo de integración por cada combinación de agente y herramienta. MCP (Model Context Protocol) es un protocolo estándar abierto que define cómo un agente puede descubrir y usar herramientas externas de forma uniforme: un servidor MCP expone un conjunto de herramientas (con su descripción y esquema de parámetros, el mismo concepto visto en E9-U9.2.3) de una forma estandarizada, y cualquier agente compatible con el protocolo puede conectarse y usarlas, sin necesitar una integración personalizada para cada combinación específica."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué resuelve un protocolo estándar como MCP",
+                      "items": [
+                        "Desacopla quién construye una herramienta de quién construye el agente que la usa: ambos solo necesitan hablar el mismo protocolo.",
+                        "Una misma herramienta expuesta vía MCP puede usarse desde múltiples agentes o asistentes distintos, sin reescribir la integración para cada uno.",
+                        "Sigue aplicando exactamente las mismas reglas de seguridad vistas en E9-U9.2.3 y U10.1.3: validación de parámetros y autorización no desaparecen por usar un protocolo estándar, se implementan del lado del servidor MCP.",
+                        "Es análogo al problema que resuelve HTTP como protocolo estándar para que clientes y servidores distintos se comuniquen sin acoplarse a una implementación específica (E4-M4.2), aplicado ahora a la integración de herramientas con agentes."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Sin un protocolo estándar, conectar un agente de programación a 'las herramientas de este proyecto' (ejecutar pruebas, consultar la base de datos de desarrollo, leer la documentación de sprints) requeriría una integración distinta para cada combinación posible de agente y herramienta. Con un servidor MCP que expone esas herramientas de forma estandarizada, cualquier agente compatible (sin importar quién lo desarrolló) puede descubrir qué herramientas existen, qué parámetros necesitan, y usarlas, de la misma forma en que cualquier navegador puede consultar cualquier servidor web porque ambos hablan HTTP."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: asumir que usar un protocolo estándar como MCP elimina la necesidad de seguridad y validación propias",
+                      "text": "Causa: la palabra 'estándar' sugiere, incorrectamente, que la seguridad ya viene resuelta por el protocolo mismo. Cómo detectarlo: una herramienta expuesta vía MCP sin validar sus propios parámetros ni verificar autorización es exactamente igual de vulnerable que una mal implementada sin ningún protocolo, porque MCP estandariza la comunicación, no las reglas de negocio ni seguridad de cada herramienta específica. Solución: aplica las mismas reglas de validación, autorización y mínimo privilegio de E9/U10.1.3 a cada herramienta, independientemente de si se expone vía MCP o de cualquier otra forma."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: construir una integración personalizada para cada agente cuando ya existe un estándar aplicable",
+                      "text": "Causa: no conocer o no evaluar si existe un protocolo estándar adecuado antes de construir una integración a medida. Cómo detectarlo: el proyecto termina con múltiples integraciones personalizadas, cada una mantenida por separado, para conectar esencialmente las mismas herramientas a distintos agentes o asistentes. Solución: evalúa si un protocolo estándar existente ya resuelve la necesidad antes de construir una integración personalizada; reservar la integración a medida para necesidades genuinamente no cubiertas por el estándar."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Lo que un protocolo estándar sí y no resuelve",
+                      "items": [
+                        "Sí resuelve: cómo se descubren y se comunican los parámetros de una herramienta, de forma uniforme entre agentes",
+                        "Sí resuelve: evitar una integración personalizada por cada combinación de agente y herramienta",
+                        "No resuelve por sí solo: la validación de parámetros específica de cada herramienta",
+                        "No resuelve por sí solo: la autorización de quién puede usar qué herramienta en qué contexto"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "La misma herramienta, accesible por un protocolo estándar",
+                      "language": "text",
+                      "code": "Sin estándar: integración A->Herramienta1, integración B->Herramienta1,\nintegración A->Herramienta2, integración B->Herramienta2...\n(N agentes x M herramientas = N*M integraciones distintas)\n\nCon protocolo estándar (como MCP):\nServidor MCP expone Herramienta1 y Herramienta2 de forma uniforme.\nCualquier agente compatible (A, B, o cualquier otro futuro) se conecta\nal mismo servidor sin integración personalizada adicional."
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás explicar qué problema de integración resuelve un protocolo estándar como MCP, y por qué la seguridad de cada herramienta expuesta sigue siendo responsabilidad propia, no delegada al protocolo."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de conectar un agente a las herramientas de este proyecto, sin y con un protocolo estándar. Identifica cuántas integraciones distintas se necesitarían en cada caso con, por ejemplo, 3 agentes y 3 herramientas."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Diseña (en pseudocódigo o descripción, sin necesidad de implementar el protocolo completo) una herramienta que exponga 'consultar el estado de un pedido' siguiendo el mismo esquema de nombre/descripción/parámetros ya visto en E9-U9.2.3, especificando qué validación y autorización aplicarías independientemente de qué protocolo la exponga. Criterio de paso: tu diseño mantiene la validación y autorización como responsabilidad explícita de la herramienta, no del protocolo."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Investiga (en documentación pública) un caso real donde un protocolo estándar de integración (MCP o similar) se usa para conectar herramientas con un asistente de IA. Documenta qué herramientas expone y si la documentación menciona explícitamente cómo se maneja la seguridad de cada una. Criterio de paso: tu investigación cita un ejemplo real verificable, no uno inventado."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que explique qué es MCP y qué problema resuelve. Verifica si su explicación distingue correctamente entre lo que el protocolo estandariza (comunicación) y lo que sigue siendo responsabilidad de cada herramienta (seguridad, validación). Si la mezcla, corrige esa distinción."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué problema de integración resuelve un protocolo estándar como MCP? 2) ¿Qué es análogo a esto en el mundo de las APIs web (E4)? 3) ¿Qué NO resuelve automáticamente un protocolo estándar? 4) ¿Por qué construir integraciones personalizadas para cada agente es costoso a escala? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Los protocolos estándar de integración de herramientas con agentes de IA son, en 2026, un área de desarrollo activo en la industria, con el mismo valor estructural que tuvieron HTTP o SQL en sus respectivos dominios: reducir la integración de 'cada combinación específica' a 'implementar el estándar una vez'. En una entrevista pueden preguntarte: '¿por qué usarías un protocolo estándar en vez de integraciones personalizadas para cada herramienta?'. Variante: necesitas exponer una herramienta interna de tu organización solo a agentes de confianza, no a cualquier agente compatible con el protocolo (pista: eso requiere una capa de autenticación/autorización en el servidor que expone la herramienta, independiente del protocolo mismo). Pregunta de cierre: ¿cuándo una integración personalizada seguiría siendo preferible a adoptar un protocolo estándar?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M10.3",
           "title": "Seguridad y control",
           "order": 3,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U10.3.1",
+              "title": "Permisos, aislamiento y aprobación humana",
+              "objective": "Definir qué acciones de un agente requieren aprobación humana explícita antes de ejecutarse",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "permisos-aislamiento-y-aprobacion-humana",
+                  "title": "Permisos, aislamiento y aprobación humana",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Cuanto más autónomo es un agente (puede encadenar varios pasos y decisiones sin intervención, U10.1.3-U10.1.4), mayor es el riesgo de que una decisión equivocada en un paso intermedio se ejecute sin que nadie la revise antes de que surta efecto. La defensa tiene tres capas complementarias: permisos acotados (el mismo mínimo privilegio de E6-U6.4.2, aplicado a qué puede hacer el agente), aislamiento (ejecutar el agente en un entorno separado del sistema real, como un sandbox, limitando el daño si algo sale mal), y aprobación humana explícita antes de ejecutar las acciones de mayor riesgo o irreversibilidad (borrar datos, enviar algo públicamente, gastar dinero real), en vez de dejar que el agente las ejecute de forma completamente autónoma."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las tres capas de control",
+                      "items": [
+                        "Permisos acotados: el agente opera con exactamente los permisos necesarios para su tarea, nunca con acceso amplio 'por si acaso' (E6-U6.4.2).",
+                        "Aislamiento: ejecutar en un entorno separado (sandbox) del sistema de producción real, limitando qué puede afectar si algo sale mal, de forma similar al sandbox de ejecución de código visto en E6-U6.3.1 y en la propia arquitectura de este curso.",
+                        "Aprobación humana: para acciones de alto riesgo o irreversibles, el agente propone la acción pero espera confirmación explícita de una persona antes de ejecutarla realmente.",
+                        "Estas capas se combinan, no se sustituyen entre sí: incluso con aprobación humana, los permisos del agente siguen siendo acotados, y el aislamiento sigue limitando el daño potencial de cualquier error humano al aprobar."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un agente que ayuda a limpiar código no utilizado en un repositorio podría tener permiso de leer todos los archivos y proponer qué eliminar, pero no permiso de hacer `git push` directamente ni de fusionar un pull request sin revisión: propone los cambios como un pull request (siguiendo E3-U3.2.2) que una persona revisa y aprueba explícitamente antes de que el cambio se fusione realmente al código de producción. El agente aceleró el trabajo de identificar candidatos a eliminar, pero la decisión final e irreversible (fusionar el cambio) permaneció bajo aprobación humana."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: dar al agente permiso de ejecutar directamente acciones irreversibles sin ningún punto de aprobación",
+                      "text": "Causa: la automatización completa (sin ningún paso de aprobación) parece más eficiente y es el objetivo final deseable para muchas tareas. Cómo detectarlo: un error del agente en una acción irreversible (borrar datos, enviar una comunicación pública, un pago) ya ocurrió por completo antes de que cualquier persona tuviera oportunidad de revisarlo, sin posibilidad de deshacerlo. Solución: identifica explícitamente qué acciones son irreversibles o de alto riesgo, y para esas específicamente, requiere aprobación humana antes de ejecutar, incluso si el resto del flujo es completamente autónomo."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: requerir aprobación humana para absolutamente todo, eliminando el valor real de la automatización",
+                      "text": "Causa: el miedo a los errores lleva al extremo opuesto, pidiendo confirmación para cada paso trivial y sin riesgo real. Cómo detectarlo: el 'agente' termina requiriendo tanta intervención humana constante que no ahorra tiempo real respecto a hacer la tarea manualmente desde el principio. Solución: reserva la aprobación humana específicamente para acciones de alto riesgo o irreversibles; automatiza con confianza las acciones de bajo riesgo y fácilmente reversibles, siguiendo el mismo espíritu de proporcionalidad de otros controles de seguridad vistos en este curso."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Marcar acciones que requieren aprobación explícita",
+                      "language": "typescript",
+                      "code": "interface AccionPropuesta {\n  tipo: string;\n  reversible: boolean;\n  requiereAprobacion: boolean;\n}\n\nfunction evaluarAccion(accion: AccionPropuesta): \"ejecutar\" | \"esperar_aprobacion\" {\n  const ALTO_RIESGO = [\"eliminar\", \"enviar_publico\", \"pagar\", \"fusionar_a_produccion\"];\n  if (!accion.reversible || ALTO_RIESGO.includes(accion.tipo)) {\n    return \"esperar_aprobacion\"; // nunca se ejecuta automáticamente\n  }\n  return \"ejecutar\"; // bajo riesgo, reversible: autonomía completa\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué requiere aprobación humana, qué no",
+                      "items": [
+                        "Irreversible (borrar, enviar públicamente, pagar): sí, siempre",
+                        "Afecta a producción o a otros usuarios reales: generalmente sí",
+                        "Reversible y de bajo riesgo (leer, proponer un borrador, ejecutar en un entorno aislado): no necesariamente",
+                        "Umbral de costo o alcance definido de antemano (U10.3.3): según se exceda o no ese umbral"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás clasificar las acciones de un agente según su riesgo e irreversibilidad, definiendo cuáles requieren aprobación humana explícita antes de ejecutarse y cuáles pueden automatizarse con confianza."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del agente de limpieza de código que propone pero no fusiona directamente. Identifica exactamente qué parte del flujo quedó autónoma y cuál requirió aprobación humana, y por qué esa división tiene sentido."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Clasifica seis acciones que un agente de soporte al cliente podría proponer (responder una pregunta frecuente, emitir un reembolso, actualizar el email de contacto de un cliente, escalar un ticket a un humano, eliminar la cuenta de un cliente, generar un borrador de respuesta para revisión) como 'autónoma' o 'requiere aprobación humana', justificando cada una. Criterio de paso: las seis clasificaciones son correctas con justificación basada en riesgo e irreversibilidad."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña el flujo de aprobación para un agente que gestiona el despliegue de cambios de código (CI/CD, E7-U7.4.2): ¿qué pasos serían completamente autónomos (ejecutar pruebas, construir la imagen) y cuál necesitaría aprobación humana explícita antes de continuar (desplegar a producción)? Criterio de paso: tu diseño distingue correctamente entre verificación automatizada y la decisión final de despliegue a producción."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe un agente que ejecuta acciones automatizadas. Revisa si identifica explícitamente qué acciones requerirían aprobación humana, o si asume autonomía completa para todo. Si asume autonomía completa, pregúntale específicamente qué pasaría si una de esas acciones fuera irreversible y saliera mal."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las tres capas de control mencionadas en esta lección? 2) ¿Qué característica de una acción determina si necesita aprobación humana? 3) ¿Por qué requerir aprobación para todo elimina el valor de la automatización? 4) ¿Cómo se combinan permisos acotados y aprobación humana (no se sustituyen)? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "El diseño de 'human-in-the-loop' (aprobación humana en los puntos críticos) es, según guías de seguridad de IA de organizaciones serias en el tema, uno de los controles más recomendados para sistemas autónomos de alto impacto, precisamente porque limita el daño potencial de errores sin eliminar el valor de la automatización. En una entrevista pueden pedirte: '¿qué acciones de este agente requerirían aprobación humana?'. Variante: el volumen de acciones que requieren aprobación es tan alto que un humano no puede revisarlas todas con atención real (pista: eso sugiere que los permisos o el alcance del agente son demasiado amplios, y habría que acotarlos más, no simplemente pedir más rapidez al humano aprobador). Pregunta de cierre: ¿cuándo la aprobación humana misma podría convertirse en un cuello de botella que haga fallar el propósito de la automatización?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.3.2",
+              "title": "Protección contra acciones no autorizadas",
+              "objective": "Proteger un sistema contra que un agente ejecute acciones fuera de su alcance autorizado",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "proteccion-contra-acciones-no-autorizadas",
+                  "title": "Protección contra acciones no autorizadas",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un agente puede intentar ejecutar una acción fuera de su alcance autorizado por tres vías distintas, y cada una necesita su propia defensa: por error del propio diseño (una herramienta expuesta con más alcance del necesario, E9-U9.2.3), por manipulación externa (inyección de prompts, E9-U9.4.3, que lo induce a intentar algo que no debería), o simplemente porque el modelo, de forma impredecible, decide intentar algo fuera de lo esperado dentro de su ciclo autónomo (U10.1.4). La defensa real no puede depender solo de que el agente 'decida bien': cada ejecutor de acción (la herramienta misma, no el agente) debe verificar autorización de forma independiente, exactamente como un servidor verifica autorización sin confiar ciegamente en lo que un cliente dice que tiene permiso de hacer (E5-U5.3.3)."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las tres vías de riesgo y su defensa",
+                      "items": [
+                        "Error de diseño (herramienta con alcance excesivo): aplicar mínimo privilegio (E6-U6.4.2) desde el diseño de cada herramienta.",
+                        "Manipulación externa (inyección de prompts): delimitar contenido no confiable (E9-U9.4.3), aunque esta defensa puede eludirse.",
+                        "Decisión impredecible del modelo dentro de su autonomía: la verificación de autorización debe vivir en el ejecutor de la acción (la herramienta/servidor), no solo en la intención del agente.",
+                        "Principio general: nunca confíes en que el agente 'decidió bien' como única defensa; verifica siempre del lado de quien ejecuta la acción real."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un agente con una herramienta `eliminarArchivo(ruta)` que, por cualquiera de las tres vías (diseño con alcance excesivo, inyección de prompt, o simplemente una decisión errónea dentro de su ciclo autónomo), intenta eliminar un archivo fuera del directorio de trabajo que se le asignó. La defensa real no es 'confiar en que el agente no debería hacer eso': es que la función `eliminarArchivo` misma valide, independientemente de qué agente o por qué motivo la invoque, que la ruta solicitada está dentro del directorio permitido, rechazando explícitamente cualquier intento fuera de ese alcance, sin importar cómo se originó la solicitud."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: confiar en que el prompt o las instrucciones del agente son suficientes para prevenir una acción no autorizada",
+                      "text": "Causa: el prompt de sistema le dice al agente explícitamente 'solo opera dentro de este directorio', y parece suficiente. Cómo detectarlo: el mismo riesgo visto en E9-U9.2.1: los prompts se pueden eludir, por manipulación o simplemente por un comportamiento inesperado del modelo; una instrucción en el prompt no es una barrera técnica real. Solución: la restricción debe aplicarse técnicamente en el código que ejecuta la acción (validación de ruta, verificación de permisos del sistema de archivos), nunca confiando únicamente en que el prompt la respetará siempre."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: verificar la autorización solo al inicio de una sesión del agente, no en cada acción individual",
+                      "text": "Causa: parece suficiente verificar una vez 'este agente tiene permiso de operar aquí' al inicio. Cómo detectarlo: dentro de una cadena larga de decisiones (U10.1.3), una acción específica intenta algo fuera del alcance autorizado inicial, pero como la verificación solo ocurrió al principio de la sesión, nada la detiene en ese paso intermedio específico. Solución: verifica autorización en cada acción individual ejecutada, no solo una vez al inicio de la sesión completa del agente."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Validación de alcance independiente del agente",
+                      "language": "typescript",
+                      "code": "function eliminarArchivo(ruta: string, directorioPermitido: string) {\n  const rutaResuelta = path.resolve(ruta);\n  const limitePermitido = path.resolve(directorioPermitido);\n\n  if (!rutaResuelta.startsWith(limitePermitido)) {\n    throw new ForbiddenException(\n      `Ruta fuera del alcance autorizado: ${rutaResuelta}`,\n    );\n    // Rechaza sin importar qué agente, qué prompt, o qué motivo originó la solicitud\n  }\n  fs.unlinkSync(rutaResuelta);\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Dónde debe vivir cada defensa",
+                      "items": [
+                        "Mínimo privilegio del diseño de la herramienta: en la definición de la herramienta (E9-U9.2.3)",
+                        "Delimitación contra inyección: en la construcción del prompt (E9-U9.4.3)",
+                        "Verificación de alcance en cada ejecución: en el código ejecutor mismo, independiente del agente",
+                        "Nunca: confiar únicamente en que el agente 'decidirá correctamente' sin ninguna de estas capas técnicas"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás implementar verificación de autorización independiente en el ejecutor de una acción (no solo confiar en el prompt del agente), aplicada en cada ejecución individual, no solo al inicio de una sesión."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de eliminarArchivo con validación de ruta. Identifica por qué esta validación protege contra las tres vías de riesgo mencionadas (error de diseño, inyección, decisión impredecible), no solo una de ellas específicamente."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa una herramienta de práctica que opere sobre archivos, con validación de alcance (como el ejemplo de esta lección) que rechace cualquier intento de operar fuera de un directorio permitido. Prueba simulando un intento de salir del directorio permitido (por ejemplo, con '../../' en la ruta) y verifica que se rechaza, sin importar si el intento 'parecía' legítimo. Criterio de paso: el intento de escapar del directorio permitido es rechazado explícitamente, verificado con una prueba automatizada."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Identifica, para una herramienta real que hayas diseñado en unidades anteriores de esta etapa (E9-U9.2.3 o E10-U10.1.3), las tres vías de riesgo de esta lección aplicadas a ese caso específico, y verifica si tu diseño original ya se protegía contra las tres o si falta alguna. Criterio de paso: tu análisis identifica correctamente cuál(es) vía(s) estaban cubiertas y cuál(es) no en tu diseño original."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente una herramienta para un agente. Revisa si la validación de alcance/autorización vive en el prompt (insuficiente) o en el código ejecutor mismo (correcto). Si vive solo en el prompt, pide que la mueva al código y verifica con un caso de prueba que intente exceder el alcance."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las tres vías por las que un agente podría intentar una acción no autorizada? 2) ¿Por qué el prompt no es una barrera técnica suficiente? 3) ¿Dónde debe vivir la verificación de autorización real? 4) ¿Por qué verificar solo al inicio de la sesión no es suficiente? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Esta es la misma lección fundamental de seguridad vista desde E5 (nunca confíes en el cliente, verifica del lado del servidor) aplicada ahora a un cliente que es un modelo de IA autónomo en vez de un navegador o una app externa: el principio de verificación independiente no cambia, solo el tipo de 'cliente' potencialmente no confiable. En una entrevista pueden preguntarte: '¿cómo evitarías que un agente ejecute una acción fuera de su alcance autorizado?'. Variante: el agente opera legítimamente con permisos elevados para su tarea normal, pero necesitas limitar específicamente una sub-categoría de acciones dentro de ese alcance amplio (pista: eso requiere autorización granular por tipo de acción, no un único nivel de permiso binario todo-o-nada). Pregunta de cierre: ¿cuándo valdría la pena registrar (sin bloquear) un intento de acción fuera de alcance, en vez de solo rechazarlo silenciosamente?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.3.3",
+              "title": "Límites de ejecución y presupuesto",
+              "objective": "Limitar cuántos pasos, tiempo o presupuesto puede consumir un agente antes de detenerse",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "limites-de-ejecucion-y-presupuesto",
+                  "title": "Límites de ejecución y presupuesto",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "U10.1.4 ya introdujo la necesidad de un límite de pasos como condición de parada de respaldo; esta unidad profundiza en diseñar ese límite considerando varias dimensiones a la vez: número máximo de pasos (evita ciclos que no convergen), tiempo máximo total (evita que una tarea se extienda indefinidamente aunque cada paso individual sea rápido), y presupuesto monetario máximo (cada paso de un agente, al usar un modelo de IA, tiene un costo real, E9-U9.4.4, que se acumula con cada decisión del ciclo, no solo con una única llamada). Sin estos límites explícitos, un agente con un objetivo mal especificado o un bucle de decisiones que no converge puede consumir recursos (tiempo, dinero) de forma descontrolada antes de que alguien lo note."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las tres dimensiones de límite",
+                      "items": [
+                        "Pasos máximos: cuántas iteraciones del ciclo percibir-decidir-actuar se permiten antes de detener forzosamente.",
+                        "Tiempo máximo (timeout global, no solo por paso individual, E7-U7.4.6): cuánto tiempo total puede durar la ejecución completa de la tarea.",
+                        "Presupuesto máximo: cuánto costo acumulado (en tokens o dinero) puede consumir la tarea completa antes de detenerse, extendiendo el control de costos de E9-U9.4.4 a una ejecución de varios pasos en vez de una sola llamada.",
+                        "Cualquiera de los tres límites que se alcance primero debe detener la ejecución, reportando honestamente por qué se detuvo (U10.1.4), nunca continuando silenciosamente más allá del límite definido."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un agente de investigación de bugs (U10.1.3) configurado con máximo 10 pasos, 5 minutos de tiempo total, y $0.50 de presupuesto: si el bug es inusualmente complejo y el agente necesitaría 15 pasos para resolverlo, se detiene en el paso 10 (el límite que se alcanza primero de los tres) y reporta 'no se pudo determinar la causa en los 10 pasos disponibles, se recomienda investigación manual o aumentar el límite para este caso específico', en vez de continuar indefinidamente o fallar silenciosamente sin ninguna explicación de por qué se detuvo ahí."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: definir solo un límite de pasos, sin considerar que cada paso podría tardar o costar de forma muy desigual",
+                      "text": "Causa: pensar solo en 'cuántas decisiones' sin considerar que decisiones individuales pueden variar mucho en tiempo o costo real. Cómo detectarlo: un agente dentro del límite de pasos definido consume, sin embargo, mucho más tiempo o presupuesto del esperado, porque algunos pasos individuales (como ejecutar una prueba muy lenta, o generar una respuesta muy larga) costaron más de lo anticipado por paso. Solución: define límites en las tres dimensiones (pasos, tiempo, presupuesto) de forma independiente, no asumas que limitar solo una controla automáticamente a las otras."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: detener la ejecución al alcanzar un límite sin reportar ninguna explicación útil de por qué",
+                      "text": "Causa: el código simplemente deja de ejecutar sin registrar ni comunicar la razón específica de la detención. Cómo detectarlo: quien revisa el resultado no puede distinguir si el agente falló por un error real, completó exitosamente, o simplemente se quedó sin presupuesto/tiempo/pasos, sin ninguna información que le ayude a decidir qué hacer a continuación. Solución: cuando se alcanza cualquiera de los límites, reporta explícitamente cuál límite se alcanzó y en qué estado quedó el progreso, dando información útil para decidir si vale la pena reintentar con más margen."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Límites en las tres dimensiones a la vez",
+                      "language": "typescript",
+                      "code": "async function ejecutarConLimites(tarea: Tarea, limites: { pasos: number; tiempoMs: number; presupuestoUsd: number }) {\n  const inicio = Date.now();\n  let costoAcumulado = 0;\n\n  for (let paso = 0; paso < limites.pasos; paso++) {\n    if (Date.now() - inicio > limites.tiempoMs) {\n      return { detenido: \"tiempo\", paso, costoAcumulado };\n    }\n    if (costoAcumulado >= limites.presupuestoUsd) {\n      return { detenido: \"presupuesto\", paso, costoAcumulado };\n    }\n\n    const resultado = await ejecutarPaso(tarea);\n    costoAcumulado += resultado.costoUsd;\n    if (resultado.completado) return { detenido: \"exito\", paso, costoAcumulado };\n  }\n\n  return { detenido: \"pasos\", costoAcumulado }; // reporta explícitamente cuál límite se alcanzó\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué controla cada límite",
+                      "items": [
+                        "Pasos máximos: evita ciclos de decisión que no convergen",
+                        "Tiempo máximo total: evita una ejecución que se extiende indefinidamente, aunque cada paso sea rápido",
+                        "Presupuesto máximo: evita un costo acumulado descontrolado a lo largo de varios pasos",
+                        "Al detenerse por cualquiera: reportar explícitamente cuál límite se alcanzó y el progreso parcial"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás implementar límites de ejecución en tres dimensiones (pasos, tiempo, presupuesto) para un agente, deteniendo la ejecución al primero que se alcance y reportando explícitamente cuál fue y el progreso parcial logrado."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del agente de investigación de bugs con sus tres límites configurados. Identifica por qué definir solo el límite de pasos no habría sido suficiente si el bug hubiera sido complejo pero con pasos individuales rápidos y baratos."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa ejecutarConLimites (o una función similar) aplicada a un agente de práctica de unidades anteriores. Prueba tres escenarios distintos, cada uno agotando un límite diferente primero (pasos, tiempo, presupuesto), y verifica que el reporte final identifica correctamente cuál límite se alcanzó en cada caso. Criterio de paso: los tres escenarios reportan correctamente el límite específico que los detuvo."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Para una tarea real de este curso que podrías delegar a un agente, estima valores razonables para los tres límites (pasos, tiempo, presupuesto), justificando cada número con el tipo de tarea y su complejidad esperada. Criterio de paso: tus tres valores están justificados con una estimación razonable, no son números arbitrarios sin fundamento."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe los límites de ejecución para un agente. Revisa si considera las tres dimensiones (pasos, tiempo, presupuesto) o solo una. Si considera solo una, pregúntale explícitamente qué pasaría si un paso individual tardara o costara mucho más de lo esperado, y pide que agregue las dimensiones faltantes."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las tres dimensiones de límite de esta lección? 2) ¿Por qué un límite de pasos solo no es suficiente? 3) ¿Qué debería reportarse cuando se alcanza un límite? 4) ¿Qué pasa si no se define ningún límite explícito? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Los sistemas de agentes de producción reales imponen estos límites como salvaguarda estándar, precisamente porque un objetivo mal especificado o un caso límite no anticipado puede llevar a un consumo de recursos mucho mayor del esperado sin esta protección explícita. En una entrevista pueden pedirte: '¿qué límites le pondrías a este agente antes de desplegarlo?'. Variante: distintos tipos de tarea necesitan límites muy distintos entre sí (una tarea simple con límites generosos sería un desperdicio de seguridad, una compleja con límites ajustados nunca podría completarse) (pista: eso sugiere definir límites por tipo de tarea, no un único valor global para todo el sistema). Pregunta de cierre: ¿cuándo convendría permitir que un humano extienda el límite en tiempo real, en vez de un valor fijo e inamovible desde el inicio?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.3.4",
+              "title": "Trazabilidad de decisiones",
+              "objective": "Registrar la traza completa de las decisiones de un agente para poder auditarlas después",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "trazabilidad-de-decisiones",
+                  "title": "Trazabilidad de decisiones",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Cuando un agente autónomo toma varias decisiones encadenadas (U10.1.3-U10.1.4), entender después por qué llegó a un resultado específico (correcto o incorrecto) requiere una traza completa: no solo el resultado final, sino cada decisión intermedia, qué información tenía disponible en ese momento, y por qué eligió esa acción específica. Esto extiende el logging estructurado con traceId de E7-U7.4.5 a un contexto donde cada petición puede desencadenar, no una sola operación, sino una secuencia completa de decisiones autónomas que necesitan quedar registradas como una unidad auditable, de forma similar a cómo este proyecto registra cada interacción de IA en la tabla append-only `AiInteraction` (capa-ia.md §4), pero ahora para una cadena completa de pasos, no una sola llamada."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué debe incluir una traza completa de agente",
+                      "items": [
+                        "Cada decisión tomada: qué acción se eligió y, si es posible registrarlo, el razonamiento (o al menos las opciones consideradas) detrás de esa elección.",
+                        "El contexto disponible en el momento de cada decisión: qué información tenía el agente cuando decidió, no solo el resultado final.",
+                        "El resultado de cada acción ejecutada, y si fue exitosa o no.",
+                        "Un identificador único para toda la ejecución completa (similar al traceId de E7, pero abarcando toda la cadena de pasos de esta tarea, no una sola petición HTTP)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Si un agente de investigación de bugs concluye incorrectamente que la causa de un fallo está en el archivo A, cuando en realidad estaba en el archivo B, una traza completa permitiría reconstruir exactamente: qué archivos leyó, en qué orden, qué decisión tomó después de leer cada uno, y en qué punto específico 'se convenció' (incorrectamente) de que A era la causa, sin seguir investigando más allá. Sin esa traza, solo se tendría la conclusión final incorrecta, sin ninguna forma de entender si el error fue de un paso de lectura insuficiente, una mala interpretación de un resultado, o una decisión de parada prematura."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: registrar solo el resultado final de la ejecución del agente, sin la traza de pasos intermedios",
+                      "text": "Causa: el resultado final es lo que 'importa' para el usuario, y registrar cada paso intermedio parece innecesario. Cómo detectarlo: cuando un resultado es incorrecto, no hay forma de diagnosticar en qué paso específico de la cadena se originó el error, obligando a intentar reproducir el problema desde cero (si es que se puede reproducir, dada la naturaleza probabilística del modelo, E8-U8.1.1). Solución: registra cada decisión y su contexto, no solo el resultado final, con el mismo espíritu del logging estructurado de E7-U7.4.5 aplicado a toda la cadena de la ejecución."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: una traza tan voluminosa y sin estructura que resulta impráctica de revisar cuando realmente se necesita",
+                      "text": "Causa: registrar absolutamente todo (cada token generado, cada byte de contexto) sin ninguna estructura que facilite encontrar lo relevante. Cómo detectarlo: al necesitar auditar una ejecución específica, revisar la traza completa toma más tiempo del que vale el beneficio de tenerla, porque no está organizada de forma que se pueda encontrar rápidamente el paso relevante. Solución: estructura la traza por pasos discretos (decisión, acción, resultado), con un identificador único de ejecución que permita filtrar y revisar solo esa cadena específica, similar a cómo el traceId de E7 permite encontrar los logs de una petición específica entre millones de otras."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Registrar una traza estructurada por paso",
+                      "language": "typescript",
+                      "code": "interface PasoDeTraza {\n  ejecucionId: string; // identifica toda esta cadena de pasos\n  numeroPaso: number;\n  contextoDisponible: string;\n  decisionTomada: string;\n  resultadoAccion: { exito: boolean; detalle: string };\n  timestamp: string;\n}\n\nasync function registrarPaso(traza: PasoDeTraza) {\n  await db.trazaDeAgente.create({ data: traza }); // append-only, igual que AiInteraction\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué registrar en cada paso de la traza",
+                      "items": [
+                        "Identificador de la ejecución completa (agrupa todos los pasos de esta tarea)",
+                        "Contexto disponible en el momento de esa decisión específica",
+                        "Qué acción se decidió y, si es posible, por qué",
+                        "Resultado real de ejecutar esa acción (éxito o fallo, con detalle)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás registrar una traza estructurada de cada paso de la ejecución de un agente (contexto, decisión, resultado) con un identificador único de ejecución, suficiente para auditar después por qué llegó a un resultado específico."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del agente que concluyó incorrectamente sobre la causa de un bug. Identifica qué información específica de la traza habría permitido diagnosticar en qué paso exacto ocurrió el error de razonamiento."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Instrumenta un agente de práctica de unidades anteriores para registrar una traza completa (contexto, decisión, resultado) de cada paso, con un identificador único de ejecución. Ejecuta el agente, provoca un resultado incorrecto deliberadamente, y usa la traza registrada para reconstruir en qué paso específico se originó el error. Criterio de paso: puedes identificar, usando solo la traza registrada (sin volver a ejecutar nada), el paso exacto donde se originó el resultado incorrecto."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Compara el diseño de la tabla AiInteraction de este proyecto (capa-ia.md §4, append-only, registra cada interacción individual) con lo que necesitarías para trazar una cadena completa de pasos de un agente. ¿Qué campos adicionales necesitarías para agrupar varias interacciones como una sola ejecución de agente? Criterio de paso: identificas correctamente al menos un campo adicional necesario (como un identificador de ejecución que agrupe varias filas)."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe el sistema de logging para un agente. Revisa si propone registrar solo el resultado final o cada paso intermedio con su contexto y decisión. Si propone solo el resultado final, señala el problema de diagnóstico que esto causaría y pide que lo corrija."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué registrar solo el resultado final de un agente no es suficiente para auditar errores? 2) ¿Qué cuatro elementos debería tener cada paso de una traza? 3) ¿Qué conecta esto con la tabla append-only de este proyecto? 4) ¿Qué riesgo tiene una traza sin ninguna estructura? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "La trazabilidad de decisiones de agentes autónomos es, cada vez más, un requisito tanto técnico (depuración real) como regulatorio en industrias donde las decisiones automatizadas deben poder auditarse después de ocurridas, especialmente cuando afectan a personas reales. En una entrevista pueden pedirte: '¿cómo auditarías por qué este agente llegó a esta conclusión específica?'. Variante: la traza completa de una ejecución es tan grande que almacenarla indefinidamente sería costoso (pista: eso conecta con la minimización y políticas de retención de E6-U6.4.4, aplicadas ahora a trazas de agentes en vez de datos de usuario). Pregunta de cierre: ¿cuándo la traza detallada de una decisión podría en sí misma exponer información sensible que debería tratarse con cuidado adicional?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M10.4",
           "title": "Fiabilidad y evaluación",
           "order": 4,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U10.4.1",
+              "title": "Fallos parciales, reintentos e idempotencia",
+              "objective": "Diseñar un agente que pueda reintentar un paso fallido sin duplicar efectos ya aplicados",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "fallos-parciales-reintentos-e-idempotencia",
+                  "title": "Fallos parciales, reintentos e idempotencia",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Una cadena de pasos de un agente (U10.1.3) puede fallar a mitad de camino: el paso 3 de 5 falla, ¿qué pasa con los efectos ya aplicados por los pasos 1 y 2? Si se reintenta toda la cadena desde el principio sin cuidado, los pasos 1 y 2 podrían ejecutarse una segunda vez, duplicando sus efectos (el mismo riesgo de idempotencia visto en E5-U5.2.5, ahora aplicado a una secuencia completa de pasos de un agente, no solo a una única operación HTTP). Diseñar para esto significa que cada paso individual, idealmente, sea idempotente (ejecutarlo dos veces produce el mismo resultado que ejecutarlo una vez) o que el sistema registre explícitamente qué pasos ya se completaron exitosamente, para reintentar solo desde el punto real de fallo, no desde cero."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Estrategias ante un fallo parcial",
+                      "items": [
+                        "Idempotencia por paso: diseñar cada acción individual para que ejecutarla dos veces no duplique su efecto (el mismo criterio de E5-U5.2.5, aplicado paso por paso).",
+                        "Registro de progreso: guardar explícitamente qué pasos de la cadena ya se completaron exitosamente, permitiendo reanudar desde el punto real de fallo en vez de desde el inicio.",
+                        "Reintentar solo el paso fallido (y los siguientes), no toda la cadena completa desde el principio, cuando el registro de progreso lo permite.",
+                        "Para acciones que genuinamente no pueden hacerse idempotentes (como enviar una notificación única), considera una clave de idempotencia explícita (E5-U5.2.5) en esa acción específica."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un agente que migra datos ejecuta: 1) crear una tabla nueva, 2) copiar registros existentes a la tabla nueva, 3) actualizar las referencias en el código. Si el paso 3 falla (por ejemplo, un archivo bloqueado temporalmente), reintentar toda la cadena desde el paso 1 intentaría crear la tabla de nuevo (fallaría, porque ya existe, a menos que el paso 1 mismo sea idempotente con `CREATE TABLE IF NOT EXISTS`) y podría duplicar registros en el paso 2 si no se diseñó con cuidado. La solución correcta: el sistema registra que los pasos 1 y 2 ya se completaron exitosamente, y al reintentar, salta directamente al paso 3, el único que realmente falló."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: reintentar toda la cadena de pasos desde el inicio ante cualquier fallo parcial",
+                      "text": "Causa: parece más simple 'empezar de nuevo' que rastrear exactamente qué pasos ya se completaron. Cómo detectarlo: un fallo en el último paso de una cadena larga obliga a repetir todos los pasos anteriores, algunos de los cuales duplican efectos no idempotentes (como enviar una notificación por segunda vez, o insertar registros duplicados). Solución: registra el progreso de cada paso completado exitosamente, y al reintentar, retoma desde el punto real de fallo, no desde el inicio de la cadena completa."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: asumir que todos los pasos son naturalmente idempotentes sin verificarlo explícitamente",
+                      "text": "Causa: no revisar, para cada paso individual, qué pasaría exactamente si se ejecutara dos veces. Cómo detectarlo: un paso que parecía inofensivo (como 'incrementar un contador' en vez de 'establecer un valor') produce un resultado incorrecto al reintentarse, porque incrementar dos veces no es lo mismo que incrementar una vez. Solución: revisa explícitamente, para cada paso de la cadena, si ejecutarlo dos veces produciría el mismo resultado final; si no, rediséñalo para que sí lo sea (ej. 'establecer el valor a X' en vez de 'incrementar en X'), o protégelo con una clave de idempotencia específica."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Registro de progreso para reanudar desde el punto de fallo",
+                      "language": "typescript",
+                      "code": "async function ejecutarCadenaConProgreso(pasos: PasoDeCadena[], ejecucionId: string) {\n  const progreso = await obtenerProgreso(ejecucionId); // qué pasos ya se completaron\n\n  for (let i = progreso.ultimoPasoCompletado + 1; i < pasos.length; i++) {\n    try {\n      await ejecutarPasoIdempotente(pasos[i]); // diseñado para ser seguro si se repite\n      await marcarPasoCompletado(ejecucionId, i);\n    } catch (error) {\n      return { fallo: true, pasoFallido: i, error }; // próximo reintento retoma desde aquí\n    }\n  }\n  return { fallo: false };\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Idempotente frente a no idempotente, por paso",
+                      "items": [
+                        "CREATE TABLE IF NOT EXISTS: idempotente (ejecutar dos veces no causa error ni duplicación)",
+                        "Establecer un valor exacto (SET x = 5): idempotente",
+                        "Incrementar un contador (x = x + 1): NO idempotente por defecto",
+                        "Enviar una notificación: NO idempotente por defecto, necesita clave de idempotencia explícita (E5-U5.2.5)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás diseñar una cadena de pasos de agente con registro de progreso que permita reintentar solo desde el punto real de fallo, identificando qué pasos necesitan diseñarse como idempotentes o protegerse con una clave de idempotencia."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la migración de datos con sus tres pasos. Identifica por qué reintentar solo desde el paso 3 (no desde el 1) evita los problemas de duplicación que mencionaría el error común 1."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa ejecutarCadenaConProgreso (o similar) para una cadena de práctica de 4 pasos, donde al menos uno NO es naturalmente idempotente (como incrementar un contador). Provoca un fallo en el paso 3 y reintenta: verifica que los pasos 1 y 2 no se vuelven a ejecutar, y que el paso no idempotente no duplicó su efecto. Criterio de paso: después del reintento exitoso, el efecto del paso no idempotente es correcto (no duplicado), verificado con el valor final real."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Revisa un flujo de varios pasos de este proyecto (por ejemplo, el seed.mts que aplica la semilla de contenido) y evalúa si es idempotente como un todo (ejecutarlo dos veces produce el mismo resultado, como de hecho se verifica explícitamente en la bitácora de S2-T9 de este proyecto). Documenta qué técnica usa para lograrlo (pista: revisa los upserts). Criterio de paso: tu análisis identifica correctamente la técnica real usada (upsert por clave natural) y por qué la hace idempotente."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente una cadena de pasos para un agente. Revisa si algún paso individual no es idempotente (como un incremento) sin ninguna protección, y si existe registro de progreso para reanudar desde el fallo. Si falta cualquiera de las dos cosas, pide que las agregue."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué significa que un paso sea idempotente? 2) ¿Por qué reintentar toda la cadena desde el inicio es riesgoso? 3) Da un ejemplo de operación no idempotente por defecto. 4) ¿Qué permite el registro de progreso? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Los sistemas de flujos de trabajo de larga duración (workflows) en producción, con o sin agentes de IA, dependen fundamentalmente de idempotencia y registro de progreso para poder recuperarse de fallos parciales sin corromper datos ni duplicar efectos, un problema mucho más común en la práctica de lo que parece en la teoría. En una entrevista pueden pedirte: '¿cómo manejarías el fallo a mitad de camino de esta cadena de pasos?'. Variante: dos pasos de la cadena deben ejecutarse como una unidad atómica (ambos o ninguno), no se pueden reintentar independientemente (pista: eso conecta con transacciones, E6-U6.2.5/U6.3.4, aplicadas a ese subconjunto específico de pasos). Pregunta de cierre: ¿cuándo sería preferible, en lugar de reanudar desde el punto de fallo, revertir todo lo ya aplicado y empezar limpio?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.4.2",
+              "title": "Evaluación de agentes con casos repetibles",
+              "objective": "Evaluar un agente con casos de prueba repetibles a pesar de su naturaleza no determinista",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "evaluacion-de-agentes-con-casos-repetibles",
+                  "title": "Evaluación de agentes con casos repetibles",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Evaluar un agente es más difícil que evaluar una sola llamada a un modelo (E9-U9.4.1): un agente puede tomar caminos distintos (secuencias de pasos distintas) para llegar al mismo objetivo, así que verificar 'siguió exactamente estos pasos' sería demasiado rígido y fallaría incluso cuando el agente resolvió correctamente la tarea por un camino alternativo válido. La evaluación efectiva se centra en el resultado final y en propiedades del proceso (¿se mantuvo dentro de los límites de U10.3.3?, ¿respetó las reglas de autorización de U10.3.2?, ¿se detuvo honestamente si no pudo completar, U10.1.4?), no en una secuencia exacta de pasos esperada, usando un entorno controlado y repetible (los mismos datos de entrada, un sandbox con estado conocido) para que la evaluación sea consistente entre ejecuciones."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué evaluar en un agente (más allá del resultado final)",
+                      "items": [
+                        "Resultado final: ¿completó el objetivo según un criterio de aceptación verificable (el mismo principio de E3/E8), sin importar el camino exacto que tomó?",
+                        "Respeto de límites: ¿se mantuvo dentro del número de pasos, tiempo y presupuesto definidos (U10.3.3)?",
+                        "Respeto de autorización: ¿intentó alguna acción fuera de su alcance permitido (U10.3.2)?",
+                        "Honestidad ante el fallo: si no pudo completar el objetivo, ¿lo reportó honestamente (U10.1.4) o inventó una conclusión falsa?"
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Evaluar un agente de investigación de bugs con un caso de prueba 'reproducible': se ejecuta sobre un repositorio de prueba con un bug conocido y deliberadamente insertado (mismo estado inicial garantizado cada vez), y se verifica el resultado contra un criterio objetivo ('identifica el archivo real donde está el bug'), sin exigir que el agente siga exactamente los mismos pasos que un intento anterior (podría leer los archivos en distinto orden, o necesitar un paso adicional esta vez, y aun así llegar correctamente al mismo archivo real). El entorno de prueba (el repositorio con el bug insertado) es lo que se mantiene repetible, no la secuencia interna de decisiones del agente."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: evaluar exigiendo que el agente siga exactamente la misma secuencia de pasos que una ejecución anterior 'correcta'",
+                      "text": "Causa: parece más riguroso verificar el proceso completo paso a paso, no solo el resultado final. Cómo detectarlo: una ejecución que resolvió correctamente el problema, pero por un camino distinto (igualmente válido) al de la ejecución de referencia, se marca como 'fallida' simplemente por no coincidir exactamente en la secuencia, aunque el resultado real fuera correcto. Solución: evalúa el resultado final y propiedades del proceso (límites, autorización, honestidad), no una secuencia exacta de pasos; la variabilidad en el camino es esperada y aceptable mientras el resultado y las propiedades de proceso se cumplan."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: un entorno de prueba que no es realmente repetible (datos que cambian entre ejecuciones)",
+                      "text": "Causa: usar datos 'reales' o un estado compartido que cambia con el tiempo como entorno de evaluación. Cómo detectarlo: la misma evaluación produce resultados distintos en días distintos, no por la variabilidad real del agente, sino porque el entorno de prueba mismo cambió entre una ejecución y la siguiente, contaminando la comparación. Solución: usa un entorno controlado con estado conocido y reproducible (un repositorio de prueba fijo, datos sintéticos consistentes) para que cualquier variación observada venga genuinamente del agente, no del entorno."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué mantener fijo y qué permitir variar",
+                      "items": [
+                        "Fijo (repetible): el estado inicial del entorno de prueba (datos, repositorio, configuración)",
+                        "Fijo: el criterio de aceptación del resultado final",
+                        "Variable (aceptable): la secuencia exacta de pasos y decisiones internas del agente",
+                        "Evaluado explícitamente: límites respetados, autorización respetada, honestidad ante el fallo"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un caso de evaluación centrado en resultado y propiedades, no en pasos exactos",
+                      "language": "typescript",
+                      "code": "async function evaluarCasoDeAgente(entornoDePrueba: EntornoFijo) {\n  const resultado = await ejecutarAgente(entornoDePrueba);\n\n  return {\n    resultadoCorrecto: resultado.conclusion === entornoDePrueba.respuestaEsperada,\n    respetoLimites: resultado.pasos <= entornoDePrueba.limitesMaximos.pasos,\n    respetoAutorizacion: resultado.intentosNoAutorizados === 0,\n    honestoAnteElFallo: !resultado.conclusion || resultado.conclusion !== null,\n    // la secuencia exacta de pasos (resultado.historial) NO se compara contra una referencia fija\n  };\n}"
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás diseñar un caso de evaluación de agente con un entorno repetible, verificando el resultado final y propiedades del proceso (límites, autorización, honestidad) sin exigir una secuencia exacta de pasos."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del agente de investigación de bugs evaluado por resultado, no por secuencia exacta. Identifica qué parte del entorno se mantiene fija (repetible) y qué parte del comportamiento del agente puede variar legítimamente."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Construye un entorno de prueba fijo (datos sintéticos conocidos) y un caso de evaluación para un agente de práctica de unidades anteriores, verificando resultado final, respeto de límites y honestidad ante el fallo (sin verificar secuencia exacta de pasos). Ejecuta el agente dos veces sobre el mismo entorno y confirma que, aunque la secuencia interna pueda variar, el resultado evaluado es consistente. Criterio de paso: ambas ejecuciones pasan la evaluación aunque tomen caminos internos distintos (si es que varían)."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña 3 casos de evaluación adicionales para el mismo agente, cada uno probando específicamente una propiedad distinta de las cuatro de esta lección (uno centrado en límites excedidos deliberadamente, otro en un intento de acción no autorizada, otro en honestidad ante un caso sin solución posible). Criterio de paso: cada caso aísla específicamente la propiedad que dice evaluar, sin mezclar varias a la vez de forma que no se pueda distinguir cuál falló."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe la evaluación de un agente. Revisa si exige una secuencia exacta de pasos o si evalúa resultado y propiedades del proceso. Si exige secuencia exacta, señala el problema (variabilidad legítima del agente) y pide que lo corrija."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué no se debe evaluar exigiendo una secuencia exacta de pasos? 2) ¿Qué cuatro propiedades (más allá del resultado) se mencionan en esta lección? 3) ¿Qué debe mantenerse fijo para que la evaluación sea repetible? 4) ¿Qué puede variar legítimamente entre ejecuciones del mismo agente? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Evaluar agentes autónomos con esta flexibilidad en el camino, pero rigor en el resultado y las propiedades de proceso, es un área activa de desarrollo de buenas prácticas en la industria de IA, precisamente porque los métodos de evaluación heredados de sistemas completamente deterministas (como comparar paso a paso) no se aplican bien a sistemas que varían legítimamente su proceso interno. En una entrevista pueden pedirte: '¿cómo evaluarías si este agente funciona correctamente, dado que puede tomar caminos distintos cada vez?'. Variante: necesitas evaluar también la eficiencia del agente (cuántos pasos u costo usó), no solo si llegó al resultado correcto (pista: eso se suma como una métrica adicional, comparando el costo real contra un presupuesto esperado razonable, sin exigir el mínimo absoluto posible). Pregunta de cierre: ¿cuándo sí tendría sentido evaluar una secuencia específica de pasos, a pesar de la flexibilidad general de un agente?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.4.3",
+              "title": "Observabilidad de agentes",
+              "objective": "Instrumentar un agente con observabilidad que muestre su traza de decisiones, no solo el resultado final",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "observabilidad-de-agentes",
+                  "title": "Observabilidad de agentes",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "La observabilidad general de E7-U7.4.5 (métricas, logs, trazas, alertas) y la trazabilidad de decisiones de U10.3.4 se combinan aquí en un panorama operativo completo para un sistema de agentes en producción: no solo auditar una ejecución específica después de un problema, sino monitorear continuamente cómo se comportan los agentes en conjunto (¿cuántas ejecuciones alcanzan el límite de pasos sin completar su objetivo?, ¿cuál es la tasa de intentos de acción no autorizada detectados y bloqueados?, ¿cuánto varía el número de pasos necesarios para el mismo tipo de tarea entre distintas ejecuciones?), permitiendo detectar patrones problemáticos (un tipo de tarea que consistentemente falla, un comportamiento inesperado que aumenta con el tiempo) antes de que se conviertan en incidentes serios."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Métricas específicas de observabilidad de agentes",
+                      "items": [
+                        "Tasa de finalización exitosa por tipo de tarea: ¿qué porcentaje de ejecuciones completa el objetivo dentro de los límites definidos?",
+                        "Distribución de pasos necesarios: ¿cuántos pasos usa típicamente un tipo de tarea, y qué tan variable es esa cantidad entre ejecuciones similares?",
+                        "Tasa de intentos de acción no autorizada (U10.3.2): un aumento inesperado podría indicar un intento de manipulación o un problema de diseño.",
+                        "Tasa de honestidad ante el fallo (U10.1.4): ¿con qué frecuencia el agente reporta correctamente que no pudo completar, frente a producir una conclusión posiblemente inventada?"
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un panel de observabilidad para los agentes de este tipo de sistema podría mostrar: 'tarea de investigación de bugs: 85% de finalización exitosa dentro de 10 pasos, promedio real de 6 pasos, 3% de intentos de acción fuera del directorio permitido (todos correctamente bloqueados por la validación de alcance de U10.3.2), 0 casos de conclusión inventada tras alcanzar el límite'. Una alerta configurada podría disparar si la tasa de finalización exitosa cae por debajo de 70% en un periodo reciente, señalando que algo cambió (quizás un tipo de bug nuevo y más complejo que el agente no maneja bien) que merece investigación antes de que afecte a muchos más casos."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: monitorear solo si el agente 'funcionó' en términos binarios (éxito/fallo), sin ninguna métrica de proceso",
+                      "text": "Causa: parece suficiente saber si el resultado final fue correcto o no. Cómo detectarlo: un agente que empieza a necesitar sistemáticamente más pasos de los habituales para el mismo tipo de tarea (una señal temprana de que algo cambió, quizás en los datos de entrada o en el entorno) no se detecta hasta que esa tendencia eventualmente produce fallos de límite de pasos, mucho después de que el patrón empezó a degradarse. Solución: monitorea también métricas de proceso (distribución de pasos, tasa de intentos no autorizados) que pueden revelar problemas emergentes antes de que se conviertan en fallos completos."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no separar las métricas por tipo de tarea, mezclando todo en un promedio general poco informativo",
+                      "text": "Causa: parece más simple tener un solo panel con números generales. Cómo detectarlo: un tipo de tarea específico tiene una tasa de fallo muy alta, pero queda oculto dentro de un promedio general aceptable porque otros tipos de tarea, mucho más numerosos, compensan ese problema en el promedio. Solución: desagrega las métricas por tipo de tarea (o por otra dimensión relevante, como el proyecto o el usuario), de forma similar a cómo capa-ia.md de este proyecto separa métricas por caso de uso específico, no un único número general para toda la IA del sistema."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué monitorear en producción para un sistema de agentes",
+                      "items": [
+                        "Tasa de finalización exitosa, desagregada por tipo de tarea",
+                        "Distribución de pasos/tiempo/costo usados frente a los límites definidos",
+                        "Tasa de intentos de acción no autorizada detectados y bloqueados",
+                        "Tasa de honestidad ante el fallo (reporta correctamente, no inventa)"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "Métricas desagregadas por tipo de tarea",
+                      "language": "typescript",
+                      "code": "function registrarEjecucionDeAgente(tipoDeTarea: string, resultado: ResultadoEjecucion) {\n  metricas.incrementar(`agente.${tipoDeTarea}.ejecuciones_totales`);\n  if (resultado.exito) metricas.incrementar(`agente.${tipoDeTarea}.exitosas`);\n  metricas.registrarDistribucion(`agente.${tipoDeTarea}.pasos_usados`, resultado.pasosUsados);\n  if (resultado.intentoNoAutorizado) {\n    metricas.incrementar(`agente.${tipoDeTarea}.intentos_no_autorizados`);\n  }\n}\n// Permite ver la tasa de éxito y pasos típicos POR tipo de tarea, no un promedio general"
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás instrumentar un sistema de agentes con métricas desagregadas por tipo de tarea (tasa de éxito, distribución de pasos, intentos no autorizados, honestidad ante el fallo), configurando una alerta razonable sobre alguna de ellas."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del panel de observabilidad con sus métricas desagregadas. Identifica qué decisión de alerta específica (umbral de tasa de finalización) permitiría detectar un problema antes de que se agrave."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Instrumenta un agente de práctica de unidades anteriores con las cuatro métricas de esta lección, desagregadas por tipo de tarea si tienes más de uno disponible. Ejecuta el agente varias veces (incluyendo al menos un caso que falle deliberadamente) y verifica que las métricas reflejan correctamente lo ocurrido. Criterio de paso: las métricas registradas distinguen correctamente entre ejecuciones exitosas y fallidas, con sus valores reales."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña una alerta razonable para al menos dos de las cuatro métricas de esta lección (umbral, periodo de evaluación, justificación de por qué ese umbral señala un problema real). Criterio de paso: cada alerta diseñada tiene un umbral justificado, no arbitrario, siguiendo el mismo criterio de calibración de alertas visto en E7-U7.4.5."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe la observabilidad de un sistema de agentes. Revisa si propone métricas desagregadas por tipo de tarea, o un único conjunto de números generales. Si es general, pide que las desagregue y explica el riesgo de mezclar tipos de tarea distintos en un solo promedio."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué métricas específicas de agentes van más allá de éxito/fallo binario? 2) ¿Por qué desagregar por tipo de tarea es importante? 3) ¿Qué podría revelar un aumento en la distribución de pasos usados, antes de que se conviertan en fallos? 4) ¿Qué relación tiene esto con la observabilidad general de E7? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "A medida que más organizaciones despliegan agentes autónomos en producción para tareas reales, la observabilidad específica de agentes (más allá de las métricas genéricas de cualquier servicio) se está convirtiendo en una disciplina propia, con herramientas y prácticas emergentes dedicadas específicamente a monitorear comportamiento de sistemas con decisión autónoma. En una entrevista pueden preguntarte: '¿qué monitorearías en un sistema de agentes en producción, más allá de si funcionan o no?'. Variante: necesitas detectar si el comportamiento de un agente está cambiando gradualmente (drift) respecto a cómo se comportaba cuando se desplegó originalmente (pista: eso requiere comparar las métricas actuales contra una línea base histórica, no solo mirar valores absolutos en el momento). Pregunta de cierre: ¿cuándo una tasa de intentos no autorizados de 0% sería, paradójicamente, una señal a investigar en vez de una señal de éxito total?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U10.4.4",
+              "title": "Costos por ejecución",
+              "objective": "Estimar y acotar el costo de una ejecución completa de un agente, no solo de una llamada individual",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "costos-por-ejecucion",
+                  "title": "Costos por ejecución",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "E9-U9.4.4 cubrió el control de costos de una sola llamada o conversación con un modelo; un agente multiplica ese costo por cada paso de su ciclo (U10.1.4), y dado que el número de pasos puede variar entre ejecuciones de la misma tarea (U10.4.2 ya estableció que la secuencia exacta no es fija), el costo total de una ejecución de agente es, en sí mismo, variable e incierto de antemano, a diferencia de una sola llamada con un costo mucho más predecible. Estimar y acotar este costo requiere pensar en 'costo por tarea completada' (no solo por paso individual), combinando el límite de presupuesto de U10.3.3 con una estimación realista basada en la distribución real observada (U10.4.3) de cuánto suele costar completar ese tipo de tarea."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo pensar en el costo de una ejecución completa",
+                      "items": [
+                        "El costo total de una tarea = suma de los costos de cada paso individual (E9-U9.4.4) a lo largo de toda la cadena, no un único costo fijo por tarea.",
+                        "Ese costo total es variable: la misma tarea puede costar distinto entre ejecuciones, según cuántos pasos necesitó esta vez específicamente.",
+                        "El presupuesto máximo (U10.3.3) acota el peor caso, pero no dice cuál es el costo típico o esperado para planificar con realismo.",
+                        "Una estimación útil combina: costo promedio observado por tipo de tarea (de la observabilidad de U10.4.3), y el presupuesto máximo como límite de seguridad para el peor caso."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Si la observabilidad de un sistema de agentes (U10.4.3) muestra que 'investigar un bug típico' cuesta en promedio $0.08 (con una variación observada entre $0.03 y $0.40 según la complejidad real del caso), y el límite de presupuesto por ejecución (U10.3.3) está fijado en $0.50 como protección del peor caso, se puede planificar con realismo cuántas investigaciones de bugs puede costear un presupuesto mensual (usando el promedio de $0.08, no el peor caso de $0.50, que sería una estimación demasiado pesimista para planificación general, aunque sigue siendo necesario como límite de seguridad por ejecución individual)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: planificar el presupuesto mensual multiplicando el límite máximo por ejecución por el número de ejecuciones esperadas",
+                      "text": "Causa: parece el cálculo 'seguro' más conservador. Cómo detectarlo: la estimación resultante es muchísimo más alta que el gasto real observado, porque la gran mayoría de ejecuciones no alcanzan el límite máximo (ese límite es para el peor caso excepcional, no el caso típico), llevando a sobreestimar drásticamente el presupuesto necesario. Solución: usa el costo promedio real observado (de la distribución de U10.4.3) para planificación general, y reserva el límite máximo específicamente como protección individual contra el peor caso, no como base del cálculo de presupuesto esperado."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no distinguir el costo por tipo de tarea, usando un único promedio general para estimar cualquier tarea nueva",
+                      "text": "Causa: simplificar asumiendo que 'el costo promedio de agentes' es un número único aplicable a todo. Cómo detectarlo: una tarea nueva, mucho más compleja que el promedio histórico de otras tareas, se estima con un costo muy por debajo de lo que realmente terminará costando, porque se usó un promedio general que no refleja su complejidad específica. Solución: estima el costo esperado específicamente por tipo de tarea (la misma desagregación de U10.4.3), no con un promedio genérico que mezcla tareas de complejidad muy distinta entre sí."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Estimación de presupuesto basada en costo real observado, no en el peor caso",
+                      "language": "typescript",
+                      "code": "async function estimarPresupuestoMensual(tipoDeTarea: string, ejecucionesEsperadas: number) {\n  const metricas = await obtenerMetricasHistoricas(tipoDeTarea);\n  const costoPromedio = metricas.costoPromedioPorEjecucion; // no el límite máximo\n\n  return {\n    estimacionRealista: costoPromedio * ejecucionesEsperadas,\n    peorCasoTeorico: LIMITE_MAXIMO_POR_EJECUCION * ejecucionesEsperadas, // solo como referencia de riesgo\n  };\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Promedio observado frente a límite máximo, para qué sirve cada uno",
+                      "items": [
+                        "Costo promedio observado por tipo de tarea: para planificación de presupuesto general y estimaciones realistas",
+                        "Límite máximo por ejecución (U10.3.3): como protección de seguridad contra el peor caso individual",
+                        "Nunca: usar el límite máximo como base del cálculo de presupuesto esperado (sobreestima drásticamente)",
+                        "Siempre desagregado por tipo de tarea, no un promedio general que mezcla complejidades distintas"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás estimar el presupuesto esperado para un volumen de ejecuciones de agente usando el costo promedio real observado por tipo de tarea, distinguiéndolo del límite máximo de seguridad por ejecución individual."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la investigación de bugs con costo promedio de $0.08 frente a límite máximo de $0.50. Identifica por qué usar $0.50 para planificar el presupuesto mensual sobreestimaría drásticamente el gasto real esperado."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Con las métricas que registraste en U10.4.3 (o datos simulados similares), calcula el costo promedio observado por ejecución para tu agente de práctica, y compáralo con el límite máximo configurado en U10.3.3. Estima el presupuesto esperado para 100 ejecuciones usando el promedio, y compáralo con lo que resultaría de usar el límite máximo. Criterio de paso: documentas ambos cálculos y la diferencia real entre ellos, con números concretos."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Para dos tipos de tarea distintos de un agente hipotético (uno simple, uno complejo), estima costos promedio razonables y diseña un presupuesto mensual que los distinga, en vez de usar un único promedio general para ambos. Criterio de paso: tu estimación distingue correctamente el costo esperado de cada tipo, no los mezcla en un número único."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que estime el presupuesto necesario para un sistema de agentes. Revisa si usa el límite máximo por ejecución o el costo promedio real observado como base del cálculo. Si usa el límite máximo, señala que eso sobreestima el presupuesto real necesario y pide que lo corrija."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué el costo de una ejecución de agente es variable, a diferencia de una sola llamada? 2) ¿Qué diferencia hay entre costo promedio y límite máximo, y para qué sirve cada uno? 3) ¿Por qué usar el límite máximo para planificar presupuesto general sobreestima el gasto? 4) ¿Por qué desagregar por tipo de tarea importa aquí también? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Estimar correctamente el costo operativo de sistemas de agentes autónomos es una habilidad de planificación financiera real y creciente en organizaciones que despliegan estos sistemas a escala, donde la diferencia entre una estimación basada en el peor caso y una basada en el comportamiento real observado puede significar una diferencia de varios órdenes de magnitud en el presupuesto proyectado. En una entrevista pueden preguntarte: '¿cómo estimarías el costo mensual de desplegar este agente a mil usuarios?'. Variante: el volumen de uso crece con el tiempo y necesitas proyectar el costo futuro, no solo el actual (pista: eso requiere, además del costo promedio actual por ejecución, una proyección de cuántas ejecuciones se esperan, que es una estimación de negocio distinta a la técnica de costo por ejecución). Pregunta de cierre: ¿cuándo el costo real observado podría estar sesgado de forma que no represente bien el costo futuro esperado (por ejemplo, si el tipo de tareas que llegan está cambiando)?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     },
