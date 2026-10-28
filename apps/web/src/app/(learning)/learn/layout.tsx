@@ -40,6 +40,24 @@ export default function LearningLayout({ children }: LearningLayoutProps) {
             >
               Repaso
             </Link>
+            <Link
+              href="/learn/projects"
+              className="text-slate-400 transition hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+            >
+              Proyectos
+            </Link>
+            <Link
+              href="/learn/interviews"
+              className="text-slate-400 transition hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+            >
+              Entrevistas
+            </Link>
+            <Link
+              href="/learn/portfolio"
+              className="text-slate-400 transition hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+            >
+              Mi portafolio
+            </Link>
           </nav>
           <Link
             href="/"

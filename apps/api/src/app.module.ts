@@ -8,6 +8,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { ContentModule } from "./modules/content/content.module";
 import { ExercisesModule } from "./modules/exercises/exercises.module";
 import { HealthModule } from "./modules/health/health.module";
+import { InterviewsModule } from "./modules/interviews/interviews.module";
 import { ProgressModule } from "./modules/progress/progress.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
 import { ReviewModule } from "./modules/review/review.module";
@@ -27,6 +28,7 @@ import { UsersModule } from "./modules/users/users.module";
     ReviewModule,
     ProjectsModule,
     AiModule,
+    InterviewsModule,
   ],
   providers: [TraceIdMiddleware],
 })
