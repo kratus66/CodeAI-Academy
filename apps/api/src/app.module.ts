@@ -10,12 +10,14 @@ import { HealthModule } from "./modules/health/health.module";
 import { ProgressModule } from "./modules/progress/progress.module";
 import { ReviewModule } from "./modules/review/review.module";
 import { SandboxModule } from "./modules/sandbox/sandbox.module";
+import { UsersModule } from "./modules/users/users.module";
 
 @Module({
   imports: [
     EnvModule,
     HealthModule,
     AuthModule,
+    UsersModule,
     ContentModule,
     ProgressModule,
     SandboxModule,
