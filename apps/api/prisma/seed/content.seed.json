@@ -19800,35 +19800,1577 @@
       "level": 4,
       "estimatedMin": 3600,
       "order": 12,
-      "isPublished": false,
+      "isPublished": true,
       "modules": [
         {
           "code": "M11.1",
           "title": "Fundamentos técnicos de entrevista",
           "order": 1,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U11.1.1",
+              "title": "Estructuras de datos y algoritmos esenciales",
+              "objective": "Reconocer qué estructura de datos y qué complejidad usar para un problema de entrevista típico",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "estructuras-de-datos-y-algoritmos-esenciales",
+                  "title": "Estructuras de datos y algoritmos esenciales",
+                  "estimatedMin": 90,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Una entrevista técnica de algoritmos no evalúa si memorizaste la solución exacta a un problema específico: evalúa si puedes reconocer qué estructura de datos encaja con el patrón del problema (ya practicado en E1-U1.1.1 a U1.5.3) y razonar su complejidad (E1-U1.5.2) en voz alta. La mayoría de problemas de entrevista caen en un número pequeño de patrones reconocibles: dos punteros, ventana deslizante, búsqueda binaria, recorrido de árbol/grafo (BFS/DFS), programación dinámica, y uso de una estructura auxiliar (un Map o Set, E2-U2.1.4) para convertir una búsqueda O(n²) en O(n). Reconocer el patrón correcto, no la memoria de problemas específicos, es la habilidad real que se entrena."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Patrones frecuentes y su señal de reconocimiento",
+                      "items": [
+                        "Dos punteros: un arreglo ordenado, buscar un par o verificar una propiedad desde los extremos hacia el centro.",
+                        "Ventana deslizante: un subarreglo o substring contiguo que cumple una condición, sin recalcular desde cero en cada posición.",
+                        "Map/Set para evitar un bucle anidado: '¿he visto esto antes?' o '¿cuántas veces aparece?' en O(1) por consulta en vez de O(n).",
+                        "BFS/DFS: cualquier problema sobre un árbol, grafo, o una cuadrícula donde hay que explorar conexiones.",
+                        "Programación dinámica: el problema tiene subproblemas que se repiten, y la solución óptima se construye a partir de soluciones óptimas de subproblemas más pequeños."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "'Dado un arreglo de enteros, encuentra si existen dos números que sumen un objetivo dado' con fuerza bruta es O(n²) (probar cada par). La señal de reconocimiento 'he visto esto antes' sugiere un Set: recorrer una vez, y para cada número, verificar si (objetivo - número) ya está en el Set construido hasta ahora; si no, agregarlo. Esto resuelve el problema en O(n), al costo de O(n) de memoria adicional, el mismo trade-off de tiempo contra espacio ya introducido en E1-U1.5.3."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: lanzarse a codificar sin verbalizar primero qué patrón se reconoce y por qué",
+                      "text": "Causa: la presión del momento empuja a 'empezar a escribir algo' de inmediato. Cómo detectarlo: el entrevistador no tiene forma de evaluar tu razonamiento si solo ve código apareciendo sin explicación, y si el enfoque resulta equivocado, se pierde tiempo valioso sin haber comunicado nada del proceso de pensamiento. Solución: antes de escribir una sola línea, di en voz alta qué patrón reconoces y por qué (el mismo valor de verbalizar el razonamiento visto en E8-U8.1.2 para modelos de razonamiento, aplicado ahora a tu propio proceso)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no considerar ni mencionar los casos límite (vistos en E1-U1.1.4 y E7-U7.2.1) hasta que el entrevistador los señala",
+                      "text": "Causa: concentrarse solo en el caso típico del problema. Cómo detectarlo: la solución inicial falla con un arreglo vacío, un solo elemento, o valores duplicados, revelando que esos casos nunca se consideraron durante el diseño de la solución. Solución: menciona explícitamente los casos límite relevantes al razonar el problema, antes de que el entrevistador tenga que señalarlos, demostrando el mismo hábito de E1-U1.1.4 ya practicado desde el inicio de este curso."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Complejidad esperada según el patrón",
+                      "items": [
+                        "Dos punteros / ventana deslizante sobre un arreglo: típicamente O(n)",
+                        "Map/Set para evitar bucle anidado: típicamente O(n) tiempo, O(n) espacio adicional",
+                        "BFS/DFS sobre un grafo con V vértices y E aristas: típicamente O(V + E)",
+                        "Programación dinámica: depende del número de subproblemas distintos, a menudo O(n) o O(n²)"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "De fuerza bruta a un patrón reconocido (Map)",
+                      "language": "typescript",
+                      "code": "// Fuerza bruta: O(n²)\nfunction dosSumaFuerzaBruta(nums: number[], objetivo: number): [number, number] | null {\n  for (let i = 0; i < nums.length; i++) {\n    for (let j = i + 1; j < nums.length; j++) {\n      if (nums[i] + nums[j] === objetivo) return [i, j];\n    }\n  }\n  return null;\n}\n\n// Patrón reconocido (Map): O(n)\nfunction dosSuma(nums: number[], objetivo: number): [number, number] | null {\n  const vistos = new Map<number, number>();\n  for (let i = 0; i < nums.length; i++) {\n    const complemento = objetivo - nums[i];\n    if (vistos.has(complemento)) return [vistos.get(complemento)!, i];\n    vistos.set(nums[i], i);\n  }\n  return null;\n}"
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás reconocer, para un problema de entrevista típico, cuál de los cinco patrones frecuentes aplica, verbalizar ese reconocimiento antes de codificar, y razonar la complejidad resultante en voz alta."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de 'dos suma' resuelto con fuerza bruta frente al patrón de Map. Identifica exactamente qué pregunta ('¿he visto el complemento antes?') dispara el reconocimiento del patrón correcto."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Resuelve tres problemas de entrevista clásicos (busca enunciados de 'two sum', 'longest substring without repeating characters', y 'valid parentheses' si no los conoces), verbalizando en voz alta (o por escrito) qué patrón reconoces en cada uno antes de codificar la solución. Criterio de paso: identificas correctamente el patrón de los tres antes de escribir código, y tu solución final tiene la complejidad esperada para ese patrón."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Elige un problema de entrevista nuevo que no hayas visto antes (de un banco de preguntas público) y resuélvelo cronometrándote a ti mismo, verbalizando el reconocimiento del patrón y los casos límite antes de codificar. Documenta cuánto tiempo tomó cada fase (reconocer el patrón, codificar, verificar casos límite). Criterio de paso: tu solución maneja correctamente al menos dos casos límite que identificaste explícitamente antes de codificar."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que resuelva un problema de entrevista con fuerza bruta. Pídele explícitamente que identifique qué patrón permitiría una solución más eficiente, y verifica tú mismo si su identificación del patrón es correcta implementando y probando ambas versiones."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) Nombra los cinco patrones frecuentes de esta lección. 2) ¿Qué señal sugiere usar un Map/Set en vez de un bucle anidado? 3) ¿Por qué verbalizar el razonamiento antes de codificar es valioso en una entrevista? 4) ¿Qué trade-off ocurre al usar una estructura auxiliar para ganar velocidad? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Reconocer patrones algorítmicos no es solo para entrevistas: es la misma habilidad que, en el trabajo real, permite elegir la estructura de datos correcta para que una funcionalidad de producción no se vuelva lenta a medida que los datos crecen (el mismo criterio de E1-U1.5.2/U1.5.3 aplicado en contexto real). Variante de entrevista: el entrevistador cambia una restricción a mitad de la conversación ('¿y si el arreglo no está ordenado?') (pista: eso es intencional, para ver si puedes adaptar el patrón reconocido a la nueva restricción, no solo repetir la solución memorizada). Pregunta de cierre: ¿cuándo la solución de fuerza bruta sería, en realidad, la respuesta correcta a dar primero en una entrevista?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.1.2",
+              "title": "Ejercicios cronometrados",
+              "objective": "Resolver un ejercicio de código dentro de un tiempo límite, gestionando la presión del reloj",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "ejercicios-cronometrados",
+                  "title": "Ejercicios cronometrados",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "La presión del tiempo en una entrevista no es solo una molestia a tolerar: cambia genuinamente qué estrategia conviene seguir. Sin límite de tiempo, explorar varias soluciones antes de elegir la mejor es razonable; con 30-45 minutos (el tiempo típico de una entrevista de código) hay que distribuir deliberadamente ese tiempo entre entender el problema, diseñar un enfoque, codificarlo, y verificarlo, sin que ninguna fase consuma todo el tiempo disponible. Practicar bajo un cronómetro real (no solo resolver el mismo tipo de problema sin presión de tiempo) entrena una habilidad distinta: notar cuándo una fase está tomando más tiempo del presupuestado y decidir si seguir profundizando o avanzar con una solución 'suficientemente buena' por ahora."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Distribución razonable del tiempo en 30-45 minutos",
+                      "items": [
+                        "Entender el problema y hacer preguntas aclaratorias: 5 minutos. No empezar a codificar sin estar seguro de qué se pide exactamente.",
+                        "Diseñar el enfoque y verbalizarlo (patrón, complejidad esperada): 5-10 minutos, antes de escribir código.",
+                        "Codificar la solución: la mayor parte del tiempo restante, con pausas breves para verificar que cada parte funciona según se escribe.",
+                        "Verificar con casos de prueba, incluyendo límites: los últimos 5 minutos, siempre, sin excepción, aunque la presión invite a saltárselos."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "A los 20 minutos de una entrevista de 40, si todavía no se ha empezado a codificar porque se siguió explorando el enfoque 'óptimo perfecto', la estrategia correcta es detener esa exploración y codificar la mejor solución identificada hasta ahora (aunque no sea la más eficiente posible), dejando tiempo para verificarla, en vez de arriesgarse a no tener ninguna solución funcionando al final del tiempo. Una solución funcional y verificada, aunque no óptima, comunica mucho más que una solución óptima sin terminar ni probar."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: saltarse la verificación final por falta de tiempo, por haber gastado demasiado en las fases anteriores",
+                      "text": "Causa: la presión hace que codificar 'se sienta' como la parte más importante, postergando la verificación hasta el final y a veces sin tiempo ya para hacerla. Cómo detectarlo: la solución entregada tiene un bug evidente en un caso límite simple que una verificación de 2 minutos habría detectado. Solución: reserva deliberadamente los últimos minutos para verificar con casos de prueba (típico, vacío, límite), incluso si eso significa cortar la fase de codificación un poco antes de 'perfeccionarla'."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: practicar siempre sin cronómetro, y sorprenderse de lo distinto que se siente la presión real en una entrevista",
+                      "text": "Causa: practicar problemas de algoritmos sin ninguna restricción de tiempo, porque es menos estresante. Cómo detectarlo: en la entrevista real, la gestión del tiempo se siente completamente nueva y desconocida, aunque el problema algorítmico en sí sea manejable, porque nunca se practicó la habilidad específica de distribuir el tiempo bajo presión real. Solución: practica explícitamente con un cronómetro visible y un límite real, no solo el problema algorítmico en abstracto; la gestión del tiempo es una habilidad separada que necesita su propia práctica."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Señales de que una fase está tomando demasiado tiempo",
+                      "items": [
+                        "Más de 10 minutos sin haber escrito ninguna línea de código real: considera avanzar con el mejor enfoque identificado",
+                        "Más de la mitad del tiempo total en la fase de codificación sin haber terminado: simplifica el enfoque si es necesario",
+                        "Llegar a los últimos 5 minutos sin haber probado ningún caso: detén la codificación y verifica ahora",
+                        "Atascarse más de 5 minutos en el mismo bug sin progreso: verbaliza el problema en voz alta, a veces eso revela la solución"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás resolver un problema de entrevista dentro de un límite de tiempo real, distribuyendo el tiempo deliberadamente entre entender, diseñar, codificar y verificar, sin omitir la verificación final por presión de tiempo."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la decisión a los 20 minutos de una entrevista de 40. Identifica por qué avanzar con una solución 'suficientemente buena' en ese punto es mejor estrategia que seguir buscando la solución óptima."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Resuelve un problema de entrevista con un cronómetro real de 30 minutos, siguiendo la distribución de tiempo de esta lección (anota cuánto tiempo real tomaste en cada fase). Al terminar, compara tu distribución real contra la recomendada y reflexiona sobre qué fase se desvió más. Criterio de paso: completaste las cuatro fases dentro del límite, incluyendo la verificación final, documentando el tiempo real de cada una."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Repite el ejercicio con un problema distinto y un límite más ajustado (20 minutos). Identifica qué estrategia usaste para decidir cuándo avanzar de fase si el tiempo se agotaba antes de terminar una completamente. Criterio de paso: tu reflexión identifica una decisión concreta de gestión de tiempo que tomaste durante el ejercicio, no solo el resultado final."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA consejos para gestionar el tiempo en una entrevista cronometrada. Evalúa si sus consejos son específicos y accionables (como la distribución de esta lección) o genéricos ('mantén la calma'). Pide ejemplos concretos si la respuesta es demasiado general."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cómo distribuirías 40 minutos entre las cuatro fases de esta lección? 2) ¿Por qué nunca se debe omitir la verificación final? 3) ¿Qué deberías hacer si, a mitad del tiempo, no has empezado a codificar? 4) ¿Por qué practicar sin cronómetro no entrena la misma habilidad que practicar con uno? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Gestionar el tiempo bajo presión con una estrategia clara (no solo 'trabajar rápido') es una habilidad que se transfiere directamente a situaciones reales de trabajo con plazos ajustados, donde entregar algo funcional y verificado a tiempo vale más que algo perfecto pero incompleto o sin probar. Variante de entrevista: el entrevistador interrumpe para dar una pista cuando nota que estás atascado (pista: aceptar la pista con gracia y usarla productivamente es mejor señal que rechazarla por orgullo o insistir en el enfoque original sin cambios). Pregunta de cierre: ¿cuándo valdría la pena, a pesar de la presión de tiempo, detenerse y empezar de nuevo con un enfoque completamente distinto?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.1.3",
+              "title": "Diseño de sistemas a nivel junior e intermedio",
+              "objective": "Diseñar, a nivel junior/intermedio, la arquitectura de un sistema pequeño explicando tus decisiones",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "diseno-de-sistemas-a-nivel-junior-e-intermedio",
+                  "title": "Diseño de sistemas a nivel junior e intermedio",
+                  "estimatedMin": 90,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "A nivel junior/intermedio, una pregunta de diseño de sistemas ('diseña un sistema de acortador de URLs', 'diseña un sistema de comentarios') no evalúa si conoces arquitecturas de escala masiva, sino si puedes aplicar con criterio lo ya practicado en este curso: modelar los datos (E6-M6.1), diseñar la API (E5-M5.2), identificar los componentes principales y sus responsabilidades (E7-U7.1.4), y razonar sobre al menos un trade-off relevante (como normalizar frente a desnormalizar, E6-U6.1.5, o paginación por offset frente a cursor, E6-U6.2.4). El entrevistador busca ver cómo piensas y qué preguntas haces, no una solución perfecta de memoria."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Estructura razonable de una respuesta de diseño junior/intermedio",
+                      "items": [
+                        "Clarificar el alcance: ¿cuántos usuarios esperados?, ¿qué operaciones son más frecuentes (lectura o escritura)?, antes de diseñar nada.",
+                        "Modelar los datos principales: qué entidades existen, sus atributos clave, sus relaciones (E6-M6.1).",
+                        "Diseñar la API: qué endpoints, qué verbos, qué forma de respuesta (E5-M5.2).",
+                        "Identificar al menos un trade-off relevante y justificarlo (no hay que cubrir todos los posibles, pero mencionar ninguno es una señal débil)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "'Diseña un acortador de URLs': clarificar primero (¿se esperan millones de URLs o miles?, ¿las URLs expiran?). Modelar: una tabla `urls` con `codigoCorto` (clave única), `urlOriginal`, `creadoEn`. API: `POST /urls` (crea, devuelve el código corto), `GET /:codigo` (redirige a la URL original, código 302). Trade-off a mencionar: generar el código corto de forma secuencial (simple, pero predecible y necesita coordinación de base de datos) frente a un hash aleatorio (menos predecible, pero necesita verificar colisiones) — el mismo tipo de decisión de clave primaria vista en E6-U6.1.2."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: empezar a diseñar componentes complejos (caché distribuido, balanceadores) sin haber modelado los datos básicos primero",
+                      "text": "Causa: la ansiedad de parecer 'a nivel senior' lleva a mencionar términos de arquitectura avanzada prematuramente. Cómo detectarlo: el entrevistador pregunta algo básico sobre el modelo de datos (como qué pasa si dos usuarios crean la misma URL corta) y la respuesta revela que ese nivel fundamental nunca se pensó con cuidado, mientras se habló de escalabilidad masiva sin necesidad real. Solución: en el nivel junior/intermedio, demuestra solidez en los fundamentos (modelo de datos, API, componentes básicos) antes de mencionar términos de escala avanzada; es mejor una base sólida y simple que una fachada de términos avanzados sin sustento."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no hacer ninguna pregunta de clarificación antes de empezar a diseñar",
+                      "text": "Causa: parece que preguntar 'revela' inseguridad, cuando en realidad revela buen criterio. Cómo detectarlo: se diseña un sistema completo para un escenario (por ejemplo, 'pocos usuarios') que resulta ser el opuesto de lo que el entrevistador tenía en mente, desperdiciando el tiempo de la entrevista en un diseño irrelevante para la pregunta real. Solución: haz 2-3 preguntas de clarificación concretas antes de empezar a diseñar, el mismo hábito de aclarar requisitos ambiguos practicado desde E0-U0.1.1 y E3-U3.2.4."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué nivel de detalle se espera en junior/intermedio",
+                      "items": [
+                        "Modelo de datos con entidades y relaciones claras: sí, esperado",
+                        "API con endpoints y forma de respuesta razonable: sí, esperado",
+                        "Al menos un trade-off identificado y justificado: sí, esperado",
+                        "Arquitectura distribuida de escala masiva (sharding, múltiples regiones): no esperado a este nivel, mencionarlo sin sustento resta más de lo que suma"
+                      ]
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un modelo de datos mínimo para el acortador de URLs",
+                      "language": "text",
+                      "code": "Tabla urls:\n  id (interno)\n  codigo_corto (único, el que aparece en la URL pública)\n  url_original\n  creado_en\n  (opcional) expira_en\n\nAPI:\n  POST /urls { urlOriginal } -> { codigoCorto }\n  GET /:codigoCorto -> 302 redirect a la urlOriginal, o 404 si no existe"
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás estructurar una respuesta de diseño de sistemas a nivel junior/intermedio (clarificar, modelar datos, diseñar API, identificar un trade-off), sin saltar a términos de escala avanzada sin fundamento."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del acortador de URLs completo. Identifica las cuatro partes de la estructura (clarificar, modelar, API, trade-off) en ese orden específico."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Diseña, siguiendo la estructura de cuatro partes de esta lección, un sistema de 'lista de tareas compartida entre varios usuarios'. Escribe las preguntas de clarificación que harías, el modelo de datos, la API básica, y al menos un trade-off relevante. Criterio de paso: tu diseño incluye las cuatro partes, y el trade-off identificado es específico de este problema (no genérico)."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña un sistema de 'comentarios anidados' (como los de un foro o blog), prestando especial atención al modelo de datos (una relación recursiva o autorreferencial, que no se ha visto explícitamente en este curso: investiga cómo modelarla). Criterio de paso: tu modelo de datos maneja correctamente la jerarquía de comentarios anidados a cualquier profundidad."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe un sistema a nivel junior/intermedio. Revisa si menciona términos de escala avanzada sin haber cubierto primero el modelo de datos y la API básicos con solidez. Si lo hace, señala que para este nivel se espera priorizar los fundamentos."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las cuatro partes de una respuesta de diseño junior/intermedio? 2) ¿Por qué hacer preguntas de clarificación primero es una señal positiva? 3) ¿Qué riesgo tiene mencionar escalabilidad avanzada sin fundamento en los básicos? 4) Da un ejemplo propio de trade-off relevante para un sistema que diseñes. Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Esta misma estructura (clarificar, modelar, API, trade-offs) es, en esencia, cómo se aborda el diseño de cualquier funcionalidad real nueva en un equipo de trabajo, no solo en una entrevista; es una habilidad que se usa constantemente, no solo se demuestra una vez. Variante de entrevista: el entrevistador pregunta '¿cómo cambiaría tu diseño si de repente tuviéramos 100 veces más tráfico?' (pista: esa pregunta evalúa si entiendes cuáles decisiones de tu diseño original dejarían de funcionar a esa escala, no que rediseñes todo desde cero). Pregunta de cierre: ¿cuándo sería apropiado, incluso a nivel junior, mencionar un componente de escala avanzada?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.1.4",
+              "title": "Depuración en vivo",
+              "objective": "Depurar código ajeno en vivo frente a un entrevistador, verbalizando tu proceso de razonamiento",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "depuracion-en-vivo",
+                  "title": "Depuración en vivo",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Depurar en vivo frente a un entrevistador es, técnicamente, lo mismo que investigar un error visto desde E0-U0.4.2 (leer el mensaje, aislar, reproducir), pero con la diferencia de que el proceso debe ser visible y verbalizado para que el entrevistador pueda evaluarlo, no solo el resultado final de haber encontrado el bug. Esto significa narrar en voz alta las hipótesis que se están considerando, qué se está verificando en cada paso, y por qué, en vez de quedarse en silencio leyendo código hasta encontrar la respuesta correcta sin ninguna explicación del camino."
+                    },
+                    {
+                      "type": "list",
+                      "title": "El proceso verbalizado, no solo el resultado",
+                      "items": [
+                        "Leer el código y el mensaje de error (si existe) en voz alta, identificando qué comportamiento se esperaba frente a qué está ocurriendo realmente.",
+                        "Formular hipótesis explícitas ('podría ser que esta condición nunca se cumpla' o 'sospecho que este valor llega distinto de lo esperado') antes de verificarlas.",
+                        "Verbalizar cómo verificarías cada hipótesis (agregar un log, trazar el valor paso a paso mentalmente, revisar un caso específico), no solo llegar a la conclusión en silencio.",
+                        "Al encontrar la causa, explicar por qué esa era la causa real y proponer la corrección, cerrando el ciclo con la misma estructura de E0-U0.4.2."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Dado un código con un bucle que no termina en la iteración esperada: 'Veo que el bucle usa `<=` en la condición en vez de `<`, así que sospecho que está iterando una vez de más. Voy a trazar mentalmente con un arreglo pequeño de 3 elementos: con índices 0, 1, 2, la condición `i <= longitud` permitiría i=3, que está fuera de rango. Esa sería la causa del error de índice fuera de límites que estamos viendo.' Esta narración, aunque el bug sea relativamente simple, demuestra un proceso de razonamiento completo y verificable, mucho más valioso para el entrevistador que simplemente señalar 'ahí está el error' sin explicación."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: leer el código en silencio durante varios minutos sin decir nada",
+                      "text": "Causa: la concentración necesaria para encontrar un bug se siente incompatible con narrar en voz alta al mismo tiempo. Cómo detectarlo: el entrevistador no tiene ninguna señal de si el proceso de razonamiento va por buen camino o está completamente perdido, y no puede dar una pista útil si se necesitara, porque no sabe en qué parte del código te estás enfocando. Solución: practica explícitamente narrar mientras lees ('estoy revisando esta función primero porque...'), incluso si se siente artificial al principio; es una habilidad de comunicación separada de la habilidad de depuración en sí misma, y se entrena por separado."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: afirmar una causa sin haberla verificado realmente, solo porque 'suena plausible'",
+                      "text": "Causa: la presión de dar una respuesta rápida lleva a declarar una conclusión antes de confirmarla (el mismo riesgo de confianza sin verificación visto en E8-U8.1.3/U8.4.3, pero ahora en tu propio razonamiento, no en el de un modelo de IA). Cómo detectarlo: se señala una línea como 'el problema' con seguridad, pero al trazar el código con cuidado (o al corregirlo y probarlo), esa no era la causa real del comportamiento observado. Solución: verifica tu hipótesis (trazando con un ejemplo concreto, como en el ejemplo resuelto) antes de declararla como la causa definitiva, aplicando a tu propio proceso la misma disciplina de verificación independiente de E8-U8.4.3."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué verbalizar en cada fase",
+                      "items": [
+                        "Al leer: qué comportamiento esperas frente a qué observas realmente",
+                        "Al formular una hipótesis: cuál es, específicamente, y por qué la consideras plausible",
+                        "Al verificar: cómo la estás comprobando (trazando con un ejemplo, revisando un valor específico)",
+                        "Al concluir: por qué esa es la causa real, verificada, no solo la más plausible a primera vista"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás depurar un fragmento de código ajeno verbalizando cada fase de tu proceso (lectura, hipótesis, verificación, conclusión), en vez de trabajar en silencio hasta anunciar únicamente el resultado final."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del bucle con la condición `<=` incorrecta. Identifica las cuatro fases de la narración (lectura, hipótesis, verificación con un ejemplo concreto, conclusión) en ese fragmento específico."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Te damos un fragmento de código con un bug sutil (puede ser similar a uno de los ejercicios de depuración de lecciones anteriores de este curso). Grábate (audio o escribe en tiempo real) narrando tu proceso completo de depuración, verbalizando las cuatro fases de esta lección. Revisa tu propia narración después: ¿fue clara?, ¿verificaste la hipótesis antes de concluir? Criterio de paso: tu narración incluye las cuatro fases identificables, y la conclusión final está respaldada por una verificación explícita, no solo una suposición."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Pide a otra persona (o practica solo, imaginando la audiencia) que te presente un bug que no conozcas de antemano en un código real, y depúralo en vivo narrando el proceso completo dentro de un límite de 10 minutos. Pide retroalimentación específica sobre si tu narración fue útil y seguible, no solo si encontraste el bug. Criterio de paso: recibes (o te autoevalúas con) al menos una observación específica sobre la claridad de tu narración, más allá de si llegaste a la respuesta correcta."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que depure un fragmento de código con un bug, pidiéndole explícitamente que narre su proceso paso a paso (hipótesis, verificación, conclusión), no solo que dé la respuesta final. Evalúa si su narración verifica cada hipótesis con un ejemplo concreto antes de concluir, o si salta directamente a una afirmación sin ese paso intermedio."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué narrar el proceso es tan importante como encontrar el bug en una entrevista? 2) ¿Cuáles son las cuatro fases a verbalizar? 3) ¿Qué riesgo tiene afirmar una causa sin verificarla? 4) ¿Cómo se relaciona esto con investigar un error (E0-U0.4.2)? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Narrar el proceso de depuración en voz alta es exactamente la habilidad que se usa en pair programming o en una sesión de depuración colaborativa real con un compañero de equipo, donde el valor de hacerlo juntos depende completamente de que el proceso sea visible y compartido, no silencioso. Variante de entrevista: el entrevistador interviene con una pregunta a mitad de tu narración ('¿por qué crees que es eso y no otra cosa?') (pista: es una invitación a profundizar tu verificación, no una señal de que estés equivocado; responde con más evidencia de tu hipótesis, no retrocediendo nerviosamente). Pregunta de cierre: ¿cuándo sería apropiado decir honestamente 'no estoy seguro, necesitaría investigar más' en vez de forzar una conclusión?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M11.2",
           "title": "Preguntas por tecnología",
           "order": 2,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U11.2.1",
+              "title": "JavaScript y TypeScript",
+              "objective": "Responder con precisión las preguntas de entrevista más frecuentes sobre JavaScript y TypeScript",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "preguntas-de-entrevista-javascript-y-typescript",
+                  "title": "Preguntas de entrevista: JavaScript y TypeScript",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Las preguntas de entrevista sobre JavaScript/TypeScript casi siempre apuntan a los mismos conceptos que ya se cubrieron en profundidad en E2 (closures, this, coerción, asincronía) y E2-M2.4 (el sistema de tipos de TypeScript), pero formuladas como pregunta directa de entrevista en vez de ejercicio práctico. Lo que distingue una buena respuesta de entrevista no es repetir una definición memorizada, sino poder ilustrarla con un ejemplo breve y explicar por qué importa en código real, exactamente la misma habilidad de 'explicación y ejemplo resuelto' practicada en cada lección de este curso desde el inicio."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Preguntas frecuentes y dónde revisarlas en este curso",
+                      "items": [
+                        "'¿Qué es un closure?' (E2-U2.1.2): una función que recuerda el alcance en que se creó, incluso después de que ese alcance 'terminó'.",
+                        "'¿Cómo funciona this en JavaScript?' (E2-U2.1.2): depende de cómo se llama la función, no de dónde se define (salvo en funciones flecha).",
+                        "'¿Diferencia entre == y ===?' (E1-U1.2.3): == convierte tipos antes de comparar (coerción), === no.",
+                        "'¿Qué es el event loop?' (E2-U2.3.4): el mecanismo que permite que JavaScript, de un solo hilo, maneje operaciones asíncronas sin bloquearse.",
+                        "'¿Diferencia entre interface y type en TypeScript?' (E2-U2.4.1): interface se puede extender/fusionar declarándola de nuevo; type nombra cualquier tipo, incluidas uniones."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pregunta: '¿qué imprime este código?' con un bucle `for (var i = 0; i < 3; i++) { setTimeout(() => console.log(i), 0); }`. Respuesta completa (no solo 'imprime 3, 3, 3'): 'var tiene alcance de función, no de bloque, así que las tres funciones del setTimeout comparten la misma variable i, que para cuando se ejecutan (después del bucle completo) ya vale 3. Si se usara let en vez de var, cada iteración del bucle crea un nuevo alcance de bloque, así que cada función capturaría su propio valor de i, imprimiendo 0, 1, 2.' Esta respuesta conecta el resultado observable con el concepto real (alcance de var frente a let, closures), no solo memoriza la salida."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: dar una definición memorizada sin un ejemplo que la ilustre",
+                      "text": "Causa: la definición es más fácil de memorizar que de ejemplificar con fluidez bajo presión. Cómo detectarlo: el entrevistador pide '¿puedes mostrarme un ejemplo?' después de la definición, revelando que la comprensión era superficial o solo memorizada. Solución: practica cada concepto con al menos un ejemplo de código breve que puedas escribir de memoria, no solo la definición en palabras (el mismo patrón de 'explicación y ejemplo resuelto' de cada lección de este curso)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: no reconocer cuándo una pregunta en realidad está probando un concepto distinto al que parece a primera vista",
+                      "text": "Causa: responder la pregunta literal sin notar el concepto más profundo que realmente se está evaluando. Cómo detectarlo: '¿qué imprime este código con var en un bucle?' parece preguntar sobre el valor final, pero en realidad evalúa si entiendes la diferencia de alcance entre var y let/const, y una respuesta que solo dice 'imprime 3, 3, 3' sin esa explicación pierde la oportunidad de demostrar la comprensión real. Solución: cuando una pregunta de 'qué imprime esto' parece simple, pregúntate qué concepto más profundo podría estar evaluando (alcance, asincronía, coerción, this) y explica ese concepto, no solo el resultado literal."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Preguntas trampa frecuentes y su concepto real",
+                      "items": [
+                        "'¿Qué imprime este bucle con setTimeout?': evalúa alcance de var/let, no solo el valor final",
+                        "'¿Qué devuelve typeof null?': 'object' (una peculiaridad histórica conocida de JavaScript, no un error de quien responde)",
+                        "'¿NaN === NaN?': false (NaN no es igual a sí mismo; se compara con Number.isNaN())",
+                        "'¿Qué es hoisting?': las declaraciones de var y de funciones se 'elevan' al inicio del alcance, pero su inicialización no"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás responder las preguntas frecuentes de entrevista sobre JavaScript/TypeScript con una definición breve y un ejemplo de código que la ilustre, reconociendo cuándo una pregunta 'simple' evalúa un concepto más profundo."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del bucle con var y setTimeout. Identifica por qué la respuesta completa (con el contraste var/let) demuestra más comprensión que solo decir el resultado final."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Para cada una de las cinco preguntas frecuentes de esta lección, escribe tu propia respuesta completa (definición + ejemplo de código), sin mirar las lecciones originales de E1/E2 primero, y después compara tu respuesta con el contenido real de esas unidades. Criterio de paso: identificas correctamente qué partes de tu respuesta estaban completas y cuáles necesitarías repasar con más profundidad."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Busca (en un banco de preguntas de entrevista público) tres preguntas adicionales de JavaScript/TypeScript que no estén en la lista de esta lección, respóndelas con el mismo formato (definición + ejemplo), y conecta cada una con la unidad específica de E1/E2 de este curso donde se cubrió el concepto subyacente. Criterio de paso: identificas correctamente la unidad de origen para las tres preguntas nuevas."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te haga una pregunta de entrevista de JavaScript al azar y evalúe tu respuesta. Verifica su evaluación: ¿identificó correctamente si tu respuesta tenía un ejemplo ilustrativo, o solo evaluó la definición? Si su evaluación es superficial, pídele explícitamente que verifique si mencionaste un ejemplo de código."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde las cinco preguntas frecuentes listadas (closure, this, ==/===, event loop, interface/type), cada una con definición y ejemplo. Criterio de paso: al menos cuatro de las cinco incluyen tanto la definición correcta como un ejemplo ilustrativo coherente."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Estas preguntas no son solo un ritual de entrevista: revelan con bastante precisión si alguien entiende errores reales y comunes que ocurren en código de producción (bugs de closures en bucles, comparaciones con coerción inesperada, bloqueos del event loop), por eso siguen siendo tan frecuentes en procesos de selección reales. Variante de entrevista: te piden escribir código que demuestre el concepto, no solo explicarlo verbalmente (pista: practica escribir, no solo recitar de memoria, el ejemplo de cada concepto). Pregunta de cierre: ¿cuándo una pregunta de JavaScript 'clásica' (como estas) ya no sería relevante para evaluar a alguien en 2026?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.2.2",
+              "title": "React y frontend",
+              "objective": "Responder con precisión las preguntas de entrevista más frecuentes sobre React y frontend",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "preguntas-de-entrevista-react-y-frontend",
+                  "title": "Preguntas de entrevista: React y frontend",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Las preguntas de entrevista sobre React y frontend tienden a concentrarse en por qué existen ciertas reglas o patrones (los hooks tienen reglas específicas, el estado no se muta directamente), no solo en qué hacen: el entrevistador quiere ver que entiendes el modelo mental detrás de React (ya practicado en E4-M4.3), no solo la sintaxis. Las preguntas sobre accesibilidad y rendimiento (E4-U4.1.5 y E4-U4.4.1) también son frecuentes, especialmente en entrevistas más orientadas a frontend senior, porque revelan si la experiencia va más allá de 'hacer que funcione visualmente'."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Preguntas frecuentes y dónde revisarlas en este curso",
+                      "items": [
+                        "'¿Por qué no se debe mutar el estado directamente?' (E4-U4.3.2): React compara referencias para decidir si re-renderizar; mutar no cambia la referencia, así que React no detecta el cambio.",
+                        "'¿Cuáles son las reglas de los hooks y por qué existen?' (E4-U4.3.3): siempre en el nivel superior, nunca condicionales; React depende del orden de llamada para asociar cada hook con su estado correcto entre renders.",
+                        "'¿Qué es el prop drilling y cómo se evita?' (E4-U4.3.6): pasar props por muchos niveles que no los usan; se evita con Context cuando el dato se necesita en muchos lugares distantes.",
+                        "'¿Cuándo usarías useMemo/useCallback?' (E4-U4.4.1): solo tras medir un problema real de rendimiento, no preventivamente en todo.",
+                        "'¿Cómo harías accesible este componente?' (E4-U4.1.5): navegación por teclado, foco visible, contraste, ARIA solo cuando no hay etiqueta HTML nativa equivalente."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pregunta: '¿por qué este código no actualiza la interfaz?' mostrando `lista.push(nuevoElemento); setLista(lista);`. Respuesta completa: 'push muta el arreglo original en el mismo lugar de memoria; React compara la referencia anterior de lista con la nueva pasada a setLista, y como es literalmente el mismo arreglo (misma referencia), React no detecta ningún cambio y no re-renderiza. La corrección es crear un arreglo nuevo: `setLista([...lista, nuevoElemento])`, que sí cambia la referencia.' Esta respuesta conecta el síntoma (no se actualiza visualmente) con el mecanismo real de React (comparación de referencias, el mismo concepto de inmutabilidad de E2-U2.2.2)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: responder 'porque React lo requiere' sin explicar el mecanismo real de comparación de referencias",
+                      "text": "Causa: la regla se memoriza ('no mutar el estado') sin entender por qué existe esa regla específicamente. Cómo detectarlo: el entrevistador pregunta '¿pero por qué exactamente?' y la respuesta no tiene un mecanismo técnico detrás, solo la repetición de la regla. Solución: conecta cada regla de React con el mecanismo que la justifica (comparación de referencias para el estado, orden de llamada para los hooks), no solo la regla en sí misma."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: mencionar useMemo/useCallback como solución por defecto sin mencionar que requieren medición previa",
+                      "text": "Causa: estas herramientas se asocian popularmente con 'optimización de React' sin matizar cuándo realmente ayudan. Cómo detectarlo: la respuesta sugiere usarlas 'siempre que haya una función o cálculo', sin mencionar el error común de E4-U4.4.1 (aplicarlas preventivamente sin medir, lo que puede no ayudar o incluso añadir costo). Solución: menciona explícitamente que estas herramientas se aplican después de medir un problema real con el profiler, no preventivamente en cualquier componente."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Preguntas trampa frecuentes y su concepto real",
+                      "items": [
+                        "'¿Por qué mi useEffect se ejecuta en bucle infinito?': casi siempre, una dependencia del array que cambia de referencia en cada render",
+                        "'¿Cuál es la diferencia entre estado y props?': props viene del padre y es de solo lectura; estado es propio del componente y puede cambiar",
+                        "'¿Qué es la key en una lista de React, y por qué importa?': identifica cada elemento entre renders; usar el índice del arreglo como key es problemático si la lista se reordena",
+                        "'¿Qué es un error boundary y qué no atrapa?': atrapa errores de renderizado de sus hijos; no atrapa errores en manejadores de eventos (E4-U4.4.3)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás responder las preguntas frecuentes de entrevista sobre React explicando el mecanismo real detrás de cada regla (comparación de referencias, orden de hooks), no solo repitiendo la regla de memoria."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del push que no actualiza la interfaz. Identifica por qué conectar el síntoma con la comparación de referencias de React es más convincente que decir simplemente 'hay que usar setLista correctamente'."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Para cada una de las cinco preguntas frecuentes de esta lección, escribe tu propia respuesta completa explicando el mecanismo real (no solo la regla), sin mirar las lecciones originales de E4 primero. Compara después con el contenido de esas unidades. Criterio de paso: al menos cuatro de tus cinco respuestas explican el mecanismo técnico, no solo repiten la regla."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Busca tres preguntas adicionales de entrevista de React/frontend que no estén en esta lección, respóndelas con el mismo formato (regla + mecanismo real), y conéctalas con la unidad de E4 donde se cubrió el concepto. Criterio de paso: identificas correctamente la unidad de origen para las tres preguntas nuevas."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te explique por qué useEffect entra en un bucle infinito en un ejemplo que le proporciones. Verifica si identifica correctamente la dependencia problemática específica, o si da una explicación genérica sin señalar la causa real en tu ejemplo concreto."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde las cinco preguntas frecuentes (mutación de estado, reglas de hooks, prop drilling, useMemo/useCallback, accesibilidad), cada una con el mecanismo real detrás. Criterio de paso: al menos cuatro de cinco incluyen el mecanismo técnico correcto, no solo la regla superficial."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Entender el mecanismo detrás de las reglas de React (no solo memorizarlas) es lo que permite depurar bugs reales de rendimiento o de estado desincronizado en producción, situaciones mucho más ambiguas que un ejercicio de entrevista con un síntoma claramente señalado. Variante de entrevista: te muestran un componente real con varios problemas simultáneos de rendimiento y accesibilidad combinados (pista: prioriza explicar los problemas en orden de impacto, no intentes mencionar todo a la vez sin estructura). Pregunta de cierre: ¿cuándo una 'mejor práctica' de React (como siempre usar useCallback) podría ser contraproducente mencionarla sin matizar?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.2.3",
+              "title": "Node y APIs",
+              "objective": "Responder con precisión las preguntas de entrevista más frecuentes sobre Node.js y diseño de APIs",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "preguntas-de-entrevista-node-y-apis",
+                  "title": "Preguntas de entrevista: Node y APIs",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Las preguntas de entrevista sobre Node.js y diseño de APIs combinan dos áreas ya cubiertas en profundidad: el modelo de ejecución de Node (E5-U5.1.1) y las convenciones de diseño REST (E5-M5.2). Una señal que distingue a candidatos con experiencia real es que, al responder sobre códigos de estado o diseño de rutas, dan ejemplos concretos y matizados (no solo la lista memorizada de códigos), y al hablar del event loop, pueden explicar por qué un cálculo síncrono pesado bloquea el servidor con un ejemplo real, no solo repetir que Node 'es de un solo hilo'."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Preguntas frecuentes y dónde revisarlas en este curso",
+                      "items": [
+                        "'¿Por qué Node es de un solo hilo pero no bloqueante?' (E5-U5.1.1): operaciones de I/O no bloquean el hilo mientras esperan; cálculo síncrono pesado sí lo bloquea.",
+                        "'¿Diferencia entre 401 y 403?' (E5-U5.2.2): 401 falta autenticación; 403 autenticado pero sin permiso para esa acción específica.",
+                        "'¿Qué hace idempotente a una operación, y cuáles métodos HTTP lo son?' (E5-U5.2.5): GET/PUT/DELETE sí por diseño; POST normalmente no.",
+                        "'¿Cómo manejarías la autenticación en una API?' (E5-U5.3.1): access token de vida corta + refresh token de vida más larga, ambos en cookies httpOnly.",
+                        "'¿Qué es un middleware/guard, y para qué se usa?' (E5-U5.1.5, E5-U5.3.4): intercepta la petición antes del controlador, para autenticación, autorización, o manejo centralizado de errores."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pregunta: 'diseña los endpoints para una API de comentarios de un blog'. Respuesta completa (no solo nombrar rutas): 'GET /posts/:id/comentarios para listar (anidado porque el comentario no existe sin su post), POST /posts/:id/comentarios para crear uno nuevo. Para editar o eliminar un comentario específico, uso una ruta plana (PATCH /comentarios/:id, DELETE /comentarios/:id) en vez de anidarla de nuevo bajo el post, porque una vez que tengo el id del comentario no necesito el contexto del post para esas operaciones (E5-U5.2.1).' Esta respuesta no solo lista rutas: justifica la decisión de anidar o no cada una."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: dar la lista completa de códigos de estado HTTP sin contexto de cuándo usar cada uno",
+                      "text": "Causa: la lista de códigos es fácil de memorizar completa, pero sin ejemplos pierde valor demostrativo. Cómo detectarlo: el entrevistador pide '¿en qué situación usarías 409 en vez de 404?' y la respuesta no tiene un ejemplo concreto que distinga ambos casos (E5-U5.2.2). Solución: para cada código mencionado, ten preparado un ejemplo concreto de cuándo se usaría exactamente ese código y no otro similar."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: explicar JWT sin mencionar el problema de revocación ni el patrón de access/refresh token",
+                      "text": "Causa: JWT se asocia popularmente con 'autenticación sin estado, más simple', sin profundizar en sus limitaciones reales. Cómo detectarlo: el entrevistador pregunta '¿cómo harías logout con JWT?' y la respuesta no tiene una explicación clara, porque nunca se consideró que un JWT no se puede invalidar antes de su expiración sin infraestructura adicional (E5-U5.3.1). Solución: menciona el patrón access token (corto) + refresh token (revocable) como la solución estándar a esa limitación específica."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Preguntas trampa frecuentes y su concepto real",
+                      "items": [
+                        "'¿Qué pasa si no usas await en una llamada async?': la promesa se crea pero no se espera, el código sigue sin ese resultado",
+                        "'¿Por qué usarías PATCH en vez de PUT?': PATCH actualiza parcialmente; PUT reemplaza el recurso completo",
+                        "'¿Cómo evitarías inyección SQL en Node?': consultas parametrizadas / ORM, nunca concatenar texto (E6-U6.4.3)",
+                        "'¿Qué es CORS y por qué a veces falla una petición entre frontend y backend?': el navegador bloquea la lectura de la respuesta si el servidor no autoriza el origen explícitamente (E4-U4.2.4)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás responder las preguntas frecuentes de entrevista sobre Node/APIs con ejemplos concretos que distingan casos similares (401/403, PUT/PATCH, 404/409), no solo definiciones genéricas."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del diseño de endpoints de comentarios. Identifica por qué la justificación de anidar o no cada ruta demuestra más comprensión que simplemente listar las rutas correctas."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Para cada una de las cinco preguntas frecuentes de esta lección, escribe tu respuesta completa con un ejemplo concreto que distinga el concepto de uno similar (401 de 403, idempotente de no idempotente). Compara después con las unidades de E5 correspondientes. Criterio de paso: al menos cuatro de tus cinco respuestas incluyen un ejemplo que distingue correctamente conceptos similares."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña la respuesta completa a 'diseña los endpoints para un sistema de pedidos de una tienda', incluyendo al menos una decisión de anidamiento justificada y los códigos de estado para al menos tres escenarios de error distintos. Criterio de paso: tu diseño distingue correctamente entre al menos dos códigos de error similares (como 403 y 409) con el escenario específico de cada uno."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te haga una pregunta de entrevista sobre Node/APIs y evalúe tu respuesta. Verifica si su evaluación nota la ausencia de ejemplos concretos si tu respuesta fue solo teórica, o si acepta definiciones vacías sin señalarlo."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde las cinco preguntas frecuentes (Node sin bloqueo, 401/403, idempotencia, autenticación con JWT, middleware/guard). Criterio de paso: al menos cuatro de cinco incluyen un ejemplo concreto además de la definición."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "El diseño de APIs y el manejo correcto de autenticación son, consistentemente, de las áreas más evaluadas en entrevistas de backend reales, porque errores aquí (como un JWT mal gestionado o un código de estado incorrecto) tienen consecuencias de seguridad y de experiencia de cliente reales y documentadas. Variante de entrevista: te presentan una API mal diseñada y te piden identificar los problemas (pista: revisa sistemáticamente verbos HTTP, códigos de estado, y nombres de rutas contra los criterios de E5-M5.2, no solo busques 'lo que se ve raro'). Pregunta de cierre: ¿cuándo violarías deliberadamente una convención REST estándar por una razón justificada?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.2.4",
+              "title": "SQL y modelado",
+              "objective": "Responder con precisión las preguntas de entrevista más frecuentes sobre SQL y modelado de datos",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "preguntas-de-entrevista-sql-y-modelado",
+                  "title": "Preguntas de entrevista: SQL y modelado",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Las preguntas de entrevista sobre SQL frecuentemente combinan dos formatos: preguntas conceptuales (explicar JOIN, normalización, transacciones, ya cubiertas en E6) y ejercicios prácticos de escribir una consulta real sobre un esquema dado. Para el formato práctico, la habilidad clave es la misma de E11.1.1 pero aplicada a SQL: reconocer qué patrón de consulta aplica (JOIN simple, agregación con GROUP BY, subconsulta) antes de escribir, y verbalizar ese reconocimiento, en vez de escribir SQL a prueba y error hasta que 'parezca funcionar'."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Preguntas frecuentes y dónde revisarlas en este curso",
+                      "items": [
+                        "'¿Diferencia entre INNER JOIN y LEFT JOIN?' (E6-U6.2.2): INNER solo coincidencias; LEFT todas las filas de la izquierda, aunque no haya coincidencia.",
+                        "'¿Qué son las propiedades ACID?' (E6-U6.2.5): Atomicidad, Consistencia, Aislamiento, Durabilidad.",
+                        "'¿Cómo optimizarías esta consulta lenta?' (E6-U6.2.3): medir con EXPLAIN ANALYZE antes de asumir que un índice es la solución.",
+                        "'¿Qué es la normalización y cuándo desnormalizarías?' (E6-U6.1.5): evitar redundancia por defecto; desnormalizar solo con evidencia de que un JOIN es el cuello de botella real.",
+                        "'¿Cómo prevendrías una condición de carrera en una operación de stock?' (E6-U6.2.6): una instrucción UPDATE atómica que verifica y actualiza en el mismo paso, no leer-decidir-escribir por separado."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Ejercicio: 'escribe una consulta que muestre cada cliente con el total de sus pedidos, incluyendo clientes sin ningún pedido'. Reconocimiento del patrón (verbalizado primero): 'necesito incluir clientes sin pedidos, así que no puedo usar INNER JOIN porque los excluiría; necesito LEFT JOIN desde clientes hacia pedidos, y como pedidos puede no tener filas para un cliente, el SUM dará null, así que envuelvo con COALESCE para mostrar 0 en su lugar'. Solo después de verbalizar esto se escribe el SQL completo, demostrando el mismo hábito de E11.1.1 (reconocer el patrón antes de codificar) aplicado a SQL."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: escribir la consulta directamente sin verbalizar qué patrón de JOIN o agregación se está reconociendo",
+                      "text": "Causa: la presión de 'mostrar que sabes SQL' lleva a escribir código de inmediato. Cómo detectarlo: si la consulta inicial tiene un error (como usar INNER JOIN cuando se necesitaba LEFT JOIN), el entrevistador no tiene ninguna pista de dónde estaba el razonamiento equivocado, porque nunca se verbalizó. Solución: verbaliza qué tipo de JOIN o agregación reconoces y por qué, antes de escribir la consulta completa, igual que con problemas algorítmicos (E11.1.1)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: responder sobre ACID solo con las cuatro letras, sin un ejemplo de qué pasaría sin cada propiedad",
+                      "text": "Causa: las cuatro letras son fáciles de memorizar como lista, pero sin ejemplo la respuesta suena hueca. Cómo detectarlo: el entrevistador pregunta '¿puedes dar un ejemplo de por qué la atomicidad importa?' y la respuesta no tiene un caso concreto preparado (como la transferencia bancaria de E6-U6.2.5). Solución: ten al menos un ejemplo concreto preparado para cada letra de ACID, no solo la definición abstracta."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Preguntas trampa frecuentes y su concepto real",
+                      "items": [
+                        "'¿Por qué esta consulta con GROUP BY y un WHERE sobre un agregado falla?': WHERE se evalúa antes de agrupar; se necesita HAVING para filtrar después de agregar",
+                        "'¿Qué pasa si olvidas el índice en una clave foránea muy consultada?': cada JOIN sobre esa columna hace un Seq Scan, degradando el rendimiento con el crecimiento de la tabla",
+                        "'¿Diferencia entre DELETE y TRUNCATE?': DELETE puede filtrar con WHERE y es transaccional fila por fila; TRUNCATE borra todo de una vez, más rápido pero sin filtro",
+                        "'¿Cómo paginarías una tabla con millones de filas de forma eficiente?': cursor en vez de OFFSET alto (E6-U6.2.4)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás responder las preguntas conceptuales frecuentes de SQL con un ejemplo concreto para cada una, y resolver un ejercicio práctico de consulta verbalizando el patrón de JOIN/agregación reconocido antes de escribir el SQL."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la consulta de clientes con sus pedidos, incluyendo los sin pedidos. Identifica por qué verbalizar la necesidad de LEFT JOIN (y no INNER) antes de escribir el SQL evita un error común."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Para cada una de las cinco preguntas conceptuales de esta lección, escribe tu respuesta completa con un ejemplo concreto. Después, resuelve este ejercicio práctico verbalizando el patrón primero: 'muestra los productos que nunca se han vendido'. Criterio de paso: identificas correctamente que necesitas LEFT JOIN con una condición de 'sin coincidencia' (IS NULL en el lado derecho), verbalizado antes de escribir el SQL final."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña y resuelve tu propio ejercicio de consulta (sobre un esquema que inventes de al menos 3 tablas relacionadas) que requiera combinar JOIN con GROUP BY y HAVING, verbalizando el reconocimiento del patrón completo antes de escribir el SQL. Criterio de paso: tu verbalización identifica correctamente las tres piezas (JOIN, GROUP BY, HAVING) y por qué cada una es necesaria para tu consulta específica."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que escriba una consulta SQL para un escenario que le describas. Verifica si usó el tipo correcto de JOIN (revisando explícitamente si el escenario requería incluir filas sin coincidencia) antes de aceptar la consulta como correcta."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde las cinco preguntas conceptuales frecuentes (JOIN, ACID, optimización, normalización, condiciones de carrera), cada una con un ejemplo concreto. Criterio de paso: al menos cuatro de cinco incluyen un ejemplo específico, no solo la definición."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Las preguntas de SQL en entrevistas reales a menudo incluyen un ejercicio práctico sobre un esquema desconocido dado en el momento, evaluando exactamente la habilidad de reconocer el patrón correcto bajo presión de tiempo (E11.1.2), no solo conocimiento teórico memorizado. Variante de entrevista: te dan un esquema con una relación muchos a muchos (E6-U6.1.3) y te piden una consulta que la atraviese correctamente (pista: identifica primero la tabla intermedia antes de escribir cualquier JOIN). Pregunta de cierre: ¿cuándo preferirías resolver algo con una subconsulta en vez de un JOIN, en una entrevista?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.2.5",
+              "title": "IA aplicada, RAG y agentes",
+              "objective": "Responder con precisión las preguntas de entrevista más frecuentes sobre IA aplicada, RAG y agentes",
+              "order": 5,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "preguntas-de-entrevista-ia-aplicada-rag-y-agentes",
+                  "title": "Preguntas de entrevista: IA aplicada, RAG y agentes",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Esta es un área relativamente nueva en entrevistas técnicas (2024 en adelante), lo que significa que muchos entrevistadores evalúan si realmente entiendes los conceptos de E8-E10, no si memorizaste terminología de moda. Las preguntas frecuentes se concentran en tres focos: por qué RAG existe y qué resuelve (E9-M9.3), cómo se controla la fiabilidad de salidas de un modelo (E9-M9.2), y qué distingue genuinamente a un 'agente' de automatización más simple (E10-M10.1). Una respuesta sólida en esta área, todavía poco estandarizada en la industria, destaca mucho más que en áreas donde todos dan la misma respuesta memorizada."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Preguntas frecuentes y dónde revisarlas en este curso",
+                      "items": [
+                        "'¿Qué es RAG y por qué no usar solo el modelo directamente?' (E9-U9.3.2): conecta al modelo con información privada/actualizada que no estaba en su entrenamiento, reduciendo alucinación sobre esa información específica.",
+                        "'¿Cómo asegurarías que la salida de un modelo sea siempre un JSON válido?' (E9-U9.2.2): validación con esquema (Zod u otro) y reintento ante fallo, nunca confiar en que 'pedir JSON' garantiza JSON válido.",
+                        "'¿Qué distingue a un agente de un simple chatbot o pipeline?' (E10-U10.1.1): quién decide la secuencia de pasos, una persona de antemano o el modelo dinámicamente.",
+                        "'¿Cómo prevendrías inyección de prompts?' (E9-U9.4.3): delimitar contenido no confiable explícitamente, reforzado con filtros de código, no solo confiar en el prompt.",
+                        "'¿Cómo controlarías el costo de un sistema con IA a escala?' (E9-U9.4.4): presupuesto con niveles de degradación progresiva, caché de respuestas repetidas, elegir el modelo más económico suficiente para cada caso."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Pregunta: '¿construirías esto como un agente?' sobre un sistema que siempre ejecuta los mismos tres pasos fijos para cualquier entrada. Respuesta completa (no solo 'sí, con IA'): 'No necesariamente. Según la distinción entre chatbot/flujo/agente, lo que importa es si la secuencia de pasos varía según el resultado de cada paso, o si siempre es la misma. Si siempre son los mismos tres pasos fijos, un flujo automatizado determinista es más simple, más rápido, más barato y más fácil de probar que un agente; reservaría el término y la arquitectura de agente para cuando la secuencia genuinamente necesite decidirse dinámicamente.' Esta respuesta demuestra que entiendes la distinción real (E10-U10.1.1/U10.1.2), no solo que 'sabes usar la palabra agente'."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: llamar 'agente' a cualquier sistema que use IA, sin aplicar el criterio real de decisión dinámica de pasos",
+                      "text": "Causa: el término se usa de forma imprecisa en mucho contenido divulgativo, y es fácil repetir ese uso impreciso en una entrevista. Cómo detectarlo: el entrevistador pregunta '¿por qué es un agente y no simplemente un flujo con IA?' y la respuesta no tiene un criterio claro, solo la intuición de que 'usa IA, entonces es un agente'. Solución: aplica siempre el criterio de E10-U10.1.1 (quién decide la secuencia de pasos) antes de usar el término, y está preparado para justificarlo si se te pregunta."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: responder sobre seguridad de IA (inyección de prompts, autorización de herramientas) sin mencionar que el prompt solo no es suficiente",
+                      "text": "Causa: parece suficiente mencionar 'delimitar el contenido' sin profundizar en por qué eso solo no basta. Cómo detectarlo: el entrevistador pregunta '¿qué pasa si alguien elude esa delimitación?' y la respuesta no tiene una segunda capa de defensa preparada (filtros de código, validación independiente en el ejecutor de la acción, E9-U9.2.1/E10-U10.3.2). Solución: menciona siempre al menos dos capas de defensa (delimitación en el prompt Y verificación independiente en el código), nunca solo una."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Preguntas trampa frecuentes y su concepto real",
+                      "items": [
+                        "'¿El modelo puede 'mentir' deliberadamente?': no en el sentido humano; genera el texto estadísticamente más plausible, que no siempre es verdadero (alucinación, E8-U8.1.3)",
+                        "'¿Cómo evaluarías si un cambio de prompt mejoró el sistema?': con un conjunto de evaluación consistente (casos normales, adversariales, ambiguos), no revisión manual de unos pocos casos (E9-U9.4.1)",
+                        "'¿Qué pasa si el agente necesita más pasos de los que tiene permitidos?': debe detenerse y reportar honestamente, nunca inventar una conclusión (E10-U10.1.4)",
+                        "'¿MCP resuelve la seguridad de las herramientas?': no automáticamente; estandariza la comunicación, la validación y autorización siguen siendo responsabilidad de cada herramienta (E10-U10.2.4)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás responder las preguntas frecuentes de entrevista sobre IA aplicada, RAG y agentes aplicando los criterios reales de E8-E10 (no terminología superficial), mencionando al menos dos capas de defensa cuando se trata de seguridad."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la pregunta '¿construirías esto como un agente?'. Identifica por qué la respuesta aplica el criterio específico de E10-U10.1.1/U10.1.2 en vez de responder con una impresión general."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Para cada una de las cinco preguntas frecuentes de esta lección, escribe tu propia respuesta completa aplicando el criterio específico de la unidad de E8-E10 correspondiente, sin mirarla primero. Compara después con el contenido real de esas unidades. Criterio de paso: al menos cuatro de tus cinco respuestas aplican correctamente el criterio técnico específico, no una impresión general sobre IA."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Prepara tu respuesta a una pregunta probable pero no listada aquí: '¿cómo evitarías que el tutor de este curso (E9, capa-ia.md) revele la solución de un ejercicio si el estudiante insiste mucho?'. Responde mencionando explícitamente las dos capas de defensa reales que usa este proyecto (reglas en el prompt + filtro de detección en código). Criterio de paso: tu respuesta menciona ambas capas y explica por qué ninguna sola sería suficiente."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te haga una pregunta de entrevista sobre agentes o RAG y evalúe tu respuesta. Verifica si su evaluación aplica el criterio técnico correcto (decisión dinámica de pasos para agente, reducción de alucinación para RAG) o si acepta respuestas vagas sobre 'IA avanzada' sin ese rigor."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde las cinco preguntas frecuentes (RAG, salidas estructuradas confiables, agente frente a chatbot/pipeline, inyección de prompts, control de costos). Criterio de paso: al menos cuatro de cinco aplican el criterio técnico específico correcto de las unidades de E8-E10."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Esta área de entrevista está todavía poco estandarizada en la industria (a diferencia de preguntas clásicas de algoritmos o SQL), lo que significa que una respuesta que demuestre comprensión real y criterios claros (en vez de terminología de moda repetida sin sustento) destaca de forma desproporcionada frente a otros candidatos. Variante de entrevista: el entrevistador pregunta sobre una herramienta o framework específico que no conoces por nombre (pista: aplica los conceptos subyacentes que sí conoces, como puertos/adaptadores para proveedores de IA, E9-U9.1.4, en vez de bloquearte por no reconocer el nombre exacto de la herramienta). Pregunta de cierre: ¿cuándo admitir honestamente 'no he trabajado con eso específicamente, pero así es como lo abordaría con los principios que conozco' sería la mejor respuesta posible?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M11.3",
           "title": "Comunicación profesional",
           "order": 3,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U11.3.1",
+              "title": "Análisis de vacantes y perfiles",
+              "objective": "Analizar una vacante real para identificar qué competencias destacar y qué preguntas anticipar",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "analisis-de-vacantes-y-perfiles",
+                  "title": "Análisis de vacantes y perfiles",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Una descripción de vacante no es solo una lista de tecnologías: es, igual que un requisito ambiguo que se convierte en issue (E3-U3.2.4), un documento que necesita interpretación activa. Distinguir entre requisitos obligatorios ('imprescindible', 'requerido') y deseables ('valorable', 'un plus') cambia qué preparar con más cuidado. Las responsabilidades descritas (no solo las tecnologías listadas) revelan qué hará la persona día a día, y eso predice mejor qué preguntas de entrevista son probables que la lista de tecnologías por sí sola: una vacante que menciona 'colaborar con el equipo de diseño' probablemente hará preguntas de comunicación y trabajo en equipo, no solo preguntas técnicas puras."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo leer una vacante con criterio",
+                      "items": [
+                        "Separar requisitos obligatorios de deseables: prepara con más profundidad los obligatorios, menciona familiaridad razonable con los deseables.",
+                        "Las responsabilidades descritas predicen el tipo de preguntas (técnicas puras, de comunicación, de liderazgo) mejor que solo la lista de tecnologías.",
+                        "Tecnologías mencionadas que no conoces en profundidad: identifica los conceptos subyacentes que sí conoces (de otro stack) y prepárate para conectarlos honestamente.",
+                        "El nivel declarado (junior, semi-senior, senior) ajusta qué tan profundas se esperan las respuestas, especialmente en diseño de sistemas (E11.1.3)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Una vacante dice: 'Imprescindible: TypeScript, Node.js, PostgreSQL. Valorable: experiencia con IA generativa. Responsabilidades: diseñar APIs REST, colaborar con el equipo de producto en la definición de requisitos, mentorizar a desarrolladores junior.' Análisis: prepara con profundidad TypeScript/Node/PostgreSQL (obligatorios); si no tienes experiencia profunda con IA generativa, prepara al menos los conceptos de E8-E9 para poder hablar con criterio aunque sea teórico; la mención de 'colaborar en definición de requisitos' y 'mentorizar' sugiere que también evaluarán comunicación y, posiblemente, cómo diste feedback a alguien antes (E3-U3.2.2), no solo código."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: preparar solo las tecnologías listadas literalmente, ignorando las responsabilidades descritas",
+                      "text": "Causa: las tecnologías son más fáciles de 'estudiar' directamente que las responsabilidades, que parecen más vagas. Cómo detectarlo: en la entrevista aparecen preguntas sobre trabajo en equipo o comunicación con stakeholders no técnicos, para las que no se preparó ninguna respuesta, porque toda la preparación se centró solo en código. Solución: lee las responsabilidades con la misma atención que la lista de tecnologías, y prepara ejemplos concretos (de proyectos propios o de este curso) que ilustren esas responsabilidades específicas."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: descartar por completo una vacante por no cumplir el 100% de los requisitos obligatorios listados",
+                      "text": "Causa: una lectura demasiado literal de 'requisitos obligatorios' como un filtro absoluto y binario. Cómo detectarlo: se descarta una vacante razonable porque falta experiencia en una de cinco tecnologías 'obligatorias', cuando en la práctica muchas organizaciones usan ese lenguaje de forma menos estricta de lo que parece. Solución: si cumples la mayoría de los requisitos obligatorios y tienes fundamentos sólidos para aprender rápido los que faltan (demostrable con cómo aprendiste otras tecnologías antes), postular suele valer la pena; la decisión final de descartar la es de quien contrata, no necesariamente de quien postula."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué extraer de una vacante antes de una entrevista",
+                      "items": [
+                        "Requisitos obligatorios: prepara con profundidad, espera preguntas técnicas directas sobre ellos",
+                        "Requisitos deseables: prepara con familiaridad razonable, menciónalos honestamente si surge el tema",
+                        "Responsabilidades descritas: predicen preguntas de comunicación/colaboración, no solo técnicas",
+                        "Nivel declarado: ajusta la profundidad esperada en preguntas de diseño de sistemas (E11.1.3)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás analizar una vacante real distinguiendo requisitos obligatorios de deseables, y anticipar, a partir de las responsabilidades descritas, qué tipo de preguntas (técnicas, de comunicación, de diseño) son más probables en esa entrevista específica."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el análisis de la vacante de ejemplo. Identifica qué pregunta de entrevista (más allá de código) se anticipa correctamente a partir de las responsabilidades descritas, no de la lista de tecnologías."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Busca una vacante real (de un sitio de empleo) para un rol que te interese. Sepárala en requisitos obligatorios, deseables, y responsabilidades. Para cada responsabilidad, anticipa un tipo de pregunta probable. Criterio de paso: tu análisis separa correctamente ambos tipos de requisitos y anticipa al menos tres preguntas probables basadas en responsabilidades específicas, no genéricas."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Para la misma vacante, identifica qué tecnología mencionada (si alguna) no conoces en profundidad, y prepara una respuesta honesta que conecte los conceptos que sí conoces de otro stack similar (por ejemplo, si no conoces un framework específico pero conoces los principios de componentes y estado de E4). Criterio de paso: tu respuesta conecta correctamente un concepto que sí dominas con la tecnología desconocida, sin fingir experiencia que no tienes."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que analice una vacante real que le proporciones y anticipe preguntas probables. Evalúa si su análisis distingue correctamente obligatorios de deseables, y si sus preguntas anticipadas se basan en las responsabilidades específicas descritas o son genéricas para cualquier vacante similar."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué diferencia hay entre requisito obligatorio y deseable en una vacante? 2) ¿Por qué las responsabilidades predicen preguntas mejor que solo la lista de tecnologías? 3) ¿Qué harías si no conoces una tecnología mencionada? 4) ¿Deberías descartar una vacante por no cumplir el 100% de los requisitos obligatorios? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Analizar vacantes con este criterio no solo prepara mejor para la entrevista: también ayuda a decidir a qué vacantes realmente vale la pena postular, dado que preparar bien cada postulación toma tiempo y energía limitados. Variante: la vacante es de una startup pequeña con una descripción muy informal, sin estructura clara de obligatorio/deseable (pista: en ese caso, las responsabilidades descritas y el tono general de la descripción siguen siendo una fuente de información válida, aunque menos estructurada). Pregunta de cierre: ¿cuándo valdría la pena postular a una vacante aunque no cumplas casi ninguno de los requisitos listados?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.3.2",
+              "title": "Comunicación técnica en español e inglés",
+              "objective": "Comunicar un concepto técnico con precisión tanto en español como en inglés",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "comunicacion-tecnica-en-espanol-e-ingles",
+                  "title": "Comunicación técnica en español e inglés",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Buena parte del mercado laboral técnico, incluso en países de habla hispana, opera con documentación, código y a menudo entrevistas en inglés (el código mismo de este curso ya se escribe en inglés por convención, mientras el texto pedagógico es en español). Comunicar un concepto técnico en inglés no requiere fluidez literaria: requiere vocabulario técnico preciso (los mismos términos ya usados en inglés durante todo este curso: closure, endpoint, middleware, idempotent) y la capacidad de explicar con claridad, aunque la gramática no sea perfecta. Practicar explicar los mismos conceptos técnicos en ambos idiomas, no solo traducir mentalmente en el momento, construye la fluidez real necesaria bajo la presión de una entrevista."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Vocabulario técnico frecuente en inglés (ya usado en este curso)",
+                      "items": [
+                        "closure, scope, hoisting (E2-M2.1): términos sin traducción directa natural, se usan en inglés incluso en contextos en español.",
+                        "endpoint, middleware, payload (E5-M5.1/M5.2): vocabulario de backend estándar en inglés en la mayoría de equipos.",
+                        "idempotent, race condition, deadlock (E5-U5.2.5, E6-U6.2.6): conceptos técnicos cuyo nombre en inglés es el estándar reconocido internacionalmente.",
+                        "pull request, merge conflict, commit (E3-M3.1/M3.2): terminología de control de versiones, casi siempre en inglés incluso en equipos hispanohablantes."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Explicar un closure en español: 'Un closure es una función que recuerda las variables de su entorno de creación, incluso después de que ese entorno ya terminó de ejecutarse.' La misma explicación en inglés, con el vocabulario técnico correcto: 'A closure is a function that remembers the variables from its surrounding scope, even after that scope has finished executing.' Practicar ambas versiones por separado (no solo traducir mentalmente la versión en español en tiempo real durante la entrevista) permite responder con fluidez en cualquiera de los dos idiomas sin ese paso intermedio de traducción que consume tiempo y genera pausas notorias."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: traducir mentalmente palabra por palabra en tiempo real durante la entrevista, en vez de haber practicado la explicación directamente en el idioma requerido",
+                      "text": "Causa: parece más eficiente preparar solo en el idioma 'natural' y traducir sobre la marcha si se necesita. Cómo detectarlo: las respuestas en el idioma no preparado tienen pausas largas y una estructura de frase extraña (resultado de traducir gramática de un idioma al otro), que se notan incluso si el vocabulario técnico es correcto. Solución: practica explicaciones completas directamente en ambos idiomas por separado para los conceptos más probables de ser preguntados, no solo en el idioma que se sienta más natural."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: evitar mencionar el vocabulario técnico en inglés en una entrevista en español, usando traducciones forzadas poco naturales",
+                      "text": "Causa: la intuición de que 'si la entrevista es en español, todo debe traducirse al español'. Cómo detectarlo: se usa una traducción forzada y poco natural ('función de cierre' en vez de 'closure') que suena extraña incluso a oídos hispanohablantes técnicos, porque en la práctica real estos términos se usan en inglés incluso en conversaciones en español. Solución: usa el término técnico en inglés cuando es el estándar reconocido (como ya se hace en el código de este mismo curso), incluso dentro de una explicación en español; eso suena más natural y profesional que forzar una traducción."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Practicar en ambos idiomas, no traducir sobre la marcha",
+                      "items": [
+                        "Preparar la explicación directamente en español: con su propia estructura natural",
+                        "Preparar la explicación directamente en inglés: con su propia estructura natural, no una traducción literal de la versión en español",
+                        "Vocabulario técnico estándar en inglés: se usa tal cual, incluso dentro de una conversación en español",
+                        "Practicar en voz alta ambas versiones por separado, no solo leerlas"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás explicar al menos tres conceptos técnicos de este curso con precisión tanto en español como en inglés, preparados directamente en cada idioma (no traducidos sobre la marcha), usando el vocabulario técnico estándar correcto en cada caso."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee las dos versiones de la explicación de closure, en español e inglés. Identifica que ninguna es una traducción literal palabra por palabra de la otra; ambas están redactadas con naturalidad en su propio idioma."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Elige tres conceptos técnicos de este curso (de distintas etapas) y escribe (y practica en voz alta) una explicación completa de cada uno en español y otra en inglés, preparadas directamente en cada idioma. Criterio de paso: ninguna de tus seis explicaciones (3 conceptos x 2 idiomas) suena como una traducción forzada de la otra versión."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Grábate (o practica con otra persona) respondiendo en inglés una pregunta técnica de entrevista de las listadas en E11.2 (JavaScript, React, Node, SQL o IA aplicada), cronometrando cuánto tardas en empezar a responder. Compara ese tiempo con el mismo ejercicio en español. Criterio de paso: documentas tu tiempo real en ambos idiomas y, si hay una diferencia notable, identificas si fue por vocabulario, estructura de la respuesta, o ambos."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que te haga la misma pregunta técnica primero en español y después en inglés. Compara tus propias respuestas en ambos idiomas: ¿usaste el vocabulario técnico estándar correcto en inglés (no una traducción forzada)? Pide retroalimentación específica sobre tu uso de terminología técnica en inglés."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué traducir mentalmente en tiempo real genera pausas notorias? 2) Nombra tres términos técnicos que se usan en inglés incluso en conversaciones en español. 3) ¿Qué significa preparar una explicación 'directamente' en un idioma, en vez de traducirla? 4) ¿Por qué forzar una traducción de un término técnico estándar puede sonar poco natural? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "En equipos técnicos reales con composición internacional (cada vez más comunes), la capacidad de comunicar con precisión en inglés, incluso sin fluidez perfecta, es frecuentemente más valorada que la fluidez gramatical perfecta sin precisión técnica. Variante de entrevista: la entrevista empieza en español pero cambia a inglés a mitad de la conversación, sin aviso previo (pista: esto es intencional en muchos procesos para evaluar flexibilidad real, no solo preparación de un guion en un idioma fijo). Pregunta de cierre: ¿cuándo sería apropiado pedir aclaración o repetición en una entrevista en un idioma no nativo, en vez de intentar adivinar y responder algo potencialmente equivocado?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.3.3",
+              "title": "Presentación de proyectos y trade-offs",
+              "objective": "Presentar un proyecto propio explicando sus decisiones y trade-offs ante una audiencia técnica",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "presentacion-de-proyectos-y-trade-offs",
+                  "title": "Presentación de proyectos y trade-offs",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Presentar un proyecto propio en una entrevista ('cuéntame sobre un proyecto del que estés orgulloso') no debería ser un recorrido cronológico de todo lo que se hizo: debería centrarse en las decisiones de diseño reales tomadas, por qué se tomaron (el mismo formato de ADR practicado en E3-U3.3.2), y qué se sacrificó al elegir ese camino en vez de otro. Mencionar únicamente qué tecnologías se usaron, sin ningún trade-off ni decisión explicada, no demuestra criterio de ingeniería: cualquiera puede listar tecnologías usadas, pero explicar por qué se eligió una sobre otra, y qué se habría perdido con la alternativa, es lo que revela comprensión real del trabajo hecho."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Estructura de una buena presentación de proyecto",
+                      "items": [
+                        "Contexto breve: qué problema resolvía el proyecto, para quién, en una o dos frases, sin extenderse demasiado.",
+                        "Al menos una decisión de diseño no trivial, explicada con el formato de ADR (contexto, decisión, alternativa descartada y por qué, E3-U3.3.2).",
+                        "Un trade-off real que se aceptó consecuentemente (qué se ganó, qué se sacrificó), no solo ventajas sin ningún costo mencionado.",
+                        "Qué harías distinto ahora, con lo que sabes hoy (una señal de crecimiento y autoevaluación honesta, no solo presentar el proyecto como perfecto)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Presentando el proyecto de este mismo curso (si fuera tu propio trabajo): 'Construí un sistema de repaso espaciado con el algoritmo SM-2. Una decisión clave fue intercalar la cola diaria por concepto en vez de por antigüedad simple, para evitar que el estudiante repase 10 preguntas seguidas del mismo tema (documentado en S7-T3). El trade-off: el intercalado es más complejo de implementar y probar que un orden simple por fecha, pero mejora la experiencia real de repaso. Si lo rehiciera hoy, probablemente agregaría una métrica para medir si el intercalado realmente mejora la retención, en vez de asumir que mejora la experiencia solo por intuición pedagógica.' Esta presentación tiene las cuatro partes: contexto, decisión con alternativa, trade-off, y autocrítica honesta."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: presentar el proyecto como una lista de tecnologías usadas sin ninguna decisión ni trade-off explicado",
+                      "text": "Causa: parece más seguro listar tecnologías (hechos verificables) que exponer decisiones de diseño (que podrían cuestionarse). Cómo detectarlo: el entrevistador pregunta '¿por qué elegiste X en vez de Y?' y la respuesta revela que esa decisión nunca se consideró deliberadamente, solo se usó lo que 'parecía estándar' sin comparar alternativas. Solución: prepara al menos una decisión de diseño real con su alternativa descartada y el motivo, usando el mismo formato de ADR, antes de la entrevista."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: presentar el proyecto como perfecto, sin ninguna autocrítica sobre qué se haría distinto ahora",
+                      "text": "Causa: parece contraproducente señalar debilidades del propio trabajo en una entrevista. Cómo detectarlo: una presentación sin ninguna autocrítica genuina se percibe como menos honesta y menos reflexiva que una que reconoce con criterio qué mejoraría, lo que en realidad es una señal positiva de madurez técnica, no de debilidad. Solución: incluye deliberadamente qué harías distinto hoy, con un motivo técnico concreto, no una autocrítica vaga ('le faltaba pulir detalles')."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Las cuatro partes de una buena presentación",
+                      "items": [
+                        "Contexto breve: qué problema resolvía, en una o dos frases",
+                        "Una decisión de diseño con su alternativa descartada y el motivo (formato ADR)",
+                        "Un trade-off real aceptado: qué se ganó, qué se sacrificó",
+                        "Qué harías distinto hoy, con un motivo técnico concreto"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás presentar un proyecto propio con las cuatro partes de esta lección (contexto, decisión con alternativa, trade-off, autocrítica), demostrando criterio de ingeniería más allá de listar tecnologías usadas."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la presentación del sistema de repaso espaciado. Identifica las cuatro partes exactas en esa presentación, y cómo cada una va más allá de simplemente nombrar 'usé el algoritmo SM-2'."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Prepara la presentación de un proyecto propio (de este curso o de otro contexto) siguiendo las cuatro partes de esta lección. Practícala en voz alta, cronometrándote a no exceder 2-3 minutos (el tiempo típico que tolera una entrevista para esta pregunta). Criterio de paso: tu presentación incluye las cuatro partes dentro del límite de tiempo, con una decisión de diseño real y específica, no genérica."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Prepara una segunda presentación, de un proyecto distinto, pero esta vez pide a alguien (o imagina la pregunta tú mismo) que te interrumpa con '¿por qué no usaste [alternativa]?' a mitad de tu presentación. Practica responder esa pregunta de seguimiento con la misma profundidad que tu presentación original. Criterio de paso: tu respuesta a la pregunta de seguimiento tiene el mismo nivel de detalle y honestidad que tu presentación preparada, no una respuesta improvisada más débil."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que evalúe tu presentación de un proyecto (escríbela y pídele retroalimentación). Verifica si su evaluación identifica correctamente si incluiste las cuatro partes, especialmente si notó la ausencia de un trade-off real o de autocrítica si tu presentación las omitió."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las cuatro partes de una buena presentación de proyecto? 2) ¿Por qué listar solo tecnologías usadas no demuestra criterio de ingeniería? 3) ¿Por qué incluir autocrítica es una señal positiva, no negativa? 4) ¿Qué formato de una etapa anterior se reutiliza para explicar una decisión de diseño? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "La habilidad de explicar decisiones con sus trade-offs no es solo para entrevistas: es exactamente lo que se necesita para documentar un ADR real (E3-U3.3.2) o defender una propuesta de arquitectura ante el propio equipo de trabajo. Variante de entrevista: el entrevistador cuestiona directamente la decisión que presentaste como si fuera incorrecta ('¿no habría sido mejor usar X?') (pista: esto a menudo es una prueba de cómo defiendes una decisión con argumentos, no necesariamente una señal de que la decisión estuvo mal; responde con el razonamiento real, no te retractes automáticamente). Pregunta de cierre: ¿cuándo sería apropiado presentar un proyecto que, en retrospectiva honesta, consideras que no salió bien?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.3.4",
+              "title": "Revisión de código en vivo",
+              "objective": "Revisar código ajeno en vivo dando retroalimentación específica y accionable frente a un entrevistador",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "revision-de-codigo-en-vivo",
+                  "title": "Revisión de código en vivo",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Revisar código en vivo frente a un entrevistador aplica exactamente el formato de buena revisión de código ya practicado en E3-U3.2.2 (qué falla, por qué importa, cómo se resolvería), pero ahora bajo la presión de hacerlo verbalmente y en tiempo real, sin poder editar y reformular un comentario escrito con calma. Esto evalúa dos habilidades a la vez: la capacidad técnica de detectar problemas reales (no solo preferencias de estilo personal) y la habilidad de comunicar esos problemas de forma constructiva y específica, sin ser ni demasiado tímido (no señalar nada relevante) ni excesivamente crítico (señalar cada detalle menor con el mismo peso que un problema real)."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué priorizar al revisar código en vivo",
+                      "items": [
+                        "Primero, correctitud real: ¿el código hace lo que dice hacer?, ¿maneja los casos límite relevantes (E7-U7.2.1)?",
+                        "Segundo, problemas de seguridad o rendimiento evidentes, si los hay (inyección, E6-U6.4.3; N+1, E6-U6.3.1).",
+                        "Tercero, y solo si hay tiempo, legibilidad y estilo, con menor peso que los dos anteriores.",
+                        "Cada comentario sigue el formato de E3-U3.2.2: qué falla específicamente, por qué importa, y una sugerencia concreta de cómo resolverlo."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Revisando en vivo una función que busca un elemento en un arreglo sin manejar el caso de que no se encuentre: 'Veo que esta función asume que siempre encuentra el elemento y devuelve su índice directamente. Si el elemento no está en el arreglo, find devuelve undefined, y esta línea que usa ese valor como índice fallaría de forma confusa más adelante, no aquí mismo. Sugeriría manejar explícitamente el caso de 'no encontrado', devolviendo null o lanzando un error claro, dependiendo de si es un caso esperado o excepcional en este contexto.' Este comentario tiene las tres partes (qué falla, por qué importa, sugerencia concreta), verbalizado con claridad bajo presión de tiempo real."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: señalar únicamente preferencias de estilo personal, sin identificar ningún problema real de correctitud",
+                      "text": "Causa: los problemas de estilo (nombres de variables, formato) son más fáciles de detectar rápidamente que problemas más profundos de lógica o casos límite. Cómo detectarlo: toda la revisión se centra en 'yo preferiría nombrar esta variable de otra forma' sin mencionar ningún problema real que afecte el comportamiento del código. Solución: revisa primero correctitud (¿funciona?, ¿maneja casos límite?), siguiendo el checklist de E7-U7.2.1, antes de pasar a comentarios de estilo si queda tiempo."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: dar un comentario vago ('esto está mal') sin especificar qué falla ni proponer una dirección",
+                      "text": "Causa: la presión del momento dificulta articular un comentario completo y estructurado. Cómo detectarlo: el entrevistador pregunta '¿qué exactamente está mal?' después de un comentario vago, revelando que la observación no estaba del todo clara ni siquiera para quien la hizo. Solución: aplica el mismo formato de tres partes de E3-U3.2.2 (qué falla, por qué importa, sugerencia) incluso bajo presión; practicarlo de antemano (en la práctica guiada de esta lección) ayuda a que salga con fluidez en el momento real."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Orden de prioridad al revisar en vivo",
+                      "items": [
+                        "1. Correctitud: ¿hace lo que dice?, ¿maneja casos límite?",
+                        "2. Seguridad y rendimiento evidentes, si los hay",
+                        "3. Legibilidad y estilo, solo si queda tiempo después de lo anterior",
+                        "Formato de cada comentario: qué falla, por qué importa, sugerencia concreta (E3-U3.2.2)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás revisar código ajeno en vivo, priorizando correctitud y casos límite sobre estilo, dando cada comentario con el formato de tres partes (qué falla, por qué importa, sugerencia concreta) de forma verbal y bajo presión de tiempo."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la revisión de la función de búsqueda sin manejo del caso 'no encontrado'. Identifica las tres partes del comentario y por qué se centra en correctitud antes que en estilo."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Te damos un fragmento de código con al menos dos problemas (uno de correctitud/casos límite, uno de estilo menor). Revísalo en voz alta, cronometrándote a 3 minutos, dando comentarios con el formato de tres partes y priorizando correctitud antes que estilo. Criterio de paso: tu revisión identifica el problema de correctitud con las tres partes completas, antes de mencionar cualquier observación de estilo."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Pide a alguien (o usa un asistente de IA que genere código con un defecto deliberado sin decírtelo) que te presente código para revisar sin previo aviso del problema. Revísalo en vivo, verbalizando tu proceso. Criterio de paso: identificas el problema real de correctitud (si existe) con el formato de tres partes, sin que te lo hayan señalado de antemano."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que genere un fragmento de código con un defecto sutil, sin decirte cuál es. Revísalo tú mismo en voz alta primero; después, pide al asistente que señale qué defecto real tenía, y compara si tu revisión lo identificó correctamente con el formato de tres partes."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué se prioriza primero al revisar código: correctitud o estilo? 2) ¿Cuáles son las tres partes de un buen comentario de revisión? 3) ¿Por qué un comentario vago ('esto está mal') no es útil? 4) ¿Qué conecta esta lección con E3-U3.2.2? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "La revisión de código en vivo en una entrevista simula directamente una de las actividades más frecuentes del trabajo real (E3-U3.2.2), por lo que practicarla bien tiene valor mucho más allá de la entrevista misma: es una habilidad que se usa constantemente en cualquier equipo de desarrollo colaborativo. Variante de entrevista: el código revisado es tuyo mismo de una sesión anterior, y te piden auto-revisarlo (pista: aplica el mismo rigor y honestidad que usarías con código ajeno, sin suavizar los problemas reales solo porque es tu propio trabajo). Pregunta de cierre: ¿cuándo sería apropiado decir 'no veo ningún problema real aquí, el código está bien' en vez de forzar encontrar algo que comentar?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M11.4",
           "title": "Portafolio y búsqueda",
           "order": 4,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U11.4.1",
+              "title": "CV técnico",
+              "objective": "Escribir un CV técnico que muestre impacto verificable, no solo tecnologías usadas",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "cv-tecnico",
+                  "title": "CV técnico",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un CV técnico que lista solo tecnologías ('JavaScript, React, Node.js, PostgreSQL') no distingue a quien lo escribe de cualquier otro candidato con las mismas tecnologías en su lista: todas las listas de tecnologías se parecen entre sí. Lo que distingue un CV efectivo es describir impacto verificable con cada experiencia o proyecto: qué problema se resolvió, con qué resultado medible o observable (no solo 'mejoré el rendimiento', sino 'reduje el tiempo de carga de X a Y', o al menos 'implementé la funcionalidad Z que permitió [resultado concreto]'), de la misma forma en que este curso documenta el cierre de cada sprint con números reales (pruebas que pasan, criterios cumplidos, verificaciones ejecutadas), no con afirmaciones vagas de que 'funciona bien'."
+                    },
+                    {
+                      "type": "list",
+                      "title": "De afirmación vaga a impacto verificable",
+                      "items": [
+                        "Vago: 'Trabajé con React y mejoré el rendimiento de la aplicación.' Verificable: 'Identifiqué y corregí renders innecesarios en una lista de 500+ elementos usando React.memo, reduciendo el tiempo de respuesta percibido.'",
+                        "Vago: 'Diseñé una API REST.' Verificable: 'Diseñé e implementé 8 endpoints REST con paginación por cursor y validación con Zod, documentados con OpenAPI.'",
+                        "Si no tienes una métrica numérica exacta (común en proyectos de aprendizaje o personales), describe el alcance concreto (cuántos endpoints, cuántas pruebas, qué funcionalidad específica) en vez de un adjetivo vago.",
+                        "Cada línea del CV debería poder respaldarse con una pregunta de seguimiento real en una entrevista (E11.3.3); si no podrías explicar el 'cómo' con profundidad, probablemente la línea está sobredimensionada."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Para un proyecto como este mismo curso (si fuera un proyecto personal en el CV): vago, 'Desarrollé una plataforma educativa con IA'. Verificable: 'Diseñé e implementé el backend de una plataforma educativa (NestJS, PostgreSQL, Prisma) con 12 módulos de contenido, un motor de repaso espaciado basado en el algoritmo SM-2 con 18 pruebas unitarias, y un sistema de corrección automática de ejercicios con pistas graduadas; suite completa de más de 550 pruebas automatizadas.' La segunda versión da cifras concretas y verificables (número de pruebas, algoritmo específico usado) que un entrevistador puede usar como punto de partida real para preguntas de seguimiento."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: listar tecnologías sin ningún contexto de qué se construyó con ellas",
+                      "text": "Causa: la lista de tecnologías es rápida de escribir y parece cubrir 'las palabras clave' que un sistema de filtrado automático podría buscar. Cómo detectarlo: el CV no distingue a quien lo escribe de cualquier otro candidato con la misma lista de tecnologías, porque no hay ningún contexto de qué se construyó realmente con ellas ni con qué resultado. Solución: para cada tecnología relevante, menciona al menos un contexto concreto (un proyecto, una funcionalidad específica) donde se usó, no solo el nombre de la tecnología aislado."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: exagerar el impacto o la responsabilidad más allá de lo que realmente se puede defender en una entrevista",
+                      "text": "Causa: la tentación de 'sonar más impresionante' lleva a inflar el alcance real de una contribución. Cómo detectarlo: una pregunta de seguimiento sobre una línea específica del CV ('cuéntame más sobre cómo liderarse ese proyecto') revela que el alcance real era mucho menor de lo que la línea sugería, generando una impresión negativa peor que si la línea hubiera sido más modesta pero honesta. Solución: cada línea del CV debe poder sostenerse con el mismo nivel de detalle y honestidad que la presentación de proyectos de E11.3.3; si no podrías explicar el 'cómo' con profundidad real, ajusta la línea para que refleje tu contribución real."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Impacto verificable frente a afirmación vaga",
+                      "items": [
+                        "Vago: 'mejoré el rendimiento' — Verificable: una métrica, un número de elementos, una técnica específica aplicada",
+                        "Vago: 'trabajé en el backend' — Verificable: cuántos endpoints, qué patrón de arquitectura, cuántas pruebas",
+                        "Vago: 'colaboré en el equipo' — Verificable: una responsabilidad específica dentro de la colaboración (revisé X pull requests, documenté Y decisión)",
+                        "Siempre: cada línea debe poder defenderse con profundidad real si se pregunta en una entrevista"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás reescribir al menos tres líneas vagas de un CV técnico (propio o de ejemplo) convirtiéndolas en afirmaciones con impacto verificable (alcance concreto, cifras cuando existan), defendibles con profundidad real en una entrevista."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la plataforma educativa con la versión vaga frente a la verificable. Identifica qué cifras y detalles específicos convierten la segunda versión en algo que un entrevistador podría usar como punto de partida real."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Escribe (o reescribe) tres líneas de tu propio CV (o de un proyecto que hayas hecho, incluyendo alguno de este curso) convirtiendo afirmaciones vagas en impacto verificable, siguiendo el formato de esta lección. Criterio de paso: cada línea reescrita incluye al menos un detalle concreto (una cifra, un alcance específico, una técnica nombrada), no solo un adjetivo general."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Para cada línea que escribiste en la práctica guiada, anticipa la pregunta de seguimiento más probable que un entrevistador haría sobre ella, y prepara tu respuesta con el mismo nivel de profundidad real. Criterio de paso: puedes responder con detalle genuino (no inventado) a la pregunta de seguimiento de cada una de tus tres líneas."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que revise una versión de tu CV o de una línea específica. Revisa si su sugerencia de mejora introduce cifras o afirmaciones de impacto que en realidad no podrías defender con profundidad real en una entrevista. Si es así, ajusta la sugerencia para que refleje solo lo que honestamente puedes respaldar."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué listar solo tecnologías no distingue a un candidato de otros? 2) Da un ejemplo propio de afirmación vaga convertida en impacto verificable. 3) ¿Qué riesgo tiene exagerar el impacto en una línea del CV? 4) ¿Qué prueba debería pasar cada línea del CV antes de incluirla? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Los reclutadores y entrevistadores técnicos revisan muchos CVs similares con las mismas tecnologías listadas; el impacto verificable y específico es, consistentemente, lo que distingue un CV que genera una entrevista de uno que se pierde entre decenas similares. Variante: no tienes experiencia laboral formal todavía, solo proyectos personales o de este curso (pista: los mismos criterios de impacto verificable aplican igual de bien a proyectos personales bien documentados que a experiencia laboral formal). Pregunta de cierre: ¿cuándo una línea del CV sin ninguna cifra numérica, pero con alcance concreto bien descrito, sería igualmente efectiva que una con números?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.4.2",
+              "title": "Repositorio y portafolio",
+              "objective": "Preparar un repositorio propio para que sea legible y evaluable por un reclutador o entrevistador técnico",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "repositorio-y-portafolio",
+                  "title": "Repositorio y portafolio",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un repositorio de portafolio tiene una audiencia distinta a un repositorio de trabajo interno de equipo: quien lo revisa (un reclutador técnico, un entrevistador) probablemente le dedica pocos minutos, sin contexto previo del proyecto, y decide en ese tiempo si vale la pena profundizar. Esto hace que el README efectivo (E3-U3.3.1) sea, si cabe, aún más crítico que en un proyecto de equipo: debe comunicar en segundos qué hace el proyecto, por qué es interesante técnicamente, y cómo verificar que realmente funciona (capturas de pantalla, un enlace a una demo desplegada, o instrucciones de instalación que de verdad funcionen si se siguen al pie de la letra)."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué revisa alguien con poco tiempo en un repositorio de portafolio",
+                      "items": [
+                        "El README, en los primeros segundos: ¿qué hace el proyecto, se ve interesante técnicamente?",
+                        "Si hay una demo desplegada o capturas de pantalla: la evidencia visual reduce la fricción de tener que instalar y ejecutar el proyecto solo para verlo funcionar.",
+                        "El historial de commits (E3-M3.2): mensajes descriptivos y commits de tamaño razonable sugieren proceso de trabajo serio, no una subida única de código ya terminado.",
+                        "La calidad del código en archivos clave (sin necesitar leer todo): nombres claros, estructura organizada, alguna prueba automatizada visible."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este mismo proyecto (CodeAI Academy) es, en sí mismo, un ejemplo de repositorio bien preparado para revisión externa: su README (o la documentación en docs/) explica la visión completa, el roadmap de sprints documenta el progreso real con criterios verificados, y el historial de commits sigue una convención clara (E3-U3.2.3) con mensajes descriptivos por tarea atómica, permitiendo a cualquier persona externa entender, sin contexto previo, qué se ha construido y con qué rigor, solo navegando la documentación y el historial de commits."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: un repositorio sin ningún README o con uno genérico generado por una plantilla sin personalizar",
+                      "text": "Causa: el README se deja para 'el final', y a menudo nunca se completa con el cuidado necesario. Cómo detectarlo: quien revisa el repositorio no puede entender en pocos segundos qué hace el proyecto, y probablemente pasa al siguiente candidato sin profundizar más. Solución: invierte tiempo real en el README de cada proyecto de portafolio, siguiendo el mismo criterio de E3-U3.3.1, pensando explícitamente en una audiencia que no tiene ningún contexto previo y poco tiempo disponible."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: un historial de commits con un único commit gigante ('proyecto completo') en vez de un proceso de trabajo visible",
+                      "text": "Causa: subir el proyecto terminado de una sola vez, sin preservar o recrear el historial de desarrollo real. Cómo detectarlo: el historial de commits no revela nada sobre cómo se abordó el proyecto (qué se construyó primero, cómo se iteró), perdiendo una señal valiosa de proceso de trabajo que un entrevistador técnico sabe interpretar. Solución: desarrolla (o, si ya tienes el código completo, considera recrear el historial de forma honesta) con commits de tamaño razonable y mensajes descriptivos, siguiendo las convenciones ya practicadas en E3-M3.1/M3.2 desde el inicio del proyecto."
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué preparar en un repositorio de portafolio",
+                      "items": [
+                        "README completo: qué hace, por qué es interesante, cómo ejecutarlo o verlo en vivo",
+                        "Demo desplegada o capturas de pantalla, si es visual",
+                        "Historial de commits con mensajes descriptivos, no un único commit masivo",
+                        "Al menos algunas pruebas automatizadas visibles, aunque no sea una suite completa"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás preparar un repositorio propio de portafolio con un README completo orientado a una audiencia sin contexto previo, y evaluar si tu historial de commits comunica un proceso de trabajo serio."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de cómo este mismo proyecto está preparado para revisión externa (documentación, roadmap, historial de commits). Identifica qué elemento específico te permitió entender el proyecto sin haber tenido contexto previo."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Elige un proyecto propio (de este curso o de otro contexto) y escribe (o mejora) su README siguiendo el criterio de E3-U3.3.1, pensando explícitamente en un reclutador que le dedicará menos de dos minutos. Pide a alguien sin contexto previo del proyecto que lo lea y te diga, en una frase, qué entendió que hace el proyecto. Criterio de paso: esa persona describe correctamente el propósito del proyecto basándose solo en tu README."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Revisa el historial de commits de ese mismo proyecto. Si es un único commit masivo o tiene mensajes poco descriptivos, documenta qué harías distinto si lo desarrollaras de nuevo desde cero, aplicando las convenciones de commits de E3-U3.2.3. Criterio de paso: identificas al menos tres puntos lógicos donde el proyecto podría haberse dividido en commits más pequeños y descriptivos."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que revise el README de tu proyecto como si fuera un reclutador técnico con poco tiempo. Evalúa si su retroalimentación es específica sobre qué información falta o es confusa, y ajusta el README según esa retroalimentación concreta."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué revisa alguien con poco tiempo en un repositorio de portafolio? 2) ¿Por qué un README genérico sin personalizar es un problema? 3) ¿Qué comunica un historial de commits bien hecho, más allá del código final? 4) ¿Qué evidencia adicional (más allá del código) ayuda a un revisor con poco tiempo? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Un portafolio de proyectos bien documentado es, frecuentemente, lo primero que un entrevistador revisa antes de la entrevista misma, y las preguntas de la entrevista a menudo se basan directamente en lo que encuentra ahí, convirtiendo tu propio repositorio en parte del guion de preguntas que recibirás. Variante: tienes varios proyectos de calidad similar y no sabes cuál destacar más en tu portafolio (pista: destaca el que mejor conecte con las responsabilidades de la vacante específica a la que postulas, E11.3.1, no necesariamente el técnicamente más complejo). Pregunta de cierre: ¿cuándo un proyecto incompleto pero bien documentado sería más valioso en un portafolio que uno completo pero sin ninguna documentación?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U11.4.3",
+              "title": "Simulación de entrevistas y retroalimentación",
+              "objective": "Ejecutar una simulación completa de entrevista técnica y convertir la retroalimentación en un plan de mejora concreto",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "simulacion-de-entrevistas-y-retroalimentacion",
+                  "title": "Simulación de entrevistas y retroalimentación",
+                  "estimatedMin": 90,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Esta unidad integra todo lo practicado en E11.1-E11.3 (fundamentos técnicos, preguntas por tecnología, comunicación profesional) en una simulación completa y realista: duración real (30-60 minutos), un entrevistador real (una persona, no solo practicar en silencio), y una combinación de preguntas técnicas y de comunicación, tal como ocurriría en una entrevista real. El valor de la simulación no está solo en 'practicar bajo presión': está en la retroalimentación estructurada después, que debe convertirse en un plan de mejora específico y accionable (el mismo principio de criterios de aceptación verificables, E3-U3.2.4, aplicado a tu propio desarrollo profesional), no en una impresión vaga de 'estuvo bien' o 'podría mejorar'."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo estructurar una simulación completa",
+                      "items": [
+                        "Duración real (30-60 minutos), sin pausas para 'revisar la lección' a mitad de la simulación, simulando la presión real de tiempo (E11.1.2).",
+                        "Un entrevistador real que pueda hacer preguntas de seguimiento imprevistas, no solo un guion fijo de preguntas preparadas de antemano.",
+                        "Combinación de al menos dos tipos de preguntas (técnica + comunicación/presentación de proyecto), no solo un tipo aislado.",
+                        "Retroalimentación estructurada inmediatamente después, mientras los detalles específicos todavía están frescos en la memoria de ambas partes."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Una retroalimentación vaga ('estuvo bien, un poco nervioso') no es accionable. Una retroalimentación estructurada y específica: 'En la pregunta de algoritmos, reconociste el patrón correcto rápido (bien), pero tardaste 15 minutos en verificar casos límite que deberían haber tomado 5 (repasar E11.1.2, gestión de tiempo). En la presentación del proyecto, mencionaste tecnologías pero ningún trade-off específico (repasar E11.3.3, estructura de cuatro partes). En la revisión de código, tu primer comentario fue sobre nombres de variables en vez de un bug real de manejo de null que existía en el código (repasar E11.3.4, priorizar correctitud).' Esta retroalimentación, con ejemplos concretos de la simulación real, se convierte directamente en un plan de repaso de unidades específicas."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: hacer la simulación sin ningún límite de tiempo real, 'para practicar con calma'",
+                      "text": "Causa: la simulación sin presión de tiempo se siente menos estresante y más cómoda de ejecutar. Cómo detectarlo: la simulación no entrena la habilidad específica de gestión de tiempo bajo presión real (E11.1.2), que es precisamente una de las diferencias más notorias entre practicar en abstracto y una entrevista real. Solución: simula siempre con el límite de tiempo real de una entrevista típica (30-60 minutos), aceptando la incomodidad de la presión como parte necesaria del entrenamiento."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: recibir retroalimentación vaga y no convertirla en acciones específicas de repaso antes de la siguiente simulación",
+                      "text": "Causa: la retroalimentación ('estuvo bien', 'un poco nervioso') se siente suficiente en el momento, sin un esfuerzo adicional de concretarla. Cómo detectarlo: la siguiente simulación repite exactamente los mismos problemas que la anterior, porque la retroalimentación nunca se tradujo en un plan específico de qué repasar o practicar diferente. Solución: después de cada simulación, convierte cada observación de retroalimentación en una acción concreta y verificable ('repasar E11.1.2 sobre gestión de tiempo', 'practicar tres presentaciones de proyecto con trade-offs explícitos'), con el mismo criterio de E3-U3.2.4."
+                    },
+                    {
+                      "type": "table",
+                      "title": "De retroalimentación vaga a plan de mejora accionable",
+                      "items": [
+                        "Vago: 'estuvo bien, podrías mejorar' — Accionable: 'repasar E11.1.2 (gestión de tiempo), tardaste demasiado verificando casos límite'",
+                        "Vago: 'un poco nervioso' — Accionable: 'practicar la presentación de proyecto en voz alta 3 veces más, cronometrada'",
+                        "Vago: 'el código estaba bien' — Accionable: 'confirmado: priorizaste correctamente correctitud sobre estilo en la revisión (E11.3.4)'",
+                        "Cada observación, positiva o de mejora, debería conectar con una unidad específica de este curso para repasar o confirmar"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás ejecutar una simulación completa de entrevista (30-60 minutos, con al menos dos tipos de preguntas) y convertir la retroalimentación recibida en un plan de mejora específico, conectado a unidades concretas de este curso para repasar."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de retroalimentación estructurada con sus tres observaciones específicas. Identifica cómo cada una conecta un comportamiento observado en la simulación con una unidad concreta de este curso para repasar."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Ejecuta una simulación de entrevista de al menos 30 minutos con otra persona (un compañero de estudio, un mentor, o incluso grabándote y autoevaluándote con criterio honesto), combinando al menos una pregunta técnica (de E11.1 o E11.2) y la presentación de un proyecto (E11.3.3). Al terminar, escribe retroalimentación estructurada siguiendo el formato de esta lección. Criterio de paso: tu retroalimentación incluye al menos tres observaciones específicas, cada una conectada con una unidad concreta de este curso."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Convierte tu retroalimentación de la práctica guiada en un plan de repaso concreto: qué unidades específicas repasarás, en qué orden, y cómo verificarás que mejoraste (por ejemplo, con una segunda simulación centrada específicamente en lo que falló la primera vez). Criterio de paso: tu plan tiene pasos concretos y verificables, no solo la intención general de 'practicar más'."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que simule una entrevista técnica contigo (puede hacer las preguntas y evaluar tus respuestas). Al final, pide retroalimentación estructurada siguiendo el formato de esta lección, y verifica si sus observaciones son específicas y accionables, o si son genéricas y vagas pese a haberle pedido lo contrario."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué simular sin límite de tiempo real no entrena la habilidad completa necesaria? 2) ¿Qué diferencia hay entre retroalimentación vaga y accionable? 3) ¿Qué debería incluir cada observación de retroalimentación? 4) ¿Qué pasa si la retroalimentación nunca se convierte en un plan concreto? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Este mismo curso recomienda explícitamente un mínimo de 5 simulaciones completas de entrevista con rúbrica (documentado en los ejercicios clave de esta etapa), precisamente porque la mejora real en entrevistas viene de practicar repetidamente con retroalimentación específica entre intentos, no de una sola simulación aislada ni de estudiar teoría sin práctica real bajo presión. Variante: la retroalimentación de dos entrevistadores distintos sobre la misma simulación es contradictoria entre sí (pista: eso es normal y realista; busca el patrón común entre ambas retroalimentaciones en vez de descartar una u otra, y pide ejemplos específicos a quien dio cada observación). Pregunta de cierre: ¿cuándo considerarías que ya practicaste suficientes simulaciones y es momento de aplicar a entrevistas reales en vez de seguir simulando?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     }
