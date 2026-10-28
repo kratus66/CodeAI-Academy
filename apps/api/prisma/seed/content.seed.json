@@ -8372,35 +8372,1975 @@
       "level": 2,
       "estimatedMin": 4800,
       "order": 6,
-      "isPublished": false,
+      "isPublished": true,
       "modules": [
         {
           "code": "M5.1",
           "title": "Node.js y NestJS",
           "order": 1,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U5.1.1",
+              "title": "Modelo de ejecución de Node y módulos",
+              "objective": "Explicar el event loop de Node y cómo se organizan los módulos de un proyecto",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "modelo-de-ejecucion-de-node-y-modulos",
+                  "title": "Modelo de ejecución de Node y módulos",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Node.js ejecuta JavaScript con un único hilo principal, pero no se bloquea esperando operaciones de entrada/salida (leer un archivo, consultar una base de datos, hacer una petición de red): delega esas operaciones y sigue atendiendo otro código mientras tanto, y cuando el resultado está listo, lo procesa en el event loop (el ciclo que revisa constantemente qué callbacks, promesas o temporizadores están listos para ejecutarse). Esto significa que un servidor Node puede atender miles de conexiones esperando en operaciones de I/O con relativamente pocos recursos, pero también significa que **código síncrono costoso** (un cálculo pesado en un bucle) sí bloquea todo lo demás, porque solo hay un hilo ejecutando JavaScript."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué hay que entender del modelo de Node",
+                      "items": [
+                        "Un solo hilo ejecuta JavaScript; operaciones de I/O (archivos, red, base de datos) no bloquean ese hilo mientras esperan.",
+                        "El event loop revisa, en fases, qué callbacks/promesas están listos para ejecutarse y los procesa en orden.",
+                        "Código síncrono costoso (un bucle pesado, un cálculo intensivo) sí bloquea el hilo único: ninguna otra petición se atiende mientras corre.",
+                        "Los módulos ES (import/export) y CommonJS (require/module.exports) son dos sistemas distintos; un proyecto moderno de NestJS usa módulos ES o TypeScript compilado a uno de los dos de forma consistente."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un endpoint que consulta una base de datos (`await prisma.user.findMany()`) no bloquea el servidor mientras espera la respuesta de PostgreSQL: Node puede atender otras peticiones entrantes en ese tiempo. En cambio, un endpoint que calcula algo intensivo de forma síncrona (por ejemplo, ordenar un arreglo de un millón de elementos sin usar un worker) sí bloquea el hilo único: ninguna otra petición se procesa hasta que ese cálculo termine, aunque sean peticiones de usuarios completamente distintos."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: asumir que 'asíncrono' significa 'en paralelo' en otro hilo",
+                      "text": "Causa: confundir concurrencia (atender varias cosas intercalando espera) con paralelismo real (ejecutar código simultáneamente en hilos distintos). Cómo detectarlo: un cálculo síncrono pesado sigue bloqueando el servidor aunque esté dentro de una función async. Solución: async/await ayuda a no bloquear mientras se espera I/O, pero un cálculo síncrono costoso necesita moverse a un worker thread o a un proceso separado si de verdad necesita paralelismo."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: mezclar require (CommonJS) e import (ES modules) sin entender la diferencia",
+                      "text": "Causa: copiar ejemplos de distintas fuentes sin notar que usan sistemas de módulos distintos. Cómo detectarlo: errores como 'require is not defined' en un archivo ES module, o 'Cannot use import statement outside a module'. Solución: define explícitamente qué sistema usa el proyecto (en package.json, el campo type: 'module', o la configuración de TypeScript) y sé consistente en todos los archivos."
+                    },
+                    {
+                      "type": "code",
+                      "title": "I/O no bloqueante frente a cálculo síncrono bloqueante",
+                      "language": "javascript",
+                      "code": "// No bloquea: mientras espera la base de datos, Node atiende otras peticiones\napp.get(\"/usuarios\", async (req, res) => {\n  const usuarios = await db.query(\"SELECT * FROM usuarios\");\n  res.json(usuarios);\n});\n\n// Bloquea: ningún otro request se procesa mientras este bucle corre\napp.get(\"/calculo-pesado\", (req, res) => {\n  let total = 0;\n  for (let i = 0; i < 1_000_000_000; i++) total += i;\n  res.json({ total });\n});"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué bloquea el hilo único y qué no",
+                      "items": [
+                        "Consultas a base de datos (await): no bloquea, Node sigue atendiendo otras peticiones",
+                        "Peticiones HTTP a otros servicios (await fetch): no bloquea",
+                        "Lectura/escritura de archivos con las APIs async (fs.promises): no bloquea",
+                        "Un bucle síncrono pesado o un cálculo intensivo sin await: sí bloquea todo el servidor",
+                        "JSON.parse/stringify de un payload enorme: sí bloquea (es síncrono), considerar streaming para payloads muy grandes"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás explicar por qué una operación de I/O con await no bloquea el servidor mientras que un cálculo síncrono pesado sí lo hace, y distinguir en un fragmento de código cuál de los dos casos aplica."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del endpoint de usuarios frente al de cálculo pesado. Identifica la diferencia clave: uno espera algo externo (I/O), el otro mantiene al hilo ocupado haciendo cálculo él mismo."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Construye un pequeño servidor con dos endpoints: uno que simula una consulta lenta con un setTimeout envuelto en una promesa (await), y otro con un bucle síncrono pesado. Dispara varias peticiones al primero simultáneamente y confirma que se atienden en paralelo (todas responden casi al mismo tiempo). Dispara una petición al segundo mientras disparas varias al primero y observa qué pasa. Criterio de paso: puedes explicar, con el resultado real, por qué el segundo endpoint retrasa a todos los demás."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Identifica, en un fragmento de código que te interese (puede ser de este mismo proyecto, en apps/api/src), al menos una operación de I/O no bloqueante y, si existe, algún cálculo síncrono que podría volverse un problema con datos muy grandes. Documenta tu hallazgo con el archivo y la línea exacta. Criterio de paso: tu clasificación de I/O frente a cálculo síncrono es correcta para el código real que elegiste."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que explique por qué Node.js es 'de un solo hilo pero no bloqueante'. Verifica su respuesta reproduciendo el ejemplo de esta lección: un cálculo síncrono pesado realmente bloquea, a pesar de estar en una función 'async'. Si la respuesta de la IA sugiere que async por sí solo resuelve cualquier bloqueo, corrígela con esta evidencia."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuántos hilos ejecutan JavaScript en Node por defecto? 2) ¿Por qué una consulta a base de datos con await no bloquea el servidor? 3) ¿Qué tipo de código sí bloquea el hilo único? 4) ¿Qué diferencia hay entre concurrencia y paralelismo real? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Entender este modelo explica por qué Node.js escala bien para APIs con mucha espera de I/O (como la mayoría de APIs REST) pero necesita ayuda extra (workers, procesos separados) para cargas de cómputo intensivo real. En una entrevista pueden pedirte: '¿por qué Node.js puede atender miles de conexiones con un solo hilo?'. Variante: necesitas procesar una imagen pesada (CPU-intensivo) sin afectar al resto del servidor (pista: worker_threads o un proceso separado, no simplemente await). Pregunta de cierre: ¿cuándo elegirías un lenguaje con hilos verdaderos en lugar de Node para un servicio nuevo?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.1.2",
+              "title": "Estructura de NestJS: módulos, controladores, proveedores",
+              "objective": "Organizar una funcionalidad en un módulo de NestJS con su controlador y su proveedor",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "estructura-de-nestjs-modulos-controladores-y-proveedores",
+                  "title": "Estructura de NestJS: módulos, controladores y proveedores",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "NestJS organiza una aplicación en módulos, cada uno agrupando una funcionalidad (autenticación, contenido, progreso); un módulo declara qué controladores y proveedores le pertenecen con el decorador `@Module`. Un controlador recibe peticiones HTTP y las rutea a un método (decorado con `@Get`, `@Post`, etc.), pero no debería contener lógica de negocio: su trabajo es traducir la petición HTTP a una llamada a un servicio, y la respuesta del servicio a una respuesta HTTP. Un proveedor (normalmente un servicio) contiene la lógica real; se marca con `@Injectable()` para que NestJS pueda inyectarlo donde se necesite. Esta separación (controlador delgado, servicio con la lógica) es la misma que ya se ve en `apps/api/src/modules/*` de este proyecto: cada módulo (auth, content, progress...) sigue este mismo patrón."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las tres piezas y su responsabilidad",
+                      "items": [
+                        "@Module({ controllers, providers, imports }): declara qué pertenece a esta funcionalidad y qué importa de otros módulos.",
+                        "Controlador (@Controller('ruta')): rutea peticiones HTTP a métodos; traduce HTTP a llamadas al servicio y viceversa, sin lógica de negocio propia.",
+                        "Proveedor/Servicio (@Injectable()): contiene la lógica real (reglas, cálculos, acceso a datos a través de un repositorio).",
+                        "Un controlador puede depender de varios servicios; un servicio no debería depender de nada relacionado con HTTP (ni request, ni response)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un módulo de 'saludos': `SaludosModule` declara `controllers: [SaludosController]` y `providers: [SaludosService]`. `SaludosController` tiene `@Get(':nombre')` que llama a `this.saludosService.generar(nombre)` y devuelve el resultado. `SaludosService` (con `@Injectable()`) tiene el método `generar(nombre: string)` que construye el saludo real. Si más adelante la lógica de saludos necesita consultar una base de datos, ese cambio ocurre dentro de `SaludosService`, sin tocar el controlador en absoluto."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: poner lógica de negocio directamente en el controlador",
+                      "text": "Causa: parece más rápido escribir la lógica directamente en el método del controlador que crear un servicio aparte. Cómo detectarlo: el método del controlador tiene decenas de líneas con condicionales y cálculos, en vez de una o dos líneas que llaman a un servicio. Solución: el controlador debe limitarse a extraer datos de la petición, llamar al servicio correspondiente, y devolver su resultado; toda regla o cálculo va en el servicio."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: olvidar declarar un proveedor en el módulo",
+                      "text": "Causa: crear la clase del servicio con @Injectable() pero no agregarla al array providers del módulo. Cómo detectarlo: NestJS lanza un error al arrancar, del tipo 'no se puede resolver la dependencia' del servicio en el constructor del controlador. Solución: todo servicio que se inyecta en algún lugar de un módulo debe estar declarado en el providers de ese módulo (o exportado desde otro módulo que se importe)."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un módulo mínimo con controlador y servicio",
+                      "language": "typescript",
+                      "code": "@Injectable()\nexport class SaludosService {\n  generar(nombre: string): string {\n    return `Hola, ${nombre}!`;\n  }\n}\n\n@Controller(\"saludos\")\nexport class SaludosController {\n  constructor(private readonly saludosService: SaludosService) {}\n\n  @Get(\":nombre\")\n  obtener(@Param(\"nombre\") nombre: string) {\n    return { mensaje: this.saludosService.generar(nombre) };\n  }\n}\n\n@Module({\n  controllers: [SaludosController],\n  providers: [SaludosService],\n})\nexport class SaludosModule {}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué va en cada pieza",
+                      "items": [
+                        "@Module: qué controladores y proveedores pertenecen a esta funcionalidad, y qué importa de otros módulos",
+                        "Controlador: rutas HTTP, extracción de parámetros, llamada al servicio, forma de la respuesta",
+                        "Servicio: reglas de negocio, cálculos, orquestación de acceso a datos",
+                        "Nunca en el controlador: lógica de negocio, acceso directo a la base de datos"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás crear un módulo de NestJS con su controlador (sin lógica de negocio) y su servicio inyectado (con la lógica real), declarando correctamente ambos en el decorador @Module."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de SaludosModule. Observa que el controlador no sabe cómo se construye el saludo: solo sabe a quién preguntarle."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Construye un módulo 'tareas' con un servicio que mantenga una lista de tareas en memoria (agregar, listar) y un controlador con dos rutas (POST para agregar, GET para listar) que solo llamen al servicio. Criterio de paso: ninguna línea del controlador contiene lógica más allá de extraer datos de la petición y llamar al servicio."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Abre un módulo real de este proyecto (por ejemplo, apps/api/src/modules/health o uno similar pequeño) e identifica exactamente qué hace el controlador y qué hace el servicio, línea por línea. Documenta si encuentras alguna línea en el controlador que, según el criterio de esta lección, debería estar en el servicio. Criterio de paso: tu análisis es correcto respecto al código real que inspeccionaste."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que genere un módulo de NestJS para una funcionalidad que le describas. Revisa si puso lógica de negocio directamente en el controlador. Si lo hizo, pide que la mueva a un servicio inyectado y verifica que el módulo sigue arrancando sin errores de dependencias."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué declara el decorador @Module? 2) ¿Qué responsabilidad tiene un controlador y cuál NO debería tener? 3) ¿Qué hace @Injectable()? 4) ¿Qué error ocurre si un servicio se usa pero no se declara en providers? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Esta separación (controlador delgado, servicio con lógica) es la base de prácticamente cualquier backend NestJS en producción, incluyendo todos los módulos de este proyecto. En una entrevista pueden pedirte: 'diseña la estructura de módulos para esta funcionalidad'. Variante: dos funcionalidades distintas necesitan compartir el mismo servicio (pista: ese servicio se declara en un módulo y se exporta, y el otro módulo lo importa). Pregunta de cierre: ¿cuándo un controlador necesita más de un servicio inyectado, y qué señal indica que el módulo debería dividirse en dos?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.1.3",
+              "title": "Inyección de dependencias",
+              "objective": "Usar inyección de dependencias de NestJS para desacoplar un servicio de sus colaboradores",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "inyeccion-de-dependencias",
+                  "title": "Inyección de dependencias",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Inyección de dependencias significa que una clase no crea sus propias colaboradoras (`new ServicioX()` dentro de otra clase), sino que las recibe ya construidas, normalmente por el constructor. NestJS tiene un contenedor que resuelve automáticamente qué instancia pasar a cada constructor, basándose en los tipos declarados (o en un token explícito cuando el tipo no basta, como con interfaces o valores primitivos). La ventaja real no es solo 'menos código': es que una clase que recibe sus dependencias por constructor se puede probar en aislamiento, pasándole una versión falsa (un mock o un stub) de cada dependencia, sin necesitar un contenedor completo ni una base de datos real."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo funciona la inyección en NestJS",
+                      "items": [
+                        "constructor(private readonly servicio: ServicioX): NestJS ve el tipo ServicioX y busca una instancia registrada para pasarla automáticamente.",
+                        "Un servicio se registra en providers de un módulo; NestJS decide cuándo construirlo (por defecto, una sola instancia compartida, singleton).",
+                        "Cuando el tipo no es suficiente (una interfaz, o varias implementaciones posibles), se usa un token explícito con @Inject('TOKEN') y un provider con useClass/useValue/useFactory.",
+                        "En las pruebas, se puede construir la clase directamente pasando dependencias falsas por el constructor, sin usar el contenedor de NestJS en absoluto."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un `PedidosService` necesita enviar notificaciones, pero no debería saber si eso es por correo, SMS o una cola de mensajes. Se define una interfaz `NotificadorPort` con un método `enviar(mensaje)`. `PedidosService` recibe `@Inject('NOTIFICADOR') private readonly notificador: NotificadorPort` en su constructor. El módulo registra `{ provide: 'NOTIFICADOR', useClass: NotificadorEmail }`. En las pruebas de `PedidosService`, se construye pasando un objeto falso `{ enviar: vi.fn() }` directamente, sin tocar NestJS ni la implementación real de correo."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: instanciar una dependencia manualmente con 'new' en vez de inyectarla",
+                      "text": "Causa: parece más directo escribir `const notificador = new NotificadorEmail()` dentro del servicio. Cómo detectarlo: para probar ese servicio, es imposible sustituir el notificador real por uno falso sin modificar el código de producción. Solución: recibe toda dependencia por el constructor (inyectada), nunca la construyas internamente con new."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: depender de una clase concreta cuando podría haber varias implementaciones",
+                      "text": "Causa: inyectar directamente `NotificadorEmail` en vez de una interfaz/puerto. Cómo detectarlo: cambiar de proveedor de notificaciones (de email a una cola) obliga a modificar el código del servicio que las usa, no solo la configuración del módulo. Solución: depende de una interfaz (puerto) cuando es razonable que exista más de una implementación, y decide la implementación concreta en el módulo, no en el servicio."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Inyección por interfaz con un token explícito",
+                      "language": "typescript",
+                      "code": "export interface NotificadorPort {\n  enviar(mensaje: string): Promise<void>;\n}\n\n@Injectable()\nexport class PedidosService {\n  constructor(\n    @Inject(\"NOTIFICADOR\") private readonly notificador: NotificadorPort,\n  ) {}\n\n  async confirmar(pedidoId: string) {\n    // ... lógica del pedido ...\n    await this.notificador.enviar(`Pedido ${pedidoId} confirmado`);\n  }\n}\n\n@Module({\n  providers: [\n    PedidosService,\n    { provide: \"NOTIFICADOR\", useClass: NotificadorEmail },\n  ],\n})\nexport class PedidosModule {}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Formas de registrar un proveedor",
+                      "items": [
+                        "useClass: NestJS construye una instancia de esa clase cuando se pide el token",
+                        "useValue: un valor fijo ya construido (útil para configuración o constantes)",
+                        "useFactory: una función que construye el valor, pudiendo depender de otros providers",
+                        "Sin token (solo la clase): NestJS usa el tipo mismo como identificador, el caso más simple y común"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás diseñar un servicio que dependa de una interfaz (no de una clase concreta) inyectada por token, registrar su implementación en el módulo, y probar el servicio pasando una implementación falsa directamente por el constructor, sin usar el contenedor de NestJS."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de PedidosService y NotificadorPort. Identifica por qué probar este servicio no requiere enviar un correo real."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Construye un servicio `RecordatorioService` que dependa de una interfaz `RelojPort` con un método `ahora(): Date`, inyectada por token. Regístrala en el módulo con una implementación real que use `new Date()`. Escribe una prueba que construya RecordatorioService pasando un RelojPort falso que siempre devuelve una fecha fija, para verificar un comportamiento que depende de la fecha sin que la prueba sea inestable según el día en que se ejecute. Criterio de paso: la prueba pasa de forma determinista sin importar cuándo se ejecute."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Busca en apps/api/src un servicio real de este proyecto que reciba dependencias por constructor (por ejemplo, en modules/auth o modules/review) e identifica: ¿cuáles dependencias son interfaces/puertos y cuáles son clases concretas? ¿Por qué crees que se eligió cada una? Criterio de paso: tu identificación es correcta respecto al código real inspeccionado."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente un servicio con una dependencia. Revisa si usa 'new' para construir esa dependencia directamente dentro del servicio, en vez de recibirla por constructor. Si lo hace, pide que la corrija a inyección de dependencias y verifica que ahora puedes probarla con un doble falso."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué problema evita recibir dependencias por constructor en vez de instanciarlas con new? 2) ¿Cuándo se necesita un token explícito con @Inject? 3) ¿Qué diferencia hay entre useClass y useValue? 4) ¿Por qué depender de una interfaz en vez de una clase concreta facilita cambiar de implementación? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "La inyección de dependencias por interfaz (puertos y adaptadores) es exactamente el patrón que ya usa este proyecto para el sandbox de ejecución y el repaso espaciado (adaptador Prisma y adaptador en memoria para pruebas), permitiendo probar la lógica sin una base de datos real. En una entrevista pueden pedirte: '¿cómo probarías este servicio sin una base de datos real?'. Variante: necesitas cambiar de proveedor de un servicio externo (de un proveedor de pagos a otro) sin tocar la lógica de negocio (pista: si el servicio dependía de una interfaz, el cambio es solo de configuración del módulo). Pregunta de cierre: ¿cuándo NO vale la pena introducir una interfaz solo para tener una única implementación posible?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.1.4",
+              "title": "DTO, validación con pipes",
+              "objective": "Validar el cuerpo de una petición con un esquema y un pipe antes de que llegue al controlador",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "dto-validacion-y-pipes",
+                  "title": "DTO, validación y pipes",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un DTO (Data Transfer Object) describe la forma de los datos que entran o salen de un endpoint; en NestJS, un pipe es una pieza que transforma o valida un valor antes de que llegue al método del controlador. La comunidad de NestJS documenta `class-validator` (decoradores como `@IsEmail()` sobre una clase) como forma habitual de validar DTOs, pero ese enfoque duplica reglas que ya existen si el proyecto comparte contratos con el frontend. Este proyecto usa, en cambio, esquemas Zod definidos una sola vez en `packages/shared` (la misma fuente de verdad que valida en la web) y un `ZodValidationPipe` genérico que los aplica en la API: el tipo del DTO se deriva automáticamente del esquema con `z.infer`, así que nunca se escribe dos veces la misma regla ni el mismo tipo."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cómo valida este proyecto, paso a paso",
+                      "items": [
+                        "El esquema vive una sola vez en packages/shared (ej. registerSchema), validado y probado ahí.",
+                        "El tipo del DTO se deriva del esquema: type RegisterDto = z.infer<typeof registerSchema>, nunca se declara a mano.",
+                        "El controlador aplica el pipe sobre el parámetro: @Body(new ZodValidationPipe(registerSchema)) body: RegisterDto.",
+                        "Si la validación falla, el pipe lanza una excepción con los detalles de cada campo; el filtro de errores la convierte en el formato de error único de la API.",
+                        "La web usa exactamente el mismo esquema para validar antes de enviar, así que un cambio de contrato se refleja en ambos lados a la vez."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un endpoint de registro: `@Post('register') register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterDto)`. Si el cuerpo llega sin `email` o con un email mal formado, `ZodValidationPipe` ejecuta `registerSchema.safeParse(body)`, obtiene un resultado con errores, y lanza una `BadRequestException` con el detalle de qué campo falló y por qué (así está implementado en `apps/api/src/common/pipes/zod-validation.pipe.ts` de este mismo proyecto). El controlador nunca llega a ejecutarse con datos inválidos: ya los recibe tipados y validados como `RegisterDto`."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: duplicar las reglas de validación en el DTO y en otro lugar del código",
+                      "text": "Causa: escribir la regla 'el email debe ser válido' tanto en un decorador de clase como, por separado, en una validación manual más adelante en el servicio. Cómo detectarlo: una regla cambia (por ejemplo, la longitud mínima de una contraseña) y hay que recordar actualizarla en dos o más lugares, con el riesgo de que queden desincronizados. Solución: el esquema de shared es la única fuente de verdad; si una regla cambia, cambia ahí y se propaga automáticamente a quien lo use."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: validar manualmente con ifs en el controlador en vez de usar un pipe",
+                      "text": "Causa: parece más rápido escribir `if (!body.email) throw new BadRequestException(...)` directamente. Cómo detectarlo: cada endpoint nuevo repite el mismo patrón de validaciones manuales, con mensajes de error inconsistentes entre endpoints. Solución: aplica un pipe de validación de forma consistente en todos los endpoints que reciben cuerpo o parámetros, para que el formato de error sea siempre el mismo."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un endpoint con DTO derivado de un esquema Zod",
+                      "language": "typescript",
+                      "code": "// packages/shared/src/schemas/productos.ts\nexport const crearProductoSchema = z.object({\n  nombre: z.string().min(1),\n  precioCentavos: z.number().int().positive(),\n});\nexport type CrearProductoDto = z.infer<typeof crearProductoSchema>;\n\n// apps/api/src/modules/productos/productos.controller.ts\n@Post()\ncrear(@Body(new ZodValidationPipe(crearProductoSchema)) body: CrearProductoDto) {\n  return this.productosService.crear(body);\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "class-validator (comunidad NestJS) frente a Zod compartido (este proyecto)",
+                      "items": [
+                        "class-validator: decoradores sobre una clase DTO propia de la API; no se comparte con el frontend",
+                        "Zod en shared: un esquema único, válido en API y web, con el tipo derivado automáticamente",
+                        "class-validator: requiere instalar reflect-metadata y mantener la clase sincronizada con los tipos a mano",
+                        "Zod en shared: un cambio de regla se hace en un solo archivo y falla en ambos lados si no se actualiza el consumidor"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás definir un esquema Zod en shared, derivar su tipo con z.infer, y aplicarlo en un endpoint de NestJS con ZodValidationPipe, de forma que un cuerpo inválido sea rechazado antes de llegar a la lógica del controlador."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del endpoint de productos. Observa que el tipo CrearProductoDto nunca se escribe a mano: se deriva del esquema con z.infer."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Define un esquema Zod para crear una tarea (título obligatorio, prioridad 'baja'|'media'|'alta'), deriva su tipo, y aplícalo con ZodValidationPipe en un endpoint POST de un controlador de práctica. Prueba enviando un cuerpo sin título y verifica que la respuesta incluye el detalle del campo que falló. Criterio de paso: un cuerpo inválido nunca llega a ejecutar la lógica del controlador."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Abre un esquema real de packages/shared/src/schemas (por ejemplo, el de auth o progress) y el endpoint de apps/api que lo usa con ZodValidationPipe. Documenta, con nombres de archivo y línea, dónde se define el esquema y dónde se aplica el pipe. Criterio de paso: identificas correctamente ambos puntos en el código real."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que valide el cuerpo de un endpoint de NestJS. Si propone class-validator con decoradores sobre una clase, pregúntale explícitamente cómo evitaría duplicar esas reglas si el frontend necesita la misma validación, y guía la conversación hacia un esquema compartido (como hace este proyecto). Verifica la propuesta final aplicándola a un caso real."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué problema de duplicación resuelve tener el esquema de validación en shared en vez de en la API? 2) ¿Cómo se deriva el tipo de un DTO a partir de un esquema Zod? 3) ¿Qué hace ZodValidationPipe cuando la validación falla? 4) ¿Qué ventaja tiene validar con un pipe en vez de ifs manuales en el controlador? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Compartir el contrato de validación entre frontend y backend (en vez de duplicarlo) es una decisión de arquitectura real que este mismo proyecto documentó explícitamente al elegir Zod sobre class-validator en su primer sprint. En una entrevista pueden preguntarte: '¿cómo evitarías que frontend y backend validen de forma distinta los mismos datos?'. Variante: el equipo de backend usa un lenguaje distinto al del frontend, así que no pueden compartir el mismo esquema de código (pista: ahí se suele compartir el contrato como JSON Schema u OpenAPI generado, no el código mismo). Pregunta de cierre: ¿cuándo sí tendría sentido usar class-validator en un proyecto NestJS?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.1.5",
+              "title": "Manejo centralizado de errores (filtros)",
+              "objective": "Centralizar el formato de error de una API con un filtro de excepciones",
+              "order": 5,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "manejo-centralizado-de-errores-filtros",
+                  "title": "Manejo centralizado de errores: filtros",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Sin un manejo centralizado, cada endpoint decide por su cuenta qué forma tiene un error (unos devuelven `{ error: '...' }`, otros `{ message: '...' }`, otros una excepción sin capturar que expone un stack trace completo al cliente). Un filtro de excepciones en NestJS (`@Catch()`) intercepta toda excepción lanzada en cualquier parte de la aplicación y la convierte a un único formato de respuesta, antes de que llegue al cliente. Esto incluye decidir qué información es segura de mostrar (un mensaje claro y un código de error) y qué nunca debe exponerse (detalles internos, nombres de archivos, consultas SQL): un error 500 inesperado se registra completo en los logs del servidor, pero el cliente solo recibe un mensaje genérico con un identificador de traza para poder correlacionarlo si hace falta investigar."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué resuelve un filtro de excepciones centralizado",
+                      "items": [
+                        "Un único formato de error para toda la API, sin importar en qué endpoint o capa se originó.",
+                        "Traduce excepciones conocidas (como BadRequestException) a su código y mensaje correspondiente.",
+                        "Para errores inesperados (no previstos), nunca expone el stack trace ni detalles internos al cliente.",
+                        "Registra (logea) el error completo del lado del servidor, con un identificador (traceId) que también se devuelve al cliente para poder correlacionar un reporte con el log real."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "En este proyecto, `AllExceptionsFilter` (en `apps/api/src/common/errors/all-exceptions.filter.ts`) captura toda excepción con `@Catch()`. Si es una `HttpException` conocida (como la que lanza `ZodValidationPipe`), extrae su status y detalles y los acomoda al formato único documentado en `contratos-api.md`. Si es un error inesperado (algo que nadie previó, como una excepción de la base de datos), responde `500` con un mensaje genérico, pero registra en los logs el stack completo junto con un `traceId` que también viaja en la cabecera `x-trace-id` de la respuesta, permitiendo rastrear ese incidente específico sin exponer ningún detalle interno al cliente."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: dejar que un error inesperado exponga su stack trace al cliente",
+                      "text": "Causa: no capturar errores no previstos, dejando que NestJS devuelva su comportamiento por defecto (que en desarrollo puede incluir detalles internos). Cómo detectarlo: un cliente externo recibe, ante un fallo inesperado, información sobre la estructura interna del código, nombres de archivos o incluso fragmentos de una consulta SQL. Solución: un filtro de excepciones global (@Catch() sin tipo, o @Catch() en el nivel de toda la app) debe atrapar absolutamente todo y sanear la respuesta para errores no previstos."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: cada módulo con su propio formato de error distinto",
+                      "text": "Causa: implementar el manejo de errores endpoint por endpoint, sin un filtro compartido. Cómo detectarlo: un cliente que consume varios endpoints de la misma API necesita código distinto para interpretar el error de cada uno, porque la forma de la respuesta cambia. Solución: un solo filtro de excepciones global, aplicado a toda la aplicación, garantiza que cualquier endpoint devuelva errores con la misma forma."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un filtro de excepciones mínimo",
+                      "language": "typescript",
+                      "code": "@Catch()\nexport class AllExceptionsFilter implements ExceptionFilter {\n  catch(exception: unknown, host: ArgumentsHost) {\n    const response = host.switchToHttp().getResponse<Response>();\n    const traceId = randomUUID();\n\n    if (exception instanceof HttpException) {\n      const status = exception.getStatus();\n      response.status(status).json({ error: { code: \"...\", message: exception.message, traceId } });\n      return;\n    }\n\n    // Error no previsto: nunca exponer detalles internos\n    console.error(`[${traceId}]`, exception);\n    response.status(500).json({ error: { code: \"INTERNAL_ERROR\", message: \"Algo salió mal\", traceId } });\n  }\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué sí y qué no va en la respuesta de error al cliente",
+                      "items": [
+                        "Sí: un código de error estable (ej. VALIDATION_ERROR, NOT_FOUND)",
+                        "Sí: un mensaje claro orientado a quien consume la API",
+                        "Sí: un traceId para correlacionar con los logs del servidor si hace falta investigar",
+                        "No: el stack trace de la excepción",
+                        "No: nombres de archivos internos, consultas SQL, o cualquier detalle de implementación"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás implementar un filtro de excepciones global que convierta cualquier error (previsto o no) a un formato único de respuesta, sin exponer stack traces ni detalles internos para errores inesperados, y registrando esos errores con un identificador de traza."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee cómo AllExceptionsFilter de este proyecto distingue entre excepciones conocidas (HttpException) y errores inesperados, y qué información va a cada lado (cliente vs logs del servidor)."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Construye un filtro de excepciones global para una API de práctica que devuelva siempre `{ error: { code, message, traceId } }`, distinguiendo HttpException (usa su status y mensaje) de cualquier otro error (responde 500 con un mensaje genérico, registrando el error real en consola). Prueba disparando ambos tipos de error. Criterio de paso: ningún caso de error inesperado expone detalles internos en la respuesta HTTP."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Abre apps/api/src/common/errors/all-exceptions.filter.ts de este proyecto y compáralo con tu implementación de la práctica guiada: ¿qué hace de más o distinto? Identifica específicamente cómo decide si un status es 'inesperado' (candidato a esconder detalles) frente a uno 'conocido'. Criterio de paso: tu comparación es precisa respecto al código real."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente manejo de errores para una API. Revisa si distingue entre errores previstos e imprevistos, y si algún camino expone un stack trace o detalle interno al cliente en caso de error inesperado. Corrige cualquier filtración antes de aceptar la implementación."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué problema resuelve un filtro de excepciones centralizado? 2) ¿Qué información nunca debe llegar al cliente en un error inesperado? 3) ¿Para qué sirve un traceId? 4) ¿Dónde sí se registra el detalle completo de un error inesperado? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Un formato de error consistente y seguro es, en auditorías de seguridad reales, uno de los primeros puntos que se revisan (exponer stack traces es una fuga de información común). En una entrevista pueden pedirte: '¿cómo manejarías errores de forma centralizada en esta API?'. Variante: necesitas distinguir, en el formato de error, entre un error de validación (culpa del cliente) y uno interno (culpa del servidor) para que un sistema automatizado decida si reintentar (pista: los códigos de estado 4xx frente a 5xx ya codifican esa distinción). Pregunta de cierre: ¿cuándo sería razonable exponer más detalle del error al cliente de lo habitual?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M5.2",
           "title": "Diseño de API REST",
           "order": 2,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U5.2.1",
+              "title": "Recursos, rutas y verbos",
+              "objective": "Diseñar rutas de una API siguiendo el modelo de recursos",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "recursos-rutas-y-verbos",
+                  "title": "Recursos, rutas y verbos",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Diseñar una API REST significa pensar primero en recursos (sustantivos: usuarios, pedidos, comentarios) y dejar que el verbo HTTP exprese la acción, en vez de codificar la acción en la propia ruta. Una ruta como `/obtenerUsuario` o `/crearPedido` mezcla sustantivo y verbo de forma redundante con el método HTTP; el estilo de recursos usa `/usuarios` (GET para listar, POST para crear) y `/usuarios/:id` (GET para uno, PUT/PATCH para actualizar, DELETE para eliminar). Las relaciones entre recursos se anidan cuando tiene sentido real (`/usuarios/:id/pedidos` para los pedidos de un usuario), pero no se anida todo indiscriminadamente: una ruta con más de dos o tres niveles de anidamiento suele ser señal de que conviene una ruta más plana con parámetros de consulta."
+                    },
+                    {
+                      "type": "list",
+                      "title": "El patrón de recursos",
+                      "items": [
+                        "/recursos (plural): GET lista, POST crea.",
+                        "/recursos/:id: GET obtiene uno, PUT reemplaza completo, PATCH actualiza parcial, DELETE elimina.",
+                        "/recursos/:id/subrecursos: cuando el subrecurso realmente pertenece y no existe sin su padre (ej. /pedidos/:id/items).",
+                        "El verbo va en el método HTTP, nunca en la ruta (nunca /crearUsuario, /obtenerUsuarios).",
+                        "Una acción que no es CRUD puro (como 'confirmar un pedido') puede modelarse como un sub-recurso de acción: POST /pedidos/:id/confirmaciones, o un verbo explícito documentado como excepción: POST /pedidos/:id/confirmar."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Una API de biblioteca: `GET /libros` (listar), `POST /libros` (crear), `GET /libros/:id` (uno), `PATCH /libros/:id` (actualizar parcialmente), `DELETE /libros/:id` (eliminar). Los préstamos de un libro específico: `GET /libros/:id/prestamos`. Una acción que no es un CRUD directo, 'marcar un préstamo como devuelto', se modela como `PATCH /prestamos/:id` con un cuerpo `{ estado: 'devuelto' }`, en vez de inventar una ruta como `/devolverPrestamo/:id`."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: poner el verbo en la ruta en vez de en el método HTTP",
+                      "text": "Causa: resulta más 'legible a simple vista' escribir /crearUsuario que confiar en que POST /usuarios ya significa crear. Cómo detectarlo: las rutas tienen verbos repetidos como prefijo (/obtenerX, /crearX, /actualizarX, /eliminarX) para el mismo recurso X. Solución: el verbo HTTP ya expresa la acción; la ruta solo necesita nombrar el recurso (y su identificador, si aplica)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: anidar rutas más de dos o tres niveles por fidelidad a la jerarquía de datos",
+                      "text": "Causa: copiar la jerarquía exacta de la base de datos en la URL (organizaciones → departamentos → empleados → documentos). Cómo detectarlo: la URL se vuelve larga, difícil de construir del lado del cliente, y cambiar de departamento a un empleado requiere reconstruir toda la ruta. Solución: a partir de dos o tres niveles, considera una ruta más plana con el identificador directo (/empleados/:id) y filtros opcionales por query string, reservando el anidamiento para relaciones que realmente no tienen sentido fuera de su padre."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Rutas de una API de biblioteca",
+                      "language": "text",
+                      "code": "GET    /libros                  -> listar libros\nPOST   /libros                  -> crear un libro\nGET    /libros/:id              -> obtener un libro\nPATCH  /libros/:id              -> actualizar parcialmente\nDELETE /libros/:id              -> eliminar\nGET    /libros/:id/prestamos    -> prestamos de ese libro (anidado, tiene sentido)\nPATCH  /prestamos/:id           -> actualizar un prestamo (ruta plana, no anidada)"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Verbo HTTP según la acción sobre el recurso",
+                      "items": [
+                        "Listar o leer: GET",
+                        "Crear uno nuevo: POST",
+                        "Reemplazar completo: PUT",
+                        "Actualizar parcialmente: PATCH",
+                        "Eliminar: DELETE",
+                        "Acción que no es CRUD puro: modelarla como sub-recurso o como una excepción documentada, nunca como verbo libre en cualquier ruta"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás diseñar las rutas de un recurso (y sus relaciones más cercanas) siguiendo el patrón de recursos con los verbos HTTP correctos, sin poner ningún verbo dentro de la ruta misma."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de la API de biblioteca. Identifica por qué 'marcar un préstamo como devuelto' se resolvió con PATCH sobre el préstamo en vez de una ruta /devolverPrestamo."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Diseña las rutas (método + ruta) para un recurso 'comentarios' de un blog: listar comentarios de un post, crear un comentario en un post, editar un comentario propio, eliminar un comentario. Decide cuáles rutas van anidadas bajo /posts/:id y cuáles son planas. Criterio de paso: ningún verbo aparece en ninguna ruta, y justificas tu decisión de anidamiento para cada caso."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Toma una acción que no es un CRUD directo (por ejemplo, 'archivar una tarea', 'invitar a un usuario a un equipo') y diseña cómo la modelarías con el patrón de recursos, explicando por qué evitaste un verbo libre en la ruta. Criterio de paso: tu diseño usa un método HTTP estándar y, si corresponde, un sub-recurso en lugar de un verbo en la ruta."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que diseñe las rutas de una API para una funcionalidad que le describas. Revisa si puso algún verbo directamente en la ruta, o si anidó más de tres niveles sin justificación. Corrige el diseño antes de aceptarlo."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Dónde debería expresarse la acción, en la ruta o en el método HTTP? 2) ¿Cuándo tiene sentido anidar una ruta bajo otro recurso? 3) ¿Qué problema trae anidar demasiados niveles? 4) ¿Cómo modelarías una acción que no es un CRUD directo? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "El diseño de rutas de una API es una de las primeras decisiones que un cliente (externo o tu propio frontend) nota, y cambiarlo después de publicado rompe compatibilidad con quien ya la consume. En una entrevista pueden pedirte: 'diseña las rutas REST para este recurso'. Variante: la acción afecta a varios recursos a la vez (por ejemplo, 'mover 10 tareas a otra lista') (pista: puede modelarse como una operación por lotes sobre un sub-recurso, como POST /listas/:id/tareas/mover con los ids en el cuerpo). Pregunta de cierre: ¿cuándo preferirías una acción explícita no-CRUD en la ruta en vez de forzarla al patrón de recursos?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.2.2",
+              "title": "Códigos de estado correctos",
+              "objective": "Elegir el código de estado correcto para cada resultado de un endpoint",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "codigos-de-estado-correctos",
+                  "title": "Códigos de estado correctos",
+                  "estimatedMin": 45,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Diseñar el lado del servidor de una API significa decidir, para cada resultado posible de un endpoint, cuál código de estado comunica exactamente qué pasó, sin forzar todo a 200 o a 500. La distinción más importante es entre errores 4xx (el cliente envió algo que la API no puede procesar: datos inválidos, falta autenticación, no tiene permiso, el recurso no existe, hay un conflicto con el estado actual) y errores 5xx (algo falló del lado del servidor que el cliente no pudo haber evitado). Elegir bien entre códigos parecidos (401 frente a 403, 404 frente a 409, 400 frente a 422) no es un detalle cosmético: afecta qué puede hacer un cliente automatizado con la respuesta (reintentar, pedir login, mostrar un mensaje específico)."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Distinciones que conviene dominar",
+                      "items": [
+                        "401 Unauthorized: no hay autenticación válida (el cliente debe iniciar sesión o renovar su token).",
+                        "403 Forbidden: la autenticación es válida, pero no tiene permiso para esta acción específica (reintentar con login no ayuda).",
+                        "404 Not Found: el recurso referenciado por la URL no existe.",
+                        "409 Conflict: la petición es válida en sí misma, pero choca con el estado actual del sistema (ej. email ya registrado, versión desactualizada).",
+                        "400 Bad Request: la petición está mal formada estructuralmente; 422 Unprocessable Entity: la estructura es correcta pero el contenido no cumple reglas de negocio (distinción que algunas APIs hacen explícita y otras simplifican a 400)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un endpoint `POST /usuarios` para registro: sin token (no aplica aquí, es público) pero con email ya registrado, responde `409 Conflict` (la petición está bien formada, pero choca con un usuario ya existente), no `400`. Un endpoint `DELETE /pedidos/:id` donde el pedido no existe responde `404`. El mismo endpoint, si el usuario autenticado no es dueño de ese pedido, responde `403` (está autenticado, pero no autorizado para esta acción), no `404` (eso ocultaría innecesariamente, o en otros contextos de seguridad podría ser intencional devolver 404 para no revelar existencia; la decisión depende del nivel de confidencialidad requerido)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: devolver 401 cuando en realidad el problema es de permisos (403)",
+                      "text": "Causa: tratar 'no autorizado' como sinónimo exacto de 'no autenticado', cuando son conceptos distintos. Cómo detectarlo: un cliente que ya envía un token válido recibe 401 y, siguiendo el protocolo esperado, intenta reautenticarse (pedir login de nuevo) sin que eso resuelva nada, porque el problema real es que no tiene permiso, no que su sesión sea inválida. Solución: usa 401 solo cuando falta o es inválida la autenticación misma; usa 403 cuando la autenticación es válida pero la acción está prohibida para ese usuario."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: usar 404 cuando el recurso existe pero la petición es inconsistente con su estado",
+                      "text": "Causa: 404 se usa como 'no se puede procesar' genérico. Cómo detectarlo: un cliente intenta cancelar un pedido que ya fue entregado (el pedido existe, pero esa acción ya no es válida para su estado actual) y recibe 404, lo que sugiere incorrectamente que el pedido no existe en absoluto. Solución: usa 409 Conflict cuando el recurso existe pero la operación choca con su estado actual; reserva 404 para cuando el recurso referenciado realmente no existe."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Eligiendo el código según el escenario",
+                      "language": "typescript",
+                      "code": "async cancelar(pedidoId: string, usuarioId: string) {\n  const pedido = await this.repo.buscar(pedidoId);\n  if (!pedido) throw new NotFoundException(\"Pedido no encontrado\"); // 404\n  if (pedido.usuarioId !== usuarioId) throw new ForbiddenException(\"No autorizado\"); // 403\n  if (pedido.estado === \"entregado\") {\n    throw new ConflictException(\"No se puede cancelar un pedido ya entregado\"); // 409\n  }\n  return this.repo.cancelar(pedidoId);\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Decidir rápido entre códigos parecidos",
+                      "items": [
+                        "¿Falta autenticación o es inválida?: 401",
+                        "¿Está autenticado pero no tiene permiso para esta acción?: 403",
+                        "¿El recurso de la URL no existe en absoluto?: 404",
+                        "¿El recurso existe pero la operación choca con su estado actual?: 409",
+                        "¿Algo falló que el cliente no pudo haber evitado?: 5xx"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás elegir correctamente entre 401/403, 404/409 y 4xx/5xx para un escenario de API dado, justificando la elección con el estado real del sistema y de la autenticación del cliente."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del endpoint de cancelar pedido con sus tres validaciones en cascada (404, 403, 409). Observa el orden: primero existe, después pertenece, después es válido según su estado."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Te damos seis escenarios de una API de reservas de salas (reservar una sala que no existe, reservar sin estar autenticado, cancelar una reserva de otra persona, reservar una sala ya reservada en ese horario, actualizar una reserva con datos mal formados, consultar sin ningún problema). Asigna el código de estado correcto a cada uno. Criterio de paso: los seis códigos son correctos y justificados."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña la cascada de validaciones (en el orden correcto, como en el ejemplo resuelto) para un endpoint 'unirse a un equipo' que debe verificar: que el equipo existe, que el usuario está autenticado, que el equipo no está lleno, y que el usuario no es ya miembro. Asigna el código de estado a cada validación que falle. Criterio de paso: el orden de las validaciones y sus códigos son coherentes entre sí."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente un endpoint con varias validaciones posibles. Revisa si distingue correctamente 401 de 403, y 404 de 409. Corrige cualquier confusión antes de aceptar la implementación."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué diferencia hay entre 401 y 403? 2) ¿Cuándo usarías 409 en vez de 404? 3) ¿Por qué importa la distinción para un cliente automatizado? 4) Da un ejemplo propio (no de la lección) de un escenario 409. Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Elegir bien estos códigos es exactamente lo que ya hace este proyecto (por ejemplo, 409 al superar el máximo de intentos de un ejercicio, 404 de unidad o ejercicio inexistente, documentado en las bitácoras de los sprints de laboratorio y correcciones). En una entrevista pueden pedirte: 'diseña las validaciones y códigos de este endpoint'. Variante: por razones de seguridad, necesitas que un recurso que existe pero al que el usuario no tiene acceso responda 404 en vez de 403 (para no revelar su existencia) (pista: es una decisión legítima en contextos de alta confidencialidad, documentada explícitamente como excepción). Pregunta de cierre: ¿cuándo preferirías devolver 404 en vez de 403 a propósito?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.2.3",
+              "title": "Versionado y compatibilidad",
+              "objective": "Evolucionar una API sin romper a los clientes existentes",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "versionado-y-compatibilidad",
+                  "title": "Versionado y compatibilidad",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Una API en producción tiene clientes que no controlas directamente (apps móviles ya instaladas, integraciones de terceros, tu propio frontend desplegado en una versión anterior): un cambio que 'simplifica' el contrato del lado del servidor puede romper a todos ellos de golpe. Un cambio compatible (agregar un campo opcional nuevo, agregar un endpoint nuevo) no necesita versión nueva. Un cambio incompatible (quitar un campo, cambiar su tipo, cambiar el significado de un código de estado, renombrar algo) sí la necesita: versionar la API (por ejemplo, con un prefijo `/v2/` o una cabecera de versión) permite que los clientes viejos sigan funcionando contra `/v1/` mientras los nuevos adoptan `/v2/` a su propio ritmo, en vez de forzar una migración simultánea de todos los clientes a la vez."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cambios compatibles frente a incompatibles",
+                      "items": [
+                        "Compatible (no necesita versión nueva): agregar un campo opcional nuevo en la respuesta, agregar un endpoint nuevo, agregar un valor nuevo a un enum si los consumidores ya ignoran valores desconocidos.",
+                        "Incompatible (necesita versión nueva o un período de transición): quitar un campo, cambiar su tipo, hacer obligatorio un campo que antes era opcional, cambiar el significado de un código de estado existente.",
+                        "Una estrategia común: mantener ambas versiones funcionando en paralelo durante un período anunciado, y dar un aviso de deprecación (cabecera o documentación) antes de retirar la versión vieja.",
+                        "El versionado por URL (/v1/, /v2/) es el más simple de entender para clientes externos; el versionado por cabecera es más 'puro' pero menos visible."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este mismo proyecto documentó exactamente esta regla en S3: añadir `units` a `ModuleSummary` y `stageId` a `UnitSummary` en el contrato de contenido se consideró un cambio compatible porque son campos nuevos que no quitan ni cambian nada existente (ver `contratos-api.md` §7); los clientes que ya leían el contrato anterior siguen funcionando sin cambios, simplemente ignoran (o aprovechan) los campos nuevos. Si en cambio se hubiera necesitado renombrar `unitCount` o cambiar su tipo, eso habría sido un cambio incompatible que requeriría una versión nueva o una migración coordinada."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: quitar o renombrar un campo sin avisar, asumiendo que 'nadie lo usa'",
+                      "text": "Causa: no hay forma sencilla de saber, del lado del servidor, qué campos leen realmente todos los clientes existentes. Cómo detectarlo: después de desplegar el cambio, algún cliente (una app móvil antigua, una integración externa) empieza a fallar o a comportarse mal, sin ningún aviso previo. Solución: trata cualquier campo que alguna vez se expuso como potencialmente en uso; si debe eliminarse, márcalo como deprecado primero, da un período de transición documentado, y solo después retíralo."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: versionar toda la API de golpe por un cambio pequeño en un solo endpoint",
+                      "text": "Causa: parece más simple crear /v2/ completo cada vez que algo cambia, aunque sea un único endpoint. Cómo detectarlo: existen varias versiones completas de toda la API, la mayoría de cuyos endpoints son idénticos entre versiones, generando mantenimiento duplicado innecesario. Solución: versiona solo lo que realmente cambió de forma incompatible; un endpoint nuevo compatible no necesita arrastrar a toda la API a una versión nueva."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Versionado por prefijo de ruta",
+                      "language": "typescript",
+                      "code": "@Controller({ path: \"usuarios\", version: \"1\" })\nexport class UsuariosV1Controller {\n  @Get(\":id\")\n  obtener(@Param(\"id\") id: string) {\n    return { id, nombre: \"...\" }; // forma antigua\n  }\n}\n\n@Controller({ path: \"usuarios\", version: \"2\" })\nexport class UsuariosV2Controller {\n  @Get(\":id\")\n  obtener(@Param(\"id\") id: string) {\n    return { id, nombreCompleto: \"...\", email: \"...\" }; // forma nueva, incompatible\n  }\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "¿Este cambio necesita versión nueva?",
+                      "items": [
+                        "Agregar un campo opcional a la respuesta: no",
+                        "Agregar un endpoint nuevo: no",
+                        "Quitar un campo existente: sí (o deprecar primero)",
+                        "Cambiar el tipo de un campo existente: sí",
+                        "Hacer obligatorio algo que era opcional: sí",
+                        "Cambiar qué significa un código de estado ya documentado: sí"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás clasificar un cambio de API dado como compatible o incompatible, y diseñar una estrategia de versionado (o un período de deprecación) para los cambios incompatibles, sin romper a los clientes existentes de golpe."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo real de este proyecto (agregar units y stageId como cambio compatible). Identifica qué hace que ese cambio específico no haya necesitado una v2."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Te damos seis cambios propuestos a una API existente. Clasifica cada uno como compatible o incompatible, y para los incompatibles, propone si versionarías o si darías un período de deprecación primero. Criterio de paso: las seis clasificaciones son correctas con su justificación."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Elige un endpoint de este proyecto (en apps/api) y propón un cambio incompatible razonable (por ejemplo, renombrar un campo de su respuesta). Diseña el plan de migración: cómo anunciarías la deprecación, cuánto tiempo mantendrías ambas versiones, y cómo versionarías la ruta. Criterio de paso: tu plan no rompe a un cliente hipotético que sigue usando la versión vieja durante el período de transición."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que evalúe si un cambio propuesto a una API es compatible o no. Verifica su respuesta contrastándola con los criterios de esta lección (¿quita algo?, ¿cambia un tipo?, ¿cambia el significado de algo documentado?) antes de confiar en su clasificación."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) Da un ejemplo de cambio compatible y uno incompatible. 2) ¿Qué estrategia permite que clientes viejos sigan funcionando mientras migran los nuevos? 3) ¿Por qué no conviene versionar toda la API por un cambio pequeño? 4) ¿Qué es un período de deprecación? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Romper compatibilidad sin aviso es una de las causas más comunes de incidentes en producción que afectan a clientes externos que no controlas directamente. En una entrevista pueden pedirte: '¿cómo evolucionarías esta API sin romper a los clientes existentes?'. Variante: tienes cientos de integraciones externas de terceros que no puedes contactar individualmente (pista: ahí el período de transición y el versionado explícito son casi obligatorios, no opcionales). Pregunta de cierre: ¿cuándo sería aceptable romper compatibilidad sin un período de transición largo?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.2.4",
+              "title": "Paginación, filtros y ordenamiento",
+              "objective": "Diseñar un listado paginado, filtrable y ordenable de forma consistente",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "paginacion-filtros-y-ordenamiento",
+                  "title": "Paginación, filtros y ordenamiento",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un endpoint que lista un recurso no debería devolver toda la tabla de una sola vez: con suficientes datos, eso se vuelve lento, pesado de transferir y, eventualmente, directamente inviable. La paginación divide el listado en páginas manejables; el patrón más simple es `page`/`pageSize` por número de página (fácil de entender, pero puede saltar o repetir elementos si la tabla cambia entre peticiones), y el patrón por cursor (`cursor`/`limit`, donde el cursor es un puntero opaco al último elemento visto) es más estable ante datos que cambian constantemente, al costo de no poder 'saltar a la página 5' directamente. Filtros (`?estado=activo`) y ordenamiento (`?sort=fecha&order=desc`) se expresan como parámetros de consulta (query string), nunca cambiando la ruta base del recurso, y la forma de respuesta debe incluir metadatos (total, si hay más páginas) de manera consistente en todos los listados de la API."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las piezas de un listado bien diseñado",
+                      "items": [
+                        "Paginación por número (page/pageSize): simple, pero puede duplicar u omitir elementos si la tabla cambia entre páginas.",
+                        "Paginación por cursor (cursor/limit): más estable con datos cambiantes, el cursor es un identificador opaco, no un número de página.",
+                        "Filtros como query params (?estado=activo&categoria=libros): combinables, no cambian la ruta del recurso.",
+                        "Ordenamiento explícito (?sort=fecha&order=desc), con un valor por defecto documentado si no se especifica.",
+                        "Metadatos de respuesta consistentes en toda la API: total de elementos (si es viable calcularlo), si hay página siguiente, tamaño de página usado."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este mismo proyecto usa exactamente este patrón: `GET /api/content/stages?page=1&pageSize=20` devuelve `{ data: [...], meta: { page, pageSize, total } }` (documentado y probado desde S2). Añadir un filtro, como `?isPublished=true`, se agrega como query param adicional sin tocar la ruta ni la forma de la respuesta. El envoltorio `{ data, meta }` es el mismo para cualquier listado de la API (etapas, módulos, recursos), así que un cliente que ya sabe leer uno sabe leer todos."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: devolver un arreglo plano sin metadatos de paginación",
+                      "text": "Causa: parece más simple devolver directamente `[...]` en vez de envolver con `{ data, meta }`. Cómo detectarlo: el cliente no tiene forma de saber si hay más páginas, cuántos elementos hay en total, o qué página está viendo, sin hacer peticiones adicionales de prueba. Solución: envuelve siempre el listado con metadatos explícitos (aunque la primera versión de la API no tenga aún más de una página de datos reales)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: calcular el total exacto de forma costosa en tablas muy grandes",
+                      "text": "Causa: hacer un COUNT(*) completo de la tabla en cada petición de listado, 'porque el total siempre debe ser exacto'. Cómo detectarlo: el endpoint de listado se vuelve notablemente lento a medida que la tabla crece, aunque la página solicitada sea pequeña. Solución: para tablas muy grandes, considera un total aproximado, cachear el conteo, o cambiar a paginación por cursor que no necesita el total exacto para funcionar (solo necesita saber si hay 'siguiente')."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un endpoint de listado con paginación, filtro y orden",
+                      "language": "typescript",
+                      "code": "@Get()\nasync listar(\n  @Query(\"page\") page = \"1\",\n  @Query(\"pageSize\") pageSize = \"20\",\n  @Query(\"estado\") estado?: string,\n  @Query(\"sort\") sort = \"creadoEn\",\n) {\n  const { data, total } = await this.servicio.listar({\n    page: Number(page),\n    pageSize: Number(pageSize),\n    estado,\n    sort,\n  });\n  return { data, meta: { page: Number(page), pageSize: Number(pageSize), total } };\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Paginación por número frente a por cursor",
+                      "items": [
+                        "Por número (page/pageSize): simple de entender y de 'saltar' a una página concreta",
+                        "Por número: puede repetir u omitir elementos si la tabla cambia mientras se pagina",
+                        "Por cursor: estable ante datos que cambian constantemente (ej. un feed de actividad)",
+                        "Por cursor: no permite saltar directamente a 'la página 5', solo avanzar o retroceder desde un punto"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás implementar un endpoint de listado con paginación por número, al menos un filtro por query param y un ordenamiento configurable, devolviendo una forma de respuesta consistente con metadatos."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del endpoint de etapas de este mismo proyecto con su envoltorio { data, meta }. Identifica qué metadatos incluye y por qué son los mismos para cualquier listado de la API."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Construye un endpoint de listado de 'productos' con paginación por page/pageSize, un filtro por categoría (query param opcional) y ordenamiento por precio (asc/desc). Devuelve la respuesta con el envoltorio { data, meta: { page, pageSize, total } }. Criterio de paso: pedir una página fuera de rango (por ejemplo, la página 100 de una tabla con 5 elementos) devuelve data vacío sin error, con el meta correcto."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña (y si es posible implementa) la paginación por cursor para el mismo listado de productos, explicando qué campo usarías como cursor y por qué sería más estable que la paginación por número si los productos se agregan constantemente. Criterio de paso: tu diseño explica correctamente qué hace al cursor estable frente a inserciones concurrentes."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente un endpoint de listado. Revisa si devuelve un arreglo plano sin metadatos, o si calcula un total de forma que sería muy costosa en una tabla con millones de filas. Corrige lo que haga falta."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué problema tiene la paginación por número con datos que cambian constantemente? 2) ¿Qué ventaja tiene la paginación por cursor en ese caso? 3) ¿Dónde se expresan los filtros y el ordenamiento en la petición? 4) ¿Qué metadatos debería incluir la respuesta de un listado? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Un listado sin paginación es una de las causas más comunes de que una API funcione bien en pruebas (pocos datos) y se vuelva inviable en producción (muchos datos) sin ningún cambio de código, solo de volumen. En una entrevista pueden pedirte: '¿cómo paginarías este listado que puede tener millones de registros?'. Variante: el cliente necesita 'infinite scroll' en una lista que cambia en tiempo real (pista: ahí el cursor suele ser la opción más natural). Pregunta de cierre: ¿cuándo elegirías paginación por número en lugar de por cursor, a pesar de sus limitaciones?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.2.5",
+              "title": "Idempotencia y límites de solicitudes (rate limiting)",
+              "objective": "Diseñar endpoints idempotentes y proteger una API con límites de solicitudes",
+              "order": 5,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "idempotencia-y-rate-limiting",
+                  "title": "Idempotencia y límites de solicitudes (rate limiting)",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Una operación es idempotente si ejecutarla varias veces con los mismos datos produce el mismo resultado final que ejecutarla una sola vez: esto importa porque las redes fallan, y un cliente que no recibió confirmación de que su petición llegó bien suele reintentarla. GET, PUT y DELETE son idempotentes por diseño (pedir lo mismo, reemplazar con lo mismo, o eliminar lo ya eliminado no cambia el resultado final); POST, en cambio, normalmente no lo es (reenviar la misma petición de 'crear un pedido' puede crear dos pedidos duplicados), a menos que se diseñe explícitamente para serlo (por ejemplo, con una clave de idempotencia que el cliente envía y el servidor recuerda). El rate limiting, por otro lado, protege la API limitando cuántas peticiones puede hacer un cliente en un período de tiempo, para evitar abuso (intencional o accidental) y proteger los recursos compartidos del servicio."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Idempotencia por método y cómo lograrla en POST",
+                      "items": [
+                        "GET, PUT, DELETE: idempotentes por diseño; repetir la misma petición no cambia el resultado final.",
+                        "POST: normalmente no idempotente (cada llamada crea algo nuevo).",
+                        "Clave de idempotencia: el cliente genera un identificador único por operación lógica y lo envía (ej. cabecera Idempotency-Key); el servidor recuerda esa clave y, si la ve de nuevo, devuelve el resultado ya calculado en vez de repetir la operación.",
+                        "Rate limiting: limita cuántas peticiones acepta un cliente (identificado por IP, usuario, o token) en un período, devolviendo 429 Too Many Requests con una cabecera Retry-After cuando se excede."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este mismo proyecto implementa rate limiting en los endpoints de autenticación (documentado en S1) y en el envío de ejercicios del laboratorio (S5, verificado con un `429` y su cabecera `Retry-After`): si un cliente excede el límite de intentos en una ventana de tiempo, la API responde `429` con `Retry-After: 30` (por ejemplo), indicando cuántos segundos debe esperar antes de reintentar, en vez de simplemente rechazar sin explicación o, peor, dejar que un cliente agresivo sature el servicio."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: asumir que POST es idempotente sin diseñarlo explícitamente",
+                      "text": "Causa: un cliente con conexión inestable reintenta automáticamente un POST que en realidad sí tuvo éxito la primera vez, pero la confirmación se perdió en el camino. Cómo detectarlo: aparecen registros duplicados (pedidos, pagos, mensajes) que corresponden a una sola acción real del usuario. Solución: para operaciones críticas donde la duplicación es grave (pagos, envío de notificaciones), implementa una clave de idempotencia explícita que el cliente controla y el servidor recuerda."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: rechazar una petición que excede el límite sin indicar cuándo reintentar",
+                      "text": "Causa: responder solo 429 sin ninguna cabecera adicional. Cómo detectarlo: un cliente automatizado no sabe cuánto esperar antes de reintentar, y puede reintentar inmediatamente (empeorando el problema) o esperar demasiado tiempo innecesariamente. Solución: incluye siempre la cabecera Retry-After con el límite excedido, indicando exactamente cuánto tiempo esperar."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Respuesta de rate limiting con Retry-After",
+                      "language": "typescript",
+                      "code": "if (excedioLimite) {\n  response.setHeader(\"Retry-After\", \"30\");\n  throw new HttpException(\n    { error: { code: \"RATE_LIMITED\", message: \"Demasiados intentos, espera un momento\" } },\n    HttpStatus.TOO_MANY_REQUESTS,\n  );\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Idempotencia y protección por diseño",
+                      "items": [
+                        "GET/PUT/DELETE: idempotentes por defecto",
+                        "POST: no idempotente por defecto; necesita clave de idempotencia si la duplicación es grave",
+                        "Límite excedido: 429 Too Many Requests, siempre con Retry-After",
+                        "Identificar al cliente para el límite: por IP (anónimos), por usuario autenticado, o por token/API key (integraciones)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás explicar por qué GET/PUT/DELETE son idempotentes y POST normalmente no lo es, diseñar una clave de idempotencia para un POST crítico, y responder correctamente a un límite de solicitudes excedido con 429 y Retry-After."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del rate limiting en autenticación y envíos de este proyecto. Identifica qué información necesita un cliente para saber cuándo reintentar sin seguir siendo rechazado."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa (en un endpoint de práctica) un límite de 5 peticiones por minuto por IP, que responda 429 con Retry-After cuando se excede. Prueba enviando más de 5 peticiones rápidas y verifica la respuesta. Criterio de paso: la sexta petición dentro del minuto recibe 429 con la cabecera correcta."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña una clave de idempotencia para un endpoint 'POST /pagos' donde duplicar la operación sería grave. Explica: qué envía el cliente, qué guarda el servidor, y qué responde si la misma clave llega dos veces. Criterio de paso: tu diseño evita crear un segundo pago real si la petición se reintenta con la misma clave, devolviendo el resultado del primer intento."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente rate limiting para un endpoint. Revisa si incluye la cabecera Retry-After en la respuesta 429. Si no lo hace, pide que la agregue y verifica el valor con una prueba real."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué significa que una operación sea idempotente? 2) ¿Por qué POST normalmente no lo es? 3) ¿Qué código de estado y cabecera se usan al exceder un límite de solicitudes? 4) ¿Para qué sirve una clave de idempotencia? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Las claves de idempotencia son un patrón estándar en APIs de pagos (Stripe, por ejemplo, las requiere explícitamente) precisamente porque duplicar un cargo es un error costoso y frecuente sin esa protección. En una entrevista pueden pedirte: '¿cómo evitarías pagos duplicados si el cliente reintenta la petición?'. Variante: el rate limiting debe ser distinto para usuarios autenticados (más permisivo) que para anónimos (pista: identificar al cliente por usuario autenticado en vez de solo por IP permite límites diferenciados). Pregunta de cierre: ¿cuándo el rate limiting debería aplicarse por usuario en vez de por IP?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.2.6",
+              "title": "Documentación con Swagger/OpenAPI",
+              "objective": "Documentar una API con OpenAPI de forma que se mantenga sincronizada con el código",
+              "order": 6,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "documentacion-con-swagger-openapi",
+                  "title": "Documentación con Swagger/OpenAPI",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "OpenAPI es un formato estándar para describir una API (sus rutas, métodos, parámetros, cuerpos de petición y respuesta, códigos de estado posibles) de forma legible tanto por personas como por herramientas; Swagger UI renderiza esa descripción como una página interactiva donde se puede probar cada endpoint. El problema real que resuelve una buena integración (como `@nestjs/swagger` en NestJS) no es 'tener documentación', sino evitar que la documentación se desincronice del código: si la documentación se escribe a mano por separado, cambia el código y nadie actualiza los documentos, se vuelve mentirosa con el tiempo. Generarla a partir de los mismos DTOs/esquemas que ya valida el código (en este proyecto, los esquemas Zod de `shared`) asegura que documentación y comportamiento real coincidan, porque son la misma fuente."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué debe describir una buena documentación de API",
+                      "items": [
+                        "Cada ruta, método y para qué sirve, en una frase clara.",
+                        "Los parámetros esperados (ruta, query, cuerpo) con su tipo y si son obligatorios.",
+                        "La forma exacta de una respuesta exitosa, con un ejemplo real.",
+                        "Los códigos de error posibles para ese endpoint específico, no solo una lista genérica de toda la API.",
+                        "Idealmente, generada o derivada de los mismos esquemas/DTOs que valida el código, no escrita por separado."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Con `@nestjs/swagger`, un controlador se decora con `@ApiTags('usuarios')`, cada método con `@ApiOperation({ summary: 'Crea un usuario nuevo' })` y `@ApiResponse({ status: 201, description: 'Usuario creado' })`; el DTO (si se deriva de un esquema Zod, puede describirse adicionalmente con un esquema OpenAPI generado a partir del mismo Zod, evitando reescribir la forma del dato a mano). El resultado: en `/api/docs`, cualquier persona (o herramienta) ve exactamente qué espera y qué devuelve cada endpoint, y puede probarlo directamente desde el navegador sin escribir una sola línea de código cliente."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: documentación escrita a mano que se desactualiza con el tiempo",
+                      "text": "Causa: describir la API en un documento separado (un Google Doc, un README estático) sin ninguna conexión con el código real. Cómo detectarlo: la documentación describe un campo que ya no existe, o no menciona uno que se agregó hace meses. Solución: genera la documentación a partir del código (decoradores sobre controladores reales, o a partir de los esquemas compartidos), para que un cambio de contrato se refleje automáticamente."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: documentar solo el caso feliz, sin los errores posibles",
+                      "text": "Causa: es más rápido documentar solo la respuesta exitosa. Cómo detectarlo: quien integra con la API se sorprende con errores no documentados (qué pasa con datos inválidos, con un recurso que no existe, con falta de permisos) y tiene que descubrirlos por ensayo y error. Solución: documenta explícitamente, para cada endpoint, los códigos de error que puede devolver y en qué circunstancias."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Documentar un endpoint con @nestjs/swagger",
+                      "language": "typescript",
+                      "code": "@ApiTags(\"usuarios\")\n@Controller(\"usuarios\")\nexport class UsuariosController {\n  @Post()\n  @ApiOperation({ summary: \"Crea un usuario nuevo\" })\n  @ApiResponse({ status: 201, description: \"Usuario creado\" })\n  @ApiResponse({ status: 409, description: \"El email ya está registrado\" })\n  crear(@Body(new ZodValidationPipe(crearUsuarioSchema)) body: CrearUsuarioDto) {\n    return this.usuariosService.crear(body);\n  }\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué debería tener cada endpoint documentado",
+                      "items": [
+                        "Un resumen claro de qué hace (ApiOperation)",
+                        "La forma del cuerpo esperado, derivada del mismo esquema que valida",
+                        "Al menos la respuesta exitosa documentada con su status real",
+                        "Los errores más relevantes para ese endpoint específico (no una lista genérica)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás documentar un endpoint de NestJS con @nestjs/swagger incluyendo su propósito, la forma del cuerpo esperado y al menos dos códigos de respuesta posibles (éxito y un error relevante), y explicar por qué generar la documentación del código evita que se desactualice."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del endpoint de usuarios documentado. Identifica qué información le falta a un cliente que solo tuviera el código fuente, sin esta documentación."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Documenta con @nestjs/swagger un endpoint de práctica (por ejemplo, el de productos que construiste en una unidad anterior): resumen de la operación, y al menos dos respuestas documentadas (201 de éxito, 400 de validación fallida). Criterio de paso: al levantar Swagger UI, puedes probar el endpoint directamente desde la interfaz y ver los ejemplos documentados."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Elige dos endpoints reales de apps/api de este proyecto (que no estén ya documentados con Swagger, si los hay) y documenta su propósito, cuerpo esperado y al menos dos códigos de respuesta posibles, basándote en el código real del controlador y del servicio. Criterio de paso: tu documentación coincide exactamente con el comportamiento real verificable en el código (no inventas campos ni respuestas)."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que documente un endpoint con Swagger. Revisa si la documentación generada coincide realmente con el código del endpoint (tipos de datos, códigos de error) o si inventó algo que no está implementado. Corrige cualquier discrepancia antes de aceptarla."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué es OpenAPI y qué es Swagger UI? 2) ¿Por qué la documentación escrita a mano tiende a desactualizarse? 3) ¿Qué debería documentarse además del caso de éxito? 4) ¿Qué ventaja tiene generar la documentación a partir de los mismos esquemas que valida el código? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Una API bien documentada con Swagger/OpenAPI permite que equipos externos (u otro equipo dentro de la misma empresa) integren sin necesidad de reuniones constantes para aclarar el contrato. En una entrevista pueden pedirte: '¿cómo documentarías esta API para un equipo externo?'. Variante: la API tiene cientos de endpoints y mantener la documentación manualmente sería inviable (pista: justo por eso se genera del código, no se escribe aparte). Pregunta de cierre: ¿cuándo la documentación generada automáticamente no es suficiente y necesitas agregar explicación manual adicional?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M5.3",
           "title": "Identidad y permisos",
           "order": 3,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U5.3.1",
+              "title": "Autenticación: sesiones, JWT y refresh tokens",
+              "objective": "Elegir entre sesiones y JWT, e implementar la renovación con refresh tokens",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "autenticacion-sesiones-jwt-y-refresh-tokens",
+                  "title": "Autenticación: sesiones, JWT y refresh tokens",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Autenticar significa confirmar quién es el cliente que hace una petición. Hay dos familias de solución: sesiones (el servidor guarda el estado de la sesión, normalmente en una base de datos o memoria compartida, e identifica al cliente por un id de sesión en una cookie) y tokens JWT (el servidor firma un token autocontenido con los datos necesarios, y no necesita guardar nada: valida la firma y confía en el contenido). JWT escala mejor horizontalmente (ningún servidor necesita compartir estado de sesión con otros), pero tiene una desventaja real: un JWT no se puede 'invalidar' antes de su expiración sin infraestructura adicional (una lista de revocación). La solución común es usar un access token JWT de vida corta (minutos) y un refresh token de vida más larga (días), guardado de forma más protegida, que permite obtener un access token nuevo sin pedir credenciales de nuevo, pero que sí se puede revocar si hace falta cerrar la sesión de verdad."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Sesiones frente a JWT, y por qué dos tokens",
+                      "items": [
+                        "Sesión con estado en servidor: fácil de revocar al instante (se borra la sesión), pero requiere compartir ese estado entre instancias del servidor.",
+                        "JWT sin estado: no requiere compartir nada entre servidores, pero no se puede revocar antes de que expire sin infraestructura extra.",
+                        "Access token (JWT, vida corta, minutos): se envía en cada petición; si se filtra, el daño está acotado por su corta vida.",
+                        "Refresh token (vida más larga, días): se usa solo para pedir un access token nuevo; se guarda de forma más protegida (cookie httpOnly) y sí puede revocarse (borrando su registro del lado del servidor).",
+                        "Logout real con JWT: requiere revocar el refresh token (borrarlo del almacén); el access token ya emitido sigue siendo válido hasta que expira por su cuenta (de ahí la importancia de que su vida sea corta)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este mismo proyecto implementa exactamente este patrón (documentado en S1): tras el login, se emiten un access token JWT de vida corta y un refresh token almacenado en base de datos, ambos en cookies httpOnly. `JwtAuthGuard` (en `apps/api/src/modules/auth/guards/jwt-auth.guard.ts`) extrae el access token de la cookie o de la cabecera `Authorization: Bearer`, y verifica su firma y expiración antes de dejar pasar la petición. Cuando el access token expira, el cliente usa el refresh token contra un endpoint de renovación para obtener uno nuevo, sin que el usuario tenga que volver a escribir su contraseña."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: usar un único token de vida larga para todo",
+                      "text": "Causa: simplificar usando solo un JWT de larga duración (por ejemplo, 30 días) sin refresh token separado. Cómo detectarlo: si ese token se filtra, el atacante tiene acceso válido por semanas, y no hay forma de revocarlo sin invalidar todos los tokens emitidos (o sin mantener una lista de revocación para cada uno). Solución: separa un access token de vida corta (minutos) de un refresh token de vida más larga que sí puede revocarse individualmente."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: guardar el token en localStorage en vez de una cookie httpOnly",
+                      "text": "Causa: localStorage es más simple de leer y escribir desde JavaScript del lado del cliente. Cómo detectarlo: cualquier script que se ejecute en la página (incluido uno inyectado por un ataque XSS) puede leer el token directamente desde localStorage. Solución: usa cookies httpOnly para los tokens sensibles (el JavaScript de la página no puede leerlas), combinadas con las protecciones correspondientes contra CSRF si aplica."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Verificación del access token en un guard",
+                      "language": "typescript",
+                      "code": "async canActivate(context: ExecutionContext): Promise<boolean> {\n  const request = context.switchToHttp().getRequest<AuthenticatedRequest>();\n  const token =\n    extractBearerToken(request.headers.authorization) ??\n    readCookie(request.headers.cookie, ACCESS_TOKEN_COOKIE);\n\n  if (!token) {\n    throw new UnauthorizedException(\"Debes iniciar sesión para continuar\");\n  }\n\n  request.user = await this.tokens.verifyAccessToken(token);\n  return true;\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Access token frente a refresh token",
+                      "items": [
+                        "Access token: vida corta (minutos), se envía en cada petición, no se puede revocar individualmente antes de expirar",
+                        "Refresh token: vida larga (días), se usa solo para renovar, se guarda en un registro que sí se puede borrar (revocar)",
+                        "Logout real: revoca el refresh token guardado; el access token vigente expira por su cuenta poco después",
+                        "Ambos en cookies httpOnly: protegidos de ser leídos por JavaScript de la página"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás explicar por qué se usan dos tokens de vidas distintas (access y refresh) en vez de uno solo, implementar la verificación de un access token en un guard, y explicar qué significa 'revocar' en un esquema con JWT sin estado."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del JwtAuthGuard real de este proyecto. Identifica las dos formas en que el token puede llegar (cookie o cabecera Authorization) y por qué ambas se soportan."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa un guard de práctica que extraiga un JWT de una cabecera Authorization, verifique su firma y expiración (puedes usar una librería JWT simple), y rechace con 401 si falta o es inválido. Prueba con un token válido, uno expirado y uno con firma incorrecta. Criterio de paso: los tres casos producen el resultado esperado (pasa, 401 por expiración, 401 por firma inválida)."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña (y si es posible implementa) un endpoint de renovación (/auth/refresh) que reciba el refresh token, verifique que sigue siendo válido (no revocado, no expirado), y emita un access token nuevo. Explica qué pasa si el refresh token no existe en el almacén del servidor (fue revocado o nunca existió). Criterio de paso: tu diseño rechaza correctamente un refresh token revocado, sin emitir un access token nuevo."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente autenticación JWT para una API. Revisa si usa un único token de larga duración o separa access/refresh, y si sugiere guardar el token en localStorage. Corrige ambos problemas si aparecen, explicando el riesgo concreto de cada uno."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué ventaja tiene JWT sobre sesiones con estado al escalar horizontalmente? 2) ¿Qué desventaja tiene JWT respecto a revocación? 3) ¿Por qué se usan dos tokens de vidas distintas? 4) ¿Por qué una cookie httpOnly es más segura que localStorage para guardar un token? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "El patrón access token + refresh token es el estándar de facto en autenticación de APIs modernas (lo usan OAuth2, la mayoría de proveedores de identidad, y este mismo proyecto). En una entrevista pueden pedirte: '¿cómo implementarías el logout en un sistema basado en JWT sin estado?'. Variante: necesitas poder revocar inmediatamente TODOS los tokens de un usuario (por ejemplo, tras detectar una cuenta comprometida) (pista: revocar todos los refresh tokens del usuario, y aceptar que los access tokens ya emitidos seguirán siendo válidos hasta expirar, por eso su vida debe ser corta). Pregunta de cierre: ¿cuándo elegirías sesiones con estado en vez de JWT, a pesar de la complejidad de compartir estado entre servidores?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.3.2",
+              "title": "Hashing de contraseñas",
+              "objective": "Almacenar contraseñas de forma segura con hashing y sal",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "hashing-de-contrasenas",
+                  "title": "Hashing de contraseñas",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Una contraseña nunca se guarda en texto plano: si la base de datos se filtra (algo que ocurre, incluso a organizaciones grandes), un atacante tendría acceso directo e inmediato a todas las cuentas. En vez de eso, se guarda un hash: el resultado de una función que convierte la contraseña en una cadena de longitud fija, diseñada para ser imposible de revertir (no se puede 'deshashear' para recuperar la contraseña original). Un hash criptográfico rápido (como SHA-256, pensado para integridad de archivos) es precisamente lo que NO se debe usar para contraseñas, porque es demasiado rápido de calcular: un atacante puede probar miles de millones de contraseñas candidatas por segundo contra un hash filtrado. Algoritmos como bcrypt (o argon2, scrypt) están diseñados deliberadamente para ser lentos y configurables en su costo computacional, y además incorporan una sal (salt) aleatoria distinta por contraseña, que evita que dos usuarios con la misma contraseña tengan el mismo hash."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Por qué bcrypt y no un hash rápido",
+                      "items": [
+                        "Un hash rápido (SHA-256, MD5) permite a un atacante probar enormes cantidades de contraseñas candidatas por segundo contra un hash filtrado.",
+                        "bcrypt (y similares) tienen un 'costo' configurable que hace cada intento deliberadamente lento, multiplicando el tiempo necesario para probar muchas contraseñas.",
+                        "La sal (salt) es un valor aleatorio distinto por contraseña, incluido en el hash resultante: evita que contraseñas idénticas generen el mismo hash y bloquea ataques de tablas precalculadas (rainbow tables).",
+                        "El costo de bcrypt debe revisarse con el tiempo: el hardware se vuelve más rápido, así que un costo que era seguro hace años puede necesitar subir."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este mismo proyecto usa bcrypt con un costo fijo documentado (`BCRYPT_COST = 12` en `apps/api/src/common/security/password.service.ts`). Al registrar un usuario, `hash(contraseña, 12)` genera un hash que ya incluye una sal aleatoria embebida; nunca se guarda la contraseña original, solo ese hash. Al iniciar sesión, `compare(contraseñaIngresada, hashGuardado)` recalcula el hash con la misma sal (extraída del hash guardado) y compara los resultados, sin necesitar 'deshashear' nada. Si la comparación falla por cualquier motivo (incluso un hash corrupto de otro algoritmo), el servicio lo trata como 'no coincide', nunca como un error que rompa el flujo de login."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: usar un hash rápido como SHA-256 para contraseñas",
+                      "text": "Causa: SHA-256 es conocido y 'suena seguro' por su uso en otros contextos (como integridad de archivos o blockchain). Cómo detectarlo: si la base de datos de hashes se filtra, contraseñas comunes se recuperan en minutos u horas con hardware especializado, precisamente porque SHA-256 es muy rápido de calcular en volumen. Solución: usa un algoritmo diseñado específicamente para contraseñas (bcrypt, argon2, scrypt), que incorpora lentitud deliberada y sal."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: comparar contraseñas con una comparación de strings normal en vez de la función de verificación del algoritmo",
+                      "text": "Causa: una vez calculado el hash guardado, parece natural comparar strings con ===. Cómo detectarlo: nunca se extrae correctamente la sal embebida en el hash guardado, porque la comparación directa de strings no sabe cómo recalcular el hash de la contraseña ingresada con esa misma sal. Solución: usa siempre la función de verificación/comparación que provee la librería (compare de bcrypt, por ejemplo), que maneja la extracción de sal internamente."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Hash y verificación con bcrypt",
+                      "language": "typescript",
+                      "code": "export const BCRYPT_COST = 12;\n\nasync function hashContrasena(plain: string): Promise<string> {\n  return bcrypt.hash(plain, BCRYPT_COST);\n}\n\nasync function verificarContrasena(plain: string, hash: string): Promise<boolean> {\n  try {\n    return await bcrypt.compare(plain, hash);\n  } catch {\n    return false; // hash corrupto o de otro algoritmo: tratarlo como 'no coincide'\n  }\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué algoritmo usar según el caso",
+                      "items": [
+                        "Contraseñas de usuarios: bcrypt, argon2 o scrypt (lentos deliberadamente, con sal)",
+                        "Integridad de un archivo descargado: SHA-256 (rápido, no necesita ser lento)",
+                        "Nunca para contraseñas: MD5, SHA-1, SHA-256 sin sal adicional ni costo configurable",
+                        "Nunca: texto plano, ni siquiera 'temporalmente' o 'solo en desarrollo'"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás explicar por qué bcrypt es preferible a un hash rápido para contraseñas, implementar el hash y la verificación con bcrypt, y manejar correctamente el caso de un hash corrupto sin romper el flujo de login."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de PasswordService de este proyecto. Observa que verify nunca lanza una excepción hacia quien la llama: un hash corrupto se trata como 'no coincide', no como un error del sistema."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa un servicio con dos métodos, hash y verify, usando bcrypt. Prueba: hashear la misma contraseña dos veces y confirma que los hashes resultantes son distintos (por la sal aleatoria); verifica que ambos hashes, aun siendo distintos, validan correctamente la misma contraseña original. Criterio de paso: ambas comprobaciones pasan."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Mide el tiempo que toma hashear una contraseña con distintos valores de costo de bcrypt (por ejemplo, 8, 10, 12, 14) y documenta cómo crece el tiempo. Con esa evidencia, explica en una frase por qué el costo no debería ser arbitrariamente alto (afecta la experiencia real de login) ni arbitrariamente bajo (afecta la seguridad). Criterio de paso: tus mediciones son reales (no estimadas) y tu conclusión las usa como evidencia."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente el almacenamiento de contraseñas para un sistema de registro. Revisa si sugiere un algoritmo apropiado (bcrypt/argon2/scrypt) o uno rápido inapropiado (SHA-256, MD5). Si sugiere algo inapropiado, pide que lo corrija y explica por qué."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué nunca se guarda una contraseña en texto plano? 2) ¿Por qué un hash rápido como SHA-256 es inapropiado para contraseñas? 3) ¿Qué problema resuelve la sal aleatoria? 4) ¿Qué debería pasar si la verificación encuentra un hash corrupto? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Las filtraciones de bases de datos con contraseñas mal protegidas (en texto plano o con hashes rápidos) son una de las causas más comunes y más evitables de incidentes de seguridad masivos reportados en la industria. En una entrevista pueden pedirte: '¿cómo almacenarías las contraseñas de los usuarios?'. Variante: necesitas migrar un sistema antiguo que guardaba contraseñas con un hash rápido sin sal (pista: no puedes 'convertir' esos hashes directamente a bcrypt sin la contraseña original; se suele rehashear en el siguiente login exitoso del usuario). Pregunta de cierre: ¿cuándo, si alguna vez, sería razonable almacenar algo relacionado con una contraseña en texto reversible?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.3.3",
+              "title": "Autorización por roles y por recurso",
+              "objective": "Distinguir autenticación de autorización y aplicar reglas por rol y por recurso",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "autorizacion-por-roles-y-por-recurso",
+                  "title": "Autorización por roles y por recurso",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Autenticación responde '¿quién eres?'; autorización responde '¿qué puedes hacer?'. Son pasos distintos y deben verificarse en ese orden: primero se confirma la identidad, después se decide si esa identidad tiene permiso para la acción solicitada. La autorización por roles (RBAC: Role-Based Access Control) agrupa permisos en roles (estudiante, instructor, admin) y asigna cada usuario a uno o más roles: es simple y suficiente cuando los permisos dependen solo de 'qué tipo de usuario eres'. La autorización por recurso va más allá: incluso con el rol correcto, hay que verificar si ese usuario específico tiene permiso sobre ese recurso específico (un instructor puede editar sus propios cursos, no los de otro instructor). Confundir ambas (verificar solo el rol y asumir que eso basta) es una fuente común de vulnerabilidades reales, donde un usuario con rol válido accede a datos de otro usuario que no debería poder ver."
+                    },
+                    {
+                      "type": "list",
+                      "title": "RBAC frente a autorización por recurso",
+                      "items": [
+                        "RBAC (por rol): ¿tiene este usuario el rol necesario para esta acción en general? (ej. solo 'admin' puede eliminar usuarios)",
+                        "Por recurso (a veces llamado ownership o ABAC simplificado): ¿tiene este usuario específico permiso sobre ESTE recurso específico? (ej. solo el dueño del pedido puede cancelarlo)",
+                        "Un endpoint puede necesitar ambas verificaciones en cascada: primero el rol general, después la relación específica con el recurso solicitado.",
+                        "El orden siempre es: autenticación (¿quién eres?) → autorización por rol (¿tu tipo de usuario puede hacer esto en general?) → autorización por recurso (¿puedes hacerlo sobre ESTE recurso en particular?)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un endpoint `PATCH /cursos/:id` para editar un curso: primero el `JwtAuthGuard` confirma que hay una sesión válida (autenticación). Después, se verifica que el usuario tiene rol 'instructor' o 'admin' (autorización por rol: un 'estudiante' nunca llega más allá de aquí). Finalmente, si el rol es 'instructor' (no 'admin'), se verifica que ese curso específico pertenece a ese instructor (autorización por recurso): un instructor con rol válido pero que no es dueño de ESE curso recibe 403, aunque su rol general sí le permitiría editar cursos propios."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: verificar solo el rol y asumir que basta",
+                      "text": "Causa: un guard de roles confirma 'tiene rol instructor' y el endpoint asume que eso es suficiente para cualquier curso. Cómo detectarlo: un instructor puede editar o ver cursos de otros instructores simplemente cambiando el id en la URL, porque nunca se verificó la relación específica entre ese usuario y ese recurso. Solución: después de verificar el rol, verifica explícitamente la relación entre el usuario autenticado y el recurso solicitado (es dueño, es miembro, tiene un permiso específico asignado)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: hacer la verificación de autorización del lado del cliente únicamente",
+                      "text": "Causa: ocultar un botón de 'eliminar' en la interfaz si el usuario no tiene el rol adecuado, confiando en que eso basta. Cómo detectarlo: cualquiera puede llamar directamente al endpoint de la API (sin pasar por la interfaz) y la acción se ejecuta igual, porque el servidor nunca verificó nada. Solución: toda autorización debe aplicarse del lado del servidor; ocultar opciones en la interfaz es una mejora de experiencia de usuario, nunca una medida de seguridad real."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Autorización por rol y después por recurso",
+                      "language": "typescript",
+                      "code": "@Patch(\":id\")\n@UseGuards(JwtAuthGuard, RolesGuard)\n@Roles(\"instructor\", \"admin\")\nasync actualizar(@Param(\"id\") id: string, @Req() req: AuthenticatedRequest, @Body() body: ActualizarCursoDto) {\n  const curso = await this.cursosService.buscar(id);\n  if (!curso) throw new NotFoundException();\n\n  const esAdmin = req.user.rol === \"admin\";\n  const esDueño = curso.instructorId === req.user.sub;\n  if (!esAdmin && !esDueño) {\n    throw new ForbiddenException(\"No puedes editar un curso que no es tuyo\");\n  }\n\n  return this.cursosService.actualizar(id, body);\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Las tres preguntas, en orden",
+                      "items": [
+                        "¿Quién eres?: autenticación (JwtAuthGuard o similar)",
+                        "¿Tu tipo de usuario puede hacer esto en general?: autorización por rol",
+                        "¿Puedes hacerlo sobre este recurso específico?: autorización por recurso",
+                        "Un admin suele saltar la tercera pregunta (acceso total), pero eso debe decidirse explícitamente, no asumirse"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás implementar una verificación de autorización en cascada (rol general, después relación con el recurso específico) para un endpoint dado, y explicar con un ejemplo por qué verificar solo el rol no es suficiente."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del endpoint de editar curso. Identifica las tres preguntas que se responden en orden, y qué pasaría si se omitiera la verificación de 'es dueño'."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa un endpoint 'eliminar comentario' con tres reglas: debe estar autenticado, debe tener rol 'usuario' o 'moderador', y si es 'usuario' (no moderador) solo puede eliminar sus propios comentarios. Prueba los cuatro casos: sin autenticar, autenticado sin ningún rol válido, usuario eliminando su propio comentario, usuario intentando eliminar el de otro. Criterio de paso: los cuatro casos devuelven el resultado esperado (401, 403, éxito, 403)."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Busca en apps/api/src de este proyecto si existe ya alguna verificación de 'es dueño del recurso' (por ejemplo, en el módulo de progreso o exercises, donde un usuario solo ve sus propios envíos o su propio progreso). Documenta cómo está implementada esa verificación con archivo y línea. Criterio de paso: identificas correctamente el mecanismo real usado en el código."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente autorización para un endpoint que le describas, donde el recurso tiene un dueño específico. Revisa si solo verifica el rol general o también la relación con el recurso específico. Si falta la segunda verificación, pide que la agregue y prueba el caso donde debería fallar."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué diferencia hay entre autenticación y autorización? 2) ¿Qué es RBAC? 3) ¿Por qué verificar solo el rol puede no ser suficiente? 4) ¿Por qué ocultar un botón en la interfaz no es una medida de seguridad real? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Las vulnerabilidades de 'referencia directa a objetos insegura' (IDOR, en el top de OWASP) ocurren exactamente por omitir la verificación de autorización por recurso, incluso cuando la autenticación y el rol general están bien implementados. En una entrevista pueden pedirte: '¿cómo asegurarías que un usuario solo pueda editar sus propios datos?'. Variante: un admin necesita poder actuar 'como' otro usuario para dar soporte, sin ser esa persona (pista: eso se modela explícitamente como un permiso especial auditado, no como ausencia total de verificación). Pregunta de cierre: ¿cuándo un rol de admin debería seguir pasando por verificaciones de recurso, en vez de tener acceso total implícito?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.3.4",
+              "title": "Protección de rutas y guards",
+              "objective": "Proteger rutas de una API con guards de NestJS",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "proteccion-de-rutas-y-guards",
+                  "title": "Protección de rutas y guards",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un guard en NestJS es una pieza que decide, antes de que se ejecute el método de un controlador, si la petición puede continuar o debe rechazarse (devolviendo `true`/`false`, o lanzando una excepción con un código de estado específico). Son el lugar correcto para autenticación y autorización porque se ejecutan antes que cualquier lógica del endpoint, de forma reutilizable en muchas rutas sin repetir código. Un guard se aplica con `@UseGuards(...)` a nivel de método, de controlador (aplicando a todos sus métodos), o globalmente a toda la aplicación; varios guards pueden encadenarse, y NestJS los ejecuta en orden, deteniéndose en el primero que rechace la petición."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Dónde y cómo aplicar guards",
+                      "items": [
+                        "@UseGuards(Guard) en un método: protege solo esa ruta.",
+                        "@UseGuards(Guard) en la clase del controlador: protege todas sus rutas.",
+                        "Guard global (registrado en el bootstrap de la app): protege toda la aplicación por defecto.",
+                        "Un decorador @Public() personalizado (metadata) permite marcar rutas específicas como excepción dentro de un guard global, en vez de tener que aplicar el guard ruta por ruta.",
+                        "Varios guards se ejecutan en el orden declarado; si uno rechaza (lanza o devuelve false), los siguientes no se ejecutan."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un guard `RolesGuard` lee los roles requeridos (declarados con un decorador `@Roles('admin')` sobre el método) usando el `Reflector` de NestJS, y los compara contra `request.user.rol` (ya establecido por un `JwtAuthGuard` anterior en la cadena). Se aplican ambos en orden: `@UseGuards(JwtAuthGuard, RolesGuard)`. Si `JwtAuthGuard` rechaza (no hay token válido), `RolesGuard` nunca se ejecuta: no tendría sentido verificar un rol sin saber primero quién es el usuario."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: poner RolesGuard antes de JwtAuthGuard en la cadena",
+                      "text": "Causa: no pensar en el orden de ejecución de los guards encadenados. Cómo detectarlo: RolesGuard intenta leer request.user.rol, pero request.user todavía no existe porque JwtAuthGuard (que lo establece) no se ejecutó primero; el guard falla con un error inesperado en vez de un 401 claro. Solución: el guard de autenticación siempre va primero en la cadena; los guards de autorización dependen de que ya exista la identidad."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: duplicar la lógica de un guard en cada controlador en vez de reutilizarlo",
+                      "text": "Causa: copiar y pegar la verificación de token o de rol directamente dentro de cada método, en vez de extraer un guard reutilizable. Cómo detectarlo: la misma lógica de verificación aparece repetida (con pequeñas variaciones, algunas con bugs distintos) en varios controladores. Solución: extrae la verificación a un guard una sola vez y aplícalo donde corresponda; un cambio en la lógica de autenticación se hace en un solo lugar."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un guard de roles con metadata",
+                      "language": "typescript",
+                      "code": "export const Roles = (...roles: string[]) => SetMetadata(\"roles\", roles);\n\n@Injectable()\nexport class RolesGuard implements CanActivate {\n  constructor(private readonly reflector: Reflector) {}\n\n  canActivate(context: ExecutionContext): boolean {\n    const rolesRequeridos = this.reflector.get<string[]>(\"roles\", context.getHandler());\n    if (!rolesRequeridos?.length) return true; // sin @Roles, no se restringe por rol\n\n    const { user } = context.switchToHttp().getRequest<AuthenticatedRequest>();\n    if (!rolesRequeridos.includes(user.rol)) {\n      throw new ForbiddenException(\"No tienes permiso para esta acción\");\n    }\n    return true;\n  }\n}\n\n// Uso: @UseGuards(JwtAuthGuard, RolesGuard) @Roles(\"admin\")"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Niveles de aplicación de un guard",
+                      "items": [
+                        "Método individual: @UseGuards en ese método, protege solo esa ruta",
+                        "Controlador completo: @UseGuards en la clase, protege todos sus métodos",
+                        "Aplicación completa: guard global en el bootstrap, protege todo por defecto",
+                        "Excepción dentro de un guard global: un decorador como @Public() leído por el guard para dejar pasar rutas específicas"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás implementar un guard reutilizable de NestJS, encadenar dos guards en el orden correcto (autenticación antes que autorización), y aplicar uno de ellos a nivel de método, de controlador o globalmente según corresponda."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de RolesGuard usando el Reflector para leer la metadata de @Roles. Identifica por qué este guard debe ejecutarse después de uno que ya haya establecido request.user."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa un guard simple AdminOnlyGuard que verifique request.user.rol === 'admin' y rechace con 403 en cualquier otro caso. Aplícalo a un controlador de práctica completo (protegiendo todos sus métodos a la vez). Criterio de paso: un usuario no-admin recibe 403 en cualquiera de los métodos del controlador, sin necesitar aplicar el guard método por método."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña un decorador @Public() y un guard global que, por defecto, exija autenticación en toda la aplicación, excepto en las rutas marcadas con @Public() (como login y registro). Explica cómo el guard global sabría distinguir una ruta pública usando el Reflector. Criterio de paso: tu diseño explica correctamente cómo el guard consulta la metadata antes de decidir si exige autenticación."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente dos guards encadenados (autenticación y autorización). Revisa el orden en que los aplica con @UseGuards: ¿la autenticación va primero? Si el orden está invertido, corrígelo y explica por qué importa."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué decide un guard antes de que se ejecute un método del controlador? 2) ¿En qué orden deben encadenarse un guard de autenticación y uno de autorización? 3) ¿Qué permite aplicar un guard a nivel de controlador en vez de método? 4) ¿Para qué sirve un decorador como @Public() junto a un guard global? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Los guards reutilizables son la forma estándar de aplicar seguridad consistente en NestJS sin repetir lógica; este mismo proyecto ya usa JwtAuthGuard en varios módulos (progress, exercises, review) de forma idéntica. En una entrevista pueden pedirte: '¿cómo protegerías todas las rutas de esta API excepto login y registro?'. Variante: necesitas un guard que dependa de una llamada asíncrona (verificar un token contra un servicio externo) (pista: canActivate puede devolver una Promise<boolean>, como ya hace JwtAuthGuard al verificar el token). Pregunta de cierre: ¿cuándo pondrías la lógica de autorización en un guard y cuándo directamente en el servicio?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "code": "M5.4",
           "title": "Operación del servicio",
           "order": 4,
-          "isPublished": false,
-          "units": []
+          "isPublished": true,
+          "units": [
+            {
+              "code": "U5.4.1",
+              "title": "Configuración y variables de entorno",
+              "objective": "Cargar y validar la configuración de un servicio desde variables de entorno",
+              "order": 1,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "configuracion-y-variables-de-entorno",
+                  "title": "Configuración y variables de entorno",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un servicio nunca debería tener valores de configuración (cadenas de conexión, claves, puertos, límites) escritos directamente en el código: cambiarían requeriría modificar y volver a desplegar el código por cada entorno (desarrollo, pruebas, producción). Las variables de entorno permiten inyectar esa configuración desde fuera, sin tocar el código. El paso que muchos proyectos se saltan es validarlas al arrancar: si falta una variable obligatoria o tiene un formato inválido, el servicio debería fallar inmediatamente al iniciar (con un mensaje claro de qué falta), no arrancar 'a medias' y fallar más tarde, de forma confusa, cuando esa variable finalmente se necesite en producción con tráfico real."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Buenas prácticas de configuración",
+                      "items": [
+                        "Ningún secreto ni valor que cambia por entorno va escrito directamente en el código.",
+                        "Valida toda la configuración al arrancar (con un esquema, como Zod), no solo cuando se usa cada variable.",
+                        "Si falta una variable obligatoria o tiene un formato inválido, el proceso debe fallar inmediatamente al iniciar, con un mensaje claro.",
+                        "Valores por defecto razonables solo para desarrollo local; nunca un valor por defecto para un secreto de producción (como una clave JWT).",
+                        "Un archivo .env.example documenta qué variables existen, sin contener ningún valor real (ver la unidad de secretos de la Etapa 3)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este proyecto valida toda su configuración al arrancar con un esquema Zod (en `apps/api/src/config/env.ts`, probado en `env.spec.ts`): si `JWT_SECRET` falta o es demasiado corto, o si `DATABASE_URL` no tiene el formato esperado, el proceso falla inmediatamente al iniciar con un mensaje que indica exactamente qué variable está mal, en vez de arrancar y fallar más tarde (con un error confuso de 'cannot sign token') cuando llegue la primera petición que de verdad necesite esa clave."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: usar process.env.ALGO directamente en muchos lugares sin validar",
+                      "text": "Causa: parece más rápido leer process.env.JWT_SECRET directamente donde se necesita. Cómo detectarlo: si la variable falta, el fallo ocurre en tiempo de ejecución, en el momento exacto en que se usa (a veces solo cuando llega tráfico real), en vez de al arrancar el servicio. Solución: centraliza la lectura y validación de toda la configuración en un único lugar (un esquema validado al inicio), y el resto del código importa valores ya validados y tipados desde ahí, nunca process.env directamente."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: un valor por defecto silencioso para un secreto de producción",
+                      "text": "Causa: poner un valor por defecto 'para que funcione sin configurar nada' incluso para una clave sensible. Cómo detectarlo: el servicio arranca en producción con una clave JWT de ejemplo conocida públicamente (la misma que aparece en el código fuente del proyecto), sin que nadie se dé cuenta. Solución: los valores por defecto son aceptables solo para configuración no sensible de desarrollo local; cualquier secreto debe ser obligatorio (sin valor por defecto) al menos en el entorno de producción."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Validar la configuración al arrancar con Zod",
+                      "language": "typescript",
+                      "code": "const envSchema = z.object({\n  DATABASE_URL: z.string().url(),\n  JWT_SECRET: z.string().min(32, \"JWT_SECRET debe tener al menos 32 caracteres\"),\n  PORT: z.coerce.number().int().positive().default(3000),\n  NODE_ENV: z.enum([\"development\", \"test\", \"production\"]).default(\"development\"),\n});\n\nexport function loadEnv() {\n  const result = envSchema.safeParse(process.env);\n  if (!result.success) {\n    console.error(\"Configuración inválida:\", result.error.format());\n    process.exit(1); // fallar inmediatamente, no arrancar a medias\n  }\n  return result.data;\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué sí y qué no en la configuración",
+                      "items": [
+                        "Sí: validar toda la configuración una sola vez, al arrancar",
+                        "Sí: valores por defecto razonables para desarrollo local en campos no sensibles",
+                        "No: process.env disperso por todo el código sin validación centralizada",
+                        "No: un valor por defecto silencioso para un secreto que debería ser obligatorio en producción"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás definir un esquema de configuración con Zod que valide variables de entorno al arrancar un servicio, fallando inmediatamente con un mensaje claro si falta una variable obligatoria, en vez de leer process.env disperso sin validar."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del esquema de entorno de este proyecto. Identifica qué le pasaría al servicio si JWT_SECRET faltara, con y sin esta validación al arrancar."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Define un esquema Zod para la configuración de un servicio de práctica con al menos: una URL de base de datos obligatoria, un puerto con valor por defecto, y una clave secreta obligatoria con longitud mínima. Prueba arrancando sin la clave secreta y confirma que el proceso falla inmediatamente con un mensaje claro. Criterio de paso: el fallo ocurre al arrancar, no al usar la variable más adelante."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Abre apps/api/src/config/env.ts de este proyecto y su archivo .env.example correspondiente. Verifica que cada variable obligatoria en el esquema tiene una entrada (sin valor real) en .env.example. Si encuentras alguna variable del esquema que no esté documentada ahí, anótalo. Criterio de paso: tu verificación es exhaustiva sobre las variables reales del esquema."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente la carga de configuración para un servicio. Revisa si valida al arrancar o si lee process.env disperso sin validación centralizada, y si algún secreto tiene un valor por defecto inapropiado. Corrige lo que encuentres."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Por qué validar la configuración al arrancar es mejor que validarla al usarla? 2) ¿Qué tipo de variable nunca debería tener un valor por defecto en producción? 3) ¿Qué documenta un archivo .env.example? 4) ¿Qué pasa si falta una variable obligatoria con la validación al arrancar? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Un servicio que falla rápido y con claridad ante configuración inválida ahorra horas de depuración comparado con uno que arranca 'a medias' y falla de forma confusa más tarde, con tráfico real de producción. En una entrevista pueden pedirte: '¿cómo manejarías la configuración de este servicio entre distintos entornos?'. Variante: necesitas rotar un secreto sin tiempo de inactividad del servicio (pista: eso requiere infraestructura adicional para recargar configuración sin reiniciar, más allá de la validación al arrancar). Pregunta de cierre: ¿cuándo tendría sentido recargar configuración sin reiniciar el proceso completo?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.4.2",
+              "title": "Logging estructurado",
+              "objective": "Registrar eventos de un servicio con logs estructurados y trazables",
+              "order": 2,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "logging-estructurado",
+                  "title": "Logging estructurado",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Un log de texto libre ('Usuario Ada inició sesión a las 10:32') es legible para una persona leyendo en vivo, pero casi imposible de consultar programáticamente a gran escala ('¿cuántos logins fallidos hubo esta hora, agrupados por motivo?'). El logging estructurado registra cada evento como datos (normalmente JSON) con campos consistentes: un nivel (info, warn, error), un mensaje, y metadatos relevantes (userId, endpoint, duración, y crucialmente, un identificador de traza que permite seguir una petición específica a través de todos los logs que generó, incluso si pasó por varios servicios). Esto convierte los logs en algo que herramientas de observabilidad pueden indexar, filtrar y alertar, no solo texto que una persona lee línea por línea."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Qué debe tener un log estructurado",
+                      "items": [
+                        "Nivel: info (evento normal), warn (algo inesperado pero no roto), error (algo falló).",
+                        "Mensaje claro y consistente, sin datos variables incrustados en el texto mismo.",
+                        "Metadatos como campos separados (userId, endpoint, duración), no concatenados dentro del mensaje.",
+                        "Un identificador de traza (traceId) presente en todos los logs relacionados con una misma petición, para poder seguir su recorrido completo.",
+                        "Nunca datos sensibles en texto plano en los logs (contraseñas, tokens completos, números de tarjeta)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Este proyecto asigna un `traceId` a cada petición (ver `all-exceptions.filter.ts`) que se incluye en la cabecera de respuesta `x-trace-id` y en cualquier log de error relacionado con esa petición. Si un usuario reporta 'me dio un error a las 10:32', buscar ese `traceId` específico (que el cliente puede ver en la respuesta o en la cabecera) permite encontrar exactamente los logs de esa petición entre millones de otras, en vez de buscar por texto aproximado y hora estimada."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: registrar datos sensibles en los logs",
+                      "text": "Causa: loguear el cuerpo completo de una petición 'para depurar mejor', sin filtrar campos sensibles. Cómo detectarlo: contraseñas, tokens de sesión completos o datos de tarjetas aparecen en texto plano en archivos de log, que a menudo tienen retención larga y acceso más amplio que la base de datos misma. Solución: filtra o enmascara explícitamente cualquier campo sensible antes de loguear (ej. mostrar solo los últimos 4 dígitos de una tarjeta, nunca una contraseña ni un token completo)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: logs de texto libre sin ningún campo estructurado",
+                      "text": "Causa: usar console.log('Error al procesar el pedido ' + pedidoId) en vez de un objeto estructurado. Cómo detectarlo: analizar los logs a gran escala requiere expresiones regulares frágiles para extraer el pedidoId del texto, en vez de simplemente filtrar por un campo. Solución: usa un logger que acepte campos estructurados (como logger.error('Error al procesar pedido', { pedidoId, traceId })), incluso si el logger también imprime una versión legible en desarrollo."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Un log estructurado con traceId",
+                      "language": "typescript",
+                      "code": "logger.error({\n  nivel: \"error\",\n  mensaje: \"No se pudo procesar el pedido\",\n  pedidoId,\n  traceId,\n  duracionMs: Date.now() - inicio,\n});\n// En vez de:\n// console.log(`Error en pedido ${pedidoId}: algo falló`);"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué nivel de log usar",
+                      "items": [
+                        "info: un evento normal del flujo (usuario creado, pedido confirmado)",
+                        "warn: algo inesperado pero el sistema se recuperó o continuó (un reintento exitoso, un valor por defecto usado)",
+                        "error: algo falló y requiere atención (una excepción no controlada, una integración externa caída)",
+                        "Nunca en texto plano: contraseñas, tokens completos, datos de pago"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás registrar eventos con logging estructurado (nivel, mensaje, metadatos como campos separados) incluyendo un identificador de traza, y explicar por qué un campo sensible nunca debe aparecer en texto plano en un log."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del traceId de este proyecto. Identifica cómo un reporte vago de un usuario ('me dio error') se convierte en algo buscable con ese identificador."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Implementa logging estructurado para un endpoint de práctica: registra un log de nivel info al recibir la petición (con un traceId generado) y un log de error si algo falla (incluyendo el mismo traceId). Provoca un error intencional y confirma que puedes encontrar ambos logs relacionados usando solo el traceId. Criterio de paso: ambos logs comparten el mismo traceId y son encontrables por ese campo."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Revisa un fragmento de código (propio o de este proyecto) que use console.log con texto libre y datos concatenados. Reescríbelo como logging estructurado con campos separados. Identifica si algún dato que se estaba logueando era sensible y debería enmascararse o eliminarse del log. Criterio de paso: tu versión reescrita separa correctamente mensaje de metadatos, y señala cualquier dato sensible encontrado."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que agregue logging a una función que le describas (por ejemplo, un proceso de pago). Revisa si sugiere loguear algún dato sensible (número de tarjeta, token) en texto plano. Si lo hace, pide que lo enmascare o elimine del log antes de aceptar la implementación."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué ventaja tiene el logging estructurado sobre texto libre? 2) ¿Para qué sirve un traceId en los logs? 3) ¿Qué dato nunca debería aparecer en texto plano en un log? 4) ¿Cuándo usarías warn en vez de error? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "El logging estructurado con trazabilidad es la base de cualquier sistema de observabilidad real (Datadog, Grafana, ELK), y suele ser lo primero que un equipo de guardia revisa durante un incidente en producción. En una entrevista pueden pedirte: '¿cómo depurarías un error reportado por un usuario sin poder reproducirlo tú mismo?'. Variante: el sistema recibe miles de peticiones por segundo y loguear cada una con detalle completo sería demasiado costoso (pista: ahí se suele loguear con detalle completo solo una muestra, o solo los casos de error, y un resumen agregado para el resto). Pregunta de cierre: ¿cuándo loguearías algo como warn en vez de simplemente ignorarlo o tratarlo como error?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.4.3",
+              "title": "Tareas asíncronas, colas y notificaciones",
+              "objective": "Decidir cuándo una tarea debe procesarse de forma asíncrona fuera de la petición HTTP",
+              "order": 3,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "tareas-asincronas-colas-y-notificaciones",
+                  "title": "Tareas asíncronas, colas y notificaciones",
+                  "estimatedMin": 60,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "No todo lo que ocurre como consecuencia de una petición HTTP necesita terminar antes de responder a esa petición. Si un usuario se registra y eso debe disparar un correo de bienvenida, generar un reporte, o notificar a un sistema externo, esperar a que todo eso termine antes de responder '201 Created' hace la petición más lenta (y más frágil: si el envío de correo falla, ¿debería fallar todo el registro?). Una cola de tareas desacopla esto: la petición HTTP solo encola la tarea (una operación rápida y confiable) y responde de inmediato; un proceso separado (worker) consume la cola y ejecuta la tarea real, con sus propios reintentos si falla, sin bloquear ni arriesgar la petición original del usuario."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Cuándo una tarea debería ser asíncrona (en cola)",
+                      "items": [
+                        "La tarea no es necesaria para que la respuesta HTTP sea correcta (enviar un correo de bienvenida no determina si el registro tuvo éxito).",
+                        "La tarea puede tardar un tiempo variable o impredecible (generar un reporte grande, llamar a un servicio externo lento).",
+                        "La tarea debería poder reintentarse de forma independiente si falla, sin repetir la operación HTTP original completa.",
+                        "Si la tarea SÍ determina el resultado que el cliente necesita saber de inmediato (confirmar que un pago se procesó), probablemente debe seguir siendo síncrona, o el cliente necesita un mecanismo para consultar el resultado después (polling, webhook, notificación)."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "Un endpoint `POST /usuarios` crea el usuario (operación síncrona, necesaria para responder) y encola una tarea 'enviar correo de bienvenida' (operación asíncrona, no necesaria para la respuesta). El endpoint responde `201 Created` en milisegundos, sin esperar a que el proveedor de correo procese el envío (que puede tardar segundos o fallar temporalmente). Un worker separado consume la cola de correos, con su propia lógica de reintento; si el envío falla tres veces, se registra para revisión manual, pero el usuario ya fue creado exitosamente desde el primer momento."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: hacer síncrona una tarea que no necesita serlo",
+                      "text": "Causa: parece más simple ejecutar todo en secuencia dentro del mismo endpoint. Cómo detectarlo: el endpoint de registro tarda varios segundos en responder porque espera a que un proveedor de correo externo (potencialmente lento o caído) termine, aunque el correo no afecte si el registro fue exitoso. Solución: identifica qué parte del trabajo determina la respuesta al cliente y qué parte es 'efecto secundario'; solo la primera necesita ser síncrona."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: una tarea en cola sin manejo de reintentos ni de fallos definitivos",
+                      "text": "Causa: encolar la tarea y asumir que 'siempre funcionará'. Cómo detectarlo: cuando el proveedor externo falla temporalmente, la tarea se pierde silenciosamente sin ningún registro ni reintento. Solución: diseña una estrategia de reintentos (con backoff) y un destino final para las tareas que fallan después de varios intentos (una cola de 'fallidos' para revisión manual, o una alerta)."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Encolar una tarea en vez de ejecutarla en línea",
+                      "language": "typescript",
+                      "code": "@Post()\nasync registrar(@Body() body: RegistrarDto) {\n  const usuario = await this.usuariosService.crear(body); // necesario para la respuesta\n  await this.colaCorreos.encolar({ tipo: \"bienvenida\", usuarioId: usuario.id }); // no bloquea la respuesta\n  return { usuario }; // responde sin esperar el envío del correo\n}\n\n// En el worker, por separado:\n// colaCorreos.consumir(async (tarea) => { await enviarCorreo(tarea); });"
+                    },
+                    {
+                      "type": "table",
+                      "title": "¿Síncrono o en cola?",
+                      "items": [
+                        "Determina la respuesta que el cliente necesita de inmediato: síncrono",
+                        "Es un efecto secundario que no afecta si la operación principal tuvo éxito: en cola",
+                        "Puede tardar un tiempo variable o depender de un servicio externo lento: candidato a cola",
+                        "Necesita poder reintentarse sin repetir toda la petición original: en cola"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás identificar, en un flujo dado, qué parte debe ser síncrona (determina la respuesta) y qué parte puede encolarse (efecto secundario), y diseñar una estrategia básica de reintentos para la parte asíncrona."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo del registro de usuario con correo de bienvenida encolado. Identifica qué pasaría si, en cambio, el envío de correo fuera síncrono y el proveedor de correo estuviera caído."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Diseña (o implementa con una cola simple en memoria) el flujo de 'un usuario completa un curso' que debe: marcar el curso como completado (síncrono, determina la respuesta) y generar un certificado en PDF más notificar por correo (ambos candidatos a cola). Justifica tu clasificación de cada paso. Criterio de paso: tu clasificación distingue correctamente lo que determina la respuesta de lo que es efecto secundario."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Diseña la estrategia de reintentos para la tarea de envío de correo: ¿cuántos intentos?, ¿con qué espera entre intentos (fijo o creciente)?, ¿qué pasa después del último intento fallido? Criterio de paso: tu diseño evita reintentar infinitamente y define un destino claro para los fallos definitivos."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente un flujo con una tarea que podría ser asíncrona. Revisa si la hizo síncrona (bloqueando la respuesta) sin necesidad. Si es así, pide que la encole y verifica que la respuesta ya no depende de esa tarea."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Qué criterio decide si una tarea debe ser síncrona o encolada? 2) ¿Qué ventaja tiene encolar el envío de un correo en vez de esperarlo? 3) ¿Qué debería pasar si una tarea en cola falla varias veces? 4) Da un ejemplo propio de una tarea candidata a cola. Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Procesar pagos, enviar notificaciones masivas, generar reportes grandes y sincronizar con sistemas externos son ejemplos reales y constantes de tareas que casi cualquier backend de producción termina moviendo a colas, precisamente por su variabilidad e inestabilidad. En una entrevista pueden pedirte: '¿cómo evitarías que un endpoint de registro sea lento por el envío de un correo?'. Variante: la tarea en cola SÍ necesita informar su resultado al usuario eventualmente, aunque no de inmediato (pista: ahí se usa una notificación push, un correo de confirmación, o el usuario consulta un estado más adelante). Pregunta de cierre: ¿cuándo preferirías que una tarea sea síncrona a pesar de ser lenta, en vez de encolarla?"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "code": "U5.4.4",
+              "title": "Arquitectura por capas y separación de responsabilidades",
+              "objective": "Separar un servicio en capas con responsabilidades claras",
+              "order": 4,
+              "isPublished": true,
+              "lessons": [
+                {
+                  "slug": "arquitectura-por-capas-y-separacion-de-responsabilidades",
+                  "title": "Arquitectura por capas y separación de responsabilidades",
+                  "estimatedMin": 75,
+                  "order": 1,
+                  "isPublished": true,
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "title": "La idea central",
+                      "text": "Separar un backend en capas significa que cada parte del código tiene una única responsabilidad clara y depende solo de las capas que necesita, no de todas a la vez. Una división común: controlador (traduce HTTP a llamadas al dominio), servicio (reglas de negocio), y repositorio/puerto (acceso a datos, detrás de una interfaz). La regla clave es la dirección de las dependencias: la lógica de negocio (el servicio) no debería depender de detalles de infraestructura (qué base de datos se usa, qué ORM); en cambio, depende de una interfaz (puerto) que la infraestructura implementa. Esto es exactamente lo que ya hace este proyecto con `review` y `exercises`: un puerto (interfaz) con un adaptador Prisma (producción) y un adaptador en memoria (pruebas), ambos intercambiables sin que el servicio lo note."
+                    },
+                    {
+                      "type": "list",
+                      "title": "Las capas y la dirección correcta de dependencia",
+                      "items": [
+                        "Controlador: traduce HTTP a una llamada al servicio; depende del servicio.",
+                        "Servicio: contiene las reglas de negocio; depende de interfaces (puertos), nunca de un ORM o motor de base de datos concreto directamente.",
+                        "Puerto (interfaz): define qué operaciones necesita el servicio del mundo exterior (ej. 'buscar un pedido por id'), sin decir cómo se implementan.",
+                        "Adaptador: implementa el puerto para una tecnología concreta (Prisma, una API externa, memoria para pruebas).",
+                        "La regla de dependencia: las capas internas (servicio, reglas de negocio) no conocen a las externas (adaptadores); es al revés, el adaptador implementa lo que el servicio necesita."
+                      ]
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Ejemplo resuelto",
+                      "text": "En este proyecto, `ReviewService` depende de una interfaz `ReviewRepositoryPort` (con métodos como buscar y guardar un item de repaso), no de Prisma directamente. En producción, el módulo registra un `PrismaReviewRepository` que implementa ese puerto consultando PostgreSQL real; en las pruebas de `ReviewService`, se usa un `InMemoryReviewRepository` que implementa el mismo puerto con un array en memoria. `ReviewService` nunca cambia entre ambos casos: solo conoce la interfaz, nunca supo (ni necesitó saber) qué base de datos hay detrás."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 1: el servicio importa y usa directamente el ORM (Prisma) en su lógica",
+                      "text": "Causa: parece más directo llamar a prisma.pedido.findUnique() dentro del servicio mismo. Cómo detectarlo: probar la lógica de negocio del servicio requiere una base de datos real (o mockear Prisma de forma frágil), y cambiar de ORM algún día obligaría a reescribir toda la lógica de negocio, no solo el acceso a datos. Solución: el servicio depende de una interfaz con los métodos que necesita; un adaptador separado implementa esa interfaz usando Prisma (o lo que corresponda)."
+                    },
+                    {
+                      "type": "callout",
+                      "title": "Error común 2: una interfaz (puerto) que expone detalles específicos de la tecnología de persistencia",
+                      "text": "Causa: diseñar la interfaz pensando en 'cómo lo haría Prisma' (por ejemplo, métodos que devuelven exactamente la forma de un modelo Prisma). Cómo detectarlo: cambiar de tecnología de persistencia obligaría a cambiar también la interfaz y, con ella, el código del servicio que la usa. Solución: diseña el puerto en términos del dominio ('buscar el pedido activo de un usuario'), no en términos de la tecnología concreta; el adaptador es responsable de traducir entre ambos mundos."
+                    },
+                    {
+                      "type": "code",
+                      "title": "Puerto con dos adaptadores (producción y pruebas)",
+                      "language": "typescript",
+                      "code": "export interface ReviewRepositoryPort {\n  buscarPorUsuario(usuarioId: string): Promise<ReviewItem[]>;\n  guardar(item: ReviewItem): Promise<void>;\n}\n\n@Injectable()\nexport class PrismaReviewRepository implements ReviewRepositoryPort {\n  constructor(private readonly prisma: PrismaService) {}\n  async buscarPorUsuario(usuarioId: string) {\n    return this.prisma.reviewItem.findMany({ where: { usuarioId } });\n  }\n  async guardar(item: ReviewItem) { /* ... */ }\n}\n\nexport class InMemoryReviewRepository implements ReviewRepositoryPort {\n  private items: ReviewItem[] = [];\n  async buscarPorUsuario(usuarioId: string) {\n    return this.items.filter((i) => i.usuarioId === usuarioId);\n  }\n  async guardar(item: ReviewItem) { this.items.push(item); }\n}"
+                    },
+                    {
+                      "type": "table",
+                      "title": "Qué va en cada capa",
+                      "items": [
+                        "Controlador: parámetros de la petición, llamada al servicio, forma de la respuesta HTTP",
+                        "Servicio: reglas de negocio, decisiones, orquestación; depende de puertos (interfaces)",
+                        "Puerto: qué operaciones necesita el dominio, en lenguaje del dominio",
+                        "Adaptador: cómo se implementa esa operación con una tecnología concreta (Prisma, memoria, una API externa)"
+                      ]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "kind": "objective",
+                      "title": "Objetivo medible",
+                      "body": "Al terminar podrás diseñar un puerto (interfaz) para el acceso a datos de un servicio, implementarlo con dos adaptadores (uno real y uno en memoria para pruebas), y probar la lógica de negocio del servicio sin necesitar una base de datos real."
+                    },
+                    {
+                      "kind": "explanation",
+                      "title": "Explicación y ejemplo resuelto",
+                      "body": "Lee el ejemplo de ReviewRepositoryPort con sus dos adaptadores. Identifica por qué ReviewService nunca necesita cambiar entre usar uno u otro."
+                    },
+                    {
+                      "kind": "guided_practice",
+                      "title": "Práctica guiada",
+                      "body": "Diseña un puerto NotasRepositoryPort (buscar todas, guardar una) para un servicio de notas, con un adaptador en memoria. Implementa el servicio dependiendo solo del puerto, y escribe una prueba del servicio usando el adaptador en memoria, sin ninguna base de datos real. Criterio de paso: la prueba del servicio pasa sin ninguna dependencia de infraestructura real."
+                    },
+                    {
+                      "kind": "independent_practice",
+                      "title": "Práctica independiente",
+                      "body": "Abre un módulo real de este proyecto que use el patrón de puerto + adaptadores (por ejemplo, review o sandbox en apps/api/src/modules). Documenta: cuál es el puerto, cuáles son sus adaptadores, y qué método del servicio depende de cuál operación del puerto. Criterio de paso: tu documentación es precisa respecto al código real inspeccionado."
+                    },
+                    {
+                      "kind": "debug",
+                      "title": "Depuración y revisión con IA",
+                      "body": "Pide a un asistente de IA que implemente un servicio con acceso a datos. Revisa si usa Prisma (o cualquier ORM) directamente dentro del servicio, en vez de depender de una interfaz. Si lo hace, pide que lo refactorice a puerto + adaptador, y verifica que ahora puedes probar el servicio sin base de datos real."
+                    },
+                    {
+                      "kind": "assessment",
+                      "title": "Recuperación y evaluación",
+                      "body": "Sin mirar la lección, responde: 1) ¿Cuáles son las tres capas típicas de este patrón? 2) ¿De qué debería depender el servicio: de un ORM concreto o de una interfaz? 3) ¿Qué ventaja da tener un adaptador en memoria además del real? 4) ¿Qué problema tiene diseñar un puerto pensando en una tecnología específica? Criterio de paso: al menos tres de cuatro correctas."
+                    },
+                    {
+                      "kind": "transfer",
+                      "title": "Transferencia al mundo real",
+                      "body": "Este patrón (puertos y adaptadores, o arquitectura hexagonal) es exactamente el que este proyecto documenta y aplica de forma consistente en review, exercises y sandbox, precisamente para poder probar la lógica de negocio sin infraestructura real en cada prueba. En una entrevista pueden pedirte: '¿cómo probarías este servicio sin una base de datos real?'. Variante: el proyecto decide migrar de PostgreSQL a otra base de datos (pista: con este patrón, solo se escribe un adaptador nuevo; el servicio y sus pruebas no cambian). Pregunta de cierre: ¿cuándo el costo de definir un puerto formal no se justifica frente a acceder directamente a la infraestructura?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     },
