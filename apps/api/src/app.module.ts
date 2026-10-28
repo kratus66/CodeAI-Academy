@@ -3,6 +3,7 @@ import type { MiddlewareConsumer, NestModule } from "@nestjs/common";
 
 import { TraceIdMiddleware } from "./common/trace/trace-id.middleware";
 import { EnvModule } from "./config/env.module";
+import { AiModule } from "./modules/ai/ai.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { ContentModule } from "./modules/content/content.module";
 import { ExercisesModule } from "./modules/exercises/exercises.module";
@@ -23,6 +24,7 @@ import { UsersModule } from "./modules/users/users.module";
     SandboxModule,
     ExercisesModule,
     ReviewModule,
+    AiModule,
   ],
   providers: [TraceIdMiddleware],
 })

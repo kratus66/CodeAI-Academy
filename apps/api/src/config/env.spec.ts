@@ -8,7 +8,7 @@ describe("loadEnv", () => {
 
     expect(env.NODE_ENV).toBe("development");
     expect(env.PORT).toBe(3001);
-    expect(env.WEB_ORIGIN).toBe("http://localhost:3000");
+    expect(env.WEB_ORIGIN).toEqual(["http://localhost:3000"]);
     expect(env.APP_VERSION).toBe("0.1.0");
   });
 
@@ -24,6 +24,17 @@ describe("loadEnv", () => {
     );
   });
 
+  it("acepta varios orígenes para CORS separados por comas", () => {
+    const env = loadEnv({
+      WEB_ORIGIN: "http://localhost:3000, http://localhost:3002 ,",
+    });
+
+    expect(env.WEB_ORIGIN).toEqual([
+      "http://localhost:3000",
+      "http://localhost:3002",
+    ]);
+  });
+
   it("falla si WEB_ORIGIN no es una URL absoluta http(s)", () => {
     expect(() => loadEnv({ WEB_ORIGIN: "localhost:3000" })).toThrow(
       /WEB_ORIGIN/,
@@ -31,6 +42,9 @@ describe("loadEnv", () => {
     expect(() => loadEnv({ WEB_ORIGIN: "ftp://codeai.dev" })).toThrow(
       /http:\/\/ o https:\/\//,
     );
+    expect(() =>
+      loadEnv({ WEB_ORIGIN: "http://localhost:3000,javascript:alert(1)" }),
+    ).toThrow(/http:\/\/ o https:\/\//);
   });
 
   it("aplica los valores por defecto de persistencia y sesión", () => {
@@ -65,6 +79,8 @@ describe("loadEnv", () => {
       NODE_ENV: "production",
       JWT_SECRET: "produccion-secreto-de-32-caracteres-o-mas",
       SANDBOX_MODE: "docker",
+      AI_PROVIDER: "openai",
+      AI_API_KEY: "sk-test",
     });
 
     expect(env.NODE_ENV).toBe("production");
@@ -80,7 +96,47 @@ describe("loadEnv", () => {
       /SANDBOX_MODE/,
     );
     expect(() => loadEnv(production)).toThrow(/SANDBOX_MODE/);
-    expect(loadEnv({ ...production, SANDBOX_MODE: "docker" }).SANDBOX_MODE).toBe("docker");
+    expect(
+      loadEnv({ ...production, SANDBOX_MODE: "docker", AI_PROVIDER: "openai", AI_API_KEY: "sk-test" })
+        .SANDBOX_MODE,
+    ).toBe("docker");
+  });
+
+  describe("capa de IA", () => {
+    const production = {
+      NODE_ENV: "production",
+      JWT_SECRET: "produccion-secreto-de-32-caracteres-o-mas",
+      SANDBOX_MODE: "docker",
+    } as const;
+
+    it("arranca con mock y valores por defecto", () => {
+      const env = loadEnv({});
+
+      expect(env.AI_PROVIDER).toBe("mock");
+      expect(env.AI_MONTHLY_BUDGET_USD).toBe(5);
+      expect(env.AI_TIMEOUT_MS).toBe(15_000);
+      expect(env.AI_API_KEY).toBeUndefined();
+    });
+
+    it("en producción rechaza mock indicando AI_PROVIDER", () => {
+      expect(() => loadEnv({ ...production, AI_PROVIDER: "mock" })).toThrow(/AI_PROVIDER/);
+      expect(() => loadEnv(production)).toThrow(/AI_PROVIDER/);
+    });
+
+    it("con openai exige AI_API_KEY", () => {
+      expect(() => loadEnv({ AI_PROVIDER: "openai" })).toThrow(/AI_API_KEY/);
+      expect(() => loadEnv({ AI_PROVIDER: "openai", AI_API_KEY: "  " })).toThrow(/AI_API_KEY/);
+      expect(loadEnv({ AI_PROVIDER: "openai", AI_API_KEY: "sk-test" }).AI_API_KEY).toBe("sk-test");
+    });
+
+    it("AI_API_KEY vacía con mock no falla", () => {
+      expect(loadEnv({ AI_PROVIDER: "mock", AI_API_KEY: "" }).AI_API_KEY).toBeUndefined();
+    });
+
+    it("rechaza proveedor desconocido y presupuesto no positivo", () => {
+      expect(() => loadEnv({ AI_PROVIDER: "anthropic" })).toThrow(/AI_PROVIDER/);
+      expect(() => loadEnv({ AI_MONTHLY_BUDGET_USD: "0" })).toThrow(/AI_MONTHLY_BUDGET_USD/);
+    });
   });
 
   it("fuera de producción acepta mock y subprocess", () => {

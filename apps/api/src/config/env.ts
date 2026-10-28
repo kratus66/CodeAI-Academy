@@ -13,6 +13,22 @@ const httpOrigin = z
   );
 
 /**
+ * Orígenes permitidos por CORS. `WEB_ORIGIN` acepta una lista separada por
+ * comas porque `next dev` cambia de puerto cuando el 3000 está ocupado (prueba
+ * 3001, 3002…) y el navegador rechazaría la cookie de sesión contra un origen
+ * que la API no conoce. Un único valor sigue siendo válido.
+ */
+const webOrigins = z
+  .string()
+  .transform((value) =>
+    value
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0),
+  )
+  .pipe(z.array(httpOrigin).min(1, "define al menos un origen"));
+
+/**
  * Secreto de desarrollo. Nunca se usa en producción: `loadEnv` lo rechaza
  * cuando `NODE_ENV=production`.
  */
@@ -33,7 +49,7 @@ const envSchema = z
       .enum(["development", "test", "production"])
       .default("development"),
     PORT: z.coerce.number().int().min(1).max(65535).default(3001),
-    WEB_ORIGIN: httpOrigin.default("http://localhost:3000"),
+    WEB_ORIGIN: webOrigins.default("http://localhost:3000"),
     APP_VERSION: z.string().min(1).default("0.1.0"),
 
     // Persistencia (S1). El puerto 5433 evita choques con otras bases locales.
@@ -58,6 +74,18 @@ const envSchema = z
     // `modules/sandbox/sandbox.service.ts`. `sandbox-ejecucion.md` §3: en
     // producción sólo se acepta el adaptador aislado.
     SANDBOX_MODE: z.enum(["mock", "subprocess", "docker"]).default("mock"),
+
+    // Capa de IA (S8). Debe coincidir con `AI_PROVIDER_NAMES` del puerto
+    // `modules/ai/interfaces/ai-provider.interface.ts`. Una clave vacía cuenta
+    // como ausente para que `AI_API_KEY=` en `.env` no falle con `mock`.
+    AI_PROVIDER: z.enum(["mock", "openai"]).default("mock"),
+    AI_API_KEY: z
+      .string()
+      .optional()
+      .transform((value) => (value === undefined || value.trim() === "" ? undefined : value)),
+    AI_MODEL: z.string().min(1).default("gpt-4o-mini"),
+    AI_MONTHLY_BUDGET_USD: z.coerce.number().positive().default(5),
+    AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(15_000),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && env.JWT_SECRET === DEV_JWT_SECRET) {
@@ -73,6 +101,22 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["SANDBOX_MODE"],
         message: "en producción sólo se acepta SANDBOX_MODE=docker",
+      });
+    }
+
+    if (env.NODE_ENV === "production" && env.AI_PROVIDER === "mock") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AI_PROVIDER"],
+        message: "en producción no se acepta AI_PROVIDER=mock",
+      });
+    }
+
+    if (env.AI_PROVIDER === "openai" && env.AI_API_KEY === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AI_API_KEY"],
+        message: "obligatoria con AI_PROVIDER=openai",
       });
     }
   });
