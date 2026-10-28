@@ -31,6 +31,8 @@ export interface ScheduleFromSubmissionParams {
   outcome: SubmissionOutcome;
   score: number;
   hintsUsed: number;
+  /** Calidad 0–5 declarada por el estudiante (tarjetas); si falta se deriva del envío. */
+  quality?: number;
 }
 
 /**
@@ -106,11 +108,13 @@ export class ReviewService {
    * Devuelve `false` cuando el ejercicio ya no está en el catálogo.
    */
   async scheduleFromSubmission(params: ScheduleFromSubmissionParams): Promise<boolean> {
-    const quality = qualityFromSubmission({
-      outcome: params.outcome,
-      score: params.score,
-      hintsUsed: params.hintsUsed,
-    });
+    const quality =
+      params.quality ??
+      qualityFromSubmission({
+        outcome: params.outcome,
+        score: params.score,
+        hintsUsed: params.hintsUsed,
+      });
     const previous = await this.repository.findByExercise(
       params.userId,
       params.exerciseId,

@@ -276,6 +276,19 @@ Para que una unidad se considere publicable:
 | `CHALLENGE` | 1 (desde Etapa 3) |
 | `REFLECT` | 1 |
 
+### Estado real del banco (2026-10-28)
+
+La tabla anterior es el **criterio de publicación**, no la foto actual. Hoy:
+
+| Medición | Valor | Consecuencia |
+|----------|-------|--------------|
+| Etapas / módulos / unidades sembradas | 12 / 48 / 207 | El catálogo y el lector tienen datos reales desde S2–S3 |
+| Lecciones publicadas | 207 (una por unidad) | Cada unidad enseña; la práctica queda declarada, no fingida |
+| Ejercicios en la semilla | **864 publicados (E0–E2, sin revisión humana; ver `plan-poblado-banco-e0-e2.md` §4.1)**; E3–E11 sin ejercicios. Antes: 3 (piloto, sin publicar) | `seed.mts` ya carga ejercicios con pistas y pruebas (`js-async-001`…`003`, unidades U2.3.2 y U2.3.3). Siguen sin publicarse: el sandbox `mock` no ejecuta código y publicarlos certificaría competencias sin comprobar. No hay `QUIZ` ni `FLASHCARD` sembrados |
+| Unidades que cumplen la distribución mínima | **0 de 207** | Ninguna unidad es publicable según esta tabla hasta que exista su banco |
+
+Esto es **deuda pedagógica declarada**, no un descuido silencioso: la regla permanente 1 del proyecto («ningún concepto sin ejercicios prácticos asociados») está hoy incumplida en los datos, aunque el modelo, la API y las pantallas de ejercicios existen y están probados (S5–S7). El soporte técnico de la semilla ya existe (esquema, reglas de la plantilla y carga idempotente); lo que falta es autoría de contenido por etapa y un sandbox que ejecute código antes de publicar. La autoría requiere revisión pedagógica humana: un ejercicio generado sin revisión no cuenta como evidencia de competencia.
+
 ---
 
 ## 6. Metadatos obligatorios de todo ejercicio

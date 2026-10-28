@@ -17,6 +17,13 @@ import { authApi } from "@/lib/api-client";
 const BUTTON_CLASSES =
   "inline-flex w-full items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-semibold text-ink transition hover:bg-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink-card disabled:cursor-not-allowed disabled:opacity-60";
 
+/** Solo en desarrollo: cuentas de prueba creadas localmente. */
+const DEMO_ACCOUNTS = [
+  { role: "Estudiante", email: "estudiante@codeai.test", password: "Estudiante123" },
+  { role: "Instructor", email: "instructor@codeai.test", password: "Instructor123" },
+  { role: "Admin", email: "admin@codeai.test", password: "Admin123456" },
+] as const;
+
 export function LoginForm() {
   const router = useRouter();
   const { setUser } = useSession();
@@ -28,6 +35,12 @@ export function LoginForm() {
   function update(field: "email" | "password", value: string): void {
     setValues((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => withoutField(current, field));
+  }
+
+  function fillDemoAccount(account: (typeof DEMO_ACCOUNTS)[number]): void {
+    setValues({ email: account.email, password: account.password });
+    setFieldErrors({});
+    setFormError(null);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -48,8 +61,7 @@ export function LoginForm() {
       const user = await authApi.login(parsed.data);
 
       setUser(user);
-      // El shell autenticado llega en S3; hasta entonces se vuelve a la landing.
-      router.push("/");
+      router.push("/learn");
       router.refresh();
     } catch (error) {
       const state = describeSubmitError(error);
@@ -102,6 +114,27 @@ export function LoginForm() {
       <button type="submit" disabled={pending} className={BUTTON_CLASSES}>
         {pending ? "Entrando…" : "Entrar"}
       </button>
+
+      {process.env.NODE_ENV === "development" ? (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-slate-400">
+          <p className="mb-3 font-mono uppercase tracking-wide text-accent">
+            Cuentas de prueba (solo desarrollo)
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {DEMO_ACCOUNTS.map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                disabled={pending}
+                onClick={() => fillDemoAccount(account)}
+                className="rounded-full border border-white/15 px-3 py-1 text-slate-200 transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
+              >
+                {account.role}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

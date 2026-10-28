@@ -87,7 +87,7 @@ describe("LoginForm", () => {
     await waitFor(() => {
       expect(mocks.setUser).toHaveBeenCalledWith(USER);
     });
-    expect(mocks.push).toHaveBeenCalledWith("/");
+    expect(mocks.push).toHaveBeenCalledWith("/learn");
     expect(mocks.refresh).toHaveBeenCalled();
   });
 

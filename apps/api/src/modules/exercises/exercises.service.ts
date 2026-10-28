@@ -1,6 +1,14 @@
 import type {
   CreateSubmissionInput,
   ExerciseDetailResponse,
+  FlashcardRatingInput,
+  FlashcardRatingResponse,
+  FlashcardRevealInput,
+  FlashcardRevealResponse,
+  QuizAnswerInput,
+  QuizAnswerResponse,
+  ReflectionInput,
+  ReflectionResponse,
   ExerciseListQuery,
   ExerciseListResponse,
   PaginationMeta,
@@ -17,6 +25,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
@@ -69,6 +78,7 @@ export interface ReviewScheduler {
     outcome: SubmissionOutcome;
     score: number;
     hintsUsed: number;
+    quality?: number;
   }): Promise<boolean>;
 }
 
@@ -80,6 +90,60 @@ const FILE_NAME_BY_LANGUAGE: Record<SandboxRunRequest["language"], string> = {
 };
 
 type ExerciseTestRow = ExerciseRow["tests"][number];
+
+const NOT_A_QUIZ = "Este ejercicio no es un quiz";
+const NOT_A_FLASHCARD = "Este ejercicio no es una tarjeta";
+const NOT_A_REFLECTION = "Este ejercicio no es una reflexión";
+const UNKNOWN_OPTION = "La opción no existe en este quiz";
+const REVEAL_FIRST = "Primero intenta recordar y revela la respuesta";
+const CONTENT_BROKEN = "El ejercicio está mal configurado";
+
+interface QuizSolution {
+  correctOptionId: string;
+  explanations: Record<string, string>;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readQuiz(exercise: ExerciseRow): { optionIds: string[]; solution: QuizSolution } {
+  const options = asRecord(exercise.config).options;
+  const solution = asRecord(exercise.solution);
+  const explanations = asRecord(solution.explanations);
+  const optionIds = Array.isArray(options)
+    ? options.map((option) => asRecord(option).id).filter((id): id is string => typeof id === "string")
+    : [];
+
+  if (
+    optionIds.length === 0 ||
+    typeof solution.correctOptionId !== "string" ||
+    !optionIds.includes(solution.correctOptionId) ||
+    optionIds.some((id) => typeof explanations[id] !== "string")
+  ) {
+    throw new InternalServerErrorException(CONTENT_BROKEN);
+  }
+
+  return {
+    optionIds,
+    solution: {
+      correctOptionId: solution.correctOptionId,
+      explanations: explanations as Record<string, string>,
+    },
+  };
+}
+
+function readFlashcardBack(exercise: ExerciseRow): string {
+  const back = asRecord(exercise.solution).back;
+
+  if (typeof back !== "string" || back.length === 0) {
+    throw new InternalServerErrorException(CONTENT_BROKEN);
+  }
+
+  return back;
+}
 
 /**
  * Reglas del laboratorio (`contratos-api.md` §4.3 y §4.6): ventana de paginación,
@@ -135,6 +199,170 @@ export class ExercisesService {
 
     // Envoltorio explícito: `Array.map` pasaría el índice como `feedback`.
     return toPaginated(page, query, (row) => toSubmissionSummary(row));
+  }
+
+  /**
+   * Corrige un quiz en el servidor: la respuesta y las explicaciones solo se
+   * devuelven con el intento ya persistido. No usa sandbox; el repaso se
+   * programa como en cualquier otro envío.
+   */
+  async answerQuiz(
+    userId: string,
+    exerciseId: string,
+    body: QuizAnswerInput,
+  ): Promise<QuizAnswerResponse> {
+    const exercise = await this.requireExercise(exerciseId);
+
+    if (exercise.type !== "QUIZ") {
+      throw new BadRequestException(NOT_A_QUIZ);
+    }
+
+    const { optionIds, solution } = readQuiz(exercise);
+
+    if (!optionIds.includes(body.optionId)) {
+      throw new BadRequestException(UNKNOWN_OPTION);
+    }
+
+    await this.assertAttemptsLeft(userId, exercise);
+
+    const correct = body.optionId === solution.correctOptionId;
+    const outcome: SubmissionOutcome = correct ? "PASSED" : "FAILED";
+    const score = correct ? 100 : 0;
+
+    await this.repository.createSubmission({
+      userId,
+      exerciseId,
+      code: body.optionId,
+      outcome,
+      score,
+      achievedLevel: correct ? 1 : null,
+      hintsUsed: 0,
+      durationMs: 0,
+      results: [],
+    } satisfies CreateSubmissionRow);
+
+    await this.reviews.scheduleFromSubmission({ userId, exerciseId, outcome, score, hintsUsed: 0 });
+
+    return {
+      result: {
+        correct,
+        correctOptionId: solution.correctOptionId,
+        explanation: solution.explanations[body.optionId] ?? "",
+        correctExplanation: solution.explanations[solution.correctOptionId] ?? "",
+      },
+    };
+  }
+
+  /** Revela el reverso solo tras registrar un intento (recuperación activa). */
+  async revealFlashcard(
+    userId: string,
+    exerciseId: string,
+    body: FlashcardRevealInput,
+  ): Promise<FlashcardRevealResponse> {
+    const exercise = await this.requireExercise(exerciseId);
+
+    if (exercise.type !== "FLASHCARD") {
+      throw new BadRequestException(NOT_A_FLASHCARD);
+    }
+
+    const back = readFlashcardBack(exercise);
+
+    await this.repository.createSubmission({
+      userId,
+      exerciseId,
+      code: body.attempt,
+      outcome: "PARTIAL",
+      score: 0,
+      achievedLevel: null,
+      hintsUsed: 0,
+      durationMs: 0,
+      results: [],
+    } satisfies CreateSubmissionRow);
+
+    return { back };
+  }
+
+  /** La autocalificación solo es válida justo después de revelar; reprograma SM-2. */
+  async rateFlashcard(
+    userId: string,
+    exerciseId: string,
+    body: FlashcardRatingInput,
+  ): Promise<FlashcardRatingResponse> {
+    const exercise = await this.requireExercise(exerciseId);
+
+    if (exercise.type !== "FLASHCARD") {
+      throw new BadRequestException(NOT_A_FLASHCARD);
+    }
+
+    const latest = await this.repository.listSubmissions(userId, exerciseId, { skip: 0, take: 1 });
+
+    if (latest.items[0]?.outcome !== "PARTIAL") {
+      throw new ConflictException(REVEAL_FIRST);
+    }
+
+    const outcome: SubmissionOutcome = body.quality >= 3 ? "PASSED" : "FAILED";
+    const score = body.quality * 20;
+
+    await this.repository.createSubmission({
+      userId,
+      exerciseId,
+      code: `quality:${body.quality}`,
+      outcome,
+      score,
+      achievedLevel: null,
+      hintsUsed: 0,
+      durationMs: 0,
+      results: [],
+    } satisfies CreateSubmissionRow);
+
+    const scheduled = await this.reviews.scheduleFromSubmission({
+      userId,
+      exerciseId,
+      outcome,
+      score,
+      hintsUsed: 0,
+      quality: body.quality,
+    });
+
+    return { scheduled };
+  }
+
+  /** Registra la reflexión como intento; no se califica automáticamente. */
+  async submitReflection(
+    userId: string,
+    exerciseId: string,
+    body: ReflectionInput,
+  ): Promise<ReflectionResponse> {
+    const exercise = await this.requireExercise(exerciseId);
+
+    if (exercise.type !== "REFLECT") {
+      throw new BadRequestException(NOT_A_REFLECTION);
+    }
+
+    await this.assertAttemptsLeft(userId, exercise);
+    await this.repository.createSubmission({
+      userId,
+      exerciseId,
+      code: body.text,
+      selfExplanation: body.text,
+      outcome: "PARTIAL",
+      score: 0,
+      achievedLevel: null,
+      hintsUsed: 0,
+      durationMs: 0,
+      results: [],
+    } satisfies CreateSubmissionRow);
+
+    return { recorded: true };
+  }
+
+  private async assertAttemptsLeft(userId: string, exercise: ExerciseRow): Promise<void> {
+    const attemptsUsed = await this.repository.countSubmissions(userId, exercise.id);
+    const limit = checkAttemptLimit({ attemptsUsed, maxAttempts: exercise.maxAttempts ?? null });
+
+    if (!limit.allowed) {
+      throw new ConflictException(ATTEMPTS_EXHAUSTED);
+    }
   }
 
   async submit(

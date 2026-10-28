@@ -76,6 +76,8 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
   ): Promise<Page<SubmissionRow>> {
     const items = this.submissions
       .filter((submission) => submission.userId === userId && submission.exerciseId === exerciseId)
+      // Empate de reloj: gana el envío insertado después (orden estable tras invertir).
+      .reverse()
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
       .map(withoutOwner);
 

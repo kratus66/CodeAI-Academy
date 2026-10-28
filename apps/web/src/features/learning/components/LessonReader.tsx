@@ -4,6 +4,7 @@ import type { LessonContentBlock, LessonDetail } from "@codeai/shared";
 import Link from "next/link";
 import { useCallback } from "react";
 
+import { TutorPanel } from "@/features/ai/components/TutorPanel";
 import { formatMinutes } from "@/features/learning/lib/format";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { ApiError, contentApi } from "@/lib/api-client";
@@ -310,6 +311,8 @@ export function LessonReader({
           </ul>
         )}
       </section>
+
+      <TutorPanel lessonId={lesson.id} />
 
       <footer className="border-t border-line/70 pt-8">
         <Link

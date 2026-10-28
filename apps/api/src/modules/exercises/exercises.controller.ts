@@ -3,8 +3,16 @@ import type {
   ExerciseDetailResponse,
   ExerciseListQuery,
   ExerciseListResponse,
+  FlashcardRatingInput,
+  FlashcardRatingResponse,
+  FlashcardRevealInput,
+  FlashcardRevealResponse,
   HintRequestInput,
   HintResponseEnvelope,
+  QuizAnswerInput,
+  QuizAnswerResponse,
+  ReflectionInput,
+  ReflectionResponse,
   SubmissionListResponse,
   SubmissionResponse,
   UnitCodeParams,
@@ -12,7 +20,11 @@ import type {
 import {
   createSubmissionSchema,
   exerciseListQuerySchema,
+  flashcardRatingSchema,
+  flashcardRevealSchema,
   hintRequestSchema,
+  quizAnswerSchema,
+  reflectionSchema,
   unitCodeParamsSchema,
 } from "@codeai/shared";
 import {
@@ -102,6 +114,42 @@ export class ExercisesController {
     @Body(new ZodValidationPipe(createSubmissionSchema)) body: CreateSubmissionInput,
   ): Promise<SubmissionResponse> {
     return this.exercises.submit(user.sub, params.id, body);
+  }
+
+  @Post(":id/quiz-answers")
+  async answerQuiz(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,
+    @Body(new ZodValidationPipe(quizAnswerSchema)) body: QuizAnswerInput,
+  ): Promise<QuizAnswerResponse> {
+    return this.exercises.answerQuiz(user.sub, params.id, body);
+  }
+
+  @Post(":id/reflections")
+  async submitReflection(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,
+    @Body(new ZodValidationPipe(reflectionSchema)) body: ReflectionInput,
+  ): Promise<ReflectionResponse> {
+    return this.exercises.submitReflection(user.sub, params.id, body);
+  }
+
+  @Post(":id/flashcard-reveal")
+  async revealFlashcard(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,
+    @Body(new ZodValidationPipe(flashcardRevealSchema)) body: FlashcardRevealInput,
+  ): Promise<FlashcardRevealResponse> {
+    return this.exercises.revealFlashcard(user.sub, params.id, body);
+  }
+
+  @Post(":id/flashcard-ratings")
+  async rateFlashcard(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,
+    @Body(new ZodValidationPipe(flashcardRatingSchema)) body: FlashcardRatingInput,
+  ): Promise<FlashcardRatingResponse> {
+    return this.exercises.rateFlashcard(user.sub, params.id, body);
   }
 
   /**

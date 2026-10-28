@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { ExerciseLab } from "@/features/lab/components/ExerciseLab";
+import { ExercisePlayer } from "@/features/lab/components/ExercisePlayer";
 
 export const metadata: Metadata = {
-  title: "Laboratorio de código",
+  title: "Práctica",
   description:
-    "Escribe, ejecuta y envía un ejercicio de CodeAI Academy con pruebas visibles.",
+    "Practica un ejercicio de CodeAI Academy: quiz, tarjeta de repaso o laboratorio de código.",
 };
 
 interface ExercisePageProps {
@@ -17,5 +17,5 @@ interface ExercisePageProps {
  * unidad y la API responde `400`/`404` si alguno no existe.
  */
 export default function ExercisePage({ params }: ExercisePageProps) {
-  return <ExerciseLab slug={params.slug} unitCode={params.code} />;
+  return <ExercisePlayer slug={params.slug} unitCode={params.code} />;
 }

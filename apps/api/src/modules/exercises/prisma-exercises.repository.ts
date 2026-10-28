@@ -134,7 +134,7 @@ export class PrismaExercisesRepository implements ExercisesRepository {
     const [rows, total, tests] = await Promise.all([
       this.prisma.submission.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: window.skip,
         take: window.take,
         select: SUBMISSION_SELECT,

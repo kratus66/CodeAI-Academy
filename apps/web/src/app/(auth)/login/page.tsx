@@ -28,32 +28,6 @@ export default function LoginPage() {
       }
     >
       <LoginForm />
-      {process.env.NODE_ENV === "development" ? <DemoCredentials /> : null}
     </AuthCard>
-  );
-}
-
-/** Solo en desarrollo: credenciales de las cuentas de prueba sembradas localmente. */
-function DemoCredentials() {
-  const accounts = [
-    { role: "Estudiante", email: "estudiante@codeai.test", password: "Estudiante123" },
-    { role: "Instructor", email: "instructor@codeai.test", password: "Instructor123" },
-    { role: "Admin", email: "admin@codeai.test", password: "Admin123456" },
-  ];
-
-  return (
-    <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-slate-400">
-      <p className="mb-2 font-mono uppercase tracking-wide text-accent">
-        Cuentas de prueba (solo desarrollo)
-      </p>
-      <ul className="space-y-1">
-        {accounts.map((account) => (
-          <li key={account.email}>
-            <span className="text-slate-300">{account.role}:</span>{" "}
-            {account.email} / {account.password}
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
