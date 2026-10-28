@@ -1,7 +1,7 @@
 # Sprint 09 — Proyectos por etapa, rúbricas y portafolio público
 
 > **Estado:** 🔄 en curso (2026-10-27) · **Inicio:** 2026-10-27 · **Depende de:** S2 ✅ (etapas, unidades y publicaciones), S3 ✅ (identidad con rol en el token) y S6/S7 ✅ (envío propio y panel de repaso).
-> **Avance:** 0/18 tareas · 0/18 criterios de aceptación.
+> **Avance:** 18/18 tareas · 18/18 criterios. **Sprint 9 cerrado el 2026-10-28**: contrato, modelo y migración, semilla, motor de nota, puerto con dos adaptadores, servicio, controladores, cliente web, tres vistas y verificación HTTP real (16/16). Antes de cerrar se corrigió un desajuste detectado por la verificación: el pipe Zod de la revisión respondía `400` en lugar del `422 RULE_VIOLATION` del contrato; ahora la validación vive en el servicio (ver §9, T18). Ver §3 y §9.
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 > **Desvío declarado:** el sprint se ejecuta **sin S8** (capa de IA). La retroalimentación automática de la entrega queda como deuda (§8) y la revisión de S9 es humana, con rúbrica.
 
@@ -71,7 +71,7 @@ Cada etapa termina en un proyecto evaluable, no en un vídeo visto (`roadmap-spr
 
 ## 4. Contrato
 
-> **Contratos nuevos.** `contratos-api.md` no tiene sección de proyectos: T16 añade §4.10 con esta tabla y estos tipos. `GET /api/portfolio/:userId` es la **primera ruta pública de la API** fuera de autenticación y contenido; su límite de peticiones es por IP (§6).
+> **Contratos nuevos.** `contratos-api.md` no tiene sección de proyectos: T16 añade **§4.11** con esta tabla y estos tipos (§4.10 es de `users`, documentado el 2026-10-28). `GET /api/portfolio/:userId` es la **primera ruta pública de la API** fuera de autenticación y contenido; su límite de peticiones es por IP (§6).
 
 | Método | Ruta | Auth | Respuesta |
 |--------|------|------|-----------|
@@ -196,26 +196,28 @@ score          = round(Σ nota, 2)
 
 | # | Tarea | Archivos (≤ 4 por tarea) | Verificación |
 |---|-------|--------------------------|--------------|
-| **T1** | Contrato compartido: criterios, estados, niveles, `projectRubricSchema` (5 criterios, pesos suman 100, niveles 1–4), `DEFAULT_PROJECT_RUBRIC` 30/20/20/15/15, esquemas de listado, detalle, entrega, revisión, portafolio y constantes | `packages/shared/src/schemas/project.ts`, `packages/shared/src/index.ts`, `packages/shared/src/schemas/project.spec.ts` | `npm run test -w @codeai/shared` |
-| **T2** | `@Roles` y `RolesGuard`: metadatos de clase/método, `401` sin usuario, `403` con rol insuficiente, paso libre sin metadatos | `apps/api/src/modules/auth/decorators/roles.decorator.ts`, `…/auth/guards/roles.guard.ts`, `…/auth/guards/roles.guard.spec.ts` | `npm run test -w @codeai/api` |
-| **T3** | Modelos `Project`, `ProjectSubmission`, enum `ProjectSubmissionStatus`, competencias del proyecto, relaciones en `User` y migración `projects_rubrics` aplicada a la base de desarrollo | `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/<timestamp>_projects_rubrics/migration.sql` | `prisma migrate diff` + `psql \d "ProjectSubmission"` |
-| **T4** | Semilla de un proyecto por etapa (E0–E3) idempotente por `slug`, con la rúbrica base y sus competencias; script `db:seed:projects` | `apps/api/prisma/seed/projects.seed.json`, `apps/api/prisma/seed/seed-projects.mts`, `apps/api/package.json`, `package.json` | `npm run db:seed:projects` + `psql select count(*)` |
-| **T5** | Motor puro: `readRubric` (valida el `Json` guardado) y `scoreSubmission` (pesos, niveles 0–4, puerta de correctitud, justificación vacía, dos decimales) | `apps/api/src/modules/projects/rubric.ts`, `…/rubric.spec.ts` | `npm run test -w @codeai/api` |
-| **T6** | Puerto `ProjectRepository` con adaptador Prisma y uno en memoria (catálogo, detalle, entregas, revisión, publicación, portafolio, evidencia de competencia) | `apps/api/src/modules/projects/project.repository.ts`, `…/prisma-project.repository.ts`, `…/in-memory-project.repository.ts` | `npm run test -w @codeai/api` |
-| **T7** | `ProjectsService.listProjects` y `getProject`: sólo publicados, filtro por etapa, paginación, `submitted` por usuario, mejor nota y entregas propias | `apps/api/src/modules/projects/projects.service.ts`, `…/projects.service.spec.ts` | `npm run test -w @codeai/api` |
-| **T8** | `ProjectsService.submit`: proyecto publicado, `repoUrl` http(s), topes de longitud, `userId` del token y entregas acumulables | `…/projects.service.ts`, `…/projects.service.spec.ts` | `npm run test -w @codeai/api` |
-| **T9** | `ProjectsService.review`: rúbrica completa, `422` con criterios faltantes o correctitud 0, nota persistida, `reviewedById` y evidencia `CompetencyProgress` con nota ≥ 80 | `…/projects.service.ts`, `…/projects.service.spec.ts` | `npm run test -w @codeai/api` |
-| **T10** | `ProjectsService.publish`/`unpublish` (sólo el autor) y `getPortfolio`/`getMyPortfolio` (público vs. propio, sin correo) | `…/projects.service.ts`, `…/projects.service.spec.ts` | `npm run test -w @codeai/api` |
-| **T11** | `ProjectsController` (6 rutas con `JwtAuthGuard` y `RolesGuard` en la revisión), `PortfolioController` (2 rutas), `ProjectsModule` y registro en `AppModule` | `apps/api/src/modules/projects/projects.controller.ts`, `…/portfolio.controller.ts`, `…/projects.module.ts`, `apps/api/src/app.module.ts` | `npm run test -w @codeai/api` + `npm run build -w @codeai/api` |
-| **T12** | `projectsApi` y `portfolioApi` en el cliente web (catálogo, detalle, entrega, publicación, portafolio) con `401`/`403`/`422` tipados | `apps/web/src/lib/api-client.ts`, `apps/web/src/lib/api-client.spec.ts` | `npm run test -w @codeai/web` |
-| **T13** | `ProjectCatalog` con estados de carga, error, vacío y `submitted`, y página `/learn/projects` | `apps/web/src/features/projects/components/ProjectCatalog.tsx`, `…/ProjectCatalog.spec.tsx`, `apps/web/src/app/(learning)/learn/projects/page.tsx` | `npm run test -w @codeai/web` |
-| **T14** | `ProjectWorkspace`: rúbrica legible, formulario de entrega, historial con nota y retroalimentación, publicar/despublicar y página `/learn/projects/[slug]` | `…/components/ProjectWorkspace.tsx`, `…/ProjectWorkspace.spec.tsx`, `apps/web/src/app/(learning)/learn/projects/[slug]/page.tsx` | `npm run test -w @codeai/web` |
-| **T15** | `PublicPortfolio` (modo público y propio) y páginas `/u/[userId]` y `/learn/portfolio` | `…/components/PublicPortfolio.tsx`, `…/PublicPortfolio.spec.tsx`, `apps/web/src/app/(public)/u/[userId]/page.tsx`, `apps/web/src/app/(learning)/learn/portfolio/page.tsx` | `npm run test -w @codeai/web` |
-| **T16** | Enlace a Proyectos y Mi portafolio en la navegación; `contratos-api.md` §4.10 y `modelo-datos.md` §6 con el contrato real | `apps/web/src/app/(learning)/learn/layout.tsx`, `docs/03-arquitectura/contratos-api.md`, `docs/03-arquitectura/modelo-datos.md` | `npm run typecheck -w @codeai/web` + revisión de docs |
-| **T17** | `roadmap-sprints.md` §S9 al día y esta ficha con avance, bitácora y deudas reales | `docs/04-plan-ejecucion/roadmap-sprints.md`, `docs/04-plan-ejecucion/sprints/sprint-09-proyectos-rubricas.md` | lectura de ambos documentos |
-| **T18** | Verificación HTTP de cierre (§10) con tres usuarios y cierre del sprint | `%TEMP%\codeai-s9\verify-s9.ps1` (fuera del repositorio) + esta ficha | `typecheck && lint && test && build` en la raíz |
+| **T1** ✅ | Contrato compartido: criterios, estados, niveles, `projectRubricSchema` (5 criterios, pesos suman 100, niveles 1–4), `DEFAULT_PROJECT_RUBRIC` 30/20/20/15/15, esquemas de listado, detalle, entrega, revisión, portafolio y constantes | `packages/shared/src/schemas/project.ts`, `packages/shared/src/index.ts`, `packages/shared/src/schemas/project.spec.ts` | `npm run test -w @codeai/shared` |
+| **T2** ✅ | `@Roles` y `RolesGuard`: metadatos de clase/método, `401` sin usuario, `403` con rol insuficiente, paso libre sin metadatos | `apps/api/src/modules/auth/decorators/roles.decorator.ts`, `…/auth/guards/roles.guard.ts`, `…/auth/guards/roles.guard.spec.ts` | `npm run test -w @codeai/api` |
+| **T3** ✅ | Modelos `Project`, `ProjectSubmission`, enum `ProjectSubmissionStatus`, competencias del proyecto, relaciones en `User` y migración `projects_rubrics` aplicada a la base de desarrollo | `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/<timestamp>_projects_rubrics/migration.sql` | `prisma migrate diff` + `psql \d "ProjectSubmission"` |
+| **T4** ✅ | Semilla de un proyecto por etapa (E0–E3) idempotente por `slug`, con la rúbrica base y sus competencias; script `db:seed:projects` | `apps/api/prisma/seed/projects.seed.json`, `apps/api/prisma/seed/seed-projects.mts`, `apps/api/package.json`, `package.json` | `npm run db:seed:projects` + `psql select count(*)` |
+| **T5** ✅ | Motor puro: `readRubric` (valida el `Json` guardado) y `scoreSubmission` (pesos, niveles 0–4, puerta de correctitud, justificación vacía, dos decimales) | `apps/api/src/modules/projects/rubric.ts`, `…/rubric.spec.ts` | `npm run test -w @codeai/api` |
+| **T6** ✅ | Puerto `ProjectRepository` con adaptador Prisma y uno en memoria (catálogo, detalle, entregas, revisión, publicación, portafolio, evidencia de competencia) | `apps/api/src/modules/projects/project.repository.ts`, `…/prisma-project.repository.ts`, `…/in-memory-project.repository.ts`, `…/in-memory-project.repository.spec.ts` | `npm run test -w @codeai/api` |
+| **T7** ✅ | `ProjectsService.listProjects` y `getProject`: sólo publicados, filtro por etapa, paginación, `submitted` por usuario, mejor nota y entregas propias | `apps/api/src/modules/projects/projects.service.ts`, `…/projects.service.spec.ts` | `npm run test -w @codeai/api` |
+| **T8** ✅ | `ProjectsService.submit`: proyecto publicado, `repoUrl` http(s), topes de longitud, `userId` del token y entregas acumulables | `…/projects.service.ts`, `…/projects.service.spec.ts` | `npm run test -w @codeai/api` |
+| **T9** ✅ | `ProjectsService.review`: rúbrica completa, `422` con criterios faltantes o correctitud 0, nota persistida, `reviewedById` y evidencia `CompetencyProgress` con nota ≥ 80 | `…/projects.service.ts`, `…/projects.service.spec.ts` | `npm run test -w @codeai/api` |
+| **T10** ✅ | `ProjectsService.publish`/`unpublish` (sólo el autor) y `getPortfolio`/`getMyPortfolio` (público vs. propio, sin correo) | `…/projects.service.ts`, `…/projects.service.spec.ts` | `npm run test -w @codeai/api` |
+| **T11** ✅ | `ProjectsController` (6 rutas con `JwtAuthGuard` y `RolesGuard` en la revisión), `PortfolioController` (2 rutas), `ProjectsModule` y registro en `AppModule` | `apps/api/src/modules/projects/projects.controller.ts`, `…/portfolio.controller.ts`, `…/projects.module.ts`, `apps/api/src/app.module.ts` | `npm run test -w @codeai/api` + `npm run build -w @codeai/api` |
+| **T12** ✅ | `projectsApi` y `portfolioApi` en el cliente web (catálogo, detalle, entrega, publicación, portafolio) con `401`/`403`/`422` tipados | `apps/web/src/lib/api-client.ts`, `apps/web/src/lib/api-client.spec.ts` | `npm run test -w @codeai/web` |
+| **T13** ✅ | `ProjectCatalog` con estados de carga, error, vacío y `submitted`, y página `/learn/projects` | `apps/web/src/features/projects/components/ProjectCatalog.tsx`, `…/ProjectCatalog.spec.tsx`, `apps/web/src/app/(learning)/learn/projects/page.tsx` | `npm run test -w @codeai/web` |
+| **T14** ✅ | `ProjectWorkspace`: rúbrica legible, formulario de entrega, historial con nota y retroalimentación, publicar/despublicar y página `/learn/projects/[slug]` | `…/components/ProjectWorkspace.tsx`, `…/ProjectWorkspace.spec.tsx`, `apps/web/src/app/(learning)/learn/projects/[slug]/page.tsx` | `npm run test -w @codeai/web` |
+| **T15** ✅ | `PublicPortfolio` (modo público y propio) y páginas `/u/[userId]` y `/learn/portfolio` | `…/components/PublicPortfolio.tsx`, `…/PublicPortfolio.spec.tsx`, `apps/web/src/app/(public)/u/[userId]/page.tsx`, `apps/web/src/app/(learning)/learn/portfolio/page.tsx` | `npm run test -w @codeai/web` |
+| **T16** ✅ | Enlace a Proyectos y Mi portafolio en la navegación; `contratos-api.md` §4.11 y `modelo-datos.md` §6 con el contrato real | `apps/web/src/app/(learning)/learn/layout.tsx`, `docs/03-arquitectura/contratos-api.md`, `docs/03-arquitectura/modelo-datos.md` | `npm run typecheck -w @codeai/web` + revisión de docs |
+| **T17** ✅ | `roadmap-sprints.md` §S9 al día y esta ficha con avance, bitácora y deudas reales | `docs/04-plan-ejecucion/roadmap-sprints.md`, `docs/04-plan-ejecucion/sprints/sprint-09-proyectos-rubricas.md` | lectura de ambos documentos |
+| **T18** ✅ | Verificación HTTP de cierre (§10) con tres usuarios y cierre del sprint | `%TEMP%\codeai-s9\verify-s9.ps1` (fuera del repositorio) + esta ficha | `typecheck && lint && test && build` en la raíz |
 
-**Orden de ejecución.** T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11 → T12 → T13 → T14 → T15 → T16 → T17 → T18. T2 no depende de T1 y T3 no depende de T2, pero se respeta el orden para que cada commit deje el árbol verde.
+**Orden de ejecución.** T2 → T1 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11 → T12 → T13 → T14 → T15 → T16 → T17 → T18. T2 no depende de T1 y T3 no depende de T2, pero se respeta el orden para que cada commit deje el árbol verde.
+
+> **T2 adelantada (2026-10-28).** `RolesGuard` no tenía consumidor en S3 y se reprogramó; al llegar el módulo `users` (perfil propio y listado de administración) se implementó antes de abrir S9, porque el listado es la primera ruta con `@Roles("ADMIN")` y era la única forma de probar el guard contra una ruta real, no solo contra un controlador de prueba. El módulo `users` **no pertenece a S9**: vive en `apps/api/src/modules/users/`, se documenta en `contratos-api.md` §4.10 y no toca ninguna tabla de proyectos. S9 lo consume tal cual en T11.
 
 ---
 
@@ -223,24 +225,24 @@ score          = round(Σ nota, 2)
 
 | # | Criterio (binario: se cumple o no) | Tarea |
 |---|------------------------------------|-------|
-| 1 | `project.spec.ts` acepta la rúbrica base y rechaza pesos que no suman 100, criterios repetidos o faltantes, niveles fuera de 1–4 y `correctitudGate` distinto de `true` | T1 |
-| 2 | `npm run test -w @codeai/shared` termina en 0 y `DEFAULT_PROJECT_RUBRIC` pesa 30/20/20/15/15 | T1 |
-| 3 | `RolesGuard` devuelve `401` sin usuario, `403` con `STUDENT` en una ruta de instructor, deja pasar `INSTRUCTOR`/`ADMIN` y permite rutas sin `@Roles` | T2 |
-| 4 | `prisma migrate diff` genera el SQL de `Project`, `ProjectSubmission` y el enum, y `psql \d "ProjectSubmission"` muestra `status`, `feedback`, `reviewedById`, `isPublic` y `publishedAt` | T3 |
-| 5 | `npm run db:seed:projects` dos veces deja exactamente 4 proyectos publicados, uno por etapa 0–3, sin duplicar `slug` | T4 |
-| 6 | `scoreSubmission` da `100` con todos los criterios en 4, `75` con todos en 3 y `85` con 4/4/4/4 y notas vacías; correctitud 0 devuelve `valid: false` | T5 |
-| 7 | `readRubric` rechaza una rúbrica almacenada inválida con error de dominio y no produce notas | T5 |
-| 8 | `GET /api/projects` sólo lista publicados, respeta `stage` y la paginación, y marca `submitted` sólo para las entregas del usuario del token | T7 |
-| 9 | `POST /api/projects/:slug/submissions` exige `repoUrl` http(s) (`400`), rechaza proyectos no publicados (`404`) y guarda el `userId` del token | T8 |
-| 10 | Dos entregas del mismo usuario al mismo proyecto crean dos filas y `mySubmissions` las devuelve de la más reciente a la más antigua | T8 |
-| 11 | `POST …/review` con `STUDENT` responde `403`; con `INSTRUCTOR` responde `200` con `score` de dos decimales, `status: REVIEWED`, `feedback` y `reviewedById` | T9 |
-| 12 | Una revisión con criterios incompletos o correctitud 0 responde `422` y deja la entrega en `SUBMITTED` con `score` anterior intacto | T9 |
-| 13 | Una revisión con nota ≥ 80 escribe `CompetencyProgress` (nivel ≥ 3 y `evidenceCount` +1) para cada competencia del proyecto; con nota < 80 no escribe ninguna fila | T9 |
-| 14 | `publish`/`unpublish` sólo funcionan para el autor (`404` para terceros) y actualizan `isPublic` y `publishedAt` | T10 |
-| 15 | `GET /api/portfolio/:userId` responde sin cookie, sólo con entregas públicas, sin `email` y con `404` si el usuario no existe; `GET /api/portfolio/me` incluye las privadas | T10 |
-| 16 | La web muestra catálogo, espacio de trabajo y portafolio con estados de carga, error, vacío y éxito, y las tres specs nuevas pasan | T13–T15 |
-| 17 | `npm run typecheck && npm run lint && npm run test && npm run build` en la raíz termina en 0, con la base de 556 pruebas ampliada y sin dependencias nuevas | T18 |
-| 18 | La verificación HTTP de §10 completa sus 16 comprobaciones sin procesos vivos, y `contratos-api.md` §4.10 y `modelo-datos.md` §6 describen lo implementado | T16–T18 |
+| 1 | ✅ `project.spec.ts` acepta la rúbrica base y rechaza pesos que no suman 100, criterios repetidos o faltantes, niveles fuera de 1–4 y `correctitudGate` distinto de `true` | T1 |
+| 2 | ✅ `npm run test -w @codeai/shared` termina en 0 y `DEFAULT_PROJECT_RUBRIC` pesa 30/20/20/15/15 | T1 |
+| 3 | ✅ `RolesGuard` devuelve `401` sin usuario, `403` con `STUDENT` en una ruta de instructor, deja pasar `INSTRUCTOR`/`ADMIN` y permite rutas sin `@Roles` | T2 |
+| 4 | ✅ `prisma migrate diff` genera el SQL de `Project`, `ProjectSubmission` y el enum, y `psql \d "ProjectSubmission"` muestra `status`, `feedback`, `reviewedById`, `isPublic` y `publishedAt` | T3 |
+| 5 | ✅ `npm run db:seed:projects` dos veces deja exactamente 4 proyectos publicados, uno por etapa 0–3, sin duplicar `slug` | T4 |
+| 6 | ✅ `scoreSubmission` da `100` con todos los criterios en 4, `75` con todos en 3 y `85` con 4/4/4/4 y notas vacías; correctitud 0 devuelve `valid: false` | T5 |
+| 7 | ✅ `readRubric` rechaza una rúbrica almacenada inválida con error de dominio y no produce notas | T5 |
+| 8 | ✅ `GET /api/projects` sólo lista publicados, respeta `stage` y la paginación, y marca `submitted` sólo para las entregas del usuario del token | T7 |
+| 9 | ✅ `POST /api/projects/:slug/submissions` exige `repoUrl` http(s) (`400`), rechaza proyectos no publicados (`404`) y guarda el `userId` del token | T8 |
+| 10 | ✅ Dos entregas del mismo usuario al mismo proyecto crean dos filas y `mySubmissions` las devuelve de la más reciente a la más antigua | T8 |
+| 11 | ✅ `POST …/review` con `STUDENT` responde `403`; con `INSTRUCTOR` responde `200` con `score` de dos decimales, `status: REVIEWED`, `feedback` y `reviewedById` | T9 |
+| 12 | ✅ Una revisión con criterios incompletos o correctitud 0 responde `422` y deja la entrega en `SUBMITTED` con `score` anterior intacto | T9 |
+| 13 | ✅ Una revisión con nota ≥ 80 escribe `CompetencyProgress` (nivel ≥ 3 y `evidenceCount` +1) para cada competencia del proyecto; con nota < 80 no escribe ninguna fila | T9 |
+| 14 | ✅ `publish`/`unpublish` sólo funcionan para el autor (`404` para terceros) y actualizan `isPublic` y `publishedAt` | T10 |
+| 15 | ✅ `GET /api/portfolio/:userId` responde sin cookie, sólo con entregas públicas, sin `email` y con `404` si el usuario no existe; `GET /api/portfolio/me` incluye las privadas | T10 |
+| 16 | ✅ La web muestra catálogo, espacio de trabajo y portafolio con estados de carga, error, vacío y éxito, y las tres specs nuevas pasan | T13–T15 |
+| 17 | ✅ `npm run typecheck && npm run lint && npm run test && npm run build` en la raíz termina en 0, con la base de 556 pruebas ampliada y sin dependencias nuevas | T18 |
+| 18 | ✅ La verificación HTTP de §10 completa sus 16 comprobaciones sin procesos vivos, y `contratos-api.md` §4.11 y `modelo-datos.md` §6 describen lo implementado | T16–T18 |
 
 ---
 
@@ -276,24 +278,24 @@ score          = round(Σ nota, 2)
 
 | Tarea | Commit | Verificación ejecutada | Resultado real |
 |-------|--------|------------------------|----------------|
-| T1 | — | — | — |
-| T2 | — | — | — |
-| T3 | — | — | — |
-| T4 | — | — | — |
-| T5 | — | — | — |
-| T6 | — | — | — |
-| T7 | — | — | — |
-| T8 | — | — | — |
-| T9 | — | — | — |
-| T10 | — | — | — |
-| T11 | — | — | — |
-| T12 | — | — | — |
-| T13 | — | — | — |
-| T14 | — | — | — |
-| T15 | — | — | — |
-| T16 | — | — | — |
-| T17 | — | — | — |
-| T18 | — | — | — |
+| T1 | — | `npm run test -w @codeai/shared`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` | Verde: `project.ts` + `project.spec.ts` con 47 pruebas nuevas en shared (198 en el paquete, 655 en el monorepo: API 313, web 144, shared 198). Typecheck, lint y build de los tres workspaces en 0. La rúbrica base pesa 30/20/20/15/15 y el spec rechaza pesos ≠ 100, criterios repetidos o faltantes, niveles fuera de 1–4 o desordenados, anclajes vacíos o >280, `correctitudGate` distinto de `true` y claves fuera del contrato |
+| T2 | — (adelantada el 2026-10-28) | `npm run test -w @codeai/api`, `npm run typecheck`, `npm run lint` | Verde: 5 pruebas del guard (`401` sin usuario, `403` con `STUDENT`, paso con `INSTRUCTOR`/`ADMIN`, paso sin `@Roles`, prioridad del `@Roles` del método) y suite de API en 303 pruebas. El guard se registra y exporta en `AuthModule` para que `users` lo consuma |
+| T3 | — | `prisma format` + `prisma validate`, `prisma migrate dev --create-only`, `prisma migrate deploy`, `prisma generate`, `prisma migrate diff --script`, `psql` sobre `information_schema.columns`, `npm run typecheck` y `npm run lint` | Verde: migración `20261028131926_projects_rubrics` aplicada a `codeai` (PostgreSQL 5433). `Project` y `ProjectSubmission` existen con `status`, `repoUrl` obligatorio, `deployUrl`, `notes`, `score`, `rubricScores`, `feedback`, `reviewedById`, `reviewedAt`, `isPublic`, `publishedAt`; enum `ProjectSubmissionStatus` y FK de revisor con `ON DELETE SET NULL`. `migrate diff` entre la base y el esquema devuelve «empty migration», y `/api/health` responde `200` tras regenerar el cliente |
+| T4 | — | `npm run db:seed:projects` dos veces, `typecheck:seed`, `psql` sobre `Project` (slug, etapa, rúbrica, competencias) | Verde: 4 proyectos publicados, `E0=1, E1=1, E2=1, E3=1`, 5 criterios y pesos que suman 100 en cada rúbrica; la segunda ejecución no duplica ni cambia conteos. La semilla valida el JSON con Zod, exige que la etapa exista antes de escribir y usa `DEFAULT_PROJECT_RUBRIC` cuando el proyecto no declara pesos propios |
+| T5 | — | `npm run test -w @codeai/api -- rubric`, `typecheck` y `lint` del API | Verde: 20 pruebas del motor. Cubre 100/75/85/77,5, pesos propios de la rúbrica, justificación forzada a 0 con `notes` vacía o en blanco, puerta `CORRECTITUD_ZERO` (no muta la entrada) y umbral de evidencia exacto en 80; `readRubric` rechaza `null`, pesos que no suman 100, criterios repetidos y `correctitudGate` falso con `InvalidRubricError` y rutas de error |
+| T6 | — | `npm run test -w @codeai/api -- in-memory-project`, `typecheck` y `lint` del API | Verde: 12 pruebas del adaptador en memoria (catálogo sólo publicados con `submitted`/`bestScore` por usuario, filtro de etapa y paginación, detalle con entregas propias, entregas acumulables, revisión persistida, autoría en publicar/despublicar, portafolio público vs. propio sin correo y evidencia de competencia a nivel 3). El adaptador Prisma compila con el cliente regenerado y comparte los mismos contratos de tipo |
+| T7 | — | `npm run test -w @codeai/api -- projects.service`, `typecheck` y `lint` del API | Verde: 7 pruebas. El catálogo excluye no publicados, no incluye la rúbrica, respeta `stage` y la paginación (`total`/`totalPages`) y marca `submitted` sólo con las entregas del token; el detalle valida la rúbrica con `readRubric`, publica competencias, `bestScore` y `mySubmissions` en ISO y con la más reciente primero, responde `404` a inexistentes/no publicados y falla con `InvalidRubricError` si el `Json` está corrupto |
+| T8 | — | `npm run test -w @codeai/api -- projects.service`, `typecheck` y `lint` del API | Verde: 6 pruebas nuevas (13 en el archivo). La entrega usa el `userId` del token y el reloj inyectado, recorta `repoUrl`/`notes`, guarda la explicación vacía como `null`, responde `404` a proyectos no publicados y `400` a `repoUrl` ausente, no http(s) o >500 (con `details[].field = "repoUrl"`), a `notes` >2000 y a claves extra; dos entregas crean dos filas y el detalle las devuelve de la más reciente a la más antigua |
+| T9 | — | `npm run test -w @codeai/api -- projects.service`, `typecheck` y `lint` del API | Verde: 7 pruebas nuevas (20 en el archivo). La revisión aplica la rúbrica del proyecto, fuerza `justificacion = 0` sin explicación (85), da 100 con explicación y 50 con todo en nivel 2 sin evidencia; criterios faltantes/sobrantes/fuera de rango y correctitud 0 responden `422` sin tocar la fila (una revisión previa de 90 sigue intacta); la nota ≥ 80 escribe `CompetencyProgress` del autor (nivel 3, `evidenceCount` +1, sin bajar niveles) y `feedback` vacío se guarda como `null` |
+| T10 | — | `npm run test -w @codeai/api -- projects.service`, `typecheck` y `lint` del API | Verde: 5 pruebas nuevas (25 en el archivo). Publicar fija `isPublic` y `publishedAt` con el reloj inyectado; despublicar limpia `publishedAt` y conserva la entrega; un tercero o un id inexistente reciben `404` sin mutar la fila; el portafolio público sólo lista publicadas (por `publishedAt` desc), no expone `email` y responde `200` con lista vacía si no hay públicas; el propio incluye privadas y `publicCount` cuenta sólo las públicas |
+| T11 | — | `npm run build -w @codeai/api`, `typecheck` y `lint` del API, `GET /api/projects` sin cookie y `GET /api/portfolio/no-existe` contra el servidor de desarrollo | Verde: el build compila con los decoradores nuevos y el servidor responde `401` en `/projects` (guard de sesión) y `404` en el portafolio público (ruta sin cookie y servicio inyectado). Rutas de `submissions/*` declaradas antes de `:slug/submissions`; revisión con `@Roles("INSTRUCTOR","ADMIN")`; límite de 120/min por usuario en `/projects/*` y por IP en `/portfolio/:userId` |
+| T12 | — | `npm run test -w @codeai/web -- api-client`, `typecheck` y `lint` de la web | Verde: 13 pruebas nuevas (51 en el archivo). El catálogo arma la query (`?stage=0&page=2&pageSize=5`) y desenvuelve `data`/`meta`; el detalle valida la rúbrica; la entrega y la revisión usan `POST` con el cuerpo del contrato; publicar/despublicar no envían cuerpo; el `400` expone `fieldErrors().repoUrl`, el `422` conserva `RULE_VIOLATION` y el portafolio rechaza una respuesta que filtre `email` |
+| T13 | — | `npm run test -w @codeai/web -- ProjectCatalog`, `typecheck` y `lint` de la web | Verde: 4 pruebas. Estado de carga, listado con etapa, requisitos, marca `submitted`/«Sin entregar» y enlace a `/learn/projects/<slug>`, vacío y error con reintento que repite la petición |
+| T14 | — | `npm run test -w @codeai/web -- ProjectWorkspace`, `typecheck` y `lint` de la web | Verde: 7 pruebas. Carga, error con reintento, requisitos, rúbrica legible (5 criterios, pesos y 4 anclajes), historial con nota «85.00 / 100» y retroalimentación, entrega que se añade al historial con aviso de éxito y formulario limpio, error de campo `repoUrl` y publicación que cambia la insignia a «Pública en tu portafolio» |
+| T15 | — | `npm run test -w @codeai/web -- PublicPortfolio`, `typecheck` y `lint` de la web | Verde: 5 pruebas. Carga, portafolio público con nota, retroalimentación y enlaces, modo propio con la marca de entrega privada y el conteo de públicas, vacío público y error con reintento. Sin `email` en la vista porque el contrato lo rechaza antes (T12) |
+| T16 | — | `npm run typecheck -w @codeai/web`, `lint` de la web y revisión de `contratos-api.md` §4.11 y `modelo-datos.md` §6 | Verde: navegación de aprendizaje con «Proyectos» y «Mi portafolio». §4.11 documenta las 8 rutas, los tipos, la fórmula de la nota, las reglas de error, la evidencia y los límites (120/min por usuario o IP); §6 publica `Project`/`ProjectSubmission` con `status`, `repoUrl` obligatorio, `isPublic`, `publishedAt`, `competencies` y el enum, más las reglas de integridad e índices |
+| T17 | — | lectura de `roadmap-sprints.md` §S9 y de esta ficha | Verde: roadmap con 18/18 criterios y cierre; ficha con avance, bitácora real de las 18 tareas y deudas declaradas sin cambios |
+| T18 | — | `%TEMP%\codeai-s9\verify-s9.ps1` con tres usuarios, más `npm run typecheck && npm run lint && npm test && npm run build` en la raíz | Verde: 16/16 comprobaciones HTTP (detalle en §10). Suite final: **761 pruebas** (shared 205, API 384, web 172), typecheck, lint y build en 0. El API de desarrollo se reinició y quedó corriendo en segundo plano con log en `%TEMP%\codeai-s9\api-dev.log`; el limitador de registro es en memoria y se reinicia con el proceso, por eso la verificación se ejecuta tras un reinicio limpio |
 
 ---
 
@@ -320,7 +322,7 @@ score          = round(Σ nota, 2)
 | 15 | `GET /api/portfolio/me` de A vs. `/api/portfolio/<A>` | `/me` incluye las privadas; el público no |
 | 16 | `GET /api/portfolio/<cuid inexistente>` y procesos al terminar | `404`; sin `node` vivo ni contenedores nuevos |
 
-**RESUMEN:** pendiente (se completa en T18 con los números reales de cada comprobación).
+**RESUMEN:** 16/16 comprobaciones OK (2026-10-28) con tres usuarios reales (`s9a…`, `s9b…`, `s9c…`) y PostgreSQL en 5433. La nota 3/3/3/3/3 quedó en **75**, `correctitud: 0` respondió **422** sin tocar el 75, la revisión 4/4/4/4/4 dio **100** y `CompetencyProgress` de A quedó en `level=3, evidenceCount=1` para C1. Portafolio: 0 entradas antes de publicar, 1 después, 0 tras despublicar; `/me` conservó las 2 privadas; `email` nunca apareció. La comprobación 10 encontró un desajuste real (`400` por el pipe Zod donde el contrato exige `422`): se retiró el pipe de la ruta de revisión y la validación quedó en `ProjectsService.review`, con el mismo esquema compartido.
 
 ---
 
