@@ -127,7 +127,7 @@ Usuario hace clic en "Verificar solución"
 | Módulo | Responsabilidad | Sprint |
 |--------|----------------|--------|
 | `auth` | Registro, login, JWT, refresh, roles | S1 ✅ |
-| `users` | Perfil, preferencias, estado | S3 |
+| `users` | Perfil, preferencias, listado de administración | S3 ✅ |
 | `content` | Etapas, módulos, unidades, lecciones, recursos | S2 ✅ |
 | `exercises` | Ejercicios, envíos, pistas, corrección | S5, S6 |
 | `progress` | Progreso, desbloqueos, competencias | S4 |
@@ -139,7 +139,7 @@ Usuario hace clic en "Verificar solución"
 | `analytics` | Agregaciones de competencias y errores | S11 |
 | `health` | Estado del servicio y observabilidad | S0 ✅ |
 
-> **Estado (2026-10-26):** `health` (S0), `auth` (S1) y `content` (S2, solo lectura) implementados y verificados. `users` se pospone a S3 junto con el shell autenticado; el guard de roles y `@Public` llegan en el mismo sprint.
+> **Estado (2026-10-28):** `health` (S0), `auth` (S1), `content` (S2, solo lectura), `progress` (S4), `exercises` + `sandbox` (S5–S6), `review` (S7) y `users` (perfil y listado de administración) implementados y verificados. `RolesGuard` y `@Roles` viven en `auth` y los consume `users`; los módulos `ai` (S8), `projects` (S9), `interviews` (S10) y `analytics` (S11) siguen sin código.
 
 ---
 

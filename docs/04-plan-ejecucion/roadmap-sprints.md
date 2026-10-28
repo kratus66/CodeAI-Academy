@@ -22,23 +22,23 @@
 | Sprint | Objetivo | Etapas | Módulos backend | Estado |
 |--------|----------|--------|-----------------|--------|
 | **S0** | Fundación técnica y landing pública | E0 | `health` | ✅ |
-| **S1** | Identidad y acceso (registro, login, roles, sesión) | E0–E1 | `auth` (`users` en S3) | ✅ |
+| **S1** | Identidad y acceso (registro, login, roles, sesión) | E0–E1 | `auth` (`users` y guard de roles entregados el 2026-10-28) | ✅ |
 | **S2** | Modelo de datos y API de contenido | E1 | `content` | ✅ |
 | **S3** | Plataforma de aprendizaje (catálogo y lección) | E1–E3 | `content` (lectura) | 🔄 |
 | **S4** | Progreso, desbloqueos y competencias | E1–E4 | `progress` | ✅ |
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | E2–E5 | `exercises`, `sandbox` | ✅ |
 | **S6** | Corrección automática y pistas graduadas | E2–E7 | `exercises` | ✅ |
 | **S7** | Repaso espaciado (SM-2) | E2–E7 | `review` | ✅ |
-| **S8** | Capa de IA intercambiable y tutor socrático | E8–E9 | `ai` | ⬜ ficha, sin código |
-| **S9** | Proyectos, rúbricas y portafolio | E9–E11 | `projects` | ⬜ ficha, sin código |
-| **S10** | Simulaciones de entrevista | E11 | `interviews` | ⬜ |
-| **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | ⬜ |
+| **S8** | Capa de IA intercambiable y tutor socrático | E8–E9 | `ai` | ✅ implementado y verificado (2026-10-28); desbloquea S10 |
+| **S9** | Proyectos, rúbricas y portafolio | E9–E11 | `projects` | ✅ completado (18/18 tareas; 18/18 criterios; HTTP 16/16) |
+| **S10** | Simulaciones de entrevista | E11 | `interviews` | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
+| **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | ⬜ ficha |
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >
-> **Verificación (2026-10-28):** `typecheck` y `test` en verde (shared 132 · API 280 · web 144). Contenido sembrado: 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas y 34 recursos (E3–E11 añadidas tras el cierre de S2/S3). El seed no incluye ejercicios. No existen módulos `ai`, `projects`, `interviews` ni `analytics`.
+> **Verificación (2026-10-28):** `typecheck`, `lint` y `build` en verde; suite `shared 241 · API 739 · web 220 = 1 200 pruebas`. Contenido sembrado: 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas, 34 recursos y el banco de ejercicios. Existen los módulos `users` (con `RolesGuard`), `ai`, `projects` e `interviews`; falta `analytics` (S11).
 >
-> **Cierre acumulado (2026-10-27):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 5/10 criterios** (queda S3-T11, autoría de la primera lección, y la revisión manual en navegador de los cinco criterios de sesión y navegación) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 ✅ 16/16 tareas y 15/15 criterios** · **S7 ✅ 14/14 tareas y 12/12 criterios**.
+> **Cierre acumulado (2026-10-28):** S0 ✅ 7/7 tareas · S1 ✅ 16/16 tareas y 12/12 criterios · S2 ✅ 10/10 tareas y 12/12 criterios · **S3 🔄 10/11 tareas y 10/10 criterios** (los cinco de navegador se comprobaron el 2026-10-28; queda S3-T11, el visto bueno pedagógico humano de las lecciones) · **S4 ✅ 10/10 tareas y 10/10 criterios** · **S5 ✅ 14/14 tareas y 13/13 criterios** · **S6 ✅ 16/16 tareas y 15/15 criterios** · **S7 ✅ 14/14 tareas y 12/12 criterios** · **S8 ✅ 14/14 tareas y 15/15 criterios** · **S9 ✅ 18/18 tareas y 18/18 criterios** · **S10 ✅ 17/17 tareas y 16/16 criterios**.
 
 ---
 
@@ -75,7 +75,7 @@
 - **Entregables:** shell autenticado, catálogo de etapas/módulos, vista de unidad con navegación anterior/siguiente, lector de lección (bloques, 7 pasos y recursos) y estados de carga y error.
 - **Criterio de salida:** recorrido completo etapa → módulo → unidad con datos reales de la API; sin contenido hardcodeado.
 - **Estado (2026-10-27):** cierre técnico. Contrato ampliado (`units` en el módulo y `stageId` en la unidad), cliente `contentApi` con validación Zod, shell autenticado, catálogo, vista de etapa, vista de unidad y lector de lección implementados con 81 pruebas de web; verificado por HTTP contra PostgreSQL local y con `npm run build` en 0 (cuatro rutas nuevas).
-- **Cierre:** 10/11 tareas ✅ · 5/10 criterios de aceptación ✅ (los cinco restantes exigen navegador con sesión) · S3-T11 superada por el volumen: la semilla ya trae 207 lecciones publicadas (2026-10-28), aún sin revisión pedagógica humana registrada.
+- **Cierre:** 10/11 tareas ✅ · **10/10 criterios de aceptación ✅** (navegador comprobado el 2026-10-28) · S3-T11: la semilla trae 207 lecciones; la revisión pedagógica asistida está en [`../02-contenido/revision-pedagogica.md`](../02-contenido/revision-pedagogica.md) y **falta la firma humana** para cerrar el sprint.
 - **Ficha:** [`sprints/sprint-03-aprendizaje.md`](sprints/sprint-03-aprendizaje.md).
 
 ### S4 — Progreso, desbloqueos y competencias ✅
@@ -118,37 +118,50 @@
 - **Objetivo:** la IA asiste sin entregar soluciones y con costo acotado.
 - **Entregables:** `AIProvider` (mock + proveedor real), tutor con contexto de lección, explicación de errores, presupuesto por usuario, auditoría de llamadas.
 - **Criterio de salida:** pruebas con proveedor mock determinista; límites de gasto verificados; ningún módulo importa un SDK concreto.
+- **Orden:** se ejecutó **después de S9** (decisión del 2026-10-28). Ver `sprint-08-capa-ia.md` §2, «Relación con S9».
+- **Estado:** ✅ 14/14 tareas. Entrega `AiService`, puerto `AiProvider` (`mock` y `openai`), presupuesto 70/90/100 %, auditoría `AiInteraction`, guardas contra fuga y `aiApi` en la web. Es el requisito que S10 declaraba pendiente.
+- **Ficha:** [`sprints/sprint-08-capa-ia.md`](sprints/sprint-08-capa-ia.md).
 
 ### S9 — Proyectos, rúbricas y portafolio
 
 - **Objetivo:** cada etapa produce un entregable evaluable y acumulable.
 - **Entregables:** `projects` (entrega, rúbrica, feedback), portafolio público del estudiante.
 - **Criterio de salida:** rúbricas aplicables por competencia; entregas privadas salvo publicación explícita.
+- **Estado (2026-10-28):** completo. Ficha cerrada con **18/18 tareas y 18/18 criterios**: contrato compartido (`project.ts`), `@Roles`/`RolesGuard`, modelos `Project`/`ProjectSubmission` con la migración `projects_rubrics` aplicada, semilla de cuatro proyectos (E0–E3), motor puro de nota, puerto `ProjectsRepository` con adaptadores Prisma y en memoria, servicio de catálogo/entrega/revisión/publicación/portafolio, controladores con límites de 120/min, `projectsApi`/`portfolioApi` en la web y las tres vistas (catálogo, espacio de trabajo, portafolio público).
+- **Cierre:** verificación HTTP real con tres usuarios, **16/16 comprobaciones** (notas 75 y 100, `422` sin persistir, `CompetencyProgress` en nivel 3, portafolio que pasa de 0 a 1 y vuelve a 0) · suite completa verde (**shared 205 · API 384 · web 172 = 761 pruebas**), typecheck, lint y build en 0.
+- **Ficha:** [`sprints/sprint-09-proyectos-rubricas.md`](sprints/sprint-09-proyectos-rubricas.md).
 
 ### S10 — Simulaciones de entrevista
 
 - **Objetivo:** el egreso se defiende con práctica de entrevista técnica.
 - **Entregables:** `interviews` (guiones, sesión, transcripción, evaluación), banco de preguntas por competencia.
 - **Criterio de salida:** simulación completa registrada y evaluada; permite repetir y comparar.
+- **Estado (2026-10-28):** completo. **17/17 tareas y 16/16 criterios.** Entrega contrato compartido (`interview.ts`), modelos `InterviewScenario`/`InterviewSession` con la migración `interviews` aplicada, semilla de **9 escenarios** (3 roles × 3 niveles), lectores de `Json` con `422` de dominio, puerto `InterviewRepository` con adaptadores Prisma y en memoria, servicio con el ciclo completo (inicio → turnos → cierre → autoevaluación → revisión → historial), 9 rutas con `RolesGuard` en la revisión, `interviewsApi` y las tres vistas (catálogo, sala, informe), más la revisión para instructores.
+- **Cierre:** verificación HTTP real con tres usuarios, **16/16 comprobaciones** (turno degradado con `AI_PROVIDER=mock`, `409` de sesión abierta, `404` indistinguible, nota 85 con evidencia C10 nivel 3 y 76.25 sin evidencia, historial `best`/`average`) · suite completa verde (**shared 241 · API 739 · web 220 = 1 200 pruebas**), typecheck, lint y builds en 0.
+- **Ficha:** [`sprints/sprint-10-entrevistas.md`](sprints/sprint-10-entrevistas.md).
 
 ### S11 — Analítica, rendimiento y lanzamiento
 
 - **Objetivo:** operar la plataforma con datos y sin sorpresas.
 - **Entregables:** `analytics` (progreso, errores frecuentes, cohortes), caché, observabilidad, despliegue y respaldos.
 - **Criterio de salida:** métricas visibles para instructor/admin; checklist de producción cumplido.
+- **Deuda heredada que se paga aquí:** actualización de `next` (crítico de producción) y de la cadena `vitest`/`vite` (solo desarrollo), documentadas en [`seguridad-dependencias.md`](../03-arquitectura/seguridad-dependencias.md).
+- **Ficha:** [`sprints/sprint-11-analitica-lanzamiento.md`](sprints/sprint-11-analitica-lanzamiento.md).
 
 ---
 
 ## 4. Dependencias
 
 ```
-S0 ──► S1 ──► S2 ──► S3 ──► S4 ──► S5 ──► S6 ──► S7 ──► S8 ──► S9 ──► S10 ──► S11
+S0 ──► S1 ──► S2 ──► S3 ──► S4 ──► S5 ──► S6 ──► S7 ──► S9 ──► S8 ──► S10 ──► S11
 ```
 
 - **S3** requiere S1 (sesión ✅) y S2 (contenido).
 - **S6** requiere S5 (envíos); S7 puede solaparse con S6.
-- **S8** requiere S7: no se automatiza docencia sin reglas de evaluación probadas.
+- **S8** requiere S7: no se automatiza docencia sin reglas de evaluación probadas. **Se ejecuta después de S9** (2026-10-28): la dependencia es unidireccional —S8 no toca tablas de proyectos— y así S9 se cierra con revisión humana sin esperar a la IA.
 - **S9–S11** requieren el dominio completo de fundamentos y calidad (E7).
+- **S10** requiere S8 (entrevistador por turnos, presupuesto y filtro de fuga) y S9 (motor de rúbricas y `RolesGuard`); **cumplido**: ambos cerrados antes de S10 y la verificación HTTP de S10 pasó 16/16.
+- **S11** cierra la deuda técnica: actualización de dependencias con avisos críticos, `ready`, respaldos y despliegue. Requiere Docker para sus dos últimas tareas.
 
 ---
 

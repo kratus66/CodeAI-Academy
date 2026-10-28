@@ -15,7 +15,7 @@ CodeAI Academy es a la vez:
 |------|-------------|--------|
 | **A** | Documentación fuente de verdad (`docs/`) | ✅ completada |
 | **B** | Roadmap de sprints y fichas de tareas atómicas | ✅ completada |
-| **C** | Construcción de la plataforma (S0 → S11) | 🔄 en curso — **S0–S2 ✅ · S3 🔄 (falta revisión en navegador) · S4–S7 ✅ · S8–S9 con ficha, sin código** |
+| **C** | Construcción de la plataforma (S0 → S11) | 🔄 en curso — **S0–S2 ✅ · S3 🔄 (falta visto bueno pedagógico humano) · S4–S10 ✅** |
 
 ### Estado de construcción
 
@@ -24,16 +24,17 @@ CodeAI Academy es a la vez:
 | **S0** | Monorepo, contratos compartidos, API base y landing pública | ✅ completado |
 | **S1** | Identidad y acceso (registro, login, roles) | ✅ completado |
 | **S2** | Modelo de datos y API de contenido | ✅ completado |
-| **S3** | Plataforma de aprendizaje (catálogo y lección) | 🔄 construido; falta revisión manual en navegador |
+| **S3** | Plataforma de aprendizaje (catálogo y lección) | 🔄 construido y verificado en navegador; falta visto bueno pedagógico humano de las lecciones |
 | **S4** | Progreso, desbloqueos y competencias | ✅ completado |
 | **S5** | Laboratorio de código (ejercicios + sandbox mock) | ✅ completado |
 | **S6** | Corrección automática y pistas graduadas | ✅ completado |
 | **S7** | Repaso espaciado con SM-2 | ✅ completado |
-| **S8** | Capa de IA y tutor socrático | ⬜ ficha redactada, sin código |
-| **S9** | Proyectos, rúbricas y portafolio | ⬜ ficha redactada, sin código |
-| **S10–S11** | Entrevistas y analítica | ⬜ pendiente |
+| **S8** | Capa de IA y tutor socrático | ✅ implementado y verificado (2026-10-28) |
+| **S9** | Proyectos, rúbricas y portafolio | ✅ completado (18/18 criterios; verificación HTTP 16/16) |
+| **S10** | Simulaciones de entrevista | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
+| **S11** | Analítica, rendimiento y lanzamiento | ⬜ ficha redactada, sin código |
 
-**Contenido sembrado (2026-10-28):** 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas y 34 recursos. El seed aún no carga ejercicios.
+**Contenido sembrado (2026-10-28):** 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas y 34 recursos. El seed ya trae 864 ejercicios publicados para E0–E2 (sin revisión humana; el sandbox actual es `mock`, así que los laboratorios no certifican); E3–E11 siguen sin ejercicios, deuda pedagógica declarada en [`banco-ejercicios.md`](docs/02-contenido/banco-ejercicios.md) §5. La revisión pedagógica de las lecciones (qué se corrigió y qué sigue abierto) está en [`revision-pedagogica.md`](docs/02-contenido/revision-pedagogica.md).
 
 Detalle y criterios de cierre en [`docs/04-plan-ejecucion/roadmap-sprints.md`](docs/04-plan-ejecucion/roadmap-sprints.md).
 
@@ -138,6 +139,8 @@ npm run typecheck      # verificación de tipos
 > **Base de datos local (S1–S2):** copia `.env.example` a `apps/api/.env`, ejecuta `npm run db:up`, después `npm run db:migrate` y por último `npm run db:seed`. El puerto del host es **5433** porque el 5432 suele estar ocupado por otras bases locales. La semilla carga las 12 etapas del currículo con 48 módulos, 207 unidades y sus 207 lecciones, todo publicado, más 34 recursos; puede ejecutarse varias veces sin duplicar filas.
 
 > **Acceso (S1):** la web expone `/register` y `/login`; la sesión se restaura con `GET /api/auth/me` y los tokens solo viven en cookies httpOnly. Si la API no está en `http://localhost:3001/api`, define `NEXT_PUBLIC_API_URL` en `apps/web/.env.local`.
+>
+> **CORS y puerto de la web:** `WEB_ORIGIN` de la API debe incluir el origen real de la web, porque la cookie de sesión viaja entre orígenes. Acepta una lista separada por comas (`WEB_ORIGIN=http://localhost:3000,http://localhost:3002`), útil cuando `next dev` cambia de puerto porque el 3000 está ocupado.
 
 ---
 

@@ -76,7 +76,7 @@ Dejar un monorepo ejecutable y verificable donde el currículo ya sea visible: c
 | npm workspaces (sin Turborepo/Nx) | Menos capas para un equipo pequeño; `npm` ya es el gestor |
 | Zod como contrato único en `shared` | Evita duplicar tipos entre web y API; el mismo esquema valida en ambos lados |
 | `loadEnv` con Zod al arrancar | Un proceso no debe iniciar con configuración inválida |
-| `WEB_ORIGIN` exige `http(s)` | `z.string().url()` acepta `localhost:3000` (lo interpreta como esquema); se detectó con una prueba y se corrigió con `refine` |
+| `WEB_ORIGIN` exige `http(s)` y admite varios orígenes | `z.string().url()` acepta `localhost:3000` (lo interpreta como esquema); se detectó con una prueba y se corrigió con `refine`. Desde 2026-10-28 admite una lista separada por comas porque `next dev` cambia de puerto y el navegador rechaza la cookie contra un origen desconocido |
 | Filtro global de errores | Los agentes y el frontend dependen de una forma estable; nunca se expone stack |
 | Vitest en los 3 workspaces | Un solo runner, configuración simple, rápido |
 | `vitest.config.mts` | El paquete es ESM (`"type": "module"`); `.ts` se cargaba como CJS y fallaba |

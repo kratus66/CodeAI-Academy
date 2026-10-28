@@ -1,7 +1,7 @@
 # Sprint 03 — Plataforma de aprendizaje
 
-> **Estado:** 🔄 cierre técnico · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅ y S2 ✅
-> **Avance:** 10/11 tareas · 5/10 criterios de aceptación (los cinco restantes exigen navegador con sesión).
+> **Estado:** 🔄 técnicamente cerrado; falta el visto bueno pedagógico humano (S3-T11) · **Inicio:** 2026-10-27 · **Depende de:** S1 ✅ y S2 ✅
+> **Avance:** 10/11 tareas · **10/10 criterios de aceptación** (los cinco de navegador se comprobaron el 2026-10-28, §9.1).
 > **Terminal por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 
 ---
@@ -31,7 +31,7 @@ Al cerrar el sprint, la plataforma puede asumir:
 | Estados de carga, error, vacío y `404` de contenido | Laboratorio de código y editor (S5) |
 | Verificación HTTP real contra PostgreSQL local | Panel de instructor y mutaciones de contenido |
 
-**Fuera de alcance explícito (heredado de S1):** el guard de roles, el decorador `@Public` y el módulo `users` no se implementan en este sprint porque **no tienen consumidor** (no hay rutas de administración ni listado de usuarios hasta S9/S11). Se reprograman y se documentan en §8. Es una decisión reversible: no se borra ni se deja a medias nada de S1.
+**Fuera de alcance explícito (heredado de S1):** el guard de roles, el decorador `@Public` y el módulo `users` **no** se implementaron en este sprint porque no tenían consumidor (no hay rutas de administración ni listado de usuarios hasta S9/S11). Se reprogramaron en §8 y se entregaron el **2026-10-28**, antes de abrir S9, junto con el primer consumidor real (`GET /api/users` con `@Roles("ADMIN")`): ver `contratos-api.md` §4.10.
 
 **Brecha de contenido declarada:** la semilla de S2 siembra etapas, módulos y unidades, pero **cero lecciones**. Este sprint entrega el lector y lo prueba con el repositorio en memoria; la primera lección real requiere autoría pedagógica con revisión humana y queda como tarea S3-T11 (⬜). No se inventa contenido curricular para «poder demostrar» la pantalla.
 
@@ -111,8 +111,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 | S3-T8 | Lector de lección: bloques, 7 pasos y recursos | `features/learning/components/LessonReader.tsx` + spec, `learn/lessons/[slug]/page.tsx` | ✅ `daf0261` |
 | S3-T9 | Verificación HTTP real y compilación de la web | — (guion de comandos) | ✅ `5205d46` |
 | S3-T10 | Cierre documental: contratos, roadmap y bitácora | docs | ✅ `7f09607` |
-| S3-T10 | Cierre documental: contratos, roadmap y bitácora | docs | ⬜ |
-| S3-T11 | Autoría de la primera lección real (requiere revisión pedagógica) | `apps/api/prisma/seed/content.seed.json` | ⬜ |
+| S3-T11 | Revisión pedagógica de las lecciones sembradas | `apps/api/prisma/seed/content.seed.json`, `docs/02-contenido/revision-pedagogica.md`, `seed-lesson-quality.spec.ts` | 🔄 revisión asistida hecha (2026-10-28); **falta firma humana** |
 
 > **Regla de tamaño:** cada tarea se parte hasta que **su commit deja `typecheck`, `lint` y `test` en verde**. El límite orientativo es de 3 archivos; S3-T1 lo supera a propósito porque un campo obligatorio nuevo en `shared` rompe el mapper y el adaptador en el mismo instante, y separarlos dejaría un commit rojo.
 
@@ -124,15 +123,15 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 - [x] `GET /api/content/stages/1` devuelve, para cada módulo, `units` ordenadas por `order` y solo publicadas.
 - [x] `GET /api/content/units/U0.1.1` incluye `stageId` correcto; ninguna respuesta expone `solution` ni `sources`.
 - [x] `packages/shared` valida el contrato nuevo y rechaza un módulo sin `units`.
-- [ ] `/learn` sin sesión redirige a `/login` y no muestra etapas.
-- [ ] `/learn` con sesión lista las 4 etapas publicadas con datos de la API.
-- [ ] `/learn/stages/0` muestra los módulos de E0 con sus unidades enlazadas.
-- [ ] `/learn/units/U0.1.1` muestra objetivo y prerrequisitos, y deshabilita «Anterior» en la primera unidad de la etapa.
-- [ ] `/learn/units/U0.1.2` ofrece «Anterior» (U0.1.1) y «Siguiente» (U0.1.3).
+- [x] `/learn` sin sesión redirige a `/login` y no muestra etapas.
+- [x] `/learn` con sesión lista las etapas publicadas con datos de la API (eran 4 al escribir el criterio; hoy son 12 tras sembrar E3–E11).
+- [x] `/learn/stages/0` muestra los módulos de E0 con sus unidades enlazadas.
+- [x] `/learn/units/U0.1.1` muestra objetivo y prerrequisitos, y deshabilita «Anterior» en la primera unidad de la etapa.
+- [x] `/learn/units/U0.1.2` ofrece «Anterior» (U0.1.1) y «Siguiente» (U0.1.3).
 - [x] `/learn/lessons/no-existe` muestra el estado de error con enlace al catálogo, no una página en blanco.
 - [x] `npm run typecheck`, `npm run lint`, `npm test` y `npm run build` terminan en 0.
 
-> Los cinco criterios de navegador (sesión, listado, etapa, unidad y vecinos) se comprueban en la revisión manual del cierre: exigen una sesión iniciada contra la web levantada, algo que la verificación por `curl` de S3-T9 no cubre.
+> Los cinco criterios de navegador se comprobaron el 2026-10-28 con Chrome real y una sesión iniciada por la interfaz (§9.1). La verificación por `curl` de S3-T9 no los cubría.
 
 ---
 
@@ -151,7 +150,7 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 ## 8. Fuera de alcance (a propósito)
 
 - Progreso, porcentaje y desbloqueos por prerrequisitos: S4. En S3 los prerrequisitos solo se **muestran**.
-- Guard de roles, `@Public` y módulo `users`: sin consumidor hasta S9/S11 (ver §2).
+- Guard de roles y módulo `users`: reprogramados en S3 y **entregados el 2026-10-28** con su primer consumidor (`GET /api/users`, `ADMIN`). `@Public` sigue sin implementarse porque toda ruta de la API exige sesión o es pública por omisión; se añadirá cuando exista una ruta que combine ambos mundos.
 - Contenido de lecciones: autoría pedagógica separada (S3-T11).
 - Editor de código, envíos y corrección: S5–S6.
 
@@ -164,8 +163,8 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 **Desviado.** Nada del plan se recortó. Se añadieron dos piezas no previstas: `unit-view-loader.ts` (compone unidad + etapa en una sola carga, sin vistas parciales) y el `useContentLoader` compartido (carga, error, `Reintentar` y `AbortSignal`), que evitó repetir la misma lógica en las cuatro vistas.
 
 **Pendiente.**
-- S3-T11: **actualización 2026-10-28.** La semilla ya siembra 207 lecciones publicadas (commits de E0–E11), así que el lector tiene datos reales. Falta dejar constancia de la revisión pedagógica humana y recorrer el lector con ellas en el navegador.
-- Los criterios de navegador (sesión, listado, etapa, unidad y vecinos de unidad) se comprueban en la revisión manual con la web y la API levantadas.
+- S3-T11: la semilla siembra 207 lecciones publicadas y el lector se recorrió con cuatro de ellas en el navegador. La revisión pedagógica asistida está registrada en [`revision-pedagogica.md`](../../02-contenido/revision-pedagogica.md) (37 correcciones; resueltos H2 y parte de H4, abiertos H1, H3, H5, H6). **Sigue pendiente la validación humana** (§6 de ese documento): sin ella S3-T11 no se cierra.
+- Los cinco criterios de navegador quedaron cerrados el 2026-10-28 (§9.1).
 
 ---
 
@@ -184,6 +183,21 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 | S3-T9 | `node dist/main.js` + `curl` contra PostgreSQL local (`localhost:5433`) y `npm run build` | Verde: `stages` 200 (4 etapas), `stages/1` 200 con 5 módulos y sus `units` ordenadas, `units/U0.1.1` 200 con `stageId: 0` y `lessons: []`, `resources` 200 vacío, `lessons/no-existe` 404 con `NOT_FOUND` y `traceId`; ninguna respuesta incluye `solution` ni `sources`. `npm run build` en 0 con las cuatro rutas nuevas (`/learn`, `/learn/stages/[id]`, `/learn/units/[code]`, `/learn/lessons/[slug]`), la última dinámica | `5205d46` |
 | S3-T10 | `npm test` (shared 45 · API 68 · web 81), `npm run typecheck`, `npm run lint`, `npm run build` | Verde: el contrato de S3 queda documentado en `contratos-api.md` (ejemplo real de `units`/`stageId`, nota de compatibilidad en §7), el roadmap marca S3 🔄 con su estado y el cierre acumulado, y la ficha recoge el resumen construido/desviado/pendiente | `7f09607` |
 
+### 9.1 Verificación en navegador (2026-10-28)
+
+Chrome 156 headless controlado por el protocolo DevTools, contra `next dev` (puerto 3000) y la API compilada (`node dist/main.js`, puerto 3001) sobre PostgreSQL local. Se registró un usuario de prueba por la API y el inicio de sesión se hizo **rellenando el formulario de `/login`**.
+
+| Criterio | Resultado observado |
+|----------|---------------------|
+| `/learn` sin sesión | Redirige a `/login`; el texto de la página no contiene ningún título de etapa |
+| `/learn` con sesión | 12 enlaces `/learn/stages/0…11` con los títulos de la API |
+| `/learn/stages/0` | 14 unidades enlazadas (`/learn/units/U0.1.1`, `U0.1.2`, `U0.1.3`…) |
+| `/learn/units/U0.1.1` | Objetivo y «Sin prerrequisitos»; «Anterior» es un `button` deshabilitado y «Siguiente: U0.1.2» enlaza |
+| `/learn/units/U0.1.2` | «← Anterior: U0.1.1» → `/learn/units/U0.1.1` y «Siguiente: U0.1.3 →» → `/learn/units/U0.1.3` |
+| Lector con lecciones reales | `del-requisito-al-despliegue`, `event-loop-…`, `preguntas-de-entrevista-sql-…` y `rag-arquitectura-…` renderizan 13–15 encabezados y los 7 pasos; `no-existe` muestra el error con enlace al catálogo; **0 errores de consola** |
+
+Limitación: es una sola sesión y un solo navegador (Chromium). No se probó móvil, Firefox ni Safari, ni la restauración de sesión tras recargar con la cookie caducada.
+
 ---
 
 ## Documentos relacionados
@@ -192,4 +206,5 @@ Cada tarea se ejecuta y verifica en una invocación aislada de comandos. Ninguna
 - [`sprint-02-contenido.md`](sprint-02-contenido.md)
 - [`../../03-arquitectura/contratos-api.md`](../../03-arquitectura/contratos-api.md)
 - [`../../03-arquitectura/arquitectura-general.md`](../../03-arquitectura/arquitectura-general.md)
+- [`../../02-contenido/revision-pedagogica.md`](../../02-contenido/revision-pedagogica.md)
 - [`../../05-orquestacion/plantilla-tarea.md`](../../05-orquestacion/plantilla-tarea.md)
