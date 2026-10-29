@@ -221,3 +221,31 @@ describe("LessonReader", () => {
     });
   });
 });
+
+describe("LessonReader — completar la lección", () => {
+  it("registra la lección como vista con el código de la unidad", async () => {
+    const completeLesson = vi.fn(async () => undefined);
+
+    render(
+      <LessonReader slug={LESSON.slug} loadLesson={async () => LESSON} completeLesson={completeLesson} />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Marcar como completada" }));
+
+    await waitFor(() => expect(completeLesson).toHaveBeenCalledWith(LESSON.unitCode, LESSON.id));
+    expect(await screen.findByText(/Lección completada/)).toBeInTheDocument();
+  });
+
+  it("avisa si no se pudo registrar y permite reintentar", async () => {
+    const completeLesson = vi.fn(async () => {
+      throw new Error("sin red");
+    });
+
+    render(
+      <LessonReader slug={LESSON.slug} loadLesson={async () => LESSON} completeLesson={completeLesson} />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Marcar como completada" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos registrar la lección");
+    expect(screen.getByRole("button", { name: "Marcar como completada" })).toBeEnabled();
+  });
+});

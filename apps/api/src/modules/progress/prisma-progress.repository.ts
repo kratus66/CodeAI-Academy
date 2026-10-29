@@ -115,6 +115,24 @@ export class PrismaProgressRepository implements ProgressRepository {
     return rows.map(toCompetencyProgressRecord);
   }
 
+  async countPublishedExercises(unitId: string): Promise<number> {
+    return this.prisma.exercise.count({ where: { unitId, isPublished: true } });
+  }
+
+  async countCompletedExercises(userId: string, unitId: string): Promise<number> {
+    const rows = await this.prisma.submission.findMany({
+      where: {
+        userId,
+        exercise: { unitId, isPublished: true },
+        OR: [{ outcome: "PASSED" }, { exercise: { type: "REFLECT" } }],
+      },
+      distinct: ["exerciseId"],
+      select: { exerciseId: true },
+    });
+
+    return rows.length;
+  }
+
   async saveUnitProgress(input: SaveUnitProgressInput): Promise<UnitProgressRecord> {
     const data = {
       state: input.state,
@@ -122,6 +140,8 @@ export class PrismaProgressRepository implements ProgressRepository {
       lessonsDone: input.lessonsDone,
       completedLessonIds: [...input.completedLessonIds],
       lastActivityAt: input.lastActivityAt,
+      ...(input.exercisesDone === undefined ? {} : { exercisesDone: input.exercisesDone }),
+      ...(input.completedAt === undefined ? {} : { completedAt: input.completedAt }),
     };
 
     const row = await this.prisma.unitProgress.upsert({

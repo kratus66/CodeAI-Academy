@@ -53,6 +53,7 @@ import { ExercisesService } from "./exercises.service";
 // Import de valor obligatorio: Nest resuelve `HintsService` por `design:paramtypes`.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { HintsService } from "./hints.service";
+import { UnitOpenGuard } from "./unit-open.guard";
 
 /** El id llega de la fila de Prisma; sólo se comprueba que no venga vacío. */
 const exerciseIdParamsSchema = z.object({
@@ -76,7 +77,7 @@ const HINTS_LIMIT = { limit: 20, windowMs: 60_000, keyFromUser: true };
  */
 @ApiTags("exercises")
 @Controller("exercises")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, UnitOpenGuard)
 export class ExercisesController {
   constructor(
     private readonly exercises: ExercisesService,

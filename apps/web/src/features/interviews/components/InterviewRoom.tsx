@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
+
 import {
   INTERVIEW_MAX_TURNS,
   INTERVIEW_MESSAGE_MAX,
@@ -18,6 +19,7 @@ import type {
   StartInterviewSessionInput,
 } from "@codeai/shared";
 
+import { LockNotice, isLocked } from "@/components/ui/LockNotice";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { ApiError, interviewsApi } from "@/lib/api-client";
 
@@ -93,6 +95,8 @@ export function InterviewRoom({
 
   useEffect(() => {
     if (state.status !== "ready" || startedRef.current) return;
+    // Un escenario bloqueado no abre sesión: la API también lo rechazaría con 422.
+    if (isLocked(state.data.unlock)) return;
 
     startedRef.current = true;
     let cancelled = false;
@@ -136,7 +140,7 @@ export function InterviewRoom({
     return () => {
       cancelled = true;
     };
-  }, [loadHistory, loadSession, scenarioSlug, startSession, state.status]);
+  }, [loadHistory, loadSession, scenarioSlug, startSession, state]);
 
   useEffect(() => {
     if (session?.status !== "IN_PROGRESS") return undefined;
@@ -169,6 +173,21 @@ export function InterviewRoom({
   }
 
   const scenario = state.data;
+
+  if (scenario.unlock && isLocked(scenario.unlock)) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-white">{scenario.title}</h1>
+        <LockNotice unlock={scenario.unlock} subject="Esta entrevista" />
+        <Link
+          href="/learn/interviews"
+          className="inline-block text-sm text-accent underline-offset-4 hover:underline"
+        >
+          Volver a las entrevistas
+        </Link>
+      </div>
+    );
+  }
   const currentPhase =
     scenario.phases.find((phase) => phase.phase === session?.phase) ??
     scenario.phases[0];

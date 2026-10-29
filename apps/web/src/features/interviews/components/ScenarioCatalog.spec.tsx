@@ -110,3 +110,34 @@ describe("ScenarioCatalog", () => {
     expect(loadScenarios).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("ScenarioCatalog — desbloqueo por nivel", () => {
+  it("marca como bloqueado el escenario cuyo nivel aún no se alcanza", async () => {
+    const scenario = {
+      slug: "backend-senior",
+      title: "Backend senior",
+      role: "backend",
+      level: "senior",
+      language: "ts",
+      competencies: ["C10"],
+      phaseCount: 5,
+      estimatedMinutes: 60,
+      attempts: 0,
+      unlock: { unlocked: false, reason: "Completa las etapas 0 a 10 para abrir las entrevistas de nivel senior." },
+    };
+
+    render(
+      <ScenarioCatalog
+        loadScenarios={async () =>
+          ({
+            scenarios: [scenario],
+            meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 },
+          }) as unknown as InterviewCatalogPage
+        }
+      />,
+    );
+
+    expect(await screen.findByText("Bloqueado")).toBeInTheDocument();
+    expect(screen.getByText(/etapas 0 a 10/)).toBeInTheDocument();
+  });
+});

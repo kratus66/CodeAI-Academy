@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from "../constants/pagination";
 import { paginatedSchema } from "./common";
 import { competencyCodeSchema } from "./progress";
+import { unlockStatusSchema } from "./unlock";
 
 /**
  * Contrato de entrevistas (`contratos-api.md` §4.12 y
@@ -278,6 +279,8 @@ export const interviewScenarioSummarySchema = z
     phaseCount: z.number().int().min(1).max(INTERVIEW_PHASES.length),
     estimatedMinutes: estimatedMinutesSchema,
     attempts: z.number().int().nonnegative(),
+    /** Ausente = sin regla de desbloqueo (p. ej. un cliente anterior). */
+    unlock: unlockStatusSchema.optional(),
   })
   .strict();
 

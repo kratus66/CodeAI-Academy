@@ -107,3 +107,20 @@ describe("ProjectCatalog", () => {
     expect(loadProjects).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("ProjectCatalog — desbloqueo por nivel", () => {
+  it("marca como bloqueado el proyecto cerrado y muestra qué falta", async () => {
+    const locked = {
+      ...PROJECTS[1],
+      unlock: { unlocked: false, reason: "Domina el 60 % de la etapa 1 (llevas 10 %)." },
+    };
+
+    render(
+      <ProjectCatalog loadProjects={async () => page([PROJECTS[0], locked])} />,
+    );
+
+    expect(await screen.findByText("Bloqueado")).toBeInTheDocument();
+    expect(screen.getByText(/Domina el 60 % de la etapa 1/)).toBeInTheDocument();
+    expect(screen.getAllByText("Bloqueado")).toHaveLength(1);
+  });
+});

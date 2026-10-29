@@ -255,7 +255,11 @@ QUIZ y FLASHCARD no usan el sandbox. Sus envíos se guardan como `Submission` (o
 | `GET /competencies` | `{ "competencies": CompetencyProgress[] }`, con C1–C14 completos y nivel 0 en las que no tienen evidencia |
 | `POST /units/:id/complete-lesson` | `200 { "unit": UnitProgressSummary }`; cuerpo `{ "lessonId": "..." }` |
 
-**Idempotencia:** `complete-lesson` guarda las lecciones vistas en `UnitProgress.completedLessonIds`, así que repetir la misma lección no cambia el porcentaje. Responde `404 NOT_FOUND` si la unidad o la lección no existen (o si la lección no pertenece a la unidad) y `409 CONFLICT` si la unidad está bloqueada. Nunca acredita `MASTERED`: eso lo decide la evaluación de S6.
+**Idempotencia:** `complete-lesson` guarda las lecciones vistas en `UnitProgress.completedLessonIds`, así que repetir la misma lección no cambia el porcentaje. Responde `404 NOT_FOUND` si la unidad o la lección no existen (o si la lección no pertenece a la unidad) y `409 CONFLICT` si la unidad está bloqueada. Nunca acredita `MASTERED` por sí sola.
+
+**Dominio de unidad.** Una unidad pasa a `MASTERED` cuando el estudiante vio **todas** sus lecciones y completó el **70 %** de sus ejercicios publicados (al menos uno). Cuenta como completado un ejercicio con un envío `PASSED` (código, cuestionario, tarjeta calificada ≥ 3) o cualquier envío de una reflexión. Se recalcula tras cada envío y nunca degrada una unidad dominada. `MASTERED` desbloquea la unidad siguiente: cada unidad exige dominar la anterior en el orden del currículo (etapa → módulo → unidad), salvo prerrequisitos declarados.
+
+**Laboratorio bloqueado.** Las rutas de `/api/exercises` responden `422 RULE_VIOLATION` si la unidad del ejercicio está `LOCKED` (instructores y administradores no se bloquean).
 
 ### 4.5 Repaso (`/api/review`) — ✅ implementado en S7
 
@@ -620,6 +624,8 @@ score          = round(Σ nota, 2)
 
 ---
 
+**Desbloqueo por nivel.** `ProjectSummary` y `ProjectDetail` incluyen `unlock: { unlocked, reason }`. El proyecto de la etapa N se abre al dominar el 60 % de las unidades de la etapa N o al superarla; `POST /projects/:slug/submissions` responde `422 RULE_VIOLATION` con el motivo si está cerrado. Instructores y administradores no se bloquean. Regla en `packages/shared/src/schemas/unlock.ts`.
+
 ### 4.12 Entrevistas (`/api/interviews`) — ✅ implementado (2026-10-28)
 
 Entrevistas técnicas de práctica en texto: el servidor impone un guion de **seis fases** (`warmup`, `conceptual`, `live-coding`, `code-review`, `follow-ups`, `candidate-questions`), el estudiante responde y el instructor emite la nota con la rúbrica de `rubricas-evaluacion.md` §2.6. Todas las rutas exigen `JwtAuthGuard`; **`userId` sale siempre del token**. Sólo la revisión exige rol.
@@ -661,6 +667,8 @@ Entrevistas técnicas de práctica en texto: el servidor impone un guion de **se
   }
 }
 ```
+
+**Desbloqueo por nivel.** Cada escenario incluye `unlock: { unlocked, reason }` según su `level`: `junior` exige haber completado las etapas 0–6, `semi-senior` 0–8 y `senior` 0–10 (`INTERVIEW_MIN_STAGE`). `POST /interviews/sessions` responde `422 RULE_VIOLATION` con el motivo si está cerrado; instructores y administradores no se bloquean.
 
 `role` ∈ `{ backend, frontend, fullstack, data, qa }`, `level` ∈ `{ junior, semi-senior, senior }`, `language` ∈ `{ ts, py, java, go }`. La rúbrica es **fija** (§2.6), suma 100 y no viaja al prompt del modelo.
 

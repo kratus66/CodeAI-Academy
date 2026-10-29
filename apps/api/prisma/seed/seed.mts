@@ -70,6 +70,18 @@ function exerciseSolution(exercise: SeedExercise) {
   return exercise.solution ?? undefined;
 }
 
+/** Prerrequisitos declarados; si no hay ninguno, la unidad anterior del currículo. */
+function unitPrerequisites(
+  declared: readonly string[] | undefined,
+  previous: string | undefined,
+): string[] {
+  if (declared && declared.length > 0) {
+    return [...declared];
+  }
+
+  return previous ? [previous] : [];
+}
+
 async function readSeed() {
   const raw: unknown = JSON.parse(await readFile(SEED_FILE, "utf8"));
   const result = contentSeedSchema.safeParse(raw);
@@ -117,6 +129,24 @@ async function main(): Promise<void> {
       resourceIdBySlug.set(resource.slug, storedResource.id);
     }
 
+    // El seed no declara prerrequisitos: sin ellos ninguna unidad se bloquea y el
+    // currículo no se desbloquea de forma progresiva. Por defecto cada unidad
+    // exige dominar la anterior en el orden del currículo (etapa → módulo → unidad).
+    const previousUnitCode = new Map<string, string>();
+    let lastCode: string | undefined;
+
+    for (const stage of [...seed.stages].sort((a, b) => a.order - b.order)) {
+      for (const module of [...stage.modules].sort((a, b) => a.order - b.order)) {
+        for (const unit of [...module.units].sort((a, b) => a.order - b.order)) {
+          if (lastCode !== undefined) {
+            previousUnitCode.set(unit.code, lastCode);
+          }
+
+          lastCode = unit.code;
+        }
+      }
+    }
+
     for (const stage of seed.stages) {
       const stageFields = {
         slug: stage.slug,
@@ -155,7 +185,7 @@ async function main(): Promise<void> {
             estimatedMin: unit.estimatedMin,
             order: unit.order,
             isPublished: unit.isPublished,
-            prerequisiteIds: unit.prerequisiteIds,
+            prerequisiteIds: unitPrerequisites(unit.prerequisiteIds, previousUnitCode.get(unit.code)),
             moduleId: storedModule.id,
           };
 

@@ -8,11 +8,13 @@ import {
   ForbiddenException,
   HttpException,
   NotFoundException,
+  UnprocessableEntityException,
 } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
 import { InMemoryInterviewRepository } from "./in-memory-interview.repository";
 import type { InterviewTurnPipelineInput } from "../ai/ai.service";
+import type { ProgressService } from "../progress/progress.service";
 import type { InterviewAiPort } from "./interview-ai.port";
 import type { InterviewDataset } from "./interview.repository";
 import type {
@@ -708,5 +710,51 @@ describe("InterviewsService · revisión", () => {
     ).rejects.toMatchObject({
       message: expect.stringContaining("SESSION_CLOSED"),
     });
+  });
+});
+describe("InterviewsService · desbloqueo por nivel", () => {
+  function gated(currentStage: number, bypass = false) {
+    const { repository, ai } = setup();
+    const progress = {
+      getUnlockContext: async () => ({ currentStage, stages: [], bypass }),
+    } as unknown as ProgressService;
+
+    return new InterviewsService(repository, ai, () => NOW, progress);
+  }
+
+  const query = { page: 1, pageSize: 20 };
+
+  it("marca cada escenario según el nivel alcanzado", async () => {
+    const early = await gated(3).listScenarios("ana", query);
+    const late = await gated(7).listScenarios("ana", query);
+
+    expect(early.data.every((item) => item.unlock?.unlocked === false)).toBe(true);
+    expect(late.data.find((item) => item.level === "junior")?.unlock).toEqual({
+      unlocked: true,
+      reason: null,
+    });
+  });
+
+  it("rechaza con 422 iniciar una entrevista bloqueada y no crea sesión", async () => {
+    const service = gated(3);
+
+    await expect(
+      service.startSession("ana", { scenarioSlug: "backend-junior" }),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect((await service.getHistory("ana")).items).toHaveLength(0);
+  });
+
+  it("permite iniciar la entrevista al alcanzar la etapa mínima", async () => {
+    const session = await gated(7).startSession("ana", { scenarioSlug: "backend-junior" });
+
+    expect(session.status).toBe("IN_PROGRESS");
+  });
+
+  it("no bloquea a un administrador", async () => {
+    const session = await gated(0, true).startSession("ana", {
+      scenarioSlug: "backend-junior",
+    });
+
+    expect(session.status).toBe("IN_PROGRESS");
   });
 });

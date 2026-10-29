@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { LockBadge, isLocked } from "@/components/ui/LockNotice";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { interviewsApi } from "@/lib/api-client";
 import type { InterviewCatalogPage } from "@/lib/api-client";
@@ -105,7 +106,7 @@ export function ScenarioCatalog({
         <li key={scenario.slug}>
           <Link
             href={`/learn/interviews/${scenario.slug}`}
-            className={CARD_CLASSES}
+            className={`${CARD_CLASSES} ${isLocked(scenario.unlock) ? "opacity-70" : ""}`}
           >
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
               {ROLE_LABELS[scenario.role] ?? scenario.role} ·{" "}
@@ -120,7 +121,9 @@ export function ScenarioCatalog({
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
               <span>{scenario.competencies.join(" · ")}</span>
-              {scenario.attempts > 0 ? (
+              {isLocked(scenario.unlock) ? (
+                <LockBadge />
+              ) : scenario.attempts > 0 ? (
                 <span className={BADGE_CLASSES}>
                   {attemptsLabel(scenario.attempts)}
                 </span>
@@ -128,6 +131,11 @@ export function ScenarioCatalog({
                 <span>{attemptsLabel(scenario.attempts)}</span>
               )}
             </div>
+            {isLocked(scenario.unlock) && scenario.unlock?.reason ? (
+              <p className="mt-3 text-xs leading-relaxed text-amber-200/80">
+                {scenario.unlock.reason}
+              </p>
+            ) : null}
           </Link>
         </li>
       ))}

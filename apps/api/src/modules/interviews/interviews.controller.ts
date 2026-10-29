@@ -73,7 +73,7 @@ export class InterviewsController {
     @Query(new ZodValidationPipe(interviewScenarioListQuerySchema))
     query: InterviewScenarioListQuery,
   ): Promise<InterviewScenarioListResponse> {
-    return this.interviews.listScenarios(user.sub, query);
+    return this.interviews.listScenarios(user.sub, query, user.role);
   }
 
   @Get("scenarios/:slug")
@@ -83,7 +83,7 @@ export class InterviewsController {
     @Param(new ZodValidationPipe(interviewScenarioParamsSchema))
     params: { slug: string },
   ): Promise<InterviewScenario> {
-    return this.interviews.getScenario(user.sub, params.slug);
+    return this.interviews.getScenario(user.sub, params.slug, user.role);
   }
 
   @Post("sessions")
@@ -94,7 +94,7 @@ export class InterviewsController {
     @Body(new ZodValidationPipe(startInterviewSessionSchema))
     body: StartInterviewSessionInput,
   ): Promise<InterviewSession> {
-    return this.interviews.startSession(user.sub, body);
+    return this.interviews.startSession(user.sub, body, user.role);
   }
 
   /** Antes de `sessions/:id`: si no, `me` se leería como id. */

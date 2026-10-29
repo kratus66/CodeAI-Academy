@@ -63,7 +63,7 @@ export class ProjectsController {
     @CurrentUser() user: AccessTokenPayload,
     @Query(new ZodValidationPipe(projectListQuerySchema)) query: ProjectListQuery,
   ): Promise<ProjectListResponse> {
-    return this.projects.listProjects(query, user.sub);
+    return this.projects.listProjects(query, user.sub, user.role);
   }
 
   @Get(":slug")
@@ -72,7 +72,7 @@ export class ProjectsController {
     @CurrentUser() user: AccessTokenPayload,
     @Param(new ZodValidationPipe(projectSlugParamsSchema)) params: ProjectSlugParams,
   ): Promise<ProjectDetail> {
-    return this.projects.getProject(params.slug, user.sub);
+    return this.projects.getProject(params.slug, user.sub, user.role);
   }
 
   @Post("submissions/:id/review")
@@ -122,6 +122,6 @@ export class ProjectsController {
     @Body(new ZodValidationPipe(createProjectSubmissionSchema))
     body: CreateProjectSubmissionInput,
   ): Promise<ProjectSubmission> {
-    return this.projects.submit(params.slug, body, user.sub);
+    return this.projects.submit(params.slug, body, user.sub, user.role);
   }
 }

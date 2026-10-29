@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "../../database/prisma.module";
 import { AuthModule } from "../auth/auth.module";
+import { ProgressModule } from "../progress/progress.module";
 import { ReviewModule } from "../review/review.module";
 import { ReviewService } from "../review/review.service";
 import { SandboxModule } from "../sandbox/sandbox.module";
@@ -12,6 +13,7 @@ import { HINT_REQUESTS_REPOSITORY } from "./hint-requests.repository";
 import { HintsService } from "./hints.service";
 import { PrismaHintRequestsRepository } from "./prisma-hint-requests.repository";
 import { PrismaExercisesRepository } from "./prisma-exercises.repository";
+import { UnitOpenGuard } from "./unit-open.guard";
 
 /**
  * Laboratorio de código. `AuthModule` aporta el `JwtAuthGuard` y `SandboxModule`
@@ -25,11 +27,12 @@ import { PrismaExercisesRepository } from "./prisma-exercises.repository";
  * fecha. La dependencia es en un solo sentido, así que no hay ciclo de módulos.
  */
 @Module({
-  imports: [PrismaModule, AuthModule, SandboxModule, ReviewModule],
+  imports: [PrismaModule, AuthModule, SandboxModule, ReviewModule, ProgressModule],
   controllers: [ExercisesController],
   providers: [
     ExercisesService,
     HintsService,
+    UnitOpenGuard,
     { provide: EXERCISES_REPOSITORY, useClass: PrismaExercisesRepository },
     { provide: HINT_REQUESTS_REPOSITORY, useClass: PrismaHintRequestsRepository },
     { provide: REVIEW_SCHEDULER, useExisting: ReviewService },

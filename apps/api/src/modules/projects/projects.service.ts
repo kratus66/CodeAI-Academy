@@ -6,9 +6,11 @@ import type {
   ProjectListResponse,
   ProjectSubmission,
   ProjectSummary,
+  UnlockContext,
 } from "@codeai/shared";
 import {
   createProjectSubmissionSchema,
+  projectUnlock,
   reviewProjectSubmissionSchema,
 } from "@codeai/shared";
 import {
@@ -16,10 +18,14 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from "@nestjs/common";
 
 import { toErrorDetails } from "../../common/pipes/zod-validation.pipe";
+// El valor se necesita en tiempo de ejecución: Nest lo usa como token de inyección.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ProgressService } from "../progress/progress.service";
 import type {
   ProjectCatalogRow,
   ProjectDetailRow,
@@ -54,19 +60,30 @@ export class ProjectsService {
   constructor(
     @Inject(PROJECTS_REPOSITORY) private readonly repository: ProjectsRepository,
     @Inject(PROJECTS_CLOCK) private readonly now: ProjectsClock,
+    // Sin `ProgressService` no hay regla de desbloqueo (pruebas de la capa de datos).
+    @Optional() private readonly progress?: ProgressService,
   ) {}
+
+  private unlockContext(userId: string, role?: string): Promise<UnlockContext | null> {
+    return this.progress ? this.progress.getUnlockContext(userId, role) : Promise.resolve(null);
+  }
 
   async listProjects(
     query: ProjectListQuery,
     userId: string,
+    role?: string,
   ): Promise<ProjectListResponse> {
     const { items, total } = await this.repository.listPublishedProjects(
       { stageId: query.stage, page: query.page, pageSize: query.pageSize },
       userId,
     );
+    const context = await this.unlockContext(userId, role);
 
     return {
-      data: items.map(toProjectSummary),
+      data: items.map((row) => ({
+        ...toProjectSummary(row),
+        ...(context ? { unlock: projectUnlock(row.stageId, context) } : {}),
+      })),
       meta: {
         page: query.page,
         pageSize: query.pageSize,
@@ -76,14 +93,19 @@ export class ProjectsService {
     };
   }
 
-  async getProject(slug: string, userId: string): Promise<ProjectDetail> {
+  async getProject(slug: string, userId: string, role?: string): Promise<ProjectDetail> {
     const row = await this.repository.findPublishedProjectBySlug(slug, userId);
 
     if (!row) {
       throw new NotFoundException(PROJECT_NOT_FOUND);
     }
 
-    return toProjectDetail(row);
+    const context = await this.unlockContext(userId, role);
+
+    return {
+      ...toProjectDetail(row),
+      ...(context ? { unlock: projectUnlock(row.stageId, context) } : {}),
+    };
   }
 
   /**
@@ -94,6 +116,7 @@ export class ProjectsService {
     slug: string,
     input: CreateProjectSubmissionInput,
     userId: string,
+    role?: string,
   ): Promise<ProjectSubmission> {
     // Se revalida aquí aunque el controlador ya use el mismo esquema: el
     // servicio es el último punto antes de escribir y no confía en el llamador.
@@ -111,6 +134,19 @@ export class ProjectsService {
       parsed.data.notes && parsed.data.notes.length > 0
         ? parsed.data.notes
         : null;
+
+    const project = await this.repository.findPublishedProjectBySlug(slug, userId);
+
+    if (!project) {
+      throw new NotFoundException(PROJECT_NOT_FOUND);
+    }
+
+    const context = await this.unlockContext(userId, role);
+    const unlock = context ? projectUnlock(project.stageId, context) : null;
+
+    if (unlock && !unlock.unlocked) {
+      throw new UnprocessableEntityException(unlock.reason ?? "Bloqueado por nivel: no se puede operar sobre él hasta desbloquearlo.");
+    }
 
     const created = await this.repository.createSubmission({
       projectSlug: slug,

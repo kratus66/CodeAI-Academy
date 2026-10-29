@@ -11,6 +11,7 @@ import type {
   ReviewInterviewInput,
   SelfReviewInput,
   StartInterviewSessionInput,
+  UnlockContext,
   SendInterviewMessageInput,
 } from "@codeai/shared";
 import {
@@ -20,6 +21,7 @@ import {
   INTERVIEW_MAX_TURNS,
   INTERVIEW_OPENING,
   INTERVIEW_STALE_HOURS,
+  interviewUnlock,
   reviewInterviewSchema,
   selfReviewSchema,
   sendInterviewMessageSchema,
@@ -34,11 +36,15 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from "@nestjs/common";
 
 import { scoreLevels } from "../../common/scoring/weighted-score";
 import { toErrorDetails } from "../../common/pipes/zod-validation.pipe";
+// El valor se necesita en tiempo de ejecución: Nest lo usa como token de inyección.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ProgressService } from "../progress/progress.service";
 import type {
   InterviewRepository,
   InterviewScenarioRecord,
@@ -98,11 +104,18 @@ export class InterviewsService {
     private readonly repository: InterviewRepositoryPort,
     @Inject(INTERVIEW_AI) private readonly ai: InterviewAiPort,
     @Inject(INTERVIEWS_CLOCK) private readonly now: InterviewsClock,
+    // Sin `ProgressService` no hay regla de desbloqueo (pruebas de la capa de datos).
+    @Optional() private readonly progress?: ProgressService,
   ) {}
+
+  private unlockContext(userId: string, role?: string): Promise<UnlockContext | null> {
+    return this.progress ? this.progress.getUnlockContext(userId, role) : Promise.resolve(null);
+  }
 
   async listScenarios(
     userId: string,
     query: InterviewScenarioListQuery,
+    role?: string,
   ): Promise<InterviewScenarioListResponse> {
     const { items, total } = await this.repository.listPublishedScenarios(
       {
@@ -114,9 +127,13 @@ export class InterviewsService {
       },
       userId,
     );
+    const context = await this.unlockContext(userId, role);
 
     return {
-      data: items.map(toScenarioSummary),
+      data: items.map((row) => ({
+        ...toScenarioSummary(row),
+        ...(context ? { unlock: interviewUnlock(row.level, context) } : {}),
+      })),
       meta: {
         page: query.page,
         pageSize: query.pageSize,
@@ -126,14 +143,23 @@ export class InterviewsService {
     };
   }
 
-  async getScenario(userId: string, slug: string): Promise<InterviewScenario> {
+  async getScenario(
+    userId: string,
+    slug: string,
+    role?: string,
+  ): Promise<InterviewScenario> {
     const row = await this.repository.findPublishedScenarioBySlug(slug, userId);
 
     if (row === null) {
       throw new NotFoundException(SCENARIO_NOT_FOUND);
     }
 
-    return toScenarioDetail(row);
+    const context = await this.unlockContext(userId, role);
+
+    return {
+      ...toScenarioDetail(row),
+      ...(context ? { unlock: interviewUnlock(row.level, context) } : {}),
+    };
   }
 
   /**
@@ -143,6 +169,7 @@ export class InterviewsService {
   async startSession(
     userId: string,
     input: StartInterviewSessionInput,
+    role?: string,
   ): Promise<InterviewSession> {
     const parsed = startInterviewSessionSchema.safeParse(input);
 
@@ -157,6 +184,13 @@ export class InterviewsService {
 
     if (scenario === null) {
       throw new NotFoundException(SCENARIO_NOT_FOUND);
+    }
+
+    const context = await this.unlockContext(userId, role);
+    const unlock = context ? interviewUnlock(scenario.level, context) : null;
+
+    if (unlock && !unlock.unlocked) {
+      throw new UnprocessableEntityException(unlock.reason ?? "Bloqueado por nivel: no se puede operar sobre él hasta desbloquearlo.");
     }
 
     const now = this.now();

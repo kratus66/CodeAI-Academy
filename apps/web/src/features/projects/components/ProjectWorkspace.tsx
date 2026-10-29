@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
 
+import { LockNotice, isLocked } from "@/components/ui/LockNotice";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { ApiError, projectsApi } from "@/lib/api-client";
 
@@ -291,6 +292,9 @@ export function ProjectWorkspace({
         <h2 id="entrega" className="text-lg font-semibold text-white">
           Entregar el proyecto
         </h2>
+        {project.unlock && isLocked(project.unlock) ? (
+          <LockNotice unlock={project.unlock} subject="La entrega de este proyecto" />
+        ) : (
         <form onSubmit={handleSubmit} className={CARD_CLASSES} noValidate>
           <label className="block">
             <span className={LABEL_CLASSES}>Repositorio (obligatorio)</span>
@@ -364,6 +368,7 @@ export function ProjectWorkspace({
             </p>
           ) : null}
         </form>
+        )}
       </section>
 
       <section aria-labelledby="entregas" className="space-y-3">

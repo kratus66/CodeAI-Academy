@@ -64,6 +64,9 @@ export interface SaveUnitProgressInput {
   lessonsDone: number;
   completedLessonIds: readonly string[];
   lastActivityAt: Date;
+  /** Opcionales: si faltan, el adaptador conserva lo guardado. */
+  exercisesDone?: number;
+  completedAt?: Date | null;
 }
 
 export interface ProgressRepository {
@@ -75,4 +78,11 @@ export interface ProgressRepository {
   listUnitProgress(userId: string): Promise<UnitProgressRecord[]>;
   listCompetencyProgress(userId: string): Promise<CompetencyProgressRecord[]>;
   saveUnitProgress(input: SaveUnitProgressInput): Promise<UnitProgressRecord>;
+  /** Ejercicios publicados de una unidad. */
+  countPublishedExercises(unitId: string): Promise<number>;
+  /**
+   * Ejercicios distintos que el usuario completó en la unidad: con un envío
+   * `PASSED`, o cualquier envío en una reflexión (no se califica sola).
+   */
+  countCompletedExercises(userId: string, unitId: string): Promise<number>;
 }

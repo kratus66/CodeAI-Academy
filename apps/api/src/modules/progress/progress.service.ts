@@ -3,6 +3,7 @@ import type {
   ProgressOverview,
   UnitProgressSummary,
   UnitState,
+  UnlockContext,
 } from "@codeai/shared";
 import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 
@@ -16,6 +17,7 @@ import type {
 import { PROGRESS_REPOSITORY } from "./progress.repository";
 import {
   countUnitsByState,
+  isUnitMastered,
   overallProgressPct,
   resolveUnitState,
   stateAfterLessonSeen,
@@ -93,6 +95,96 @@ export class ProgressService {
       competencies: toCompetencyMap(competencies),
       dueReviews,
     };
+  }
+
+  /**
+   * Nivel alcanzado para decidir qué proyectos y entrevistas se abren. Los
+   * instructores y administradores no se bloquean (`bypass`).
+   */
+  async getUnlockContext(userId: string, role?: string): Promise<UnlockContext> {
+    const [units, records] = await Promise.all([
+      this.repository.listPublishedUnits(),
+      this.repository.listUnitProgress(userId),
+    ]);
+    const resolved = resolveUnits(units, records);
+    const byStage = new Map<number, { total: number; mastered: number }>();
+
+    for (const entry of resolved) {
+      const stage = byStage.get(entry.unit.stageId) ?? { total: 0, mastered: 0 };
+
+      stage.total += 1;
+      stage.mastered += entry.state === "MASTERED" ? 1 : 0;
+      byStage.set(entry.unit.stageId, stage);
+    }
+
+    return {
+      currentStage: currentStage(resolved),
+      stages: [...byStage].map(([stageId, counts]) => ({ stageId, ...counts })),
+      bypass: role === "INSTRUCTOR" || role === "ADMIN",
+    };
+  }
+
+  /** Estado de una unidad por código; los instructores y administradores nunca la ven bloqueada. */
+  async getUnitState(userId: string, unitCode: string, role?: string): Promise<UnitState | null> {
+    if (role === "INSTRUCTOR" || role === "ADMIN") {
+      return null;
+    }
+
+    const [units, records] = await Promise.all([
+      this.repository.listPublishedUnits(),
+      this.repository.listUnitProgress(userId),
+    ]);
+
+    return resolveUnits(units, records).find((entry) => entry.unit.code === unitCode)?.state ?? null;
+  }
+
+  /**
+   * Recalcula una unidad tras un envío: cuenta los ejercicios completados y, si
+   * ya vio todas las lecciones y alcanzó el umbral, la marca `MASTERED`, que
+   * desbloquea la siguiente. Nunca degrada una unidad dominada ni toca una
+   * bloqueada. Es idempotente: repetirlo no cambia el resultado.
+   */
+  async recordExerciseActivity(userId: string, unitCode: string): Promise<void> {
+    const [units, records] = await Promise.all([
+      this.repository.listPublishedUnits(),
+      this.repository.listUnitProgress(userId),
+    ]);
+    const target = resolveUnits(units, records).find((entry) => entry.unit.code === unitCode);
+
+    if (!target || target.state === "LOCKED") {
+      return;
+    }
+
+    const [exercisesTotal, exercisesDone] = await Promise.all([
+      this.repository.countPublishedExercises(target.unit.id),
+      this.repository.countCompletedExercises(userId, target.unit.id),
+    ]);
+    const lessonsDone = target.record?.lessonsDone ?? 0;
+    const mastered =
+      target.state === "MASTERED" ||
+      isUnitMastered({
+        lessonsDone,
+        lessonsTotal: target.unit.lessonsTotal,
+        exercisesDone,
+        exercisesTotal,
+      });
+    const now = new Date();
+
+    await this.repository.saveUnitProgress({
+      userId,
+      unitId: target.unit.id,
+      state: mastered
+        ? "MASTERED"
+        : target.state === "AVAILABLE"
+          ? "IN_PROGRESS"
+          : target.state,
+      progressPct: target.progressPct,
+      lessonsDone,
+      completedLessonIds: target.record?.completedLessonIds ?? [],
+      lastActivityAt: now,
+      exercisesDone,
+      completedAt: mastered ? (target.record?.completedAt ?? now) : null,
+    });
   }
 
   async listUnits(userId: string): Promise<UnitProgressSummary[]> {

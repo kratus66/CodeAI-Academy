@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { LockBadge, isLocked } from "@/components/ui/LockNotice";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { projectsApi } from "@/lib/api-client";
 import type { ProjectCatalogPage } from "@/lib/api-client";
@@ -81,7 +82,10 @@ export function ProjectCatalog({
     <ol className="grid list-none gap-4 p-0 sm:grid-cols-2">
       {state.data.projects.map((project) => (
         <li key={project.id}>
-          <Link href={`/learn/projects/${project.slug}`} className={CARD_CLASSES}>
+          <Link
+            href={`/learn/projects/${project.slug}`}
+            className={`${CARD_CLASSES} ${isLocked(project.unlock) ? "opacity-70" : ""}`}
+          >
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
               Etapa E{project.stageId}
             </p>
@@ -93,12 +97,19 @@ export function ProjectCatalog({
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
               <span>{requirementCountLabel(project.requirements.length)}</span>
-              {project.submitted ? (
+              {isLocked(project.unlock) ? (
+                <LockBadge />
+              ) : project.submitted ? (
                 <span className={BADGE_CLASSES}>Entregado</span>
               ) : (
                 <span>Sin entregar</span>
               )}
             </div>
+            {isLocked(project.unlock) && project.unlock?.reason ? (
+              <p className="mt-3 text-xs leading-relaxed text-amber-200/80">
+                {project.unlock.reason}
+              </p>
+            ) : null}
           </Link>
         </li>
       ))}

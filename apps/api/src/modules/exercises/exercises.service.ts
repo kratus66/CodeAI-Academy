@@ -25,6 +25,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Optional,
   InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
@@ -45,6 +46,9 @@ import type {
   ExerciseRow,
   SubmissionResultRow,
 } from "./exercises.repository";
+// El valor se necesita en tiempo de ejecución: Nest lo usa como token de inyección.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ProgressService } from "../progress/progress.service";
 import { EXERCISES_REPOSITORY } from "./exercises.repository";
 import type { HintRequestRepository } from "./hint-requests.repository";
 import { HINT_REQUESTS_REPOSITORY } from "./hint-requests.repository";
@@ -162,7 +166,14 @@ export class ExercisesService {
     @Inject(HINT_REQUESTS_REPOSITORY)
     private readonly hintRequests: HintRequestRepository,
     @Inject(REVIEW_SCHEDULER) private readonly reviews: ReviewScheduler,
+    // Sin `ProgressService` los envíos no alteran el progreso (pruebas de la capa de ejercicios).
+    @Optional() private readonly progress?: ProgressService,
   ) {}
+
+  /** Tras cada intento: puede completar la unidad y desbloquear la siguiente. */
+  private async recordProgress(userId: string, unitCode: string): Promise<void> {
+    await this.progress?.recordExerciseActivity(userId, unitCode);
+  }
 
   async listByUnit(
     unitCode: string,
@@ -242,6 +253,7 @@ export class ExercisesService {
     } satisfies CreateSubmissionRow);
 
     await this.reviews.scheduleFromSubmission({ userId, exerciseId, outcome, score, hintsUsed: 0 });
+    await this.recordProgress(userId, exercise.unitCode);
 
     return {
       result: {
@@ -323,6 +335,7 @@ export class ExercisesService {
       hintsUsed: 0,
       quality: body.quality,
     });
+    await this.recordProgress(userId, exercise.unitCode);
 
     return { scheduled };
   }
@@ -352,6 +365,8 @@ export class ExercisesService {
       durationMs: 0,
       results: [],
     } satisfies CreateSubmissionRow);
+
+    await this.recordProgress(userId, exercise.unitCode);
 
     return { recorded: true };
   }
@@ -450,6 +465,8 @@ export class ExercisesService {
       score: grade.score,
       hintsUsed,
     });
+
+    await this.recordProgress(userId, exercise.unitCode);
 
     return { submission: toSubmissionSummary(row, grade.feedback) };
   }

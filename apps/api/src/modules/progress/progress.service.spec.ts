@@ -347,3 +347,89 @@ describe("ProgressService.listCompetencies", () => {
     expect(competencies[1]).toEqual({ code: "C2", level: 0, evidenceCount: 0 });
   });
 });
+
+describe("ProgressService.recordExerciseActivity", () => {
+  async function stateOf(service: ProgressService, code: string) {
+    return (await service.listUnits("user-1")).find((unit) => unit.unitCode === code);
+  }
+
+  const twoLessonsSeen = progress("user-1", "unit-a", {
+    state: "IN_PROGRESS",
+    progressPct: 100,
+    lessonsDone: 2,
+    completedLessonIds: ["lesson-a1", "lesson-a2"],
+  });
+
+  it("domina la unidad al ver las lecciones y completar el 70 % de los ejercicios", async () => {
+    const service = createService({
+      unitProgress: [twoLessonsSeen],
+      exerciseCounts: { "unit-a": 10 },
+      completedExercises: { "user-1:unit-a": 7 },
+    });
+
+    await service.recordExerciseActivity("user-1", "U1.1.1");
+
+    expect((await stateOf(service, "U1.1.1"))?.state).toBe("MASTERED");
+    expect((await stateOf(service, "U1.1.1"))?.exercisesDone).toBe(7);
+  });
+
+  it("desbloquea la unidad siguiente al dominar la anterior", async () => {
+    const service = createService({
+      unitProgress: [twoLessonsSeen],
+      exerciseCounts: { "unit-a": 10 },
+      completedExercises: { "user-1:unit-a": 7 },
+    });
+
+    expect((await stateOf(service, "U1.1.2"))?.state).toBe("LOCKED");
+
+    await service.recordExerciseActivity("user-1", "U1.1.1");
+
+    expect((await stateOf(service, "U1.1.2"))?.state).toBe("AVAILABLE");
+  });
+
+  it("no domina por debajo del umbral y deja la unidad en curso", async () => {
+    const service = createService({
+      unitProgress: [twoLessonsSeen],
+      exerciseCounts: { "unit-a": 10 },
+      completedExercises: { "user-1:unit-a": 6 },
+    });
+
+    await service.recordExerciseActivity("user-1", "U1.1.1");
+
+    expect((await stateOf(service, "U1.1.1"))?.state).toBe("IN_PROGRESS");
+  });
+
+  it("no domina si faltan lecciones por ver aunque los ejercicios estén completos", async () => {
+    const service = createService({
+      exerciseCounts: { "unit-a": 4 },
+      completedExercises: { "user-1:unit-a": 4 },
+    });
+
+    await service.recordExerciseActivity("user-1", "U1.1.1");
+
+    expect((await stateOf(service, "U1.1.1"))?.state).toBe("IN_PROGRESS");
+  });
+
+  it("ignora las unidades bloqueadas", async () => {
+    const service = createService({
+      exerciseCounts: { "unit-b": 1 },
+      completedExercises: { "user-1:unit-b": 1 },
+    });
+
+    await service.recordExerciseActivity("user-1", "U1.1.2");
+
+    expect((await stateOf(service, "U1.1.2"))?.state).toBe("LOCKED");
+  });
+
+  it("no degrada una unidad ya dominada", async () => {
+    const service = createService({
+      unitProgress: [masteredA],
+      exerciseCounts: { "unit-a": 10 },
+      completedExercises: { "user-1:unit-a": 0 },
+    });
+
+    await service.recordExerciseActivity("user-1", "U1.1.1");
+
+    expect((await stateOf(service, "U1.1.1"))?.state).toBe("MASTERED");
+  });
+});

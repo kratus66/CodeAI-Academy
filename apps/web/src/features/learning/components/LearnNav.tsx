@@ -16,6 +16,7 @@ interface NavItem {
 
 const ITEMS: readonly NavItem[] = [
   { href: "/learn", label: "Aprender", piece: "I" },
+  { href: "/learn/lab", label: "Laboratorio", piece: "J" },
   { href: "/learn/review", label: "Repaso", piece: "S" },
   { href: "/learn/projects", label: "Proyectos", piece: "T" },
   { href: "/learn/insights", label: "Métricas", piece: "Z" },

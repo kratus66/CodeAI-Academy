@@ -3,11 +3,16 @@ import type {
   ReviewProjectSubmissionInput,
 } from "@codeai/shared";
 import { DEFAULT_PROJECT_RUBRIC } from "@codeai/shared";
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 
 import { InMemoryProjectsRepository } from "./in-memory-project.repository";
 import type { ProjectRecord } from "./project.repository";
+import type { ProgressService } from "../progress/progress.service";
 import { ProjectsService } from "./projects.service";
 import { InvalidRubricError } from "./rubric";
 
@@ -668,5 +673,66 @@ describe("ProjectsService — publicación y portafolio", () => {
     await expect(service.getMyPortfolio("no-existe")).rejects.toMatchObject({
       status: 404,
     });
+  });
+});
+
+describe("ProjectsService — desbloqueo por nivel", () => {
+  function gated(currentStage: number, mastered: number, bypass = false) {
+    const { repo } = setup();
+    const progress = {
+      getUnlockContext: async () => ({
+        currentStage,
+        stages: [{ stageId: currentStage, total: 10, mastered }],
+        bypass,
+      }),
+    } as unknown as ProgressService;
+
+    return new ProjectsService(repo, CLOCK, progress);
+  }
+
+  const query = { page: 1, pageSize: 20 };
+
+  it("marca como bloqueado el proyecto de una etapa que aún no se alcanza", async () => {
+    const list = await gated(0, 2).listProjects(query, AUTHOR);
+    const bySlug = Object.fromEntries(list.data.map((item) => [item.slug, item.unlock]));
+
+    expect(bySlug["entorno-reproducible"]?.unlocked).toBe(false);
+    expect(bySlug["retos-de-logica-en-consola"]?.unlocked).toBe(false);
+  });
+
+  it("abre el proyecto de la etapa en curso al llegar al 60 % de dominio", async () => {
+    const list = await gated(0, 6).listProjects(query, AUTHOR);
+    const bySlug = Object.fromEntries(list.data.map((item) => [item.slug, item.unlock]));
+
+    expect(bySlug["entorno-reproducible"]).toEqual({ unlocked: true, reason: null });
+    expect(bySlug["retos-de-logica-en-consola"]?.unlocked).toBe(false);
+  });
+
+  it("rechaza con 422 una entrega a un proyecto bloqueado y no la guarda", async () => {
+    const service = gated(0, 1);
+
+    await expect(
+      service.submit("entorno-reproducible", { repoUrl: "https://github.com/ada/x" }, AUTHOR),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect((await service.getProject("entorno-reproducible", AUTHOR)).mySubmissions).toHaveLength(0);
+  });
+
+  it("deja entregar a un instructor aunque el proyecto esté bloqueado", async () => {
+    const service = gated(0, 0, true);
+    const submission = await service.submit(
+      "retos-de-logica-en-consola",
+      { repoUrl: "https://github.com/ada/x" },
+      AUTHOR,
+      "INSTRUCTOR",
+    );
+
+    expect(submission.status).toBe("SUBMITTED");
+  });
+
+  it("no aplica ninguna regla sin servicio de progreso", async () => {
+    const { service } = setup();
+    const detail = await service.getProject("entorno-reproducible", AUTHOR);
+
+    expect(detail.unlock).toBeUndefined();
   });
 });

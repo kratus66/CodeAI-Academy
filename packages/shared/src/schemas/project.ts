@@ -4,6 +4,7 @@ import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from "../constants/pagination";
 import { paginatedSchema } from "./common";
 import { CURRICULUM_STAGE_COUNT } from "./content";
 import { competencyCodeSchema } from "./progress";
+import { unlockStatusSchema } from "./unlock";
 import { avatarUrlSchema } from "./user";
 
 /**
@@ -387,6 +388,8 @@ export const projectSummarySchema = z.object({
     .min(1, "El proyecto debe declarar al menos un requisito"),
   isPublished: z.boolean(),
   submitted: z.boolean(),
+  /** Ausente = sin regla de desbloqueo (p. ej. un cliente anterior). */
+  unlock: unlockStatusSchema.optional(),
 });
 
 export type ProjectSummary = z.infer<typeof projectSummarySchema>;

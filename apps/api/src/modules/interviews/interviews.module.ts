@@ -6,6 +6,7 @@ import { AiModule } from "../ai/ai.module";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { AiService } from "../ai/ai.service";
 import { AuthModule } from "../auth/auth.module";
+import { ProgressModule } from "../progress/progress.module";
 import { PrismaInterviewRepository } from "./prisma-interview.repository";
 import { INTERVIEW_AI } from "./interview-ai.port";
 import { INTERVIEWS_REPOSITORY } from "./interview.repository";
@@ -21,7 +22,7 @@ import { INTERVIEWS_CLOCK, InterviewsService } from "./interviews.service";
  * filtro de fuga y degradación viven allí, no aquí.
  */
 @Module({
-  imports: [PrismaModule, AuthModule, AiModule],
+  imports: [PrismaModule, AuthModule, AiModule, ProgressModule],
   controllers: [InterviewsController],
   providers: [
     InterviewsService,

@@ -96,6 +96,29 @@ export function stateAfterLessonSeen(state: UnitState, progressPct: number): Uni
   return progressPct > 0 ? "IN_PROGRESS" : "AVAILABLE";
 }
 
+/** Porcentaje de ejercicios publicados que hay que completar para dominar una unidad. */
+export const UNIT_MASTERY_EXERCISE_PCT = 70;
+
+/**
+ * Una unidad se domina al ver todas sus lecciones y completar el 70 % de sus
+ * ejercicios (al menos uno si los tiene). Es la única forma de llegar a
+ * `MASTERED`, y `MASTERED` es lo que desbloquea la unidad siguiente.
+ */
+export function isUnitMastered(input: {
+  lessonsDone: number;
+  lessonsTotal: number;
+  exercisesDone: number;
+  exercisesTotal: number;
+}): boolean {
+  const lessonsOk = input.lessonsDone >= input.lessonsTotal;
+  const needed =
+    input.exercisesTotal === 0
+      ? 0
+      : Math.max(1, Math.ceil((input.exercisesTotal * UNIT_MASTERY_EXERCISE_PCT) / 100));
+
+  return lessonsOk && input.exercisesDone >= needed;
+}
+
 /**
  * Contadores de `GET /api/progress/overview`. El contrato publica cuatro
  * campos, así que `AVAILABLE` se pliega en `inProgress` (unidad desbloqueada

@@ -2,12 +2,12 @@
 
 import type { LessonContentBlock, LessonDetail } from "@codeai/shared";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { TutorPanel } from "@/features/ai/components/TutorPanel";
 import { formatMinutes } from "@/features/learning/lib/format";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
-import { ApiError, contentApi } from "@/lib/api-client";
+import { ApiError, contentApi, progressApi } from "@/lib/api-client";
 
 const LINK_CLASSES =
   "font-medium text-accent underline-offset-4 transition hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink";
@@ -32,6 +32,8 @@ interface LessonReaderProps {
   readonly slug: string;
   /** Inyectable en pruebas; por defecto llama a `GET /api/content/lessons/:slug`. */
   readonly loadLesson?: LoadLesson;
+  /** Inyectable en pruebas; por defecto resuelve la unidad y llama a `complete-lesson`. */
+  readonly completeLesson?: (unitCode: string, lessonId: string) => Promise<void>;
 }
 
 /** Una URL mal formada y una lección inexistente son el mismo caso para el estudiante. */
@@ -130,10 +132,81 @@ function ContentBlock({ block }: { readonly block: LessonContentBlock }) {
   }
 }
 
+type CompleteLesson = (unitCode: string, lessonId: string) => Promise<void>;
+
+/** Resuelve el id de la unidad por su código y registra la lección como vista. */
+const defaultCompleteLesson: CompleteLesson = async (unitCode, lessonId) => {
+  const units = await progressApi.listUnits();
+  const unit = units.find((candidate) => candidate.unitCode === unitCode);
+
+  if (!unit) {
+    throw new Error("Unidad sin progreso");
+  }
+
+  await progressApi.completeLesson(unit.unitId, lessonId);
+};
+
+interface CompleteLessonButtonProps {
+  readonly lessonId: string;
+  readonly unitCode: string;
+  readonly complete: CompleteLesson;
+}
+
+/**
+ * Registrar la lección como vista es lo que, junto con los ejercicios, permite
+ * dominar la unidad y desbloquear la siguiente.
+ */
+function CompleteLessonButton({ lessonId, unitCode, complete }: CompleteLessonButtonProps) {
+  const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
+
+  async function handleClick() {
+    setStatus("saving");
+
+    try {
+      await complete(unitCode, lessonId);
+      setStatus("done");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <section aria-labelledby="completar" className="rounded-2xl border border-line/70 bg-ink-card/40 p-5">
+      <h2 id="completar" className="text-base font-semibold text-white">
+        ¿Terminaste la lección?
+      </h2>
+      <p className="mt-1 text-sm text-slate-400">
+        Márcala como completada: junto con los ejercicios de la unidad, es lo que la
+        da por dominada y abre la siguiente.
+      </p>
+      {status === "done" ? (
+        <p role="status" className="mt-3 text-sm font-medium text-emerald-200">
+          ✓ Lección completada
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={status === "saving"}
+          className={BUTTON_CLASSES}
+        >
+          {status === "saving" ? "Guardando…" : "Marcar como completada"}
+        </button>
+      )}
+      {status === "error" ? (
+        <p role="alert" className="mt-3 text-sm text-rose-200">
+          No pudimos registrar la lección. Inténtalo de nuevo.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 /** Lección publicada: bloques de contenido, los 7 pasos y recursos verificados. */
 export function LessonReader({
   slug,
   loadLesson = contentApi.getLesson,
+  completeLesson = defaultCompleteLesson,
 }: LessonReaderProps) {
   const load = useCallback(
     (signal: AbortSignal) => loadLesson(slug, signal),
@@ -311,6 +384,12 @@ export function LessonReader({
           </ul>
         )}
       </section>
+
+      <CompleteLessonButton
+        lessonId={lesson.id}
+        unitCode={lesson.unitCode}
+        complete={completeLesson}
+      />
 
       <TutorPanel lessonId={lesson.id} />
 

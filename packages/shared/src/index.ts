@@ -15,4 +15,5 @@ export * from "./schemas/progress";
 export * from "./schemas/project";
 export * from "./schemas/review";
 export * from "./schemas/sandbox";
+export * from "./schemas/unlock";
 export * from "./schemas/user";

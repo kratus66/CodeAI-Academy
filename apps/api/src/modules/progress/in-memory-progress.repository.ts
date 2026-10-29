@@ -27,6 +27,10 @@ export interface ProgressDataset {
   lessons: readonly LessonLookup[];
   unitProgress: readonly UnitProgressSeed[];
   competencyProgress: readonly CompetencyProgressSeed[];
+  /** Ejercicios publicados por `unitId` (pruebas de dominio de unidad). */
+  exerciseCounts?: Readonly<Record<string, number>>;
+  /** Ejercicios completados por `userId:unitId`. */
+  completedExercises?: Readonly<Record<string, number>>;
 }
 
 export const EMPTY_PROGRESS_DATASET: ProgressDataset = {
@@ -79,6 +83,15 @@ export class InMemoryProgressRepository implements ProgressRepository {
       .map(({ userId: _owner, ...record }) => ({ ...record }));
   }
 
+  /** Pruebas: ejercicios publicados y completados por unidad, fijados en el dataset. */
+  async countPublishedExercises(unitId: string): Promise<number> {
+    return this.dataset.exerciseCounts?.[unitId] ?? 0;
+  }
+
+  async countCompletedExercises(userId: string, unitId: string): Promise<number> {
+    return this.dataset.completedExercises?.[`${userId}:${unitId}`] ?? 0;
+  }
+
   async saveUnitProgress(input: SaveUnitProgressInput): Promise<UnitProgressRecord> {
     const rowKey = keyOf(input.userId, input.unitId);
     const existing = this.rows.get(rowKey);
@@ -88,11 +101,12 @@ export class InMemoryProgressRepository implements ProgressRepository {
       state: input.state,
       progressPct: input.progressPct,
       lessonsDone: input.lessonsDone,
-      exercisesDone: existing?.exercisesDone ?? 0,
+      exercisesDone: input.exercisesDone ?? existing?.exercisesDone ?? 0,
       bestScore: existing?.bestScore ?? null,
       completedLessonIds: [...input.completedLessonIds],
       lastActivityAt: input.lastActivityAt,
-      completedAt: existing?.completedAt ?? null,
+      completedAt:
+        input.completedAt === undefined ? (existing?.completedAt ?? null) : input.completedAt,
     };
 
     this.rows.set(rowKey, saved);

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { PrismaModule } from "../../database/prisma.module";
 import { AuthModule } from "../auth/auth.module";
+import { ProgressModule } from "../progress/progress.module";
 import { PortfolioController } from "./portfolio.controller";
 import { PrismaProjectsRepository } from "./prisma-project.repository";
 import { PROJECTS_REPOSITORY } from "./project.repository";
@@ -17,7 +18,7 @@ import { PROJECTS_CLOCK, ProjectsService } from "./projects.service";
  * `JwtAuthGuard` y `RolesGuard`.
  */
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, ProgressModule],
   controllers: [ProjectsController, PortfolioController],
   providers: [
     ProjectsService,

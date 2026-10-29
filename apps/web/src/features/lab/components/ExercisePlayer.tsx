@@ -55,13 +55,18 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
 
   if (state.status === "error") {
     const missing = state.error instanceof ApiError && [400, 404].includes(state.error.status);
+    const locked = state.error instanceof ApiError && state.error.status === 422;
 
     return (
       <div role="alert" className="rounded-2xl border border-line/70 bg-ink-card/40 px-5 py-6 text-sm">
         <p className="font-medium text-slate-200">
-          {missing ? "No encontramos este ejercicio." : "No pudimos cargar el ejercicio. Inténtalo de nuevo en unos segundos."}
+          {locked
+            ? "🔒 Este laboratorio está bloqueado: domina los prerrequisitos de la unidad para abrirlo."
+            : missing
+              ? "No encontramos este ejercicio."
+              : "No pudimos cargar el ejercicio. Inténtalo de nuevo en unos segundos."}
         </p>
-        {missing ? (
+        {missing || locked ? (
           <Link href={`/learn/units/${unitCode}`} className={`${LINK_CLASSES} mt-4 inline-block`}>
             Volver a la unidad
           </Link>
