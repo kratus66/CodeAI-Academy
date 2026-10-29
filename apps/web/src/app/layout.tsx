@@ -66,6 +66,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html
       lang="es"
+      data-scroll-behavior="smooth"
       className={`scroll-smooth ${fontDisplay.variable} ${fontSans.variable} ${fontMono.variable}`}
     >
       <body className="flex min-h-screen flex-col bg-ink font-sans text-slate-100 antialiased">

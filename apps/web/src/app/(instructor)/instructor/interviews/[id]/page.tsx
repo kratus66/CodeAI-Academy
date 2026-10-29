@@ -10,18 +10,18 @@ export const metadata: Metadata = {
 };
 
 interface InstructorInterviewPageProps {
-  readonly params: { readonly id: string };
+  readonly params: Promise<{ readonly id: string }>;
 }
 
 /** Bandeja de revisión de una entrevista; el rol lo exige también la API. */
-export default function InstructorInterviewPage({
+export default async function InstructorInterviewPage({
   params,
 }: InstructorInterviewPageProps) {
   return (
     <SessionGate>
       <main className="flex-1 py-10 sm:py-14">
         <Container>
-          <InterviewReport sessionId={params.id} instructor />
+          <InterviewReport sessionId={(await params).id} instructor />
         </Container>
       </main>
     </SessionGate>

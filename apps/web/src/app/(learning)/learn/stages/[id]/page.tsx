@@ -9,13 +9,13 @@ export const metadata: Metadata = {
 };
 
 interface StagePageProps {
-  readonly params: { readonly id: string };
+  readonly params: Promise<{ readonly id: string }>;
 }
 
 /**
  * El `id` se pasa como texto tal cual llega: `contentApi.getStage` acepta
  * `number | string` y es la API quien responde `400` ante un segmento inválido.
  */
-export default function StagePage({ params }: StagePageProps) {
-  return <StageOutline stageId={params.id} />;
+export default async function StagePage({ params }: StagePageProps) {
+  return <StageOutline stageId={(await params).id} />;
 }

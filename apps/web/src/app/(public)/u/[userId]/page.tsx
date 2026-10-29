@@ -9,16 +9,16 @@ export const metadata: Metadata = {
 };
 
 interface PublicPortfolioPageProps {
-  readonly params: { readonly userId: string };
+  readonly params: Promise<{ readonly userId: string }>;
 }
 
 /** Ruta pública: no exige sesión y sólo muestra lo que el autor publicó. */
-export default function PublicPortfolioPage({
+export default async function PublicPortfolioPage({
   params,
 }: PublicPortfolioPageProps) {
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-14 sm:px-8">
-      <PublicPortfolio userId={params.userId} />
+      <PublicPortfolio userId={(await params).userId} />
     </main>
   );
 }

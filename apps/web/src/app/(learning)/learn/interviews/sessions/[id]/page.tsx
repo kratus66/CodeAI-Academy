@@ -9,11 +9,11 @@ export const metadata: Metadata = {
 };
 
 interface InterviewReportPageProps {
-  readonly params: { readonly id: string };
+  readonly params: Promise<{ readonly id: string }>;
 }
 
-export default function InterviewReportPage({
+export default async function InterviewReportPage({
   params,
 }: InterviewReportPageProps) {
-  return <InterviewReport sessionId={params.id} />;
+  return <InterviewReport sessionId={(await params).id} />;
 }

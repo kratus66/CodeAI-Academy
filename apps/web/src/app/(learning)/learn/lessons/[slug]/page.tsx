@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 };
 
 interface LessonPageProps {
-  readonly params: { readonly slug: string };
+  readonly params: Promise<{ readonly slug: string }>;
 }
 
 /** Sin lecciones sembradas todavía, un slug inexistente cae en el 404 de la API. */
-export default function LessonPage({ params }: LessonPageProps) {
-  return <LessonReader slug={params.slug} />;
+export default async function LessonPage({ params }: LessonPageProps) {
+  return <LessonReader slug={(await params).slug} />;
 }

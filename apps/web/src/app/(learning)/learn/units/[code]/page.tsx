@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 };
 
 interface UnitPageProps {
-  readonly params: { readonly code: string };
+  readonly params: Promise<{ readonly code: string }>;
 }
 
 /** El `code` llega tal cual: la API responde `400` si no es un código válido. */
-export default function UnitPage({ params }: UnitPageProps) {
-  return <UnitView code={params.code} />;
+export default async function UnitPage({ params }: UnitPageProps) {
+  return <UnitView code={(await params).code} />;
 }

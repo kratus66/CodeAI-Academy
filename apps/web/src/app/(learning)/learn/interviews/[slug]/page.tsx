@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 };
 
 interface InterviewRoomPageProps {
-  readonly params: { readonly slug: string };
+  readonly params: Promise<{ readonly slug: string }>;
 }
 
-export default function InterviewRoomPage({ params }: InterviewRoomPageProps) {
-  return <InterviewRoom scenarioSlug={params.slug} />;
+export default async function InterviewRoomPage({ params }: InterviewRoomPageProps) {
+  return <InterviewRoom scenarioSlug={(await params).slug} />;
 }

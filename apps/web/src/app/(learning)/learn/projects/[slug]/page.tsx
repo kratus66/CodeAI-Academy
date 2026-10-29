@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 };
 
 interface ProjectPageProps {
-  readonly params: { readonly slug: string };
+  readonly params: Promise<{ readonly slug: string }>;
 }
 
-export default function ProjectPage({ params }: ProjectPageProps) {
-  return <ProjectWorkspace slug={params.slug} />;
+export default async function ProjectPage({ params }: ProjectPageProps) {
+  return <ProjectWorkspace slug={(await params).slug} />;
 }
