@@ -1,7 +1,16 @@
 import { Container } from "@/components/layout/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
+import { cn } from "@/lib/cn";
+
 import { LEVELS, TOTAL_HOURS_LABEL, stagesByLevel } from "../data/path";
+
+const LEVEL_TINT = {
+  1: "tint-i",
+  2: "tint-s",
+  3: "tint-t",
+  4: "tint-l",
+} as const;
 
 export function LearningPath() {
   return (
@@ -32,7 +41,7 @@ export function LearningPath() {
                 {stagesByLevel(level.number).map((stage) => (
                   <li
                     key={stage.code}
-                    className="rounded-2xl border border-line bg-ink-soft/60 p-5 transition hover:border-accent/40 hover:bg-ink-soft"
+                    className={cn("glass rounded-2xl p-5", LEVEL_TINT[level.number])}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-xs text-accent">

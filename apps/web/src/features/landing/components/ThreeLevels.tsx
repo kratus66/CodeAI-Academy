@@ -4,6 +4,12 @@ import { cn } from "@/lib/cn";
 
 import { AI_LEVELS } from "../data/content";
 
+const LEVEL_TINT = {
+  A: "tint-i",
+  B: "tint-t",
+  C: "tint-l",
+} as const;
+
 export function ThreeLevels() {
   return (
     <section id="problema" className="border-b border-line/60 py-20 sm:py-24">
@@ -19,10 +25,9 @@ export function ThreeLevels() {
             <article
               key={level.code}
               className={cn(
-                "relative flex flex-col rounded-2xl border p-6",
-                level.highlighted
-                  ? "border-accent/50 bg-accent/[0.06] shadow-glow"
-                  : "border-line bg-ink-soft/50",
+                "glass flex flex-col rounded-2xl p-6",
+                LEVEL_TINT[level.code],
+                level.highlighted && "shadow-glow",
               )}
             >
               <div className="flex items-center justify-between gap-3">

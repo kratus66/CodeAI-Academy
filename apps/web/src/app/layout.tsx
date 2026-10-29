@@ -1,11 +1,31 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
+
+import { GlowTracker } from "@/components/effects/GlowTracker";
+import { TetrisBackground } from "@/components/effects/TetrisBackground";
 
 import { SessionProvider } from "@/features/auth/context/SessionProvider";
 import { SiteFooter } from "@/features/landing/components/SiteFooter";
 import { SiteHeader } from "@/features/landing/components/SiteHeader";
 
 import "./globals.css";
+
+const fontDisplay = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
+const fontSans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const fontMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 const DESCRIPTION =
   "Formación profesional en desarrollo de software con IA: 12 etapas, 4 niveles y 10 competencias obligatorias para comprender, construir, probar, desplegar y auditar aplicaciones asistidas por IA.";
@@ -44,7 +64,10 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="es" className="scroll-smooth">
+    <html
+      lang="es"
+      className={`scroll-smooth ${fontDisplay.variable} ${fontSans.variable} ${fontMono.variable}`}
+    >
       <body className="flex min-h-screen flex-col bg-ink font-sans text-slate-100 antialiased">
         <SessionProvider>
           <a
@@ -53,6 +76,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
           >
             Saltar al contenido
           </a>
+          <TetrisBackground />
+          <GlowTracker />
           <SiteHeader />
           <div className="flex-1">{children}</div>
           <SiteFooter />

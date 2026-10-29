@@ -5,6 +5,7 @@ import { AI_HISTORY_MAX, AI_MESSAGE_MAX } from "@codeai/shared";
 import { useEffect, useId, useState } from "react";
 import type { KeyboardEvent } from "react";
 
+import { TetrisLoader } from "@/components/effects/TetrisLoader";
 import { aiApi, ApiError } from "@/lib/api-client";
 
 const BUTTON_CLASSES =
@@ -133,12 +134,17 @@ export function TutorPanel({ lessonId, askTutor = aiApi.tutor, loadUsage = aiApi
               key={entry.id}
               className={
                 entry.role === "user"
-                  ? "rounded-xl border border-line/70 bg-ink-card/40 px-4 py-3 text-sm text-slate-200"
-                  : "rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-slate-100"
+                  ? "glass animate-rise rounded-xl px-4 py-3 text-sm text-slate-200"
+                  : "glass tint-t animate-rise rounded-xl !border-accent/40 px-4 py-3 text-sm text-slate-100"
               }
             >
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
                 {entry.role === "user" ? "Tú" : "Tutor"}
+                {entry.role === "assistant" && entry.source === "fallback" ? (
+                  <span className="ml-2 rounded-full border border-amber-300/30 px-2 py-0.5 text-[10px] normal-case tracking-normal text-amber-200">
+                    Pista general
+                  </span>
+                ) : null}
               </p>
               <p className="mt-1 whitespace-pre-wrap leading-relaxed">{entry.content}</p>
               {entry.source === "fallback" ? <p className="mt-2 text-xs text-slate-400">{FALLBACK_NOTE}</p> : null}
@@ -160,7 +166,8 @@ export function TutorPanel({ lessonId, askTutor = aiApi.tutor, loadUsage = aiApi
       ) : null}
 
       {pending ? (
-        <p role="status" aria-live="polite" className="text-sm text-slate-400">
+        <p role="status" aria-live="polite" className="flex items-center gap-3 text-sm text-slate-400">
+          <TetrisLoader />
           El tutor está pensando…
         </p>
       ) : null}

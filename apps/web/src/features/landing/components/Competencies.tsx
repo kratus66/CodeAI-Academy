@@ -20,7 +20,7 @@ export function Competencies() {
           {COMPETENCIES.map((competency) => (
             <li
               key={competency.code}
-              className="rounded-2xl border border-line bg-ink-soft/50 p-5 transition hover:border-accent/30"
+              className="glass rounded-2xl p-5"
             >
               <span className="font-mono text-xs text-accent">
                 {competency.code}

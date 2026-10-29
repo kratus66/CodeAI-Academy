@@ -2,6 +2,7 @@
 
 import type { ProgressOverview as ProgressOverviewData } from "@codeai/shared";
 
+import { CompetencyBoard } from "./CompetencyBoard";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { progressApi } from "@/lib/api-client";
 
@@ -82,7 +83,7 @@ export function ProgressOverview({
     <div className="space-y-6">
       <section
         aria-labelledby="avance-global"
-        className="rounded-2xl border border-line/70 bg-ink-card/50 p-6"
+        className="glass rounded-2xl p-6"
       >
         <h2 id="avance-global" className="text-sm font-medium text-slate-300">
           Avance global
@@ -99,7 +100,7 @@ export function ProgressOverview({
           className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/10"
         >
           <div
-            className="h-full rounded-full bg-accent"
+            className="h-full rounded-full bg-gradient-to-r from-piece-i via-accent to-piece-t shadow-[0_0_12px_rgba(34,211,238,0.6)] transition-[width] duration-700"
             style={{ width: `${overview.overallPct}%` }}
           />
         </div>
@@ -114,14 +115,14 @@ export function ProgressOverview({
         </h2>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: "Dominadas", value: counters.mastered },
-            { label: "En curso", value: counters.inProgress },
-            { label: "Para repasar", value: counters.needsReview },
-            { label: "Bloqueadas", value: counters.locked },
+            { label: "Dominadas", value: counters.mastered, tint: "tint-s" },
+            { label: "En curso", value: counters.inProgress, tint: "tint-i" },
+            { label: "Para repasar", value: counters.needsReview, tint: "tint-o" },
+            { label: "Bloqueadas", value: counters.locked, tint: "tint-t" },
           ].map((counter) => (
             <div
               key={counter.label}
-              className="rounded-2xl border border-line/70 bg-ink-card/40 px-4 py-3"
+              className={`glass rounded-2xl px-4 py-3 ${counter.tint}`}
             >
               <dt className="text-xs uppercase tracking-[0.14em] text-slate-500">
                 {counter.label}
@@ -136,12 +137,13 @@ export function ProgressOverview({
         <h2 id="competencias" className="text-sm font-medium text-slate-300">
           Competencias
         </h2>
+        <CompetencyBoard competencies={competencies} />
         {hasEvidence ? (
           <ul className="grid list-none gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3">
             {competencies.map((entry) => (
               <li
                 key={entry.code}
-                className="flex items-center justify-between gap-3 rounded-xl border border-line/70 bg-ink-card/40 px-4 py-2 text-sm"
+                className="glass flex items-center justify-between gap-3 rounded-xl px-4 py-2 text-sm"
               >
                 <span className="font-medium text-white">{entry.code}</span>
                 <span className="text-slate-400">

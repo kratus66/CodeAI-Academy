@@ -1,6 +1,8 @@
+import { HeroScene } from "@/components/effects/HeroScene";
 import { Container } from "@/components/layout/Container";
 
 import { CRITERION_QUESTIONS } from "../data/content";
+import { HeroBoard } from "./HeroBoard";
 
 const STATS = [
   { value: "12", label: "etapas" },
@@ -23,6 +25,8 @@ export function Hero() {
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[42rem] -translate-x-1/2 rounded-full bg-accent/20 blur-3xl"
       />
+
+      <HeroScene />
 
       <Container className="relative grid gap-16 py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:py-28">
         <div>
@@ -84,6 +88,10 @@ export function Hero() {
               <span className="ml-auto font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
                 criterio-de-egreso
               </span>
+            </div>
+
+            <div className="mt-6">
+              <HeroBoard />
             </div>
 
             <p className="mt-6 font-mono text-sm text-slate-400">
