@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   DEFAULT_ERROR_MESSAGE_BY_CODE,
+  ERROR_CODES,
   ERROR_CODE_BY_HTTP_STATUS,
   errorResponseSchema,
 } from "@codeai/shared";
@@ -58,7 +59,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return {
         status,
         body: {
-          code: this.codeForStatus(status),
+          code: this.codeForPayload(exceptionPayload, status),
           message: this.extractMessage(exceptionPayload, status),
           ...(details ? { details } : {}),
           traceId,
@@ -80,9 +81,41 @@ export class AllExceptionsFilter implements ExceptionFilter {
     return ERROR_CODE_BY_HTTP_STATUS[status] ?? "INTERNAL_ERROR";
   }
 
+  /**
+   * `contratos-api.md` §2 deriva el código del estado HTTP. Un módulo puede
+   * precisar uno del catálogo para la misma familia (p. ej. `INVALID_RANGE` en
+   * un `400`), pero nunca inventar códigos fuera de `ERROR_CODES`.
+   */
+  private codeForPayload(payload: unknown, status: number): ErrorCode {
+    const fallback = this.codeForStatus(status);
+
+    if (typeof payload !== "object" || payload === null) {
+      return fallback;
+    }
+
+    const candidate = (payload as { code?: unknown }).code;
+
+    return typeof candidate === "string" &&
+      (ERROR_CODES as readonly string[]).includes(candidate)
+      ? (candidate as ErrorCode)
+      : fallback;
+  }
+
   private extractDetails(payload: unknown): ErrorDetail[] | undefined {
     if (typeof payload !== "object" || payload === null) {
       return undefined;
+    }
+
+    // Un módulo puede publicar `details` ya estructurados (p. ej.
+    // `INVALID_RANGE`): se prefieren antes que reinterpretar `message`.
+    const explicit = (payload as { details?: unknown }).details;
+
+    if (Array.isArray(explicit)) {
+      const details = explicit.flatMap((entry) => this.toDetail(entry));
+
+      if (details.length > 0) {
+        return details;
+      }
     }
 
     const message = (payload as { message?: unknown }).message;

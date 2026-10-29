@@ -43,7 +43,7 @@
 
 ## 2. Diagrama de contenedores (C4 nivel 2)
 
-### `apps/web` — Next.js 14 (App Router)
+### `apps/web` — Next.js 16 (App Router)
 
 | Aspecto | Decisión |
 |---------|----------|
@@ -172,6 +172,8 @@ la app muestra lecciones y ejercicios
 | `test` | PostgreSQL efímero | Mock determinista | Mock | CI |
 | `staging` | PostgreSQL gestionado | Real con límite de gasto | Contenedores efímeros | Validación |
 | `production` | PostgreSQL gestionado + backups | Real con presupuesto y alertas | Contenedores efímeros aislados | Usuarios |
+
+**Despliegue (S11).** `docker-compose.prod.yml` levanta `postgres`, `api` y `web` con los `Dockerfile` multi-etapa de `apps/api` y `apps/web` (contexto: raíz del monorepo). Los secretos llegan por `.env.prod`, fuera del repositorio. Respaldos, restauración y checklist en [`runbook-operacion.md`](../05-orquestacion/runbook-operacion.md). `production` exige `JWT_SECRET` propio, `AI_PROVIDER≠mock` y `SANDBOX_MODE=docker`; este último aún no tiene adaptador.
 
 ---
 

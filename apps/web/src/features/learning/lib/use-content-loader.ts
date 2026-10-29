@@ -27,11 +27,17 @@ export function useContentLoader<T>(
 ): ContentLoader<T> {
   const [state, setState] = useState<ContentState<T>>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState({ load, attempt });
+
+  // Reinicio al cambiar `load` o pedir otro intento: se ajusta durante el
+  // render, no en el efecto, para no encadenar un render extra por cada carga.
+  if (loaded.load !== load || loaded.attempt !== attempt) {
+    setLoaded({ load, attempt });
+    setState({ status: "loading" });
+  }
 
   useEffect(() => {
     const controller = new AbortController();
-
-    setState({ status: "loading" });
 
     load(controller.signal)
       .then((data) => {

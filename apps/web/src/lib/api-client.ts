@@ -1,10 +1,13 @@
 import {
+  DEFAULT_ANALYTICS_RANGE,
   DEFAULT_ERROR_MESSAGE_BY_CODE,
   ERROR_CODE_BY_HTTP_STATUS,
   aiExplainErrorResponseSchema,
   aiTutorResponseSchema,
   aiUsageResponseSchema,
+  cohortAnalyticsSchema,
   competencyProgressSchema,
+  errorBreakdownSchema,
   errorResponseSchema,
   exerciseDetailResponseSchema,
   exerciseListResponseSchema,
@@ -32,6 +35,7 @@ import {
   stageSummarySchema,
   submissionListResponseSchema,
   submissionResponseSchema,
+  studentSummarySchema,
   unitDetailSchema,
   unitProgressSummarySchema,
   userResponseSchema,
@@ -41,9 +45,12 @@ import type {
   AiTutorRequest,
   AiTutorResponse,
   AiUsageResponse,
+  AnalyticsRange,
+  CohortAnalytics,
   CompetencyProgress,
   CreateProjectSubmissionInput,
   CreateSubmissionInput,
+  ErrorBreakdown,
   ErrorCode,
   ErrorDetail,
   ExerciseDetail,
@@ -83,6 +90,7 @@ import type {
   StageDetail,
   StageSummary,
   StartInterviewSessionInput,
+  StudentSummary,
   SubmissionSummary,
   UnitDetail,
   UnitProgressSummary,
@@ -228,6 +236,51 @@ export const authApi = {
     await apiRequest<void>("/auth/logout", { method: "POST" });
   },
 };
+
+/**
+ * Analítica (`contratos-api.md` §4.13). `me/*` siempre se refiere al usuario de
+ * la cookie de sesión; `cohort` exige rol `INSTRUCTOR`/`ADMIN` y la API responde
+ * `403` al resto. El rango viaja siempre explícito para que el panel muestre
+ * exactamente el periodo que tiene seleccionado.
+ */
+export const analyticsApi = {
+  async getSummary(
+    range: AnalyticsRange = DEFAULT_ANALYTICS_RANGE,
+    signal?: AbortSignal,
+  ): Promise<StudentSummary> {
+    return requestParsed(
+      studentSummarySchema,
+      analyticsPath("/analytics/me/summary", range),
+      signal,
+    );
+  },
+
+  async getErrors(
+    range: AnalyticsRange = DEFAULT_ANALYTICS_RANGE,
+    signal?: AbortSignal,
+  ): Promise<ErrorBreakdown> {
+    return requestParsed(
+      errorBreakdownSchema,
+      analyticsPath("/analytics/me/errors", range),
+      signal,
+    );
+  },
+
+  async getCohort(
+    range: AnalyticsRange = DEFAULT_ANALYTICS_RANGE,
+    signal?: AbortSignal,
+  ): Promise<CohortAnalytics> {
+    return requestParsed(
+      cohortAnalyticsSchema,
+      analyticsPath("/analytics/cohort", range),
+      signal,
+    );
+  },
+};
+
+function analyticsPath(path: string, range: AnalyticsRange): string {
+  return `${path}?range=${encodeURIComponent(range)}`;
+}
 
 /** Catálogo paginado de etapas publicadas que consume la web. */
 export interface StageCatalogPage {

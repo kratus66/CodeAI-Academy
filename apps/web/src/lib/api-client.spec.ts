@@ -7,6 +7,7 @@ import type { SandboxRunRequest } from "@codeai/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  analyticsApi,
   aiApi,
   ApiError,
   authApi,
@@ -1487,4 +1488,118 @@ describe("interviewsApi", () => {
     });
   });
 });
+
+const STUDENT_SUMMARY = {
+  range: "30d",
+  overallPct: 34.5,
+  activeDays: 6,
+  lastActivityAt: "2026-10-28T10:00:00.000Z",
+  units: { mastered: 1, inProgress: 2, needsReview: 0, locked: 3, total: 6 },
+  submissions: { total: 4, passed: 3, failed: 1, avgScore: 78.5 },
+  reviews: { due: 2, completed: 5, lapses: 1 },
+  ai: { calls: 7, costUsd: 0.12, budgetLevel: "ok" },
+} as const;
+
+const ERROR_BREAKDOWN = {
+  range: "30d",
+  total: 4,
+  byCategory: [
+    { category: "syntax", count: 3, share: 0.75 },
+    { category: "logic", count: 1, share: 0.25 },
+  ],
+  byConcept: [{ conceptSlug: "variables", conceptName: "Variables", count: 3 }],
+} as const;
+
+const COHORT = {
+  range: "30d",
+  students: { total: 2, active: 1 },
+  avgOverallPct: 41.5,
+  stageCompletion: [
+    { stage: "E0", completedPct: 50, studentsAtStage: 1 },
+    { stage: "E1", completedPct: 0, studentsAtStage: 1 },
+  ],
+  topErrors: [{ category: "syntax", count: 6, share: 0.6 }],
+  reviewBacklog: 9,
+  atRisk: [
+    {
+      userId: "usr_2",
+      displayName: "Beto",
+      overallPct: 12.5,
+      daysSinceActivity: 14,
+    },
+  ],
+} as const;
+
+describe("analyticsApi", () => {
+  it("pide el resumen con el rango por defecto y lo valida", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(STUDENT_SUMMARY));
+
+    const summary = await analyticsApi.getSummary();
+
+    expect(summary.overallPct).toBe(34.5);
+    expect(summary.ai.budgetLevel).toBe("ok");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/analytics/me/summary?range=30d",
+    );
+  });
+
+  it("envía el rango elegido en el desglose de errores", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(ERROR_BREAKDOWN));
+
+    const errors = await analyticsApi.getErrors("7d");
+
+    expect(errors.byCategory[0]?.share).toBe(0.75);
+    expect(errors.byConcept[0]?.conceptSlug).toBe("variables");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/analytics/me/errors?range=7d",
+    );
+  });
+
+  it("desenvuelve los agregados de cohorte", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(COHORT));
+
+    const cohort = await analyticsApi.getCohort("90d");
+
+    expect(cohort.students.total).toBe(2);
+    expect(cohort.atRisk[0]?.displayName).toBe("Beto");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/analytics/cohort?range=90d",
+    );
+  });
+
+  it("propaga el 403 de cohorte como ApiError tipado", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { error: { code: "FORBIDDEN", message: "No tienes permiso", traceId: "trace-403" } },
+        { status: 403 },
+      ),
+    );
+
+    const error = await captureApiError(analyticsApi.getCohort());
+
+    expect(error.status).toBe(403);
+    expect(error.code).toBe("FORBIDDEN");
+  });
+
+  it("propaga el 400 de un rango inválido sin inventar datos", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "INVALID_RANGE",
+            message: "El rango no es válido",
+            traceId: "trace-400",
+          },
+        },
+        { status: 400 },
+      ),
+    );
+
+    const error = await captureApiError(analyticsApi.getSummary("7d"));
+
+    expect(error.status).toBe(400);
+    expect(error.code).toBe("INVALID_RANGE");
+  });
+});
+
 

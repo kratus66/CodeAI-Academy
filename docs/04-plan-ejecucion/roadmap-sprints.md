@@ -32,7 +32,7 @@
 | **S8** | Capa de IA intercambiable y tutor socrático | E8–E9 | `ai` | ✅ implementado y verificado (2026-10-28); desbloquea S10 |
 | **S9** | Proyectos, rúbricas y portafolio | E9–E11 | `projects` | ✅ completado (18/18 tareas; 18/18 criterios; HTTP 16/16) |
 | **S10** | Simulaciones de entrevista | E11 | `interviews` | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
-| **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | ⬜ ficha |
+| **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | 🔄 14/16 tareas; lanzamiento bloqueado por el adaptador de sandbox `docker` |
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >

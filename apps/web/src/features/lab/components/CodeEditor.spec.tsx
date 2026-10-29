@@ -88,7 +88,7 @@ describe("CodeEditor", () => {
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
 
-    function BrokenSurface(): JSX.Element {
+    function BrokenSurface(): never {
       throw new Error("chunk caído");
     }
 

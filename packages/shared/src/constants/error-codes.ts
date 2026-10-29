@@ -4,6 +4,7 @@
  */
 export const ERROR_CODES = [
   "VALIDATION_ERROR",
+  "INVALID_RANGE",
   "UNAUTHENTICATED",
   "FORBIDDEN",
   "NOT_FOUND",
@@ -32,6 +33,7 @@ export const ERROR_CODE_BY_HTTP_STATUS: Readonly<Record<number, ErrorCode>> = {
 /** Mensajes por defecto en español, usados cuando la excepción no aporta uno. */
 export const DEFAULT_ERROR_MESSAGE_BY_CODE: Readonly<Record<ErrorCode, string>> = {
   VALIDATION_ERROR: "Datos de entrada inválidos",
+  INVALID_RANGE: "El rango solicitado no es válido",
   UNAUTHENTICATED: "Debes iniciar sesión para continuar",
   FORBIDDEN: "No tienes permiso para realizar esta acción",
   NOT_FOUND: "El recurso solicitado no existe",

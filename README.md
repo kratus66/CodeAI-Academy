@@ -15,7 +15,7 @@ CodeAI Academy es a la vez:
 |------|-------------|--------|
 | **A** | Documentación fuente de verdad (`docs/`) | ✅ completada |
 | **B** | Roadmap de sprints y fichas de tareas atómicas | ✅ completada |
-| **C** | Construcción de la plataforma (S0 → S11) | 🔄 en curso — **S0–S2 ✅ · S3 🔄 (falta visto bueno pedagógico humano) · S4–S10 ✅** |
+| **C** | Construcción de la plataforma (S0 → S11) | 🔄 en curso — **S0–S2 ✅ · S3 🔄 (falta visto bueno pedagógico humano) · S4–S10 ✅ · S11 🔄 (14/16)** |
 
 ### Estado de construcción
 
@@ -32,9 +32,11 @@ CodeAI Academy es a la vez:
 | **S8** | Capa de IA y tutor socrático | ✅ implementado y verificado (2026-10-28) |
 | **S9** | Proyectos, rúbricas y portafolio | ✅ completado (18/18 criterios; verificación HTTP 16/16) |
 | **S10** | Simulaciones de entrevista | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
-| **S11** | Analítica, rendimiento y lanzamiento | ⬜ ficha redactada, sin código |
+| **S11** | Analítica, rendimiento y lanzamiento | 🔄 14/16 tareas (T1–T14 ✅; T15 despliegue construido pero sin imágenes compiladas; T16 con bloqueo de lanzamiento: sandbox `docker` sin adaptador). Ver [`sprint-11`](docs/04-plan-ejecucion/sprints/sprint-11-analitica-lanzamiento.md) |
 
 **Contenido sembrado (2026-10-28):** 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas y 34 recursos. El seed ya trae 3.189 ejercicios publicados (E0–E11, sin revisión humana; el sandbox actual es `mock`, así que los laboratorios de E0–E2 no certifican; E3–E11 solo tienen quizzes, tarjetas y reflexiones), deuda pedagógica declarada en [`banco-ejercicios.md`](docs/02-contenido/banco-ejercicios.md) §5. La revisión pedagógica de las lecciones (qué se corrigió y qué sigue abierto) está en [`revision-pedagogica.md`](docs/02-contenido/revision-pedagogica.md).
+
+Operación (respaldos, restauración, despliegue y checklist de producción): [`docs/05-orquestacion/runbook-operacion.md`](docs/05-orquestacion/runbook-operacion.md).
 
 Detalle y criterios de cierre en [`docs/04-plan-ejecucion/roadmap-sprints.md`](docs/04-plan-ejecucion/roadmap-sprints.md).
 
@@ -64,7 +66,7 @@ La documentación en `docs/` es la **fuente de verdad** del proyecto. Antes de e
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | Next.js 14 (App Router) + TypeScript + Tailwind CSS |
+| Frontend | Next.js 16 (App Router) + TypeScript + Tailwind CSS |
 | Backend | NestJS + TypeScript |
 | Base de datos | PostgreSQL + Prisma ORM |
 | Contratos compartidos | `packages/shared` (tipos + esquemas Zod) |
@@ -85,7 +87,7 @@ Detalle y justificación en [`docs/03-arquitectura/stack-tecnologico.md`](docs/0
 ```
 CodeAI Academy/
 ├── apps/
-│   ├── web/            # Next.js 14 — landing pública + app de estudiante
+│   ├── web/            # Next.js 16 — landing pública + app de estudiante
 │   └── api/            # NestJS — REST API + Prisma
 ├── packages/
 │   └── shared/         # Tipos, DTOs y esquemas Zod compartidos

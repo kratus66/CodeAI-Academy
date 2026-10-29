@@ -18,6 +18,7 @@ const ITEMS: readonly NavItem[] = [
   { href: "/learn", label: "Aprender", piece: "I" },
   { href: "/learn/review", label: "Repaso", piece: "S" },
   { href: "/learn/projects", label: "Proyectos", piece: "T" },
+  { href: "/learn/insights", label: "Métricas", piece: "Z" },
   { href: "/learn/interviews", label: "Entrevistas", piece: "L" },
   { href: "/learn/portfolio", label: "Mi portafolio", piece: "O" },
 ];

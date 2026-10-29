@@ -10,6 +10,9 @@ import type {
 } from "@codeai/shared";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
+// Import de valor obligatorio: Nest resuelve `ContentCache` por `design:paramtypes`.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ContentCache } from "./content-cache";
 import type { ContentRepository, Page, PageWindow } from "./content.repository";
 import { CONTENT_REPOSITORY } from "./content.repository";
 
@@ -24,61 +27,92 @@ interface PaginationQuery {
 
 /**
  * Reglas de lectura del catálogo: ventana de paginación, metadatos y `404` para
- * contenido inexistente o no publicado. No conoce Prisma ni HTTP.
+ * contenido inexistente o no publicado. Las lecturas pasan por `ContentCache`:
+ * la segunda petición idéntica no toca la base y una mutación llama a
+ * `invalidateCache()` para que el cambio se vea al instante.
  */
 @Injectable()
 export class ContentService {
   constructor(
     @Inject(CONTENT_REPOSITORY) private readonly repository: ContentRepository,
+    private readonly cache: ContentCache,
   ) {}
 
   async listStages(query: StageListQuery): Promise<StageListResponse> {
-    const page = await this.repository.listStages({
-      ...toWindow(query),
-      ...(query.level === undefined ? {} : { level: query.level }),
-    });
+    const window = toWindow(query);
+    const key = `stages:${query.page}:${query.pageSize}:${query.level ?? "all"}`;
 
-    return toPaginated(page, query);
+    return this.cache.getOrLoad(key, async () =>
+      toPaginated(
+        await this.repository.listStages({
+          ...window,
+          ...(query.level === undefined ? {} : { level: query.level }),
+        }),
+        query,
+      ),
+    );
   }
 
   async getStage(id: number): Promise<StageDetailResponse> {
-    const stage = await this.repository.findStage(id);
+    return this.cache.getOrLoad(`stage:${id}`, async () => {
+      const stage = await this.repository.findStage(id);
 
-    if (!stage) {
-      throw new NotFoundException(STAGE_NOT_FOUND);
-    }
+      if (!stage) {
+        throw new NotFoundException(STAGE_NOT_FOUND);
+      }
 
-    return { stage };
+      return { stage };
+    });
   }
 
   async getUnit(code: string): Promise<UnitDetailResponse> {
-    const unit = await this.repository.findUnit(code);
+    return this.cache.getOrLoad(`unit:${code}`, async () => {
+      const unit = await this.repository.findUnit(code);
 
-    if (!unit) {
-      throw new NotFoundException(UNIT_NOT_FOUND);
-    }
+      if (!unit) {
+        throw new NotFoundException(UNIT_NOT_FOUND);
+      }
 
-    return { unit };
+      return { unit };
+    });
   }
 
   async getLesson(slug: string): Promise<LessonDetailResponse> {
-    const lesson = await this.repository.findLesson(slug);
+    return this.cache.getOrLoad(`lesson:${slug}`, async () => {
+      const lesson = await this.repository.findLesson(slug);
 
-    if (!lesson) {
-      throw new NotFoundException(LESSON_NOT_FOUND);
-    }
+      if (!lesson) {
+        throw new NotFoundException(LESSON_NOT_FOUND);
+      }
 
-    return { lesson };
+      return { lesson };
+    });
   }
 
   async listResources(query: ResourceListQuery): Promise<ResourceListResponse> {
-    const page = await this.repository.listResources({
-      ...toWindow(query),
-      ...(query.stage === undefined ? {} : { stage: query.stage }),
-      ...(query.type === undefined ? {} : { type: query.type }),
-    });
+    const window = toWindow(query);
+    const key =
+      `resources:${query.page}:${query.pageSize}:` +
+      `${query.stage ?? "all"}:${query.type ?? "all"}`;
 
-    return toPaginated(page, query);
+    return this.cache.getOrLoad(key, async () =>
+      toPaginated(
+        await this.repository.listResources({
+          ...window,
+          ...(query.stage === undefined ? {} : { stage: query.stage }),
+          ...(query.type === undefined ? {} : { type: query.type }),
+        }),
+        query,
+      ),
+    );
+  }
+
+  /**
+   * Punto de invalidación para cualquier mutación de contenido (siembra desde
+   * un panel, edición, publicación). Devuelve la versión resultante para el log.
+   */
+  invalidateCache(): number {
+    return this.cache.invalidate();
   }
 }
 

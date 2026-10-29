@@ -63,6 +63,19 @@ describe("SessionMenu", () => {
     expect(screen.getByText("Ana")).toBeInTheDocument();
     expect(screen.getByText("Instructor")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Iniciar sesión" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Cohorte" })).toHaveAttribute(
+      "href",
+      "/instructor/cohort",
+    );
+  });
+
+  it("no ofrece la cohorte a un estudiante", () => {
+    session.status = "authenticated";
+    session.user = USER;
+
+    render(<SessionMenu />);
+
+    expect(screen.queryByRole("link", { name: "Cohorte" })).toBeNull();
   });
 
   it("cierra la sesión desde la cabecera", async () => {

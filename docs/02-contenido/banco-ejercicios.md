@@ -96,6 +96,7 @@ questions:
 - Los quizzes pueden ser: de opción única, de opción múltiple, de ordenar pasos, de emparejar, de predecir salida de código.
 - Se prohíbe el "verdadero/falso" sin justificación.
 - Cada pregunta declara el `concept` para el motor de repaso.
+- La opción correcta no puede duplicar en longitud a sus distractores: ni frente a la media ni frente al más largo (ratio ≤ 2, verificado en `seed-exercise-quality.spec.ts`). Un distractor telegráfico delata la respuesta sin medir comprensión.
 
 ### 3.3 `MEMORY` — Juego de memoria
 

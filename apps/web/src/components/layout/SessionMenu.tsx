@@ -61,6 +61,14 @@ export function SessionMenu() {
 
   return (
     <div className="flex items-center gap-3">
+      {user.role === "STUDENT" ? null : (
+        <Link
+          href="/instructor/cohort"
+          className={`${LINK_CLASSES} hidden sm:block`}
+        >
+          Cohorte
+        </Link>
+      )}
       <div className="hidden text-right sm:block">
         <p className="text-sm font-medium text-white">{user.name}</p>
         <p className="text-[11px] uppercase tracking-wider text-slate-500">

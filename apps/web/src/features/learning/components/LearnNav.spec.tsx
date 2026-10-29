@@ -31,6 +31,7 @@ describe("LearnNav", () => {
     expect(activeHref("/learn")).toBe("/learn");
     expect(activeHref("/learn/lessons/intro")).toBe("/learn");
     expect(activeHref("/learn/interviews/sessions/1")).toBe("/learn/interviews");
+    expect(activeHref("/learn/insights")).toBe("/learn/insights");
     expect(activeHref("/login")).toBeNull();
   });
 });

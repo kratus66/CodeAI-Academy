@@ -1,7 +1,7 @@
 # Sprint 11 — Analítica, rendimiento y lanzamiento
 
-> **Estado:** ⬜ pendiente · **Duración prevista:** 5–6 sesiones · **Depende de:** S4 y S7 (progreso y repaso), S6 (envíos con `outcome` y `errorCategory`), S8 (auditoría de IA), S9 (proyectos), S10 (entrevistas) y S1–S3 (sesión, contenido, usuarios).
-> **Avance:** 0/16 tareas · 0/15 criterios de aceptación.
+> **Estado:** 🔄 abierto (14/16 tareas; T15 y la firma del checklist bloqueados, ver §9) · **Duración prevista:** 5–6 sesiones · **Depende de:** S4 y S7 (progreso y repaso), S6 (envíos con `outcome` y `errorCategory`), S8 (auditoría de IA), S9 (proyectos), S10 (entrevistas) y S1–S3 (sesión, contenido, usuarios).
+> **Avance:** 14/16 tareas · 13/15 criterios de aceptación (2026-10-29). Abiertos: criterio 12 (checklist de producción: el sandbox `docker` no tiene adaptador) y la compilación de las imágenes (sin red dentro de Docker en este entorno).
 > **Sesión por tarea:** cada tarea se implementa y verifica en una invocación aislada de comandos; su salida real queda en la bitácora §9.
 > **Por qué este sprint existe:** los diez sprints anteriores construyen producto; este lo vuelve operable. Sin métricas no se puede saber si el curso funciona, sin `ready` no se puede desplegar y las dependencias aceptadas en `seguridad-dependencias.md` se pagan aquí o no se pagan nunca.
 
@@ -232,22 +232,24 @@ export interface ReadinessResponse {
 
 | Tarea | Commit | Verificación ejecutada | Resultado real |
 |-------|--------|------------------------|----------------|
-| T1 | — | — | — |
-| T2 | — | — | — |
-| T3 | — | — | — |
-| T4 | — | — | — |
-| T5 | — | — | — |
-| T6 | — | — | — |
-| T7 | — | — | — |
-| T8 | — | — | — |
-| T9 | — | — | — |
-| T10 | — | — | — |
-| T11 | — | — | — |
-| T12 | — | — | — |
-| T13 | — | — | — |
-| T14 | — | — | — |
-| T15 | — | — | — |
-| T16 | — | — | — |
+| T1 | — | `npm run test -w @codeai/shared` | ✅ `analytics.spec.ts` 14 pruebas; rechaza `range` inválido y porcentajes fuera de 0–100 |
+| T2 | — | `npm run test -w @codeai/api` | ✅ repositorio en memoria con fixture y adaptador Prisma con `groupBy`/`count`/`avg` |
+| T3 | — | `npm run test -w @codeai/api` | ✅ `getSummary` y `getErrors`; `userId` del token, cuotas que suman 1 |
+| T4 | — | `npm run test -w @codeai/api` | ✅ `getCohort`: `atRisk` ≤ 20, aserción sobre el JSON completo sin PII |
+| T5 | — | `npm run test` + `npm run build -w @codeai/api` | ✅ 3 rutas, `RolesGuard` en cohorte; HTTP: estudiante `403`, instructor `200` |
+| T6 | — | `npm run test -w @codeai/web` | ✅ `analyticsApi` con `400`/`403` tipados |
+| T7 | — | `npm run test -w @codeai/web` | ✅ `StudentInsights` y `/learn/insights` (HTTP `200`) |
+| T8 | — | `npm run test -w @codeai/web` | ✅ implementado como `CohortOverview` (no `CohortDashboard`) y `/instructor/cohort` con guarda por rol (HTTP `200`) |
+| T9 | — | `npm run test -w @codeai/api` | ✅ `GET /api/health/ready`: HTTP `200`, `database.ok=true`, `latencyMs` 4–6; el `503` lo cubre una prueba con doble que falla (el módulo vive en `modules/health/`, no `health/`) |
+| T10 | — | `npm run test -w @codeai/api` | ✅ `ContentCache`; HTTP: `GET /content/stages` 31 ms la primera vez y 1 ms la segunda |
+| T11 | — | `npm run test -w @codeai/api` | ✅ `TraceInterceptor`; HTTP: `x-trace-id: prueba-s11` aparece en la línea de log con `durationMs` |
+| T12 | — | `typecheck` + `lint` + `build` + `next start` + `npm audit --omit=dev` | ✅ `next@16.4.3`, React 19.3.1, `@react-three/fiber@9`, `eslint@9`; build de 22 rutas; `/`, `/login`, `/learn/insights` y `/instructor/cohort` → `200`; producción 14 avisos, **0 críticos** (antes 1). Detalle en `seguridad-dependencias.md` §2 |
+| T13 | — | `npm test` en la raíz | ✅ `vitest@5.0.5`: shared 255 · API 780 · web 256 = **1 291**, igual que antes (no baja). Ajustes: `vitest` también en la raíz, `oxc.jsx.runtime` en `vitest.config.mts`, tipo de `vi.fn` en `TutorPanel.spec.tsx` |
+| T14 | — | `npm run db:backup` y `npm run db:restore` | ✅ respaldo de 1 215 378 B; restauración en `codeai_restore_test` en ~4 s con `User` 32=32, `Unit` 207=207, `Lesson` 207=207. Simulacro en `runbook-operacion.md` §3 |
+| T15 | — | `docker compose -f docker-compose.prod.yml config` y `docker build --check` | 🔄 compose válido (falla con mensaje claro sin secretos) y ambos `Dockerfile` sin avisos de `--check`. **No se compilaron las imágenes**: `npm ci` dentro de Docker no alcanza el registro de npm (fallo de red del entorno). **Bloqueo de lanzamiento:** `NODE_ENV=production` exige `SANDBOX_MODE=docker` y `SandboxModule` solo implementa `mock`, así que la API no arrancaría en producción; el checklist no puede firmarse |
+| T16 | — | `typecheck` + `lint` + `test` + `build` + §10 | 🔄 `contratos-api.md` §4.8/§4.9, `arquitectura-general.md` §7, `runbook-operacion.md`, `seguridad-dependencias.md`, `README.md` y roadmap actualizados. §10: 1–8, 10, 11, 12, 13, 15 y 16 ejecutados; 9 por prueba unitaria; 14 solo la parte `config`. Pendiente cerrar T15 |
+
+**Observación de la verificación HTTP (2026-10-29).** `cohort` con instructor devolvió `200` con 25 estudiantes. La comprobación de PII encontró un `@` en un `displayName`: es una cuenta de prueba antigua de S10 cuyo nombre visible es un correo. El código no emite `email` (el fixture lo verifica), pero `displayName` es texto libre del usuario; si se quiere garantizar que nunca aparezca un correo, hay que validarlo en el registro. Queda como decisión del dueño del producto.
 
 ---
 

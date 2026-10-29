@@ -10,6 +10,12 @@ describe("loadEnv", () => {
     expect(env.PORT).toBe(3001);
     expect(env.WEB_ORIGIN).toEqual(["http://localhost:3000"]);
     expect(env.APP_VERSION).toBe("0.1.0");
+    expect(env.LOG_LEVEL).toBe("info");
+  });
+
+  it("acepta un nivel de log explícito y rechaza uno desconocido", () => {
+    expect(loadEnv({ LOG_LEVEL: "warn" }).LOG_LEVEL).toBe("warn");
+    expect(() => loadEnv({ LOG_LEVEL: "verbose" })).toThrow(/LOG_LEVEL/);
   });
 
   it("convierte PORT a número", () => {

@@ -3,7 +3,7 @@ import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { GlowTracker } from "@/components/effects/GlowTracker";
-import { TetrisBackground } from "@/components/effects/TetrisBackground";
+import { AmbientPieces } from "@/components/effects/AmbientPieces";
 
 import { SessionProvider } from "@/features/auth/context/SessionProvider";
 import { SiteFooter } from "@/features/landing/components/SiteFooter";
@@ -76,7 +76,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           >
             Saltar al contenido
           </a>
-          <TetrisBackground />
+          <AmbientPieces />
           <GlowTracker />
           <SiteHeader />
           <div className="flex-1">{children}</div>

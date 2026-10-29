@@ -16,15 +16,21 @@ npm ls <paquete>     # comprobar que una versión forzada está aplicada de verd
 
 ---
 
-## 2. Estado (2026-10-28)
+## 2. Estado final de S11 (2026-10-29)
 
-| Medición | Antes | Después | Nota |
-|----------|-------|---------|------|
-| Total (dev + prod) | 111 | **38** | 5 low · 13 moderate · 17 high · 3 critical |
-| Críticas | 12 | **3** | `next`, `vitest`, `tinypool` |
-| Solo producción (`--omit=dev`) | — | **16** | 5 moderate · 10 high · 1 critical (`next`) |
+| Medición | 2026-10-28 | 2026-10-29 | Nota |
+|----------|-----------|-----------|------|
+| Total (dev + prod) | 38 | **28** | 5 low · 10 moderate · 13 high · **0 critical** |
+| Críticas | 3 | **0** | `next`, `vitest` y `tinypool` resueltos |
+| Solo producción (`--omit=dev`) | 16 | **14** | 5 moderate · 9 high · **0 critical** |
 
-La caída de 111 a 38 viene de dos cambios: el `override` de `dompurify` y la reinstalación (`npm install`) que aplicó los parches compatibles que el lockfile tenía pendientes (`qs` 6.14.2 → 6.14.3 y su árbol). No se actualizó ninguna versión mayor.
+La primera caída (111 → 38) vino del `override` de `dompurify` y de los parches compatibles del lockfile. La segunda (38 → 28, sin críticas) viene de S11-T12 y T13: `next` 14.2 → **16.4.3** y `vitest` 2 → **5.0.5** (con `vite` 8).
+
+**S11-T12 — `next@16.4.3`.** Salto con React 18 → **19.3.1**, `@react-three/fiber` 8 → **9.8.2**, `@types/react(-dom)` 19 y `eslint` 8 → **9** (lo exige `eslint-config-next@16`). `next lint` ya no existe: el lint de la web es `eslint . --max-warnings 0` con `apps/web/eslint.config.mjs` (flat config). Lista de comprobación cumplida: `typecheck`, `lint`, `build` (22 rutas) y `next start` sirviendo `/`, `/login`, `/learn/insights` y `/instructor/cohort` con 200; no hay `next/image` remoto, Server Actions, `rewrites` ni middleware. Ajustes de código por React 19 y su regla `react-hooks/set-state-in-effect`: `useContentLoader` reinicia el estado al cambiar `load`/intento durante el render, y `InterviewReport` deja de copiar la sesión a estado desde un efecto (ya la derivaba en el render).
+
+**S11-T13 — `vitest@5.0.5`.** Declarado también en el `package.json` raíz para que `@testing-library/jest-dom/vitest` (instalado en la raíz) resuelva `vitest`. `vitest.config.mts` pasa de `esbuild.jsx` a `oxc.jsx.runtime` (Vite 8 usa oxc). Pruebas: shared 255 · API 780 · web 256 = **1 291**, las mismas que antes de la actualización.
+
+Si algún día hay que repetir la instalación desde cero: tras una instalación parcial, el lockfile conservó `react@18` en la raíz y las pruebas de la web fallaron con «Objects are not valid as a React child»; se resolvió borrando del lockfile las entradas `react`, `react-dom` y `scheduler` y reinstalando.
 
 ---
 
@@ -59,13 +65,10 @@ Ninguno de estos se queda «porque sí»: cada fila dice qué lo contiene hoy y 
 
 | Paquete | Severidad | Por qué se acepta | Mitigación vigente | Se paga en |
 |---------|-----------|-------------------|--------------------|-----------|
-| `next` 14.2.35 | **critical** | El arreglo es `next@16.4.3`: cambio de versión mayor con React 19 y App Router nuevos. Un salto así no cabe en un cierre documental. | No hay `next/image` remoto configurado ni Server Actions en el repo; no se usan `rewrites` ni middleware con i18n. La web se sirve en local. | S11-T12 |
-| `vitest` ≤ 4.1.10 · `tinypool` ≤ 2.1.1 | **critical** | Afectan a la UI del runner y a `@vitest/mocker`. Arreglo: `vitest@5`. Solo existen en desarrollo. | Las pruebas corren en local/CI sobre código propio; no se levanta `vitest --ui` ni se abren puertos. | S11-T13, junto con `vite` |
 | `@nestjs/platform-express` · `body-parser` · `multer` | high | Arreglo: `@nestjs/platform-express@12`, versión mayor de Nest. | `multer` no se usa (no hay subida de archivos); `body-parser` opera con el límite por defecto de 100 kB y la API no acepta cuerpos comprimidos de usuarios anónimos. | Cuando se planifique Nest 12 |
 | `zod` < 4.6.6 | high | La versión del proyecto es 3.x; el arreglo es `zod@4`, que cambiaría todos los contratos de `shared`. | Los cuerpos pasan por `ZodValidationPipe` con `.strict()` y los esquemas acotan longitudes y colecciones; no se validan payloads arbitrarios de varios MB. | Migración de Zod, sin sprint asignado |
 | `prisma` · `@prisma/config` · `deepmerge-ts` | high | Arreglo: `prisma@7.10.1`, versión mayor del ORM. Afecta sobre todo a la CLI, no al runtime de la API. | La CLI solo se ejecuta en local sobre `prisma/schema.prisma` del repo. | Sin sprint asignado: exige migrar el cliente a Prisma 7 (§8 de S11) |
 | `js-yaml` · `lodash` (vía `@nestjs/swagger`) | high | Arreglo: `@nestjs/swagger@12`, versión mayor. | Swagger genera el documento en el arranque; nadie envía YAML ni plantillas a la API. | Cuando se planifique Nest 12 |
-| `postcss` ≤ 8.5.22 · `@next/eslint-plugin-next` · `eslint-config-next` | high | Se resuelven con el salto a `next@16`. | Se ejecutan en el build local; no procesan CSS de terceros. | S11-T12 (llega con `next@16`) |
 
 **Regla:** si aparece un aviso **crítico nuevo en una dependencia de producción**, se abre tarea antes de seguir con el sprint en curso. Los de desarrollo se acumulan en la tarea de actualización de S11.
 
@@ -78,6 +81,7 @@ Ninguno de estos se queda «porque sí»: cada fila dice qué lo contiene hoy y 
 | 2026-10-28 | Primer `npm audit` completo (111 avisos, 12 críticas), `override` de `dompurify` y `npm install` | 38 avisos (3 críticas); `dompurify@3.4.17` aplicado y verificado con `npm ls` |
 | 2026-10-28 | Scripts `audit` y `audit:prod` en la raíz | La medición deja de depender de recordar el comando |
 | 2026-10-28 | Re-ejecución de `npm audit` y `npm audit --omit=dev` al cerrar la documentación | Confirmadas las cifras: 38 (5 low · 13 moderate · 17 high · 3 critical) y 16 en producción (5 moderate · 10 high · 1 critical: `next`) |
+| 2026-10-29 | S11-T12 (`next@16.4.3`, React 19) y S11-T13 (`vitest@5`); `npm audit` al cierre | 28 (5 low · 10 moderate · 13 high · 0 critical) y 14 en producción (5 moderate · 9 high · 0 critical). Las filas de `next`, `vitest`/`tinypool` y `postcss`/`eslint-config-next` salen de §4 |
 
 **Próxima revisión:** al abrir S11, antes de la tarea de despliegue.
 

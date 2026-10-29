@@ -1,6 +1,6 @@
 # @codeai/web
 
-Interfaz web de CodeAI Academy. Next.js 14 (App Router) + TypeScript + Tailwind CSS.
+Interfaz web de CodeAI Academy. Next.js 16 (App Router) + TypeScript + Tailwind CSS.
 
 ## Alcance actual (Sprint 0)
 

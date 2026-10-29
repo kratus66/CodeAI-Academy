@@ -1,6 +1,6 @@
-import type { AiTutorResponse, AiUsageResponse } from "@codeai/shared";
+import type { AiTutorRequest, AiTutorResponse, AiUsageResponse } from "@codeai/shared";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { type Mock, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-client";
 
@@ -25,8 +25,12 @@ const USAGE: AiUsageResponse = {
   interactions: 1,
 };
 
-function setup(overrides: { askTutor?: ReturnType<typeof vi.fn> } = {}) {
-  const askTutor = overrides.askTutor ?? vi.fn().mockResolvedValue(RESPONSE);
+function setup(
+  overrides: { askTutor?: Mock<(input: AiTutorRequest) => Promise<AiTutorResponse>> } = {},
+) {
+  const askTutor =
+    overrides.askTutor ??
+    vi.fn<(input: AiTutorRequest) => Promise<AiTutorResponse>>().mockResolvedValue(RESPONSE);
   const loadUsage = vi.fn().mockResolvedValue(USAGE);
 
   render(<TutorPanel lessonId="les_1" askTutor={askTutor} loadUsage={loadUsage} />);

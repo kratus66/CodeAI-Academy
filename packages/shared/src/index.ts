@@ -4,6 +4,7 @@ export * from "./enums/exercise";
 export * from "./enums/resource";
 export * from "./enums/role";
 export * from "./schemas/ai";
+export * from "./schemas/analytics";
 export * from "./schemas/auth";
 export * from "./schemas/common";
 export * from "./schemas/content";

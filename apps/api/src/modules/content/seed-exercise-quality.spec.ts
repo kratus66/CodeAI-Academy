@@ -75,6 +75,76 @@ describe("calidad de los ejercicios sembrados", () => {
     expect(skewed).toEqual([]);
   });
 
+  it("no delata la respuesta correcta por su longitud", () => {
+    // Un distractor telegráfico frente a una correcta explicada convierte el quiz
+    // en «elige la más larga» (`banco-ejercicios.md` §3.2, regla de paridad). Se
+    // comparan la media y el distractor más largo: con la media sola, un único
+    // distractor corto escondería la pista.
+    const RATIO_MAXIMO = 2;
+    const desproporcionados: string[] = [];
+
+    for (const stage of seed.stages) {
+      for (const module of stage.modules) {
+        for (const unit of module.units) {
+          for (const exercise of unit.exercises) {
+            const quiz = exercise.quiz;
+            if (quiz === null) continue;
+
+            const correct = quiz.options.find((option) => option.id === quiz.correctOptionId);
+            const distractors = quiz.options.filter((option) => option.id !== quiz.correctOptionId);
+            if (!correct || distractors.length === 0) continue;
+
+            const lengths = distractors.map((option) => option.text.length);
+            const meanDistractor = lengths.reduce((sum, length) => sum + length, 0) / lengths.length;
+            const longestDistractor = Math.max(...lengths);
+
+            if (
+              correct.text.length / meanDistractor > RATIO_MAXIMO ||
+              correct.text.length / longestDistractor > RATIO_MAXIMO
+            ) {
+              desproporcionados.push(exercise.slug);
+            }
+          }
+        }
+      }
+    }
+
+    expect(desproporcionados).toEqual([]);
+  });
+
+  it("no repite la misma pregunta ni la misma respuesta dentro de una unidad", () => {
+    // Dos quizzes que preguntan lo mismo con otras palabras no miden dos veces:
+    // el estudiante memoriza la respuesta y no el concepto.
+    const LONGITUD_MINIMA = 25;
+    const repetidos: string[] = [];
+
+    for (const stage of seed.stages) {
+      for (const module of stage.modules) {
+        for (const unit of module.units) {
+          const preguntas = new Set<string>();
+          const respuestas = new Set<string>();
+
+          for (const exercise of unit.exercises) {
+            const quiz = exercise.quiz;
+            if (quiz === null) continue;
+
+            const pregunta = exercise.statement.trim().toLowerCase();
+            if (preguntas.has(pregunta)) repetidos.push(`${exercise.slug}: pregunta repetida`);
+            preguntas.add(pregunta);
+
+            const correct = quiz.options.find((option) => option.id === quiz.correctOptionId);
+            const respuesta = correct?.text.trim().toLowerCase() ?? "";
+            if (respuesta.length < LONGITUD_MINIMA) continue;
+            if (respuestas.has(respuesta)) repetidos.push(`${exercise.slug}: respuesta repetida`);
+            respuestas.add(respuesta);
+          }
+        }
+      }
+    }
+
+    expect(repetidos).toEqual([]);
+  });
+
   it("solo publica tipos que la plataforma sabe servir", () => {
     // Decisión del responsable (2026-10-28): se publican también LAB y DEBUG aunque
     // `SANDBOX_MODE=mock` dé PASSED a cualquier código sin `TODO`. La interfaz lo

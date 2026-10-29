@@ -112,12 +112,6 @@ export function InterviewReport({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (sessionState.status === "ready") {
-      setSession((current) => current ?? sessionState.data);
-    }
-  }, [sessionState]);
-
   if (sessionState.status === "loading") {
     return (
       <p role="status" aria-live="polite" className="text-sm text-slate-400">

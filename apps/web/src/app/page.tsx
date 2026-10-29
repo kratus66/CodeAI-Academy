@@ -1,3 +1,4 @@
+import { TetrisBackground } from "@/components/effects/TetrisBackground";
 import { Competencies } from "@/features/landing/components/Competencies";
 import { FinalCta } from "@/features/landing/components/FinalCta";
 import { Hero } from "@/features/landing/components/Hero";
@@ -9,6 +10,7 @@ import { ThreeLevels } from "@/features/landing/components/ThreeLevels";
 export default function LandingPage() {
   return (
     <main>
+      <TetrisBackground />
       <Hero />
       <ThreeLevels />
       <LearningPath />

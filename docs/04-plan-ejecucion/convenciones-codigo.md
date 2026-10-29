@@ -74,7 +74,7 @@ packages/shared/src/
 
 ---
 
-## 6. Frontend (Next.js 14)
+## 6. Frontend (Next.js 16)
 
 - Server Components por defecto; `"use client"` solo cuando hay estado, efectos o eventos.
 - Contenido de la landing tipado y separado en `features/landing/data/`; los componentes no inventan textos.

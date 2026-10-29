@@ -52,6 +52,10 @@ const envSchema = z
     WEB_ORIGIN: webOrigins.default("http://localhost:3000"),
     APP_VERSION: z.string().min(1).default("0.1.0"),
 
+    // Observabilidad (S11). `warn` silencia las líneas informativas por
+    // petición pero no los `SLOW_REQUEST`; `error` sólo deja fallos.
+    LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+
     // Persistencia (S1). El puerto 5433 evita choques con otras bases locales.
     DATABASE_URL: postgresUrl.default(
       "postgresql://codeai:codeai@localhost:5433/codeai?schema=public",
@@ -122,6 +126,8 @@ const envSchema = z
   });
 
 export type Env = z.infer<typeof envSchema>;
+
+export type LogLevel = Env["LOG_LEVEL"];
 
 /**
  * Carga `.env` con la API nativa de Node (20.12+), sin dependencias. Se prueban

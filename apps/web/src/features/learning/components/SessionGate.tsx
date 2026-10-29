@@ -1,5 +1,6 @@
 "use client";
 
+import type { Role } from "@codeai/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -15,16 +16,26 @@ const LINK_CLASSES =
 
 interface SessionGateProps {
   readonly children: ReactNode;
+  /**
+   * Roles admitidos. Sin esta prop basta con tener sesión; con ella, una cuenta
+   * autenticada del rol equivocado ve un aviso y nunca el contenido privado.
+   */
+  readonly roles?: readonly Role[];
 }
 
 /**
- * Puerta del área de aprendizaje. Mientras la sesión se restaura no se pinta
- * contenido privado; sin sesión se manda a `/login` y se deja un enlace por si la
+ * Puerta del área privada. Mientras la sesión se restaura no se pinta contenido
+ * privado; sin sesión se manda a `/login` y se deja un enlace por si la
  * redirección automática no llega (scripts desactivados, navegador antiguo).
+ *
+ * La comprobación de rol es sólo de interfaz: la API vuelve a exigirlo con
+ * `RolesGuard` y responde `403`, así que ocultar la pantalla no concede permisos.
  */
-export function SessionGate({ children }: SessionGateProps) {
-  const { status } = useSession();
+export function SessionGate({ children, roles }: SessionGateProps) {
+  const { status, user } = useSession();
   const router = useRouter();
+  const roleAllowed =
+    roles === undefined || (user !== null && roles.includes(user.role));
 
   useEffect(() => {
     if (status === "anonymous") {
@@ -48,6 +59,21 @@ export function SessionGate({ children }: SessionGateProps) {
         </p>
         <Link href="/login" className={LINK_CLASSES}>
           Iniciar sesión
+          <span aria-hidden>→</span>
+        </Link>
+      </div>
+    );
+  }
+
+  if (status === "authenticated" && !roleAllowed) {
+    return (
+      <div role="alert" className={NOTICE_CLASSES}>
+        <p>
+          Esta pantalla es sólo para el equipo instructor. Tu cuenta no tiene ese
+          rol.
+        </p>
+        <Link href="/learn" className={LINK_CLASSES}>
+          Volver a aprender
           <span aria-hidden>→</span>
         </Link>
       </div>

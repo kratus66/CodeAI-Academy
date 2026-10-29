@@ -388,21 +388,32 @@ Sólo explica envíos **propios**: un `submissionId` ajeno o inexistente es `404
 
 > El tutor **no entrega la solución completa**. El prompt del sistema lo prohíbe explícitamente y los filtros del backend lo refuerzan (ver [`capa-ia.md`](capa-ia.md)).
 
-### 4.8 Analítica (`/api/analytics`)
+### 4.8 Analítica (`/api/analytics`) — ✅ implementado en S11
 
 | Método | Ruta | Auth | Rol | Descripción |
 |--------|------|------|-----|-------------|
-| GET | `/me/summary` | ✅ | student | Progreso, tiempo, errores frecuentes |
-| GET | `/me/errors` | ✅ | student | Categorías de error más repetidas |
-| GET | `/cohort` | ✅ | instructor | Agregados de la cohorte |
+| GET | `/me/summary?range=30d` | ✅ | cualquiera | Actividad, unidades, envíos, repasos y consumo de IA propios |
+| GET | `/me/errors?range=30d` | ✅ | cualquiera | Errores propios por categoría y concepto, ordenados por `count` desc. |
+| GET | `/cohort?range=30d` | ✅ | instructor, admin | Agregados de la cohorte |
+
+`range` ∈ `7d | 30d | 90d | all` (por defecto `30d`); otro valor devuelve `400 INVALID_RANGE` con `details[0].field = "range"`. El `userId` sale siempre del token, nunca del query.
+
+**Sin «tiempo».** La versión inicial de este contrato prometía «tiempo», pero el producto no guarda tiempo de permanencia (no hay tabla de eventos ni `timeSpent`). Se reporta **actividad** (`activeDays`, `lastActivityAt`) y no se inventan minutos; la instrumentación real queda como deuda (`sprint-11-analitica-lanzamiento.md` §3.1 y §8).
+
+**Reglas de respuesta:**
+
+- `cohort` nunca incluye `email`, `passwordHash`, transcripciones, contenido de envíos ni `repoUrl`; `atRisk` lleva `userId` y nombre visible, máximo 20 filas por `daysSinceActivity` desc.
+- Los agregados se calculan en la base (`groupBy`, `count`, `avg`), no en memoria.
+- Tipos en `packages/shared/src/schemas/analytics.ts`: `StudentSummary`, `ErrorBreakdown`, `CohortAnalytics`, `ReadinessResponse`, `ANALYTICS_RANGES`.
 
 ---
 
-### 4.9 Sistema (`/health`)
+### 4.9 Sistema (`/api/health`)
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| GET | `/health` | — | Estado del servicio. **Implementado en S0** |
+| GET | `/health` | — | Liveness: el proceso vive. **Implementado en S0** |
+| GET | `/health/ready` | — | Readiness: puede atender (base de datos). **Implementado en S11** |
 
 **GET `/api/health` → 200**
 
@@ -416,11 +427,23 @@ Sólo explica envíos **propios**: un `submissionId` ajeno o inexistente es `404
 }
 ```
 
+**GET `/api/health/ready` → 200 / 503** (el `503` conserva este mismo cuerpo, no el formato de error)
+
+```json
+{
+  "status": "degraded",
+  "checks": [{ "name": "database", "ok": false, "latencyMs": 2001 }],
+  "version": "0.1.0",
+  "timestamp": "2026-10-28T09:00:00.000Z"
+}
+```
+
 **Reglas:**
 
-- No expone secretos, rutas internas ni estado de dependencias todavía (se amplía en S11 con `ready`).
-- Devuelve cabecera `x-trace-id` como el resto de la API.
-- El contrato vive en `packages/shared` (`healthResponseSchema` / `HealthResponse`).
+- `health` no toca dependencias; `ready` hace `SELECT 1` con timeout de 2 s y responde `503` si falla. Un orquestador reinicia con `health` y retira del balanceo con `ready`.
+- Ninguna de las dos expone secretos, `DATABASE_URL`, host, usuario ni el mensaje de error del motor.
+- Devuelven cabecera `x-trace-id` como el resto de la API; cada petición deja una línea de log con `traceId`, ruta normalizada, estado y `durationMs`, y `SLOW_REQUEST` por encima de 500 ms (1500 ms en rutas de IA).
+- Los contratos viven en `packages/shared` (`healthResponseSchema` / `HealthResponse`, `ReadinessResponse`).
 
 ---
 

@@ -8,8 +8,9 @@ import type {
 } from "@codeai/shared";
 import { LESSON_STEP_KINDS } from "@codeai/shared";
 import { NotFoundException } from "@nestjs/common";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ContentCache } from "./content-cache";
 import { ContentService } from "./content.service";
 import type { ContentDataset } from "./in-memory-content.repository";
 import { InMemoryContentRepository } from "./in-memory-content.repository";
@@ -155,7 +156,10 @@ function dataset(): ContentDataset {
 }
 
 function createService(): ContentService {
-  return new ContentService(new InMemoryContentRepository(dataset()));
+  return new ContentService(
+    new InMemoryContentRepository(dataset()),
+    new ContentCache(),
+  );
 }
 
 describe("ContentService", () => {
@@ -165,7 +169,36 @@ describe("ContentService", () => {
     service = createService();
   });
 
+  describe("caché", () => {
+    it("no repite la consulta y la invalidación la fuerza de nuevo", async () => {
+      const repository = new InMemoryContentRepository(dataset());
+      const listStages = vi.spyOn(repository, "listStages");
+      const cached = new ContentService(repository, new ContentCache());
+
+      await cached.listStages({ page: 1, pageSize: 10 });
+      await cached.listStages({ page: 1, pageSize: 10 });
+
+      expect(listStages).toHaveBeenCalledTimes(1);
+
+      cached.invalidateCache();
+      await cached.listStages({ page: 1, pageSize: 10 });
+
+      expect(listStages).toHaveBeenCalledTimes(2);
+    });
+
+    it("no cachea un 404", async () => {
+      const cached = createService();
+
+      await expect(cached.getUnit("U9.1.1")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(cached.getUnit("U9.1.1")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
   describe("listStages", () => {
+
     it("pagina y devuelve metadatos coherentes", async () => {
       const response = await service.listStages({ page: 2, pageSize: 2 });
 

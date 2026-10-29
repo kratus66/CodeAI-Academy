@@ -129,7 +129,7 @@ export async function loadMonacoSurface(): Promise<
           }}
           theme="vs-dark"
           value={value}
-          onChange={(next) => onChange(next ?? "")}
+          onChange={(next: string | undefined) => onChange(next ?? "")}
         />
       </div>
     );
