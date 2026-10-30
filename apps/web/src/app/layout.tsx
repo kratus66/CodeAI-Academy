@@ -2,9 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 
-import { GlowTracker } from "@/components/effects/GlowTracker";
-import { AmbientPieces } from "@/components/effects/AmbientPieces";
-
 import { SessionProvider } from "@/features/auth/context/SessionProvider";
 import { SiteFooter } from "@/features/landing/components/SiteFooter";
 import { SiteHeader } from "@/features/landing/components/SiteHeader";
@@ -83,8 +80,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
           >
             Saltar al contenido
           </a>
-          <AmbientPieces />
-          <GlowTracker />
           <SiteHeader />
           <div className="flex-1">{children}</div>
           <SiteFooter />

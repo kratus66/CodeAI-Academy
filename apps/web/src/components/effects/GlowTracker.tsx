@@ -2,12 +2,20 @@
 
 import { useEffect } from "react";
 
+import { useMotionPaused } from "@/lib/motion-preference";
+
 /**
  * Publica la posición del cursor sobre cada `.glass` como variables CSS
- * (`--mx`, `--my`) para que el halo de la tarjeta lo siga. Un único listener.
+ * (`--mx`, `--my`) para que el halo de la tarjeta lo siga. Un único listener,
+ * montado solo en la portada y nunca cuando se pidió reducir movimiento: sin
+ * él las tarjetas conservan su halo estático.
  */
 export function GlowTracker() {
+  const paused = useMotionPaused();
+
   useEffect(() => {
+    if (paused) return;
+
     const onMove = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -19,7 +27,7 @@ export function GlowTracker() {
     };
     document.addEventListener("pointermove", onMove, { passive: true });
     return () => document.removeEventListener("pointermove", onMove);
-  }, []);
+  }, [paused]);
 
   return null;
 }
