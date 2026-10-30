@@ -10,9 +10,15 @@ import type {
 } from "@codeai/shared";
 import { sandboxRunRequestSchema } from "@codeai/shared";
 import Link from "next/link";
-import { useCallback, useState } from "react";
-import type { ComponentType, FormEvent } from "react";
+import { useCallback, useId, useState } from "react";
+import type { ComponentType, FormEvent, KeyboardEvent } from "react";
 
+import { TutorPanel } from "@/features/ai/components/TutorPanel";
+import type {
+  AskTutor,
+  LoadUsage,
+  TutorContext,
+} from "@/features/ai/components/TutorPanel";
 import { formatMinutes } from "@/features/learning/lib/format";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import {
@@ -64,6 +70,12 @@ const PANEL_CLASSES =
 export interface ExerciseLabContent {
   readonly exercise: ExerciseDetail;
   readonly unitTitle: string;
+  /**
+   * Primera lección publicada de la unidad. El contrato del tutor (S8) exige un
+   * `lessonId`, y un ejercicio solo conoce su unidad: se usa su primera lección
+   * para que el tutor reciba el contexto de la unidad donde se practica.
+   */
+  readonly lessonId: string | null;
 }
 
 export type LoadExerciseLab = (
@@ -94,8 +106,10 @@ export async function loadExerciseLab(
   }
 
   const exercise = await exercisesApi.getDetail(summary.id, signal);
+  const firstLesson =
+    [...unit.lessons].sort((left, right) => left.order - right.order)[0] ?? null;
 
-  return { exercise, unitTitle: unit.title };
+  return { exercise, lessonId: firstLesson?.id ?? null, unitTitle: unit.title };
 }
 
 
@@ -225,10 +239,75 @@ function SubmissionPanel({
 }
 
 
+const SHEET_CLASSES =
+  "fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-line/70 bg-ink px-4 pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))] shadow-2xl";
+
+const SHEET_DESKTOP_CLASSES =
+  "md:static md:block md:max-h-none md:overflow-visible md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none";
+
+interface TutorDockProps {
+  readonly lessonId: string;
+  readonly context: TutorContext;
+  readonly askTutor?: AskTutor;
+  readonly loadUsage?: LoadUsage;
+}
+
+/**
+ * Tutor socrático dentro del laboratorio (S12-T5). En escritorio vive bajo el
+ * editor; en móvil se abre como hoja inferior para no quitarle sitio al código.
+ * El panel no se desmonta al cerrar, así que la conversación sobrevive al
+ * vaivén entre el editor y el tutor.
+ */
+function TutorDock({ lessonId, context, askTutor, loadUsage }: TutorDockProps) {
+  const panelId = useId();
+  const [open, setOpen] = useState(false);
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.key === "Escape" && open) {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <section aria-label="Tutor del laboratorio" className="space-y-3">
+      <button
+        type="button"
+        aria-controls={panelId}
+        aria-expanded={open}
+        className={cn(SECONDARY_BUTTON, "w-full justify-center md:hidden")}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {open ? "Cerrar el tutor" : "Abrir el tutor"}
+      </button>
+
+      <div
+        id={panelId}
+        className={cn(open ? SHEET_CLASSES : "hidden", SHEET_DESKTOP_CLASSES)}
+        onKeyDown={onKeyDown}
+      >
+        <TutorPanel
+          askTutor={askTutor}
+          context={context}
+          lessonId={lessonId}
+          loadUsage={loadUsage}
+        />
+        <button
+          type="button"
+          className={cn(SECONDARY_BUTTON, "mt-4 w-full justify-center md:hidden")}
+          onClick={() => setOpen(false)}
+        >
+          Cerrar
+        </button>
+      </div>
+    </section>
+  );
+}
+
 interface LabWorkspaceProps {
   readonly unitCode: string;
   readonly unitTitle: string;
   readonly exercise: ExerciseDetail;
+  readonly lessonId: string | null;
   readonly editorSurface?: ComponentType<CodeSurfaceProps> | null;
   readonly runCode: (input: SandboxRunRequest) => Promise<SandboxRunResponse>;
   readonly submitSolution: (
@@ -237,6 +316,8 @@ interface LabWorkspaceProps {
   ) => Promise<SubmissionSummary>;
   readonly requestHint?: RequestHint;
   readonly loadHistory?: LoadHistory;
+  readonly askTutor?: AskTutor;
+  readonly loadUsage?: LoadUsage;
 }
 
 /** Estado del laboratorio una vez el ejercicio está cargado. */
@@ -244,11 +325,14 @@ function LabWorkspace({
   unitCode,
   unitTitle,
   exercise,
+  lessonId,
   editorSurface,
   runCode,
   submitSolution,
   requestHint,
   loadHistory,
+  askTutor,
+  loadUsage,
 }: LabWorkspaceProps) {
   const [code, setCode] = useState(() => exercise.starterCode ?? "");
   const [selfExplanation, setSelfExplanation] = useState("");
@@ -475,6 +559,20 @@ function LabWorkspace({
           />
         </section>
       </div>
+
+      {lessonId !== null ? (
+        <TutorDock
+          askTutor={askTutor}
+          context={{
+            title: exercise.title,
+            statement: exercise.statement,
+            code,
+            language,
+          }}
+          lessonId={lessonId}
+          loadUsage={loadUsage}
+        />
+      ) : null}
     </div>
   );
 }
@@ -492,6 +590,9 @@ export interface ExerciseLabProps {
   ) => Promise<SubmissionSummary>;
   readonly requestHint?: RequestHint;
   readonly loadHistory?: LoadHistory;
+  /** Tutor inyectable en pruebas; por defecto llama a `/api/ai/*`. */
+  readonly askTutor?: AskTutor;
+  readonly loadUsage?: LoadUsage;
 }
 
 /** Una URL mal formada y un ejercicio no publicado son el mismo caso. */
@@ -516,6 +617,8 @@ export function ExerciseLab({
     exercisesApi.submit(exerciseId, input),
   requestHint,
   loadHistory,
+  askTutor,
+  loadUsage,
 }: ExerciseLabProps) {
   const load = useCallback(
     (signal: AbortSignal) => loadLab(unitCode, slug, signal),
@@ -569,9 +672,12 @@ export function ExerciseLab({
 
   return (
     <LabWorkspace
+      askTutor={askTutor}
       editorSurface={editorSurface}
       exercise={state.data.exercise}
+      lessonId={state.data.lessonId}
       loadHistory={loadHistory}
+      loadUsage={loadUsage}
       requestHint={requestHint}
       runCode={runCode}
       submitSolution={submitSolution}

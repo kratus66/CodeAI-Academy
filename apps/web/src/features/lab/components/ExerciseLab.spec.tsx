@@ -1,4 +1,6 @@
 import type {
+  AiTutorResponse,
+  AiUsageResponse,
   CreateSubmissionInput,
   ExerciseDetail,
   HintLevel,
@@ -10,6 +12,7 @@ import type {
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { AskTutor, LoadUsage } from "@/features/ai/components/TutorPanel";
 import { ApiError } from "@/lib/api-client";
 
 import type { LoadHistory } from "./AttemptHistory";
@@ -42,7 +45,27 @@ const EXERCISE: ExerciseDetail = {
 
 const CONTENT: ExerciseLabContent = {
   exercise: EXERCISE,
+  lessonId: "les_1",
   unitTitle: "Fundamentos de la IA",
+};
+
+const TUTOR_REPLY: AiTutorResponse = {
+  reply: "¿Qué devuelve tu función cuando a es texto?",
+  suggestedHints: ["tipos"],
+  tokensUsed: 120,
+  budgetRemainingUsd: 4.9,
+  source: "provider",
+  filtered: false,
+};
+
+const AI_USAGE: AiUsageResponse = {
+  month: "2026-10",
+  spentUsd: 0.1,
+  budgetUsd: 5,
+  remainingUsd: 4.9,
+  percentUsed: 2,
+  level: "normal",
+  interactions: 2,
 };
 
 const RUN: SandboxRunResponse = {
@@ -82,6 +105,8 @@ function renderLab({
     level,
   })),
   loadHistory = vi.fn(async (): Promise<SubmissionSummary[]> => []),
+  askTutor = vi.fn(async (): Promise<AiTutorResponse> => TUTOR_REPLY),
+  loadUsage = vi.fn(async (): Promise<AiUsageResponse> => AI_USAGE),
 }: {
   content?: ExerciseLabContent;
   runCode?: (input: SandboxRunRequest) => Promise<SandboxRunResponse>;
@@ -91,12 +116,16 @@ function renderLab({
   ) => Promise<SubmissionSummary>;
   requestHint?: RequestHint;
   loadHistory?: LoadHistory;
+  askTutor?: AskTutor;
+  loadUsage?: LoadUsage;
 } = {}) {
   render(
     <ExerciseLab
+      askTutor={askTutor}
       editorSurface={null}
       loadHistory={loadHistory}
       loadLab={async () => content}
+      loadUsage={loadUsage}
       requestHint={requestHint}
       runCode={runCode}
       slug="suma-segura"
@@ -105,7 +134,14 @@ function renderLab({
     />,
   );
 
-  return { runCode, submitSolution, requestHint, loadHistory };
+  return {
+    runCode,
+    submitSolution,
+    requestHint,
+    loadHistory,
+    askTutor,
+    loadUsage,
+  };
 }
 
 describe("ExerciseLab", () => {
@@ -147,7 +183,11 @@ describe("ExerciseLab", () => {
 
   it("no ejecuta sin código y lo explica", async () => {
     const { runCode } = renderLab({
-      content: { exercise: { ...EXERCISE, starterCode: "" }, unitTitle: "U" },
+      content: {
+        exercise: { ...EXERCISE, starterCode: "" },
+        lessonId: "les_1",
+        unitTitle: "U",
+      },
     });
 
     await screen.findByRole("heading", { name: "Suma segura", level: 1 });
@@ -261,6 +301,56 @@ describe("ExerciseLab", () => {
     expect(
       screen.getByRole("link", { name: "Volver a la unidad" }),
     ).toHaveAttribute("href", "/learn/units/U0.1.1");
+  });
+
+  it("pasa al tutor el enunciado y el código del intento", async () => {
+    const { askTutor } = renderLab();
+    const CURRENT_CODE = "export const suma = (a: number, b: number) => a + b;";
+
+    await screen.findByRole("heading", { name: "Suma segura", level: 1 });
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Tu solución" }), {
+      target: { value: CURRENT_CODE },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Abrir el tutor" }));
+    fireEvent.change(screen.getByLabelText("Pregúntale al tutor"), {
+      target: { value: "¿Por qué falla mi prueba?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Preguntar" }));
+
+    await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(1));
+
+    const request = vi.mocked(askTutor).mock.calls[0]?.[0];
+
+    expect(request?.lessonId).toBe("les_1");
+    expect(request?.message.startsWith("¿Por qué falla mi prueba?")).toBe(true);
+    expect(request?.message).toContain(CURRENT_CODE);
+    expect(request?.message).toContain(
+      "Implementa una suma que valide sus entradas.",
+    );
+  });
+
+  it("abre y cierra la hoja del tutor en móvil", async () => {
+    renderLab();
+
+    await screen.findByRole("heading", { name: "Suma segura", level: 1 });
+
+    const trigger = screen.getByRole("button", { name: "Abrir el tutor" });
+
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(trigger);
+
+    expect(
+      screen.getByRole("button", { name: "Cerrar el tutor" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(trigger).toHaveAttribute("aria-controls");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    expect(
+      screen.getByRole("button", { name: "Abrir el tutor" }),
+    ).toHaveAttribute("aria-expanded", "false");
   });
 });
 
