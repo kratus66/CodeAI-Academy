@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { Container } from "@/components/layout/Container";
 import { LearnNav } from "@/features/learning/components/LearnNav";
+import { MobileTabBar } from "@/features/learning/components/MobileTabBar";
 import { SessionGate } from "@/features/learning/components/SessionGate";
 
 export const metadata: Metadata = {
@@ -23,7 +24,7 @@ interface LearningLayoutProps {
 export default function LearningLayout({ children }: LearningLayoutProps) {
   return (
     <main id="aprendizaje" className="flex flex-1 flex-col">
-      <div className="sticky top-20 z-30 pt-4">
+      <div className="sticky top-20 z-30 hidden pt-4 md:block">
         <Container className="flex items-center justify-between gap-4">
           <LearnNav />
           <Link
@@ -38,6 +39,8 @@ export default function LearningLayout({ children }: LearningLayoutProps) {
       <Container className="flex-1 py-10 sm:py-14">
         <SessionGate>{children}</SessionGate>
       </Container>
+
+      <MobileTabBar />
     </main>
   );
 }

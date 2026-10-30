@@ -138,6 +138,17 @@
     scroll-margin-top: 4.5rem;
   }
 
+  /*
+   * La barra inferior móvil del área de aprendizaje (S12-T7) va `fixed`: el
+   * documento reserva su altura —franja segura del dispositivo incluida— para
+   * que el pie de página siga siendo alcanzable al final del scroll.
+   */
+  @media (max-width: 767px) {
+    body:has([data-mobile-tab-bar]) {
+      padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+  }
+
   ::selection {
     @apply bg-accent/30 text-white;
   }
