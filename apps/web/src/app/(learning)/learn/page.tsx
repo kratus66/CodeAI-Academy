@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { StageCatalog } from "@/features/learning/components/StageCatalog";
+import { StudentDashboard } from "@/features/learning/components/StudentDashboard";
 
 export const metadata: Metadata = {
-  title: "Catálogo de etapas",
+  title: "Tu panel",
   description:
-    "Etapas publicadas de la ruta de CodeAI Academy, con sus objetivos.",
+    "Dónde sigues, qué debes repasar y cómo va tu avance en CodeAI Academy.",
 };
 
 export default function LearnPage() {
@@ -13,18 +13,19 @@ export default function LearnPage() {
     <div className="space-y-8">
       <header className="max-w-2xl">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent">
-          Ruta de aprendizaje
+          Área de aprendizaje
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          Catálogo de etapas
+          Tu siguiente paso
         </h1>
         <p className="mt-4 text-base leading-relaxed text-slate-400">
-          Elige una etapa para ver sus módulos y unidades. Cada unidad declara su
-          objetivo y sus prerrequisitos antes de abrir una lección.
+          Retoma donde lo dejaste, atiende el repaso del día y consulta cómo
+          avanza tu ruta sin salir de esta pantalla.
         </p>
       </header>
 
-      <StageCatalog />
+      <StudentDashboard />
     </div>
   );
 }
+
