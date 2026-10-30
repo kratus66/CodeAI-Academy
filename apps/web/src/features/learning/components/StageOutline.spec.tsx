@@ -1,5 +1,5 @@
-import type { StageDetail } from "@codeai/shared";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { StageDetail, UnitProgressSummary } from "@codeai/shared";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/lib/api-client";
@@ -60,12 +60,39 @@ const STAGE: StageDetail = {
 
 const loadStage = (): Promise<StageDetail> => Promise.resolve(STAGE);
 
+function unitProgress(
+  unitCode: string,
+  state: UnitProgressSummary["state"],
+  progressPct: number,
+): UnitProgressSummary {
+  return {
+    unitId: `id-${unitCode}`,
+    unitCode,
+    state,
+    progressPct,
+    lessonsDone: 0,
+    exercisesDone: 0,
+    bestScore: null,
+    lastActivityAt: null,
+    completedAt: null,
+  };
+}
+
+const PROGRESS: readonly UnitProgressSummary[] = [
+  unitProgress("U0.1.1", "IN_PROGRESS", 50),
+  unitProgress("U0.1.2", "AVAILABLE", 0),
+];
+
+const loadProgress = async (): Promise<readonly UnitProgressSummary[]> =>
+  PROGRESS;
+
 describe("StageOutline", () => {
   it("anuncia la carga de la etapa", () => {
     render(
       <StageOutline
         stageId={0}
         loadStage={() => new Promise<StageDetail>(() => undefined)}
+        loadProgress={loadProgress}
       />,
     );
 
@@ -75,7 +102,13 @@ describe("StageOutline", () => {
   it("pide la etapa por su id y enlaza cada unidad", async () => {
     const loader = vi.fn(loadStage);
 
-    render(<StageOutline stageId={0} loadStage={loader} />);
+    render(
+      <StageOutline
+        stageId={0}
+        loadStage={loader}
+        loadProgress={loadProgress}
+      />,
+    );
 
     const unit = await screen.findByRole("link", {
       name: /Qué es la inteligencia artificial/,
@@ -92,7 +125,13 @@ describe("StageOutline", () => {
   });
 
   it("declara el módulo sin unidades publicadas", async () => {
-    render(<StageOutline stageId={0} loadStage={loadStage} />);
+    render(
+      <StageOutline
+        stageId={0}
+        loadStage={loadStage}
+        loadProgress={loadProgress}
+      />,
+    );
 
     expect(
       await screen.findByText("Este módulo aún no tiene unidades publicadas."),
@@ -103,6 +142,7 @@ describe("StageOutline", () => {
     render(
       <StageOutline
         stageId={9}
+        loadProgress={loadProgress}
         loadStage={() =>
           Promise.reject(
             new ApiError({
@@ -121,7 +161,7 @@ describe("StageOutline", () => {
     );
     expect(
       screen.getByRole("link", { name: "Volver al catálogo" }),
-    ).toHaveAttribute("href", "/learn");
+    ).toHaveAttribute("href", "/learn/stages");
     expect(screen.getByText("Referencia: trace-404")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
   });
@@ -132,7 +172,13 @@ describe("StageOutline", () => {
       .mockRejectedValueOnce(new Error("red caída"))
       .mockResolvedValueOnce(STAGE);
 
-    render(<StageOutline stageId={0} loadStage={loader} />);
+    render(
+      <StageOutline
+        stageId={0}
+        loadStage={loader}
+        loadProgress={loadProgress}
+      />,
+    );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "No pudimos cargar la etapa.",
@@ -145,5 +191,40 @@ describe("StageOutline", () => {
         screen.getByRole("heading", { level: 1, name: "Fundamentos de la IA" }),
       ).toBeInTheDocument();
     });
+  });
+
+  it("refleja el estado y el avance de cada unidad", async () => {
+    const progress = [
+      unitProgress("U0.1.1", "MASTERED", 100),
+      unitProgress("U0.1.2", "LOCKED", 0),
+    ];
+
+    render(
+      <StageOutline
+        stageId={0}
+        loadStage={loadStage}
+        loadProgress={async () => progress}
+      />,
+    );
+
+    const dominada = await screen.findByRole("link", {
+      name: /Qué es la inteligencia artificial/,
+    });
+
+    expect(within(dominada).getByText("Dominada")).toBeInTheDocument();
+    expect(
+      within(dominada).getByRole("progressbar", { name: "Avance de U0.1.1" }),
+    ).toHaveAttribute("aria-valuenow", "100");
+
+    const bloqueada = screen.getByText("Qué es un algoritmo").closest("div");
+
+    expect(bloqueada).not.toBeNull();
+    expect(bloqueada).toHaveTextContent("Bloqueada");
+    expect(
+      bloqueada,
+    ).toHaveTextContent("Se abre al dominar la unidad anterior.");
+    expect(
+      screen.queryByRole("link", { name: /Qué es un algoritmo/ }),
+    ).toBeNull();
   });
 });
