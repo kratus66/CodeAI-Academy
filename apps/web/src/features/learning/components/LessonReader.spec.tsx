@@ -6,6 +6,11 @@ import { ApiError } from "@/lib/api-client";
 
 import { LessonReader } from "./LessonReader";
 
+vi.mock("@/lib/highlight", () => ({
+  highlightCode: async (code: string) =>
+    `<pre class="shiki"><code><span>${code}</span></code></pre>`,
+}));
+
 const LESSON: LessonDetail = {
   id: "lesson_1",
   slug: "que-es-la-ia",
@@ -140,6 +145,9 @@ describe("LessonReader", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("print('hola')")).toBeInTheDocument();
     expect(screen.getByText("python")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Abrir en el laboratorio/ }),
+    ).toHaveAttribute("href", "/learn/units/U0.1.1#ejercicios");
     expect(
       screen.getByText("Una hoja de cálculo con fórmulas no es IA."),
     ).toBeInTheDocument();

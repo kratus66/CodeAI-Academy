@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 
 import { TutorPanel } from "@/features/ai/components/TutorPanel";
+import { CodeBlock } from "@/features/learning/components/CodeBlock";
 import { formatMinutes } from "@/features/learning/lib/format";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { ApiError, contentApi, progressApi } from "@/lib/api-client";
@@ -55,7 +56,13 @@ function BlockTitle({ children }: { readonly children: string }) {
  * Un bloque de contenido tal como llega de la API. Los tipos son los del
  * contrato (`LESSON_CONTENT_BLOCK_TYPES`); un bloque sin carga útil no pinta nada.
  */
-function ContentBlock({ block }: { readonly block: LessonContentBlock }) {
+function ContentBlock({
+  block,
+  unitCode,
+}: {
+  readonly block: LessonContentBlock;
+  readonly unitCode: string;
+}) {
   switch (block.type) {
     case "paragraph":
       return (
@@ -83,16 +90,11 @@ function ContentBlock({ block }: { readonly block: LessonContentBlock }) {
       return (
         <figure className="space-y-2">
           {block.title ? <BlockTitle>{block.title}</BlockTitle> : null}
-          <div className="overflow-x-auto rounded-xl border border-line/70 bg-ink-card">
-            {block.language ? (
-              <p className="border-b border-line/70 px-4 py-2 font-mono text-xs text-slate-500">
-                {block.language}
-              </p>
-            ) : null}
-            <pre className="px-4 py-3 text-sm text-slate-200">
-              <code>{block.code}</code>
-            </pre>
-          </div>
+          <CodeBlock
+            code={block.code ?? ""}
+            language={block.language}
+            labHref={`/learn/units/${unitCode}#ejercicios`}
+          />
         </figure>
       );
 
@@ -305,7 +307,11 @@ export function LessonReader({
           Contenido
         </h2>
         {lesson.content.map((block, index) => (
-          <ContentBlock key={`${block.type}-${index}`} block={block} />
+          <ContentBlock
+            key={`${block.type}-${index}`}
+            block={block}
+            unitCode={lesson.unitCode}
+          />
         ))}
       </section>
 
