@@ -10,6 +10,8 @@ import { DEFAULT_ANALYTICS_RANGE } from "@codeai/shared";
 import Link from "next/link";
 
 import { percentLabel } from "@/features/analytics/components/format";
+import { FirstRunOnboarding } from "@/features/learning/components/FirstRunOnboarding";
+import { useOnboardingChoice } from "@/features/learning/lib/onboarding-preference";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import {
   analyticsApi,
@@ -171,6 +173,7 @@ export function StudentDashboard({
   loadDashboard = defaultLoadDashboard,
 }: StudentDashboardProps) {
   const { state, reload } = useContentLoader(loadDashboard);
+  const onboardingChoice = useOnboardingChoice();
 
   if (state.status === "loading") {
     return (
@@ -208,9 +211,13 @@ export function StudentDashboard({
   const progressMade = hasRecordedProgress(summary, units);
   const nextStep = resolveNextStep(units, stages, progressMade);
   const dueReviews = review.dueReviews;
+  // La tarjeta de primer uso solo aparece si no hay progreso y aún no se ha
+  // respondido ni saltado; en cuanto se guarda, el panel deja de mostrarla.
+  const showOnboarding = !progressMade && onboardingChoice === null;
 
   return (
     <div className="space-y-6">
+      {showOnboarding ? <FirstRunOnboarding /> : null}
       <section aria-labelledby="siguiente-paso" className={CARD_CLASSES}>
         <h2 id="siguiente-paso" className="text-sm font-medium text-slate-300">
           Tu siguiente paso

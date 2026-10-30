@@ -5,7 +5,9 @@ import type {
   UnitProgressSummary,
 } from "@codeai/shared";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { ONBOARDING_STORAGE_KEY } from "@/features/learning/lib/onboarding-preference";
 
 import type { StudentDashboardData } from "./StudentDashboard";
 import { StudentDashboard } from "./StudentDashboard";
@@ -67,6 +69,12 @@ function data(overrides: Partial<StudentDashboardData> = {}): StudentDashboardDa
     ...overrides,
   };
 }
+
+beforeEach(() => {
+  // La tarjeta de primer uso guarda su elección en `localStorage`: cada caso
+  // arranca sin elección para que el panel se comporte como una visita nueva.
+  window.localStorage.clear();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -282,6 +290,67 @@ describe("StudentDashboard", () => {
     expect(within(progreso).getByText("3")).toBeInTheDocument();
     expect(within(progreso).getByText("En curso")).toBeInTheDocument();
     expect(within(progreso).getByText("2")).toBeInTheDocument();
+  });
+
+  it("ofrece el onboarding de primer uso cuando aún no hay progreso", async () => {
+    const loadDashboard = vi.fn(async () =>
+      data({
+        units: [unit({ unitCode: "1.1", state: "AVAILABLE" })],
+      }),
+    );
+
+    render(<StudentDashboard loadDashboard={loadDashboard} />);
+
+    const onboarding = await screen.findByRole("region", {
+      name: "Empecemos por conocerte",
+    });
+
+    expect(within(onboarding).getByText("Paso 1 de 3")).toBeInTheDocument();
+    expect(
+      within(onboarding).getByRole("button", { name: "Saltar por ahora" }),
+    ).toBeInTheDocument();
+  });
+
+  it("no ofrece el onboarding cuando ya hay progreso", async () => {
+    const loadDashboard = vi.fn(async () =>
+      data({
+        summary: summary({ overallPct: 20, activeDays: 2 }),
+        units: [
+          unit({ unitCode: "1.1", state: "IN_PROGRESS", progressPct: 20 }),
+        ],
+      }),
+    );
+
+    render(<StudentDashboard loadDashboard={loadDashboard} />);
+
+    await screen.findByRole("link", { name: "Continuar" });
+
+    expect(
+      screen.queryByRole("region", { name: "Empecemos por conocerte" }),
+    ).toBeNull();
+  });
+
+  it("retira el onboarding al saltarlo y recuerda el salto", async () => {
+    const loadDashboard = vi.fn(async () => data());
+
+    render(<StudentDashboard loadDashboard={loadDashboard} />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Saltar por ahora" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("region", { name: "Empecemos por conocerte" }),
+      ).toBeNull();
+    });
+    expect(window.localStorage.getItem(ONBOARDING_STORAGE_KEY)).toBe(
+      JSON.stringify({ status: "skipped" }),
+    );
+    expect(screen.getByRole("link", { name: "Continuar" })).toHaveAttribute(
+      "href",
+      "/learn/stages/0",
+    );
   });
 
   it("muestra el error con reintento cuando la API no responde", async () => {
