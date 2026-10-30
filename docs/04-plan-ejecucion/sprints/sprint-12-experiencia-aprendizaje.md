@@ -1,6 +1,6 @@
 # Sprint 12 — Experiencia de aprendizaje (UX / Frontend)
 
-> **Estado:** ⬜ abierto (0/10 tareas) · **Duración prevista:** 8–10 sesiones · **Depende de:** S3 (lección y catálogo), S4 (progreso y desbloqueos), S5–S6 (laboratorio y pistas), S7 (repaso SM-2), S8 (tutor socrático) y S11 (analítica: `GET /api/analytics/me/summary`).
+> **Estado:** ✅ cerrado (2026-10-30; 10/10 tareas, T9 como deuda documentada) · **Duración prevista:** 8–10 sesiones · **Depende de:** S3 (lección y catálogo), S4 (progreso y desbloqueos), S5–S6 (laboratorio y pistas), S7 (repaso SM-2), S8 (tutor socrático) y S11 (analítica: `GET /api/analytics/me/summary`).
 > **Ámbito:** solo `apps/web`. Ninguna tarea cambia el esquema de datos ni añade endpoints salvo que su ficha lo diga explícitamente (T9, streaming del tutor, es la única con dependencia de API y se puede posponer).
 > **Por qué este sprint existe:** los once sprints anteriores construyeron un producto correcto, accesible y bien probado, pero la **capa de presentación** aún no acompaña a la pedagogía. El alumno que vuelve no sabe dónde iba, el catálogo no muestra avance, el código de las lecciones no se resalta, los 7 pasos se leen en pasivo y el tutor —el gran diferenciador de IA— está al fondo de la lección y ausente del laboratorio. Este sprint convierte "bien construido" en "producto que engancha y enseña mejor", sin tocar la lógica de negocio ya verificada.
 
@@ -203,11 +203,11 @@ No es una tarea suelta: al tocar cada vista en T1–T3 se sustituye el texto "Ca
 
 ## 7. Criterios de cierre del sprint
 
-- [ ] T1–T8 y T10 aprobadas; T9 aprobada o documentada como deuda.
-- [ ] `npm run typecheck -w apps/web`, `npm run lint -w apps/web` y `npm run test -w apps/web` en verde.
-- [ ] `npm run build -w apps/web` compila.
-- [ ] Sin regresión de accesibilidad: skip link, focus-visible, `prefers-reduced-motion`, roles y etiquetas conservados.
-- [ ] `README.md` (estado de construcción) y `roadmap-sprints.md` actualizados en el mismo commit que cierra el sprint.
+- [x] T1–T8 y T10 aprobadas; T9 aprobada o documentada como deuda (lo segundo: §6).
+- [x] `npm run typecheck -w apps/web`, `npm run lint -w apps/web` y `npm run test -w apps/web` en verde (342 pruebas en 46 archivos).
+- [x] `npm run build -w apps/web` compila.
+- [x] Sin regresión de accesibilidad: skip link, focus-visible, `prefers-reduced-motion`, roles y etiquetas conservados.
+- [x] `README.md` (estado de construcción) y `roadmap-sprints.md` actualizados en el mismo commit que cierra el sprint.
 
 ## 8. Documentos relacionados
 
@@ -216,3 +216,22 @@ No es una tarea suelta: al tocar cada vista en T1–T3 se sustituye el texto "Ca
 - [`../convenciones-codigo.md`](../convenciones-codigo.md)
 - [`../../03-arquitectura/capa-ia.md`](../../03-arquitectura/capa-ia.md)
 - [`../../03-arquitectura/contratos-api.md`](../../03-arquitectura/contratos-api.md)
+
+## 9. Registro de ejecución
+
+Cada tarea se cerró en su propio commit sobre `feat/ui-tetris-futurista`, con
+specs nuevas o ampliadas en el mismo commit:
+
+| Tarea | Commit | Qué dejó |
+|-------|--------|----------|
+| T1 | `bc0edcb` | Panel de inicio en `/learn`; el catálogo se mueve a `/learn/stages`. |
+| T2 | `a38aaf6` | Estado y avance por etapa en el catálogo y en el outline. |
+| T3 | `65f97e6` | Resaltado de sintaxis en build, botón de copiar y salto al laboratorio. |
+| T4 | `bc3da5a` | Stepper de los siete pasos con foco gestionado. |
+| T5 | `2a10443` | Tutor socrático dentro del laboratorio, con el código del intento como contexto. |
+| T6 | `c1637ae` | Tema claro/oscuro sobre tokens CSS y contraste AA. |
+| T7 | `d959dfc` | Barra inferior de navegación en móvil. |
+| T8 | `071a987` | Los efectos de movimiento viven solo en la portada. |
+| T10 | `82d7bdd` | Onboarding de primer uso en tres pasos. |
+| T9 | `594e114` | Streaming del tutor declarado como deuda (§6). |
+| — | `420b6a6` | Esta ficha entra al repositorio. |

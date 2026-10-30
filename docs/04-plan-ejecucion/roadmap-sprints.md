@@ -33,6 +33,7 @@
 | **S9** | Proyectos, rúbricas y portafolio | E9–E11 | `projects` | ✅ completado (18/18 tareas; 18/18 criterios; HTTP 16/16) |
 | **S10** | Simulaciones de entrevista | E11 | `interviews` | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
 | **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | 🔄 14/16 tareas; lanzamiento bloqueado por el adaptador de sandbox `docker` |
+| **S12** | Experiencia de aprendizaje (UX / frontend) | E1–E11 | — | ✅ 10/10 tareas; T9 (streaming del tutor) como deuda documentada |
 
 > Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >
@@ -148,12 +149,22 @@
 - **Deuda heredada que se paga aquí:** actualización de `next` (crítico de producción) y de la cadena `vitest`/`vite` (solo desarrollo), documentadas en [`seguridad-dependencias.md`](../03-arquitectura/seguridad-dependencias.md).
 - **Ficha:** [`sprints/sprint-11-analitica-lanzamiento.md`](sprints/sprint-11-analitica-lanzamiento.md).
 
+### S12 — Experiencia de aprendizaje (UX / frontend)
+
+- **Objetivo:** la capa de presentación acompaña a la pedagogía —el alumno sabe dónde iba, el catálogo muestra avance y el tutor está donde se escribe código— sin tocar la lógica de negocio ya verificada.
+- **Entregables:** panel de inicio en `/learn`, estado por etapa en el catálogo, resaltado de código en las lecciones, stepper de los siete pasos, tutor en el laboratorio, tema claro/oscuro, barra de navegación móvil, poda de efectos globales y onboarding de primer uso.
+- **Criterio de salida:** las nueve tareas de producto aprobadas y T9 (streaming del tutor) resuelta o declarada como deuda; typecheck, lint, pruebas y build en verde; sin regresión de accesibilidad.
+- **Estado (2026-10-30):** completo, **10/10 tareas**. `apps/web` gana el panel (`/learn`, catálogo movido a `/learn/stages`), el estado por etapa con `role="progressbar"`, el resaltado en build, el stepper, el tutor acoplado, el tema conmutable sobre tokens CSS, la barra inferior con `aria-current`, la portada como único sitio con efectos JS y el onboarding de tres pasos con `useSyncExternalStore`.
+- **Deuda:** el streaming del tutor no se implementó —`POST /api/ai/tutor` responde JSON completo— y queda anotado en el §6 de la ficha con lo que falta.
+- **Cierre:** suite web **342 pruebas en 46 archivos** en verde, typecheck, lint y build en 0; el HTML prerenderizado de `/learn/*` ya no referencia el chunk de Three.js que sí sirve la portada.
+- **Ficha:** [`sprints/sprint-12-experiencia-aprendizaje.md`](sprints/sprint-12-experiencia-aprendizaje.md).
+
 ---
 
 ## 4. Dependencias
 
 ```
-S0 ──► S1 ──► S2 ──► S3 ──► S4 ──► S5 ──► S6 ──► S7 ──► S9 ──► S8 ──► S10 ──► S11
+S0 ──► S1 ──► S2 ──► S3 ──► S4 ──► S5 ──► S6 ──► S7 ──► S9 ──► S8 ──► S10 ──► S11 ──► S12
 ```
 
 - **S3** requiere S1 (sesión ✅) y S2 (contenido).
@@ -162,6 +173,7 @@ S0 ──► S1 ──► S2 ──► S3 ──► S4 ──► S5 ──► S6
 - **S9–S11** requieren el dominio completo de fundamentos y calidad (E7).
 - **S10** requiere S8 (entrevistador por turnos, presupuesto y filtro de fuga) y S9 (motor de rúbricas y `RolesGuard`); **cumplido**: ambos cerrados antes de S10 y la verificación HTTP de S10 pasó 16/16.
 - **S11** cierra la deuda técnica: actualización de dependencias con avisos críticos, `ready`, respaldos y despliegue. Requiere Docker para sus dos últimas tareas.
+- **S12** no introduce dependencias nuevas de backend: consume lo ya cerrado en S3–S8 y la analítica de S11 (`GET /api/analytics/me/summary`). Su única tarea con API —el streaming del tutor— quedó como deuda, así que el sprint se cerró sin tocar `apps/api`.
 
 ---
 
