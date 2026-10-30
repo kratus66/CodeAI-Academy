@@ -20,10 +20,12 @@ const STATIC_STEPS = 260;
 
 function cellStyle(id: TetrominoId | null, flash: boolean) {
   if (flash) {
+    // `--white` es el velo de énfasis del tema: blanco en oscuro y tinta en
+    // claro, para que el destello de la fila borrada se vea en ambos.
     return {
-      backgroundColor: "rgba(255,255,255,0.85)",
-      borderColor: "rgba(255,255,255,1)",
-      boxShadow: "0 0 14px rgba(255,255,255,0.8)",
+      backgroundColor: "rgb(var(--white) / 0.85)",
+      borderColor: "rgb(var(--white) / 1)",
+      boxShadow: "0 0 14px rgb(var(--white) / 0.8)",
     };
   }
   if (id === null) return undefined;

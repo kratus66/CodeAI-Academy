@@ -73,7 +73,7 @@ export function CompetencyBoard({ competencies }: CompetencyBoardProps) {
                     ? `${color}cc`
                     : isTarget
                       ? `${color}80`
-                      : "rgba(255,255,255,0.05)",
+                      : "rgb(var(--white) / 0.05)",
                   backgroundColor: reached ? `${color}33` : "transparent",
                   boxShadow: reached
                     ? rowComplete && !optional

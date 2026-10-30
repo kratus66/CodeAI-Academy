@@ -8,6 +8,7 @@ import { AmbientPieces } from "@/components/effects/AmbientPieces";
 import { SessionProvider } from "@/features/auth/context/SessionProvider";
 import { SiteFooter } from "@/features/landing/components/SiteFooter";
 import { SiteHeader } from "@/features/landing/components/SiteHeader";
+import { THEME_BOOTSTRAP, THEME_COLORS } from "@/lib/theme-bootstrap";
 
 import "./globals.css";
 
@@ -54,8 +55,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070b14",
-  colorScheme: "dark",
+  themeColor: THEME_COLORS.dark,
+  // El tema lo decide el estudiante (o su sistema); el script de arranque
+  // reescribe `theme-color` con el valor de su elección.
+  colorScheme: "light dark",
 };
 
 interface RootLayoutProps {
@@ -67,9 +70,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html
       lang="es"
       data-scroll-behavior="smooth"
+      suppressHydrationWarning
       className={`scroll-smooth ${fontDisplay.variable} ${fontSans.variable} ${fontMono.variable}`}
     >
       <body className="flex min-h-screen flex-col bg-ink font-sans text-slate-100 antialiased">
+        {/* Antes del primer pintado: sin él, el tema claro parpadearía en oscuro. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         <SessionProvider>
           <a
             href="#inicio"

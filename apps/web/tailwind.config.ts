@@ -1,22 +1,70 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Los neutros y los acentos salen de tokens CSS (`globals.css`), no de valores
+ * fijos: `[data-theme="light"]` cambia el valor y toda la UI se adapta. `<alpha-value>`
+ * conserva los modificadores de opacidad (`bg-ink/80`, `border-white/10`).
+ */
+function token(name: string): string {
+  return `rgb(var(--${name}) / <alpha-value>)`;
+}
+
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         ink: {
-          DEFAULT: "#070b14",
-          soft: "#0b1220",
-          card: "#0f172a",
+          DEFAULT: token("ink"),
+          soft: token("ink-soft"),
+          card: token("ink-card"),
         },
-        line: "#1e293b",
+        line: token("line"),
+        white: token("white"),
+        slate: {
+          100: token("slate-100"),
+          200: token("slate-200"),
+          300: token("slate-300"),
+          400: token("slate-400"),
+          500: token("slate-500"),
+          600: token("slate-600"),
+          700: token("slate-700"),
+          800: token("slate-800"),
+          900: token("slate-900"),
+          950: token("slate-950"),
+        },
         accent: {
-          DEFAULT: "#38bdf8",
-          soft: "#0ea5e9",
-          deep: "#0284c7",
+          DEFAULT: token("accent"),
+          soft: token("accent-soft"),
+          deep: token("accent-deep"),
         },
-        mint: "#34d399",
+        mint: token("mint"),
+        // Estados: solo los pasos que se usan como texto llevan token.
+        rose: {
+          200: token("rose-200"),
+          300: token("rose-300"),
+          400: token("rose-400"),
+        },
+        amber: {
+          100: token("amber-100"),
+          200: token("amber-200"),
+          300: token("amber-300"),
+          400: token("amber-400"),
+        },
+        emerald: {
+          200: token("emerald-200"),
+          300: token("emerald-300"),
+          400: token("emerald-400"),
+        },
+        sky: {
+          200: token("sky-200"),
+          300: token("sky-300"),
+          400: token("sky-400"),
+        },
+        cyan: {
+          100: token("cyan-100"),
+          400: token("cyan-400"),
+        },
         piece: {
           i: "#22d3ee",
           o: "#facc15",

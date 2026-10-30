@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Container } from "@/components/layout/Container";
 import { SessionMenu } from "@/components/layout/SessionMenu";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const NAVIGATION = [
   { href: "#ruta", label: "Ruta" },
@@ -50,7 +51,10 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <SessionMenu />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <SessionMenu />
+        </div>
       </Container>
     </header>
   );

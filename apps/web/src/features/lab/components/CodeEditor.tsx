@@ -6,6 +6,7 @@ import { Component, useId } from "react";
 import type { ComponentType, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
+import { useTheme } from "@/lib/theme-preference";
 
 /**
  * Editor de código del laboratorio (S5-T12).
@@ -110,6 +111,9 @@ export async function loadMonacoSurface(): Promise<
     describedBy,
     minRows,
   }: CodeSurfaceProps) {
+    // Monaco no lee los tokens CSS: su tema se elige a mano con el del sitio.
+    const theme = useTheme();
+
     return (
       <div aria-describedby={describedBy} aria-label={label} role="group">
         <Editor
@@ -127,7 +131,7 @@ export async function loadMonacoSurface(): Promise<
             padding: { top: 12, bottom: 12 },
             renderLineHighlight: "none",
           }}
-          theme="vs-dark"
+          theme={theme === "light" ? "light" : "vs-dark"}
           value={value}
           onChange={(next: string | undefined) => onChange(next ?? "")}
         />

@@ -2,7 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Tokens de tema (S12-T6). Los colores neutros de Tailwind se declaran como
+ * variables y `tailwind.config.ts` los consume con `rgb(var(--token) / <alpha>)`,
+ * así que `bg-ink`, `text-slate-400` o `border-white/10` cambian de valor con
+ * `data-theme` sin tocar un solo componente.
+ *
+ * La escala es la misma en ambos temas: `slate-100` es siempre el texto de
+ * máximo énfasis y `white` siempre el velo de énfasis, de modo que invertir el
+ * tema no obliga a reinterpretar cada clase. Por eso en claro los neutros
+ * bajan de luminosidad y los fondos suben.
+ *
+ * Contraste oscuro medido sobre `--ink-card` (#0f172a), umbral AA de 4.5:1
+ * para texto normal:
+ *   text-slate-100 #f1f5f9 16.3:1 · text-slate-200 #e2e8f0 14.5:1
+ *   text-slate-300 #cbd5e1 12.0:1 · text-slate-400 #94a3b8  7.0:1
+ *   text-slate-500 #7a8da4  5.3:1 · text-slate-600 #6f839b  4.6:1
+ *   text-accent    #38bdf8  8.3:1 · text-mint #34d399       9.3:1
+ * Los pasos 500/600 de los neutros se aclararon respecto a la escala de
+ * Tailwind: `#64748b` daba 3.8:1 sobre la tarjeta y `#475569` 2.4:1, por debajo
+ * de AA en los labels secundarios (`text-slate-500`) y en el placeholder de los
+ * campos (`placeholder:text-slate-600`).
+ */
 @layer base {
+  :root {
+    color-scheme: dark;
+
+    --ink: 7 11 20;
+    --ink-soft: 11 18 32;
+    --ink-card: 15 23 42;
+    --line: 30 41 59;
+    --white: 255 255 255;
+
+    --slate-100: 241 245 249;
+    --slate-200: 226 232 240;
+    --slate-300: 203 213 225;
+    --slate-400: 148 163 184;
+    --slate-500: 122 141 164;
+    --slate-600: 111 131 155;
+    --slate-700: 51 65 85;
+    --slate-800: 30 41 59;
+    --slate-900: 15 23 42;
+    --slate-950: 2 6 23;
+
+    --accent: 56 189 248;
+    --accent-soft: 14 165 233;
+    --accent-deep: 2 132 199;
+    --mint: 52 211 153;
+
+    /* Estados: en oscuro son tintes claros sobre tinta. */
+    --rose-200: 254 205 211;
+    --rose-300: 253 164 175;
+    --rose-400: 251 113 133;
+    --amber-100: 254 243 199;
+    --amber-200: 253 230 138;
+    --amber-300: 252 211 77;
+    --amber-400: 251 191 36;
+    --emerald-200: 167 243 208;
+    --emerald-300: 110 231 183;
+    --emerald-400: 52 211 153;
+    --sky-200: 186 230 253;
+    --sky-300: 125 211 252;
+    --sky-400: 56 189 248;
+    --cyan-100: 207 250 254;
+    --cyan-400: 34 211 238;
+  }
+
+  /*
+   * Tema claro. Contrastes medidos sobre `--ink` (#f8fafc) y `--ink-card`
+   * (#ffffff), umbral AA de 4.5:1 para texto normal:
+   *   text-slate-100 #0f172a 17.6:1 · text-slate-200 #1e293b 13.6:1
+   *   text-slate-300 #334155 10.3:1 · text-slate-400 #475569  7.2:1
+   *   text-slate-500 #5f6f85  4.9:1 (4.7:1 también sobre `--ink-soft`)
+   *   text-slate-600 #64748b  4.6:1 (sólo placeholder y texto deshabilitado)
+   *   text-accent   #0369a1    5.9:1 · text-mint #047857        5.3:1
+   *   text-rose-200 #9f1239    7.9:1 · text-amber-100 #78350f   9.9:1
+   *   text-amber-200 #92400e   7.6:1 · text-emerald-200 #065f46 7.6:1
+   *   text-sky-200   #075985   7.7:1 · text-cyan-100 #164e63  10.4:1
+   * Los pasos 500 de los estados quedan intactos: se usan como relleno de
+   * puntos y bordes, nunca como texto pequeño.
+   */
+  [data-theme="light"] {
+    color-scheme: light;
+
+    --ink: 248 250 252;
+    --ink-soft: 241 245 249;
+    --ink-card: 255 255 255;
+    --line: 203 213 225;
+    --white: 15 23 42;
+
+    --slate-100: 15 23 42;
+    --slate-200: 30 41 59;
+    --slate-300: 51 65 85;
+    --slate-400: 71 85 105;
+    --slate-500: 95 111 133;
+    --slate-600: 100 116 139;
+    --slate-700: 203 213 225;
+    --slate-800: 226 232 240;
+    --slate-900: 241 245 249;
+    --slate-950: 255 255 255;
+
+    --accent: 3 105 161;
+    /* Hover de los botones primarios: más oscuro, para que `text-ink` (claro en
+       este tema) siga pasando AA sobre el fondo al pasar el ratón. */
+    --accent-soft: 7 89 133;
+    --accent-deep: 7 89 133;
+    --mint: 4 120 87;
+
+    --rose-200: 159 18 57;
+    --rose-300: 190 18 60;
+    --rose-400: 190 18 60;
+    --amber-100: 120 53 15;
+    --amber-200: 146 64 14;
+    --amber-300: 180 83 9;
+    --amber-400: 180 83 9;
+    --emerald-200: 6 95 70;
+    --emerald-300: 4 120 87;
+    --emerald-400: 4 120 87;
+    --sky-200: 7 89 133;
+    --sky-300: 3 105 161;
+    --sky-400: 3 105 161;
+    --cyan-100: 22 78 99;
+    --cyan-400: 14 116 144;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
   }
@@ -43,14 +166,14 @@
     --glass-tint: 56, 189, 248;
     position: relative;
     isolation: isolate;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgb(var(--white) / 0.08);
     background:
       linear-gradient(
         160deg,
-        rgba(255, 255, 255, 0.05),
-        rgba(255, 255, 255, 0.01) 55%
+        rgb(var(--white) / 0.05),
+        rgb(var(--white) / 0.01) 55%
       ),
-      rgba(11, 18, 32, 0.55);
+      rgb(var(--ink-card) / 0.55);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     transition:
@@ -89,4 +212,13 @@
   .tint-z { --glass-tint: 251, 113, 133; }
   .tint-j { --glass-tint: 96, 165, 250; }
   .tint-l { --glass-tint: 251, 146, 60; }
+
+  /*
+   * Shiki escribe el tema oscuro en línea (`defaultColor: "dark"`) y deja el
+   * claro en `--shiki-light` sobre cada span: en tema claro hay que devolvérselo.
+   */
+  [data-theme="light"] .shiki,
+  [data-theme="light"] .shiki span {
+    color: var(--shiki-light) !important;
+  }
 }
