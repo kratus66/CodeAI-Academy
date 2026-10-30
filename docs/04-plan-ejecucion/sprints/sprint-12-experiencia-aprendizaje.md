@@ -198,7 +198,7 @@ No es una tarea suelta: al tocar cada vista en T1–T3 se sustituye el texto "Ca
 ## 6. Deuda declarada al cierre
 
 - **Sandbox real:** fuera de alcance; el laboratorio sigue sobre `mock`. Bloquea la certificación de E0–E2. Candidato a sprint propio de backend/infra.
-- **Streaming del tutor (T9):** queda en deuda si la API de IA no expone SSE.
+- **Streaming del tutor (T9):** el cliente y la API siguen sin streaming y el comportamiento es el que había: una respuesta completa tras «está pensando…». Los adaptadores ya exponen `stream()` en `AiProvider` (`apps/api/src/modules/ai/providers/*.provider.ts`), pero nada lo consume: `AiService.tutor` usa `complete()` y `POST /api/ai/tutor` devuelve un `AiTutorResponse` JSON, sin `text/event-stream`. Hacerlo exige, en este orden: (1) un `@Sse`/respuesta en crudo en `AiController` que reutilice la misma cuota (`RateLimitGuard`, 30/h por usuario) y el mismo descuento de presupuesto; (2) mover `applyReplyGuards` al flujo —un texto parcial no se puede validar al final sin haberlo ya pintado—; (3) un lector de stream en `apps/web/src/lib/api-client.ts` y la pintura token a token con `aria-live="polite"` en `TutorPanel`. Mientras eso no exista no se toca `TutorPanel`: `TutorPanel.spec.tsx` sigue cubriendo el límite de mensajes, el saldo y el fallback.
 - **i18n:** cadenas aún hardcodeadas en español; extracción planificada aparte.
 
 ## 7. Criterios de cierre del sprint
