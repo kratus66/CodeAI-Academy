@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 
 import { TutorPanel } from "@/features/ai/components/TutorPanel";
 import { CodeBlock } from "@/features/learning/components/CodeBlock";
+import { StepsFlow } from "@/features/learning/components/StepsFlow";
 import { formatMinutes } from "@/features/learning/lib/format";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { ApiError, contentApi, progressApi } from "@/lib/api-client";
@@ -15,17 +16,6 @@ const LINK_CLASSES =
 
 const BUTTON_CLASSES =
   "mt-4 inline-flex items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink";
-
-/** Nombre legible de cada paso de la microestructura (plantilla-leccion.md). */
-const STEP_LABELS: Record<LessonDetail["steps"][number]["kind"], string> = {
-  objective: "Objetivo",
-  explanation: "Explicación",
-  guided_practice: "Práctica guiada",
-  independent_practice: "Práctica autónoma",
-  debug: "Depuración",
-  assessment: "Evaluación",
-  transfer: "Transferencia",
-};
 
 type LoadLesson = (slug: string, signal?: AbortSignal) => Promise<LessonDetail>;
 
@@ -315,36 +305,7 @@ export function LessonReader({
         ))}
       </section>
 
-      <section
-        aria-labelledby="pasos"
-        className="space-y-4 border-t border-line/70 pt-8"
-      >
-        <h2
-          id="pasos"
-          className="text-lg font-semibold tracking-tight text-white"
-        >
-          Los 7 pasos
-        </h2>
-        <ol className="grid list-none gap-4 p-0">
-          {lesson.steps.map((step, index) => (
-            <li
-              key={step.kind}
-              className="rounded-xl border border-line/70 bg-ink-card/40 px-4 py-3"
-            >
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
-                <span aria-hidden>{index + 1}. </span>
-                {STEP_LABELS[step.kind]}
-              </p>
-              <h3 className="mt-1 text-base font-semibold text-white">
-                {step.title}
-              </h3>
-              <p className="mt-1 text-sm leading-relaxed text-slate-300">
-                {step.body}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <StepsFlow steps={lesson.steps} />
 
       <section
         aria-labelledby="recursos"

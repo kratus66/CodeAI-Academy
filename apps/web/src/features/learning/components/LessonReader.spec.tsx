@@ -156,15 +156,16 @@ describe("LessonReader", () => {
     ).toBeInTheDocument();
   });
 
-  it("presenta los siete pasos con su nombre en castellano", async () => {
+  it("recorre los siete pasos con un stepper y su posición", async () => {
     render(<LessonReader slug="que-es-la-ia" loadLesson={loadLesson} />);
 
     const steps = await screen.findByRole("region", { name: "Los 7 pasos" });
 
     expect(steps.querySelectorAll("li")).toHaveLength(7);
-    expect(screen.getByText("Práctica autónoma")).toBeInTheDocument();
+    expect(screen.getByText("1 / 7")).toBeInTheDocument();
+    expect(screen.getByText("Objetivo")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { level: 3, name: "Llévalo a tu entorno" }),
+      screen.getByRole("heading", { level: 3, name: "Qué vas a lograr" }),
     ).toBeInTheDocument();
   });
 
