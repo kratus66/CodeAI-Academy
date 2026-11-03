@@ -99,7 +99,21 @@ export class OpenAiProvider implements AiProvider {
     const response = await this.post(messages, options, true);
 
     for await (const data of readSseData(response)) {
-      const delta = parseChunk(data)?.choices?.[0]?.delta?.content;
+      const chunk = parseChunk(data);
+      const delta = chunk?.choices?.[0]?.delta?.content;
+
+      if (chunk?.usage !== undefined && chunk.usage !== null) {
+        const promptTokens = chunk.usage.prompt_tokens ?? 0;
+        const outputTokens = chunk.usage.completion_tokens ?? 0;
+        const model = chunk.model ?? this.config.model;
+
+        options.onUsage?.({
+          promptTokens,
+          outputTokens,
+          model,
+          costUsd: computeCostUsd(model, promptTokens, outputTokens),
+        });
+      }
 
       if (typeof delta === "string" && delta !== "") {
         yield delta;
@@ -134,7 +148,7 @@ export class OpenAiProvider implements AiProvider {
           messages,
           temperature: options.temperature,
           max_tokens: options.maxTokens,
-          ...(stream ? { stream: true } : {}),
+          ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
           ...(options.jsonSchema === undefined
             ? {}
             : {
@@ -163,7 +177,9 @@ export class OpenAiProvider implements AiProvider {
 }
 
 interface ChatChunk {
+  model?: string;
   choices?: { delta?: { content?: string | null } }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
 }
 
 function parseChunk(data: string): ChatChunk | null {

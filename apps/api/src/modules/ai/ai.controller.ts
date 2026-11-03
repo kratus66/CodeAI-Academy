@@ -6,8 +6,9 @@ import type {
   AiUsageResponse,
 } from "@codeai/shared";
 import { aiExplainErrorRequestSchema, aiTutorRequestSchema } from "@codeai/shared";
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
 import { RateLimit } from "../../common/security/rate-limit.decorator";
@@ -45,6 +46,44 @@ export class AiController {
     @Body(new ZodValidationPipe(aiTutorRequestSchema)) body: AiTutorInput,
   ): Promise<AiTutorResponse> {
     return this.ai.tutor(user.sub, body);
+  }
+
+  /**
+   * Misma tubería que `tutor`, entregada como `text/event-stream`
+   * (`aiTutorStreamEventSchema`). Los errores previos al primer evento (lección
+   * inexistente, cuerpo inválido) salen como respuesta HTTP normal; una vez
+   * abierto el flujo, la degradación viaja como evento `replace` + `done`.
+   */
+  @Post("tutor/stream")
+  @RateLimit(TUTOR_LIMIT)
+  @UseGuards(RateLimitGuard)
+  async tutorStream(
+    @CurrentUser() user: AccessTokenPayload,
+    @Body(new ZodValidationPipe(aiTutorRequestSchema)) body: AiTutorInput,
+    @Res() response: Response,
+  ): Promise<void> {
+    const events = this.ai.tutorStream(user.sub, body);
+    let step = await events.next();
+
+    response.status(HttpStatus.OK).set({
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+      "x-accel-buffering": "no",
+    });
+    response.flushHeaders();
+    response.on("close", () => {
+      void events.return(undefined);
+    });
+
+    try {
+      while (step.done !== true) {
+        response.write(`data: ${JSON.stringify(step.value)}\n\n`);
+        step = await events.next();
+      }
+    } finally {
+      response.end();
+    }
   }
 
   @Post("explain-error")

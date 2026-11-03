@@ -75,6 +75,19 @@ export const aiTutorResponseSchema = z
 
 export type AiTutorResponse = z.infer<typeof aiTutorResponseSchema>;
 
+/**
+ * `POST /api/ai/tutor/stream` — eventos SSE. `delta` añade texto ya apto para
+ * mostrar; `replace` sustituye todo lo mostrado (la guarda filtró o recortó la
+ * respuesta); `done` cierra el flujo con el mismo resumen que `POST /ai/tutor`.
+ */
+export const aiTutorStreamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("delta"), text: z.string().min(1) }).strict(),
+  z.object({ type: z.literal("replace"), text: z.string().min(1) }).strict(),
+  z.object({ type: z.literal("done"), response: aiTutorResponseSchema }).strict(),
+]);
+
+export type AiTutorStreamEvent = z.infer<typeof aiTutorStreamEventSchema>;
+
 /** `POST /api/ai/explain-error` — cuerpo de la petición. */
 export const aiExplainErrorRequestSchema = z
   .object({

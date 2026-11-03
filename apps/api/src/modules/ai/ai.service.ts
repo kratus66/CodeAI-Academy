@@ -7,6 +7,7 @@ import type {
   AiSource,
   AiTutorInput,
   AiTutorResponse,
+  AiTutorStreamEvent,
   AiUsageResponse,
   InterviewPhase,
 } from "@codeai/shared";
@@ -35,7 +36,11 @@ import {
   resolveBudgetPolicy,
   startOfMonthUtc,
 } from "./budget.policy";
-import type { AiProvider, AiProviderMessage } from "./interfaces/ai-provider.interface";
+import type {
+  AiProvider,
+  AiProviderMessage,
+  AiStreamUsage,
+} from "./interfaces/ai-provider.interface";
 import { AI_PROVIDER } from "./interfaces/ai-provider.interface";
 
 export const AI_CLOCK = Symbol("AI_CLOCK");
@@ -118,6 +123,39 @@ interface CacheEntry {
   expiresAt: number;
 }
 
+/** Piezas internas del *streaming*; `result` cierra el flujo con el resumen. */
+type StreamPiece =
+  | { type: "delta"; text: string }
+  | { type: "replace"; text: string }
+  | { type: "result"; result: PipelineResult };
+
+/** Sin recorte: las guardas de fuga se evalúan sobre el texto íntegro. */
+const MAX_GUARD_CHARS = Number.MAX_SAFE_INTEGER;
+
+/**
+ * Longitud del texto que ya puede mostrarse: se excluye un bloque de código sin
+ * cerrar (y los backticks finales que podrían abrir uno).
+ */
+function releasableLength(text: string): number {
+  const trailing = /`{1,2}$/.exec(text);
+  const end = text.length - (trailing === null ? 0 : trailing[0].length);
+  const fences = [...text.slice(0, end).matchAll(/```/g)];
+  const last = fences[fences.length - 1];
+
+  return fences.length % 2 === 1 && last?.index !== undefined ? last.index : end;
+}
+
+function toTutorResponse(result: PipelineResult): AiTutorResponse {
+  return {
+    reply: result.text,
+    suggestedHints: result.suggestedHints,
+    tokensUsed: result.tokensUsed,
+    budgetRemainingUsd: result.budgetRemainingUsd,
+    source: result.source,
+    filtered: result.filtered,
+  };
+}
+
 /** Entrada del caso de uso `interview` (S10); la rúbrica nunca viaja aquí. */
 export interface InterviewTurnPipelineInput {
   userId: string;
@@ -159,6 +197,21 @@ export class AiService {
   ) {}
 
   async tutor(userId: string, input: AiTutorInput): Promise<AiTutorResponse> {
+    return toTutorResponse(await this.run(await this.tutorPipelineInput(userId, input)));
+  }
+
+  /** Igual que `tutor`, pero entrega la respuesta a medida que se genera (`aiTutorStreamEventSchema`). */
+  async *tutorStream(userId: string, input: AiTutorInput): AsyncGenerator<AiTutorStreamEvent> {
+    const pipelineInput = await this.tutorPipelineInput(userId, input);
+
+    for await (const piece of this.runStream(pipelineInput)) {
+      yield piece.type === "result"
+        ? { type: "done", response: toTutorResponse(piece.result) }
+        : piece;
+    }
+  }
+
+  private async tutorPipelineInput(userId: string, input: AiTutorInput): Promise<PipelineInput> {
     const lesson = await this.repository.findLessonContext(input.lessonId);
 
     if (lesson === null) {
@@ -169,7 +222,7 @@ export class AiService {
     const sanitized = sanitizeStudentInput(input.message);
     const history: AiMessage[] = input.history;
 
-    const result = await this.run({
+    return {
       userId,
       module: "tutor",
       temperature: 0.4,
@@ -185,15 +238,6 @@ export class AiService {
         })),
         { role: "user", content: wrapStudentInput(sanitized.text) },
       ],
-    });
-
-    return {
-      reply: result.text,
-      suggestedHints: result.suggestedHints,
-      tokensUsed: result.tokensUsed,
-      budgetRemainingUsd: result.budgetRemainingUsd,
-      source: result.source,
-      filtered: result.filtered,
     };
   }
 
@@ -312,8 +356,14 @@ export class AiService {
     };
   }
 
-  /** Tubería común: caché → presupuesto → proveedor → guardas → auditoría. */
-  private async run(input: PipelineInput): Promise<PipelineResult> {
+  /**
+   * Prólogo común de la tubería: caché y presupuesto. Devuelve `result` cuando ya
+   * hay respuesta (caché o degradación) y, si no, lo necesario para llamar al proveedor.
+   */
+  private async gate(input: PipelineInput): Promise<
+    | { result: PipelineResult }
+    | { now: Date; spentUsd: number; fallback: () => PipelineResult }
+  > {
     const now = this.clock();
     const budget = this.env.AI_MONTHLY_BUDGET_USD;
     const usage = await this.repository.getUsageSince(input.userId, startOfMonthUtc(now));
@@ -324,12 +374,14 @@ export class AiService {
 
     if (cached !== null) {
       return {
-        text: cached.text,
-        suggestedHints: cached.suggestedHints,
-        tokensUsed: 0,
-        budgetRemainingUsd: remaining,
-        source: "cache",
-        filtered: false,
+        result: {
+          text: cached.text,
+          suggestedHints: cached.suggestedHints,
+          tokensUsed: 0,
+          budgetRemainingUsd: remaining,
+          source: "cache",
+          filtered: false,
+        },
       };
     }
 
@@ -344,8 +396,144 @@ export class AiService {
     });
 
     if (level === "disabled" || (level === "tutor_only" && input.degradeWhenTutorOnly === true)) {
-      return fallback();
+      return { result: fallback() };
     }
+
+    return { now, spentUsd: usage.spentUsd, fallback };
+  }
+
+  /**
+   * Variante con *streaming* de la tubería. La prosa sale en vivo; cualquier bloque
+   * de código se retiene hasta cerrarse y pasar las guardas, de modo que una
+   * solución completa nunca llega al cliente. Si la guarda salta o recorta, se
+   * emite `replace` con el texto definitivo. Una solución literal escrita en
+   * prosa puede verse un instante antes de ese `replace`.
+   */
+  private async *runStream(input: PipelineInput): AsyncGenerator<StreamPiece> {
+    const gated = await this.gate(input);
+
+    if ("result" in gated) {
+      yield { type: "delta", text: gated.result.text };
+      yield { type: "result", result: gated.result };
+      return;
+    }
+
+    const { now, spentUsd, fallback } = gated;
+    const budget = this.env.AI_MONTHLY_BUDGET_USD;
+    const maxChars = input.maxTokens * CHARS_PER_TOKEN;
+    let full = "";
+    let emitted = 0;
+    let blocked = false;
+    let reported: AiStreamUsage | undefined;
+    const startedAt = Date.now();
+
+    try {
+      for await (const part of this.provider.stream(input.messages, {
+        temperature: input.temperature,
+        maxTokens: input.maxTokens,
+        onUsage: (usage) => {
+          reported = usage;
+        },
+      })) {
+        full += part;
+
+        // Con la guarda disparada se sigue leyendo sin emitir: el proveedor informa su uso al cerrar.
+        if (blocked) continue;
+
+        const releasable = Math.min(releasableLength(full), maxChars);
+
+        if (releasable <= emitted) continue;
+
+        if (applyReplyGuards(full.slice(0, releasable), input.solutions, MAX_GUARD_CHARS).filtered) {
+          blocked = true;
+          continue;
+        }
+
+        yield { type: "delta", text: full.slice(emitted, releasable) };
+        emitted = releasable;
+      }
+    } catch (error) {
+      await this.repository.recordInteraction({
+        userId: input.userId,
+        module: input.module,
+        provider: this.provider.name,
+        model: this.env.AI_MODEL,
+        promptTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+        latencyMs: null,
+        success: false,
+        errorCode: errorCodeOf(error),
+      });
+
+      const degraded = fallback();
+
+      yield { type: "replace", text: degraded.text };
+      yield { type: "result", result: degraded };
+      return;
+    }
+
+    const usage: AiStreamUsage = reported ?? {
+      promptTokens: Math.ceil(
+        input.messages.reduce((sum, message) => sum + message.content.length, 0) / CHARS_PER_TOKEN,
+      ),
+      outputTokens: Math.ceil(full.length / CHARS_PER_TOKEN),
+      model: this.env.AI_MODEL,
+      costUsd: 0,
+    };
+
+    await this.repository.recordInteraction({
+      userId: input.userId,
+      module: input.module,
+      provider: this.provider.name,
+      model: usage.model,
+      promptTokens: usage.promptTokens,
+      outputTokens: usage.outputTokens,
+      costUsd: usage.costUsd,
+      latencyMs: Date.now() - startedAt,
+      success: true,
+      errorCode: null,
+    });
+
+    const guarded = applyReplyGuards(full, input.solutions, maxChars);
+    const shown = full.slice(0, emitted);
+
+    if (guarded.filtered || !guarded.reply.startsWith(shown)) {
+      yield { type: "replace", text: guarded.reply };
+    } else if (guarded.reply.length > shown.length) {
+      yield { type: "delta", text: guarded.reply.slice(shown.length) };
+    }
+
+    const suggestedHints = pickHints(input.concepts, guarded.reply);
+
+    if (!guarded.filtered) {
+      this.writeCache(input.cacheKey, guarded.reply, suggestedHints, now);
+    }
+
+    yield {
+      type: "result",
+      result: {
+        text: guarded.reply,
+        suggestedHints,
+        tokensUsed: usage.promptTokens + usage.outputTokens,
+        budgetRemainingUsd: remainingUsd(spentUsd + usage.costUsd, budget),
+        source: "provider",
+        filtered: guarded.filtered,
+      },
+    };
+  }
+
+  /** Tubería común: caché → presupuesto → proveedor → guardas → auditoría. */
+  private async run(input: PipelineInput): Promise<PipelineResult> {
+    const gated = await this.gate(input);
+
+    if ("result" in gated) {
+      return gated.result;
+    }
+
+    const { spentUsd, fallback, now } = gated;
+    const budget = this.env.AI_MONTHLY_BUDGET_USD;
+    const usage = { spentUsd };
 
     let completion;
 

@@ -1,4 +1,5 @@
 import { NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import type { AiTutorStreamEvent } from "@codeai/shared";
 import { INTERVIEW_STATIC_REPLIES } from "@codeai/shared";
 import { describe, expect, it } from "vitest";
 
@@ -403,6 +404,87 @@ describe("AiService · entrevista", () => {
       degraded: true,
       tokensUsed: 0,
     });
+    expect(provider.calls).toBe(0);
+  });
+});
+
+async function collectStream(
+  stream: AsyncIterable<AiTutorStreamEvent>,
+): Promise<AiTutorStreamEvent[]> {
+  const events: AiTutorStreamEvent[] = [];
+
+  for await (const event of stream) {
+    events.push(event);
+  }
+
+  return events;
+}
+
+/** Reconstruye lo que vería el estudiante aplicando `delta` y `replace` en orden. */
+function shownText(events: readonly AiTutorStreamEvent[]): string {
+  return events.reduce(
+    (text, event) =>
+      event.type === "delta" ? text + event.text : event.type === "replace" ? event.text : text,
+    "",
+  );
+}
+
+describe("AiService.tutorStream", () => {
+  it("entrega la prosa por fragmentos y cierra con el mismo resumen que tutor", async () => {
+    const { service, repository } = setup();
+    const events = await collectStream(service.tutorStream("ana", REQUEST));
+    const done = events.at(-1);
+
+    expect(events.filter((event) => event.type === "delta").length).toBeGreaterThan(1);
+    expect(done?.type).toBe("done");
+    expect(done?.type === "done" ? done.response.reply : "").toBe(shownText(events));
+    expect(done?.type === "done" ? done.response.source : "").toBe("provider");
+    expect(repository.interactions).toHaveLength(1);
+    expect(repository.interactions[0]).toMatchObject({ module: "tutor", success: true });
+  });
+
+  it("no deja pasar una solución completa: la sustituye por la pista segura", async () => {
+    const { service } = setup({ reply: `Prueba esto:\n\`\`\`js\n${SOLUTION}\n\`\`\`` });
+    const events = await collectStream(service.tutorStream("ana", REQUEST));
+    const done = events.at(-1);
+
+    expect(shownText(events)).toBe(SAFE_HINT);
+    expect(shownText(events)).not.toContain("respuesta.json()");
+    expect(events.some((event) => event.type === "delta" && event.text.includes("respuesta.json"))).toBe(false);
+    expect(done?.type === "done" ? done.response.filtered : false).toBe(true);
+  });
+
+  it("degrada a la pista estática sin error si el proveedor cae", async () => {
+    const { service, provider, repository } = setup();
+
+    provider.failWith = new Error("caído");
+
+    const events = await collectStream(service.tutorStream("ana", REQUEST));
+    const done = events.at(-1);
+
+    expect(shownText(events)).toBe(SAFE_HINT);
+    expect(done?.type === "done" ? done.response.source : "").toBe("fallback");
+    expect(repository.interactions[0]).toMatchObject({ success: false });
+  });
+
+  it("responde desde la caché la segunda vez sin llamar al proveedor", async () => {
+    const { service, provider } = setup();
+
+    await collectStream(service.tutorStream("ana", REQUEST));
+
+    const events = await collectStream(service.tutorStream("ana", REQUEST));
+    const done = events.at(-1);
+
+    expect(provider.calls).toBe(1);
+    expect(done?.type === "done" ? done.response.source : "").toBe("cache");
+  });
+
+  it("lanza 404 antes de emitir nada si la lección no existe", async () => {
+    const { service, provider } = setup();
+
+    await expect(
+      collectStream(service.tutorStream("ana", { ...REQUEST, lessonId: "nope" })),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(provider.calls).toBe(0);
   });
 });

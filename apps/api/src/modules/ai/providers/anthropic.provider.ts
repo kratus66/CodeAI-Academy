@@ -37,6 +37,8 @@ interface MessagesBody {
 interface StreamEvent {
   type?: string;
   delta?: { type?: string; text?: string };
+  message?: { model?: string; usage?: { input_tokens?: number } };
+  usage?: { output_tokens?: number };
 }
 
 /** Único lugar del código que conoce el formato HTTP de Anthropic (Messages API). */
@@ -84,9 +86,21 @@ export class AnthropicProvider implements AiProvider {
     options: AiCompletionOptions = {},
   ): AsyncIterable<string> {
     const response = await this.post(messages, options, true);
+    let model = this.config.model;
+    let promptTokens = 0;
+    let outputTokens = 0;
 
     for await (const data of readSseData(response)) {
       const event = parseEvent(data);
+
+      if (event?.type === "message_start") {
+        model = event.message?.model ?? model;
+        promptTokens = event.message?.usage?.input_tokens ?? 0;
+      }
+
+      if (event?.type === "message_delta") {
+        outputTokens = event.usage?.output_tokens ?? outputTokens;
+      }
 
       if (event?.type === "content_block_delta" && event.delta?.type === "text_delta") {
         const text = event.delta.text;
@@ -96,6 +110,13 @@ export class AnthropicProvider implements AiProvider {
         }
       }
     }
+
+    options.onUsage?.({
+      promptTokens,
+      outputTokens,
+      model,
+      costUsd: this.costOf(model, promptTokens, outputTokens),
+    });
   }
 
   isAvailable(): Promise<boolean> {

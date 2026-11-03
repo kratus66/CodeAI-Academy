@@ -58,8 +58,23 @@ export class MockAiProvider implements AiProvider {
     });
   }
 
-  async *stream(messages: AiProviderMessage[], options?: AiCompletionOptions): AsyncIterable<string> {
-    yield (await this.complete(messages, options)).content;
+  /** Entrega la réplica palabra a palabra para poder probar el flujo incremental. */
+  async *stream(
+    messages: AiProviderMessage[],
+    options: AiCompletionOptions = {},
+  ): AsyncIterable<string> {
+    const result = await this.complete(messages, options);
+
+    for (const part of result.content.match(/\S+\s*/g) ?? [result.content]) {
+      yield part;
+    }
+
+    options.onUsage?.({
+      promptTokens: result.usage.promptTokens,
+      outputTokens: result.usage.outputTokens,
+      model: result.model,
+      costUsd: result.costUsd ?? 0,
+    });
   }
 
   isAvailable(): Promise<boolean> {

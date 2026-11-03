@@ -12,12 +12,22 @@ export interface AiProviderMessage {
   content: string;
 }
 
+/** Uso real de una llamada en *streaming*; se informa al terminar el flujo. */
+export interface AiStreamUsage {
+  promptTokens: number;
+  outputTokens: number;
+  model: string;
+  costUsd: number;
+}
+
 export interface AiCompletionOptions {
   temperature?: number;
   maxTokens?: number;
   /** JSON Schema para salidas estructuradas. */
   jsonSchema?: Record<string, unknown>;
   signal?: AbortSignal;
+  /** Sólo `stream`: recibe tokens y costo reales cuando el proveedor los informa. */
+  onUsage?: (usage: AiStreamUsage) => void;
 }
 
 export interface AiCompletionResult {
