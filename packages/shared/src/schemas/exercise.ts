@@ -239,3 +239,25 @@ export type ExerciseDetailResponse = z.infer<typeof exerciseDetailResponseSchema
 export type SubmissionResponse = z.infer<typeof submissionResponseSchema>;
 export type SubmissionListResponse = z.infer<typeof submissionListResponseSchema>;
 
+
+/**
+ * Estado del estudiante en un ejercicio (`GET /api/exercises/units/:code/status`):
+ * `PASSED` = superado, `FAILED` = el último intento falló y nunca se superó,
+ * `PARTIAL` = en curso. Un ejercicio sin intentos no aparece en la lista.
+ */
+export const EXERCISE_PROGRESS_STATUSES = ["PASSED", "PARTIAL", "FAILED"] as const;
+
+export const exerciseProgressSchema = z.object({
+  exerciseId: z.string().min(1),
+  status: z.enum(EXERCISE_PROGRESS_STATUSES),
+  attempts: z.number().int().nonnegative(),
+  bestScore: z.number().int().min(0).max(100),
+});
+
+export type ExerciseProgress = z.infer<typeof exerciseProgressSchema>;
+
+export const exerciseProgressResponseSchema = z.object({
+  statuses: z.array(exerciseProgressSchema),
+});
+
+export type ExerciseProgressResponse = z.infer<typeof exerciseProgressResponseSchema>;

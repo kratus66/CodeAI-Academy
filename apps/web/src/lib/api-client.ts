@@ -12,6 +12,7 @@ import {
   errorResponseSchema,
   exerciseDetailResponseSchema,
   exerciseListResponseSchema,
+  exerciseProgressResponseSchema,
   flashcardRatingResponseSchema,
   flashcardRevealResponseSchema,
   hintResponseEnvelopeSchema,
@@ -55,6 +56,7 @@ import type {
   ErrorCode,
   ErrorDetail,
   ExerciseDetail,
+  ExerciseProgress,
   ExerciseListItem,
   FlashcardRatingResponse,
   FlashcardRevealResponse,
@@ -427,6 +429,17 @@ export const exercisesApi = {
     );
 
     return { exercises: page.data, meta: page.meta };
+  },
+
+  /** Estado propio por ejercicio de la unidad; sólo aparecen los que ya tienen algún intento. */
+  async unitProgress(unitCode: string, signal?: AbortSignal): Promise<ExerciseProgress[]> {
+    const response = await requestParsed(
+      exerciseProgressResponseSchema,
+      `/exercises/units/${encodeURIComponent(unitCode)}/status`,
+      signal,
+    );
+
+    return response.statuses;
   },
 
   async getDetail(

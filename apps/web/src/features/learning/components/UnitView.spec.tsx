@@ -200,3 +200,69 @@ describe("UnitView", () => {
     expect(screen.getByText("Referencia: trace-unidad")).toBeInTheDocument();
   });
 });
+
+describe("UnitView: estado de los ejercicios", () => {
+  const exercise = (id: string, title: string) => ({
+    id,
+    slug: id,
+    type: "QUIZ" as const,
+    title,
+    statement: `Enunciado de ${title}`,
+    difficulty: 1,
+    ladder: "GUIDED" as const,
+    estimatedMin: 2,
+    concepts: ["general"],
+    competencies: ["C1"],
+    order: 1,
+  });
+  const withExercises = (code: string): Promise<UnitViewContent> => {
+    const content = contentOf(code);
+
+    return Promise.resolve({
+      ...content,
+      unit: {
+        ...content.unit,
+        exercises: [exercise("ex1", "Primero"), exercise("ex2", "Segundo"), exercise("ex3", "Tercero")],
+      },
+    });
+  };
+
+  it("marca superado en verde, por mejorar en rojo y deja sin marca el que no se intentó", async () => {
+    render(
+      <UnitView
+        code="U0.1.1"
+        loadUnit={withExercises}
+        loadProgress={() =>
+          Promise.resolve([
+            { exerciseId: "ex1", status: "PASSED", attempts: 1, bestScore: 100 },
+            { exerciseId: "ex2", status: "FAILED", attempts: 3, bestScore: 0 },
+          ])
+        }
+      />,
+    );
+
+    const first = (await screen.findByRole("link", { name: /Primero/ })) as HTMLElement;
+    const second = screen.getByRole("link", { name: /Segundo/ });
+    const third = screen.getByRole("link", { name: /Tercero/ });
+
+    expect(await within(first).findByText(/Superado/)).toBeInTheDocument();
+    expect(first.className).toContain("emerald");
+    expect(within(second).getByText(/Por mejorar/)).toBeInTheDocument();
+    expect(within(second).getByText(/3 intentos/)).toBeInTheDocument();
+    expect(second.className).toContain("rose");
+    expect(within(third).queryByText(/Superado|Por mejorar|En curso/)).not.toBeInTheDocument();
+    expect(third.className).not.toContain("emerald");
+    expect(screen.getByText(/1 de\s+3 superados/)).toBeInTheDocument();
+  });
+
+  it("si el estado no carga, la lista se ve igual y sin colores", async () => {
+    render(
+      <UnitView code="U0.1.1" loadUnit={withExercises} loadProgress={() => Promise.reject(new Error("sin red"))} />,
+    );
+
+    const first = await screen.findByRole("link", { name: /Primero/ });
+
+    expect(first.className).not.toContain("emerald");
+    expect(screen.queryByText(/superados/)).not.toBeInTheDocument();
+  });
+});

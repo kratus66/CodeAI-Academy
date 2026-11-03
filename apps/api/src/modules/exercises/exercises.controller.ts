@@ -3,6 +3,7 @@ import type {
   ExerciseDetailResponse,
   ExerciseListQuery,
   ExerciseListResponse,
+  ExerciseProgressResponse,
   FlashcardRatingInput,
   FlashcardRatingResponse,
   FlashcardRevealInput,
@@ -90,6 +91,15 @@ export class ExercisesController {
     @Query(new ZodValidationPipe(exerciseListQuerySchema)) query: ExerciseListQuery,
   ): Promise<ExerciseListResponse> {
     return this.exercises.listByUnit(params.code, query);
+  }
+
+  /** Estado propio por ejercicio (superado / en curso / por mejorar); el `userId` sale del token. */
+  @Get("units/:code/status")
+  async unitStatus(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(unitCodeParamsSchema)) params: UnitCodeParams,
+  ): Promise<ExerciseProgressResponse> {
+    return this.exercises.getUnitProgress(user.sub, params.code);
   }
 
   @Get(":id")

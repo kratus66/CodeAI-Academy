@@ -11,6 +11,8 @@ import type {
   ReflectionResponse,
   ExerciseListQuery,
   ExerciseListResponse,
+  ExerciseProgress,
+  ExerciseProgressResponse,
   PaginationMeta,
   SandboxRunRequest,
   SandboxRunResponse,
@@ -66,6 +68,9 @@ const SANDBOX_UNAVAILABLE =
  * contrato (`sandboxRunRequestSchema`); el adaptador real los aplica al
  * contenedor y el mock sólo los ignora.
  */
+/** Tope de ejercicios por unidad al calcular su estado (el banco declara unas decenas). */
+const UNIT_EXERCISES_MAX = 500;
+
 const RUN_LIMITS = { timeoutMs: 5_000, memoryMb: 256 } as const;
 
 /**
@@ -210,6 +215,43 @@ export class ExercisesService {
     const page = await this.repository.listByUnit(unitCode, toWindow(query));
 
     return toPaginated(page, query, toExerciseListItem);
+  }
+
+  /**
+   * Estado del estudiante en cada ejercicio de la unidad con algún intento. Un
+   * ejercicio superado alguna vez cuenta como `PASSED`; si no, manda el último
+   * intento (`PARTIAL` en curso, el resto `FAILED`). Una reflexión enviada cuenta
+   * como hecha: no tiene nota.
+   */
+  async getUnitProgress(userId: string, unitCode: string): Promise<ExerciseProgressResponse> {
+    if (!(await this.repository.unitExists(unitCode))) {
+      throw new NotFoundException(UNIT_NOT_FOUND);
+    }
+
+    const [rows, exercises] = await Promise.all([
+      this.repository.listUnitSubmissions(userId, unitCode),
+      this.repository.listByUnit(unitCode, { skip: 0, take: UNIT_EXERCISES_MAX }),
+    ]);
+    const typeById = new Map(exercises.items.map((exercise) => [exercise.id, exercise.type]));
+    const byExercise = new Map<string, typeof rows>();
+
+    for (const row of rows) {
+      byExercise.set(row.exerciseId, [...(byExercise.get(row.exerciseId) ?? []), row]);
+    }
+
+    const statuses: ExerciseProgress[] = [...byExercise.entries()].map(([exerciseId, list]) => {
+      const latest = list[0];
+      const passed = typeById.get(exerciseId) === "REFLECT" || list.some((row) => row.outcome === "PASSED");
+
+      return {
+        exerciseId,
+        status: passed ? "PASSED" : latest?.outcome === "PARTIAL" ? "PARTIAL" : "FAILED",
+        attempts: list.length,
+        bestScore: Math.min(100, Math.max(0, ...list.map((row) => Math.round(row.score)))),
+      };
+    });
+
+    return { statuses };
   }
 
   async getDetail(id: string): Promise<ExerciseDetailResponse> {

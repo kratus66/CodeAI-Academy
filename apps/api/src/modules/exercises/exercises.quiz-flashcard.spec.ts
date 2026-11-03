@@ -284,3 +284,79 @@ describe("ExercisesService: acreditación con revisión humana", () => {
     expect(await lastLevel(open.repository, "lab_1")).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("ExercisesService.getUnitProgress", () => {
+  const reflect = base({ id: "ref_1", type: "REFLECT", config: {} });
+
+  it("no lista ejercicios sin intentos", async () => {
+    const { service } = setup();
+
+    expect((await service.getUnitProgress("user_a", "U0.1.1")).statuses).toEqual([]);
+  });
+
+  it("un quiz acertado es PASSED y uno fallado es FAILED", async () => {
+    const { service } = setup([QUIZ, base({ ...QUIZ, id: "quiz_2", slug: "otro" })]);
+
+    await service.answerQuiz("user_a", "quiz_1", { optionId: "b" });
+    await service.answerQuiz("user_a", "quiz_2", { optionId: "a" });
+
+    const { statuses } = await service.getUnitProgress("user_a", "U0.1.1");
+
+    expect(statuses.find((s) => s.exerciseId === "quiz_1")).toMatchObject({ status: "PASSED", attempts: 1, bestScore: 100 });
+    expect(statuses.find((s) => s.exerciseId === "quiz_2")).toMatchObject({ status: "FAILED", attempts: 1, bestScore: 0 });
+  });
+
+  it("superar el ejercicio alguna vez lo deja en PASSED aunque el último intento falle", async () => {
+    const { service } = setup();
+
+    await service.answerQuiz("user_a", "quiz_1", { optionId: "b" });
+    await service.answerQuiz("user_a", "quiz_1", { optionId: "a" });
+
+    expect((await service.getUnitProgress("user_a", "U0.1.1")).statuses[0]).toMatchObject({
+      status: "PASSED",
+      attempts: 2,
+      bestScore: 100,
+    });
+  });
+
+  it("fallar y luego acertar pasa de FAILED a PASSED", async () => {
+    const { service } = setup();
+
+    await service.answerQuiz("user_a", "quiz_1", { optionId: "a" });
+    expect((await service.getUnitProgress("user_a", "U0.1.1")).statuses[0]?.status).toBe("FAILED");
+
+    await service.answerQuiz("user_a", "quiz_1", { optionId: "b" });
+    expect((await service.getUnitProgress("user_a", "U0.1.1")).statuses[0]?.status).toBe("PASSED");
+  });
+
+  it("una tarjeta revelada pero sin calificar está en curso", async () => {
+    const { service } = setup();
+
+    await service.revealFlashcard("user_a", "card_1", { attempt: "no recuerdo" });
+
+    expect((await service.getUnitProgress("user_a", "U0.1.1")).statuses[0]).toMatchObject({
+      exerciseId: "card_1",
+      status: "PARTIAL",
+    });
+  });
+
+  it("una reflexión enviada cuenta como hecha", async () => {
+    const { service } = setup([reflect]);
+
+    await service.submitReflection("user_a", "ref_1", { text: "Decidí X y descarté Y porque Z." });
+
+    expect((await service.getUnitProgress("user_a", "U0.1.1")).statuses[0]).toMatchObject({
+      exerciseId: "ref_1",
+      status: "PASSED",
+    });
+  });
+
+  it("sólo cuenta los intentos del propio usuario y responde 404 si la unidad no existe", async () => {
+    const { service } = setup();
+
+    await service.answerQuiz("user_b", "quiz_1", { optionId: "b" });
+
+    expect((await service.getUnitProgress("user_a", "U0.1.1")).statuses).toEqual([]);
+    await expect(service.getUnitProgress("user_a", "U9.9.9")).rejects.toThrow();
+  });
+});

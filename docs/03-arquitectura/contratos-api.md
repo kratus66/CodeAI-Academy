@@ -183,6 +183,7 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
 | GET | `/units/:unitCode` | ✅ | Ejercicios de la unidad (sin `solution`, sin tests ocultos) |
+| GET | `/units/:unitCode/status` | ✅ | Estado **propio** por ejercicio: `{ statuses: [{ exerciseId, status, attempts, bestScore }] }`. `status`: `PASSED` (superado alguna vez; una reflexión enviada cuenta), `PARTIAL` (en curso: tarjeta revelada sin calificar) o `FAILED` (último intento fallido y nunca superado). Los ejercicios sin intentos no aparecen. `404` si la unidad no existe |
 | GET | `/:id` | ✅ | Detalle del ejercicio |
 | POST | `/:id/hints` | ✅ | Solicita pista. Body: `{ level }` |
 | POST | `/:id/submissions` | ✅ | Envía solución |

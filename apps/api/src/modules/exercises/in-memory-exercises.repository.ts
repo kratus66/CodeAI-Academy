@@ -4,6 +4,7 @@ import type {
   ExercisesRepository,
   ExerciseRow,
   SubmissionRow,
+  UnitSubmissionRow,
 } from "./exercises.repository";
 import type { Page, PageWindow } from "../content/content.repository";
 
@@ -82,6 +83,20 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
       .map(withoutOwner);
 
     return paginate(items, window);
+  }
+
+  async listUnitSubmissions(userId: string, unitCode: string): Promise<UnitSubmissionRow[]> {
+    const inUnit = new Set(
+      this.dataset.exercises
+        .filter((exercise) => exercise.unitCode === unitCode)
+        .map((exercise) => exercise.id),
+    );
+
+    return this.submissions
+      .filter((submission) => submission.userId === userId && inUnit.has(submission.exerciseId))
+      .reverse()
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+      .map(({ exerciseId, outcome, score }) => ({ exerciseId, outcome, score }));
   }
 
   async countSubmissions(userId: string, exerciseId: string): Promise<number> {

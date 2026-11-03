@@ -1,7 +1,8 @@
 "use client";
 
+import type { ExerciseProgress } from "@codeai/shared";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { formatMinutes } from "@/features/learning/lib/format";
 import {
@@ -11,7 +12,8 @@ import {
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { loadUnitView } from "@/features/learning/lib/unit-view-loader";
 import type { LoadUnitView } from "@/features/learning/lib/unit-view-loader";
-import { ApiError } from "@/lib/api-client";
+import { ApiError, exercisesApi } from "@/lib/api-client";
+import { cn } from "@/lib/cn";
 
 const LINK_CLASSES =
   "font-medium text-accent underline-offset-4 transition hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink";
@@ -25,11 +27,43 @@ const BUTTON_CLASSES =
 const DISABLED_CLASSES =
   "inline-flex items-center rounded-full border border-line/70 px-4 py-2 text-sm text-slate-600";
 
+type LoadExerciseProgress = (code: string, signal: AbortSignal) => Promise<ExerciseProgress[]>;
+
 interface UnitViewProps {
   readonly code: string;
   /** Inyectable en pruebas; por defecto llama a `loadUnitView`. */
   readonly loadUnit?: LoadUnitView;
+  /** Inyectable en pruebas; por defecto llama a `GET /api/exercises/units/:code/status`. */
+  readonly loadProgress?: LoadExerciseProgress;
 }
+
+/** Cómo se ve cada estado: el color nunca va solo, siempre con icono y texto. */
+const STATUS_STYLE: Record<
+  ExerciseProgress["status"],
+  { readonly label: string; readonly icon: string; readonly row: string; readonly badge: string }
+> = {
+  PASSED: {
+    label: "Superado",
+    icon: "✓",
+    row: "!border-emerald-400/60 !bg-emerald-500/10",
+    badge: "border-emerald-400/50 bg-emerald-500/15 text-emerald-300",
+  },
+  FAILED: {
+    label: "Por mejorar",
+    icon: "✗",
+    row: "!border-rose-400/60 !bg-rose-500/10",
+    badge: "border-rose-400/50 bg-rose-500/15 text-rose-300",
+  },
+  PARTIAL: {
+    label: "En curso",
+    icon: "◐",
+    row: "!border-amber-400/60 !bg-amber-500/10",
+    badge: "border-amber-400/50 bg-amber-500/15 text-amber-300",
+  },
+};
+
+const loadExerciseProgress: LoadExerciseProgress = (code, signal) =>
+  exercisesApi.unitProgress(code, signal);
 
 /** Una URL mal formada y una unidad inexistente son el mismo caso para el estudiante. */
 function isMissingContent(error: unknown): boolean {
@@ -56,12 +90,32 @@ function SectionTitle({
 }
 
 /** Unidad con objetivo, prerrequisitos, lecciones, ejercicios y navegación. */
-export function UnitView({ code, loadUnit = loadUnitView }: UnitViewProps) {
+export function UnitView({
+  code,
+  loadUnit = loadUnitView,
+  loadProgress = loadExerciseProgress,
+}: UnitViewProps) {
   const load = useCallback(
     (signal: AbortSignal) => loadUnit(code, signal),
     [loadUnit, code],
   );
   const { state, reload } = useContentLoader(load);
+  const [progress, setProgress] = useState<ReadonlyMap<string, ExerciseProgress>>(new Map());
+
+  // El estado es un añadido: si no carga (sin sesión, red), la lista se ve igual, sin colores.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    loadProgress(code, controller.signal)
+      .then((statuses) => {
+        if (!controller.signal.aborted) {
+          setProgress(new Map(statuses.map((status) => [status.exerciseId, status])));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, [loadProgress, code]);
 
   if (state.status === "loading") {
     return (
@@ -216,15 +270,38 @@ export function UnitView({ code, loadUnit = loadUnitView }: UnitViewProps) {
           className="space-y-4 border-t border-line/70 pt-8"
         >
           <SectionTitle id="ejercicios">Ejercicios</SectionTitle>
+          {progress.size > 0 ? (
+            <p className="text-sm text-slate-400">
+              {unit.exercises.filter((exercise) => progress.get(exercise.id)?.status === "PASSED").length} de{" "}
+              {unit.exercises.length} superados
+            </p>
+          ) : null}
           <ul className="grid list-none gap-3 p-0 sm:grid-cols-2">
-            {unit.exercises.map((exercise) => (
+            {unit.exercises.map((exercise) => {
+              const status = progress.get(exercise.id);
+              const style = status ? STATUS_STYLE[status.status] : null;
+
+              return (
               <li key={exercise.id}>
                 <Link
                   href={`/learn/units/${unit.code}/exercises/${exercise.slug}`}
-                  className={ROW_CLASSES}
+                  className={cn(ROW_CLASSES, style?.row)}
                 >
-                  <span className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                    {exercise.type} · dificultad {exercise.difficulty}/5
+                  <span className="flex items-center justify-between gap-2 text-xs uppercase tracking-[0.18em] text-slate-500">
+                    <span>
+                      {exercise.type} · dificultad {exercise.difficulty}/5
+                    </span>
+                    {style && status ? (
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[11px] font-semibold normal-case tracking-normal",
+                          style.badge,
+                        )}
+                      >
+                        <span aria-hidden="true">{style.icon}</span> {style.label}
+                        {status.attempts > 1 ? ` · ${status.attempts} intentos` : ""}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="text-sm font-medium text-slate-100">
                     {exercise.title}
@@ -234,7 +311,8 @@ export function UnitView({ code, loadUnit = loadUnitView }: UnitViewProps) {
                   </span>
                 </Link>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       ) : null}

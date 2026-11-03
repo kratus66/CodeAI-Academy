@@ -11,6 +11,7 @@ import type {
   ExercisesRepository,
   ExerciseRow,
   SubmissionRow,
+  UnitSubmissionRow,
 } from "./exercises.repository";
 
 /** Ejercicio publicado con toda su ascendencia publicada. */
@@ -150,6 +151,14 @@ export class PrismaExercisesRepository implements ExercisesRepository {
     const names = new Map(tests.map((test) => [test.id, test.name]));
 
     return { items: rows.map((row) => toSubmissionRow(row, names)), total };
+  }
+
+  async listUnitSubmissions(userId: string, unitCode: string): Promise<UnitSubmissionRow[]> {
+    return this.prisma.submission.findMany({
+      where: { userId, exercise: { unit: { code: unitCode } } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: { exerciseId: true, outcome: true, score: true },
+    });
   }
 
   async countSubmissions(userId: string, exerciseId: string): Promise<number> {

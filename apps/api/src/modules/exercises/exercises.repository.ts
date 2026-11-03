@@ -89,6 +89,13 @@ export interface CreateSubmissionInput {
 }
 
 /** Pista del catálogo (`ExerciseHint`): el texto se sirve tal cual, sin interpolar. */
+/** Resumen mínimo de un envío para calcular el estado de un ejercicio. */
+export interface UnitSubmissionRow {
+  exerciseId: string;
+  outcome: SubmissionOutcome;
+  score: number;
+}
+
 export interface ExerciseHintRow {
   level: number;
   text: string;
@@ -110,6 +117,11 @@ export interface ExercisesRepository {
     exerciseId: string,
     window: PageWindow,
   ): Promise<Page<SubmissionRow>>;
+  /**
+   * Todos los envíos del usuario en los ejercicios de la unidad, del más reciente
+   * al más antiguo: alimenta el estado (superado / por mejorar) de la vista de unidad.
+   */
+  listUnitSubmissions(userId: string, unitCode: string): Promise<UnitSubmissionRow[]>;
   /** Envíos del usuario en el ejercicio, sin paginar: alimenta el tope `maxAttempts`. */
   countSubmissions(userId: string, exerciseId: string): Promise<number>;
   createSubmission(input: CreateSubmissionInput): Promise<SubmissionRow>;
