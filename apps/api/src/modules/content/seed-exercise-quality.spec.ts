@@ -317,3 +317,25 @@ describe("juegos de memoria sembrados (banco-ejercicios.md §3.3)", () => {
     expect(problemas).toEqual([]);
   });
 });
+
+describe("introducción de los juegos de memoria", () => {
+  const memories = exercises.filter((exercise) => exercise.type === "MEMORY");
+
+  it("cada juego explica qué enseña antes de jugar", () => {
+    const sinIntro = memories.filter((exercise) => exercise.memory?.intro == null).map((exercise) => exercise.slug);
+
+    expect(sinIntro).toEqual([]);
+  });
+
+  it("la lista de una intro no repite elementos", () => {
+    const repetidas = memories
+      .filter((exercise) => {
+        const items = exercise.memory?.intro?.list?.items ?? [];
+
+        return new Set(items.map((item) => item.toLowerCase())).size !== items.length;
+      })
+      .map((exercise) => exercise.slug);
+
+    expect(repetidas).toEqual([]);
+  });
+});

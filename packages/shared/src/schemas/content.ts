@@ -406,6 +406,25 @@ export const contentSeedMemorySchema = z.object({
     )
     .min(6, "Un juego de memoria tiene de 6 a 10 pares")
     .max(10, "Un juego de memoria tiene de 6 a 10 pares"),
+  /**
+   * Recuadro «Qué vas a repasar» que se muestra antes de jugar: un resumen de lo
+   * que enseña el juego y, si hay una secuencia o un mapa natural, su lista
+   * (por ejemplo, las etapas del recorrido de un requisito).
+   */
+  intro: z
+    .object({
+      summary: z.string().min(1).max(400, "El resumen del juego es breve (máx. 400 caracteres)"),
+      list: z
+        .object({
+          title: z.string().min(1).max(80),
+          ordered: z.boolean(),
+          items: z.array(z.string().min(1).max(120)).min(2).max(8),
+        })
+        .nullable()
+        .default(null),
+    })
+    .nullable()
+    .default(null),
 });
 
 /** Tarjeta de recuperación: el frente es el `statement`; el reverso se revela tras un intento. */

@@ -253,3 +253,45 @@ describe("MemoryPlayer: aciertos, fallos y ahorcado", () => {
     expect(screen.queryByText("Se acabaron los intentos.")).not.toBeInTheDocument();
   });
 });
+
+describe("MemoryPlayer: qué vas a repasar", () => {
+  const INTRO = {
+    summary: "Todo requisito recorre las mismas etapas.",
+    list: { title: "Etapas del recorrido", ordered: true, items: ["Requisito", "Pruebas", "Despliegue"] },
+  };
+
+  it("muestra el resumen y las etapas en orden antes del tablero", () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: INTRO })} shuffle={dealInOrder} />);
+
+    const intro = screen.getByRole("region", { name: "Qué vas a repasar" });
+
+    expect(within(intro).getByText("Todo requisito recorre las mismas etapas.")).toBeInTheDocument();
+    expect(within(intro).getByText("Etapas del recorrido")).toBeInTheDocument();
+    expect(within(intro).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "1Requisito",
+      "→2Pruebas",
+      "→3Despliegue",
+    ]);
+  });
+
+  it("acepta un resumen sin lista y no muestra nada si no hay intro", () => {
+    const { unmount } = render(
+      <MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: { summary: "Solo resumen." } })} shuffle={dealInOrder} />,
+    );
+
+    expect(screen.getByText("Solo resumen.")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Qué vas a repasar" })).queryByRole("list")).not.toBeInTheDocument();
+
+    unmount();
+    render(<MemoryPlayer exercise={exercise()} shuffle={dealInOrder} />);
+
+    expect(screen.queryByRole("region", { name: "Qué vas a repasar" })).not.toBeInTheDocument();
+  });
+
+  it("descarta una intro mal formada sin romper el juego", () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: { summary: 42, list: "x" } })} shuffle={dealInOrder} />);
+
+    expect(screen.queryByRole("region", { name: "Qué vas a repasar" })).not.toBeInTheDocument();
+    expect(hiddenCards()).toHaveLength(6);
+  });
+});

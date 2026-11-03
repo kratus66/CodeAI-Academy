@@ -51,7 +51,10 @@ function exerciseConfig(exercise: SeedExercise) {
   }
 
   if (exercise.memory !== null) {
-    return { pairs: exercise.memory.pairs.map(({ id, term, definition }) => ({ id, term, definition })) };
+    return {
+      pairs: exercise.memory.pairs.map(({ id, term, definition }) => ({ id, term, definition })),
+      ...(exercise.memory.intro === null ? {} : { intro: exercise.memory.intro }),
+    };
   }
 
   return exercise.starterCode === null ? {} : { starterCode: exercise.starterCode };
