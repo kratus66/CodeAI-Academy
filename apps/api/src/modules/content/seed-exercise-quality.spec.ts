@@ -194,3 +194,99 @@ describe("calidad de los ejercicios sembrados", () => {
     },
   );
 });
+
+/**
+ * Unidades piloto que aún no tienen escalón autónomo (`banco-ejercicios.md` §4).
+ * Es deuda declarada, no una excepción permanente: quitar la unidad de la lista
+ * en cuanto exista su ejercicio autónomo.
+ */
+const UNITS_WITHOUT_AUTONOMOUS_LADDER: readonly string[] = ["U2.3.3"];
+
+describe("metadatos y escalera de los ejercicios sembrados (banco-ejercicios.md §4 y §6)", () => {
+  const withUnit = seed.stages.flatMap((stage) =>
+    stage.modules.flatMap((module) =>
+      module.units.flatMap((unit) =>
+        unit.exercises.map((exercise) => ({ unit: unit.code, exercise })),
+      ),
+    ),
+  );
+  const codeExercises = withUnit.filter(({ exercise }) => ["LAB", "DEBUG"].includes(exercise.type));
+  const quizzes = withUnit.filter(({ exercise }) => exercise.quiz !== null);
+
+  it("declara el tiempo estimado de cada ejercicio", () => {
+    const sinTiempo = withUnit
+      .filter(({ exercise }) => !exercise.estimatedMin)
+      .map(({ exercise }) => exercise.slug);
+
+    expect(sinTiempo).toEqual([]);
+  });
+
+  it("explica cada opción de un quiz con un texto propio y suficiente", () => {
+    const MINIMO = 15;
+    const problemas: string[] = [];
+
+    for (const { exercise } of quizzes) {
+      const options = exercise.quiz?.options ?? [];
+      const explanations = options.map((option) => option.explanation.trim());
+      const texts = options.map((option) => option.text.trim().toLowerCase());
+
+      if (new Set(explanations).size !== options.length) problemas.push(`${exercise.slug}: explicaciones repetidas`);
+      if (new Set(texts).size !== options.length) problemas.push(`${exercise.slug}: opciones repetidas`);
+      if (explanations.some((explanation) => explanation.length < MINIMO)) {
+        problemas.push(`${exercise.slug}: explicación de menos de ${MINIMO} caracteres`);
+      }
+    }
+
+    expect(problemas).toEqual([]);
+  });
+
+  it("no repite el frente de una tarjeta como su reverso", () => {
+    const iguales = withUnit
+      .filter(
+        ({ exercise }) =>
+          exercise.flashcard !== null &&
+          exercise.flashcard.back.trim().toLowerCase() === exercise.statement.trim().toLowerCase(),
+      )
+      .map(({ exercise }) => exercise.slug);
+
+    expect(iguales).toEqual([]);
+  });
+
+  it("todo ejercicio de código trae solución oficial y una prueba oculta", () => {
+    const incompletos = codeExercises
+      .filter(
+        ({ exercise }) =>
+          exercise.solution === null || !exercise.tests.some((test) => test.isHidden),
+      )
+      .map(({ exercise }) => exercise.slug);
+
+    expect(incompletos).toEqual([]);
+  });
+
+  it("cada unidad con laboratorios ofrece el escalón autónomo, y ese escalón no trae pistas", () => {
+    const unidades = new Map<string, ContentSeedExercise[]>();
+
+    for (const { unit, exercise } of codeExercises) {
+      unidades.set(unit, [...(unidades.get(unit) ?? []), exercise]);
+    }
+
+    const sinAutonomo = [...unidades.entries()]
+      .filter(([, list]) => !list.some((exercise) => exercise.ladder === "AUTONOMOUS"))
+      .map(([unit]) => unit)
+      .filter((unit) => !UNITS_WITHOUT_AUTONOMOUS_LADDER.includes(unit));
+    const autonomosConPistas = codeExercises
+      .filter(({ exercise }) => exercise.ladder === "AUTONOMOUS" && exercise.hints.length > 0)
+      .map(({ exercise }) => exercise.slug);
+
+    expect(sinAutonomo).toEqual([]);
+    expect(autonomosConPistas).toEqual([]);
+  });
+
+  it("la lista de excepciones no esconde unidades que ya cumplen", () => {
+    const conAutonomo = new Set(
+      codeExercises.filter(({ exercise }) => exercise.ladder === "AUTONOMOUS").map(({ unit }) => unit),
+    );
+
+    expect(UNITS_WITHOUT_AUTONOMOUS_LADDER.filter((unit) => conAutonomo.has(unit))).toEqual([]);
+  });
+});
