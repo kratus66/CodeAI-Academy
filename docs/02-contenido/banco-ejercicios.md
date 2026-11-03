@@ -100,6 +100,43 @@ questions:
 
 ### 3.3 `MEMORY` — Juego de memoria
 
+**Estructura:**
+
+```yaml
+type: MEMORY
+slug: git-comandos-001
+concept: [git-basico]
+pairs:
+  - id: p1
+    term: "git commit"
+    definition: "Registra los cambios en el historial local"
+  - id: p2
+    term: "git push"
+    definition: "Envía los commits al repositorio remoto"
+  - id: p3
+    term: "git pull"
+    definition: "Trae los cambios remotos y los fusiona"
+```
+
+**Contrato de `config`:** viaja verbatim en `ExerciseDetail.config`
+(`Record<string, unknown>`, `packages/shared/src/schemas/exercise.ts`), porque
+`config` es libre por tipo de ejercicio.
+
+| Campo | Tipo | Obligatorio | Regla |
+|-------|------|-------------|-------|
+| `pairs` | `MemoryPair[]` | sí | 6–10 pares (12–20 cartas) |
+| `pairs[].term` | `string` | sí | No vacío; es la cara A del par |
+| `pairs[].definition` | `string` | sí | No vacía; es la cara B del par |
+| `pairs[].id` | `string` | no | Si falta o está vacío, el cliente lo deriva del índice: `pair-<índice>` |
+
+**Reglas del contrato:**
+
+- Un par produce exactamente dos cartas (`term` y `definition`); se empareja cuando se levantan sus dos cartas.
+- Un par con `term` o `definition` ausente, no `string` o vacío **se descarta**; el tablero continúa con el resto en vez de romperse.
+- Si no sobrevive ningún par, la vista lo avisa (`Este juego de memoria no tiene pares disponibles.`) en lugar de dibujar un tablero vacío.
+- La corrección es **en el cliente**: las dos caras del par están a la vista por definición, así que no hay respuesta que ocultar ni endpoint que consultar.
+- El límite de 6–10 pares es **editorial**: el jugador no lo valida; un set más grande sigue siendo jugable y sólo empeora la experiencia.
+
 **Propósito:** interiorizar pares de asociación mediante repetición lúdica.
 
 **Pares válidos por etapa:**
@@ -123,6 +160,11 @@ questions:
 - Modos: normal · contrarreloj · "sin errores" · "emparejar por categoría".
 - Registra: movimientos, tiempo, pares fallados.
 - **Los pares fallados se convierten automáticamente en flashcards** para repaso espaciado. ← Esta es la conexión clave entre juego y aprendizaje real.
+
+**Estado en la web:** el tablero normal ya se juega (`MemoryPlayer`): baraja los
+pares, cuenta movimientos y anuncia al cerrar el tablero los pares que conviene
+repasar. Los modos alternativos, el registro del intento y el alta automática de
+flashcards siguen pendientes, así que hoy los pares fallados sólo se muestran.
 
 ### 3.4 `FLASHCARD` — Recuperación espaciada
 
@@ -277,7 +319,7 @@ Para que una unidad se considere publicable:
 | `CHALLENGE` | 1 (desde Etapa 3) |
 | `REFLECT` | 1 |
 
-### Estado real del banco (2026-10-28)
+### Estado real del banco (2026-11-03)
 
 La tabla anterior es el **criterio de publicación**, no la foto actual. Hoy:
 
@@ -285,7 +327,8 @@ La tabla anterior es el **criterio de publicación**, no la foto actual. Hoy:
 |----------|-------|--------------|
 | Etapas / módulos / unidades sembradas | 12 / 48 / 207 | El catálogo y el lector tienen datos reales desde S2–S3 |
 | Lecciones publicadas | 207 (una por unidad) | Cada unidad enseña; la práctica queda declarada, no fingida |
-| Ejercicios en la semilla | **3.189 publicados (E0–E11, sin revisión humana; ver `plan-poblado-banco-e0-e2.md` §4.1)**; E3–E11 solo con `QUIZ`/`FLASHCARD`/`REFLECT` (sin laboratorios). Antes: 3 (piloto, sin publicar) | `seed.mts` ya carga ejercicios con pistas y pruebas (`js-async-001`…`003`, unidades U2.3.2 y U2.3.3). Siguen sin publicarse: el sandbox `mock` no ejecuta código y publicarlos certificaría competencias sin comprobar. No hay `QUIZ` ni `FLASHCARD` sembrados |
+| Ejercicios en la semilla | **3.189 publicados (E0–E11, sin revisión humana; ver `plan-poblado-banco-e0-e2.md` §4.1)**; E3–E11 solo con `QUIZ`/`FLASHCARD`/`REFLECT` (sin laboratorios). Antes: 3 (piloto, sin publicar) | `seed.mts` ya carga ejercicios con pistas y pruebas (`js-async-001`…`003`, unidades U2.3.2 y U2.3.3). Siguen sin publicarse: el sandbox `mock` no ejecuta código y publicarlos certificaría competencias sin comprobar. El piloto original sólo tenía `LAB` (el desglose por tipo está en la fila siguiente) |
+| Ejercicios por tipo | `QUIZ` 1.662 · `FLASHCARD` 1.242 · `REFLECT` 207 · `LAB` 52 · `DEBUG` 26 · `MEMORY` **0** · `AUDIT`/`CHALLENGE`/`SIM`/`READING`/`PROJECT` **0** | `MEMORY` ya tiene jugador probado (`MemoryPlayer`, ver §3.3), pero sin datos: la pantalla existe y ningún estudiante puede llegar a ella hasta que haya autoría |
 | Unidades que cumplen la distribución mínima | **0 de 207** | Ninguna unidad es publicable según esta tabla hasta que exista su banco |
 
 Esto es **deuda pedagógica declarada**, no un descuido silencioso: la regla permanente 1 del proyecto («ningún concepto sin ejercicios prácticos asociados») está hoy incumplida en los datos, aunque el modelo, la API y las pantallas de ejercicios existen y están probados (S5–S7). El soporte técnico de la semilla ya existe (esquema, reglas de la plantilla y carga idempotente); lo que falta es autoría de contenido por etapa y un sandbox que ejecute código antes de publicar. La autoría requiere revisión pedagógica humana: un ejercicio generado sin revisión no cuenta como evidencia de competencia.
