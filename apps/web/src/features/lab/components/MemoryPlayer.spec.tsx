@@ -67,7 +67,7 @@ describe("MemoryPlayer", () => {
     fireEvent.click(cardAt(1));
 
     expect(screen.getByRole("status")).toHaveTextContent("Movimientos: 1 · Pares: 1 de 3");
-    expect(screen.getByText("Registra los cambios en el historial local")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Registra los cambios en el historial local" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "git commit" })).toBeDisabled();
   });
 
@@ -278,8 +278,8 @@ describe("MemoryPlayer: qué vas a repasar", () => {
     ]);
   });
 
-  it("siempre indica qué conceptos hay que emparejar, sin dar sus definiciones", () => {
-    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: INTRO })} shuffle={dealInOrder} />);
+  it("sin lista de etapas indica los conceptos a emparejar, sin dar sus definiciones", () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: { summary: "Resumen." } })} shuffle={dealInOrder} />);
 
     const concepts = within(region()).getByRole("list", { name: "Conceptos a emparejar" });
 
@@ -288,28 +288,48 @@ describe("MemoryPlayer: qué vas a repasar", () => {
       "git push",
       "git clone",
     ]);
-    expect(within(region()).getByText("Vas a emparejar estos 3 conceptos con su definición")).toBeInTheDocument();
-    expect(within(region()).queryByText(/historial local/)).not.toBeInTheDocument();
+    expect(within(concepts).queryByText(/historial local/)).not.toBeInTheDocument();
   });
 
-  it("sin intro sigue mostrando los conceptos a emparejar, pero sin resumen ni etapas", () => {
+  it("con lista de etapas no repite los conceptos: la lista ya los nombra", () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: INTRO })} shuffle={dealInOrder} />);
+
+    expect(within(region()).queryByRole("list", { name: "Conceptos a emparejar" })).not.toBeInTheDocument();
+    expect(within(region()).getByText("Etapas del recorrido")).toBeInTheDocument();
+  });
+
+  it("abajo van las respuestas: las definiciones, en orden alfabético y no el de los términos", () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: INTRO })} shuffle={dealInOrder} />);
+
+    const answers = within(region()).getByRole("list", { name: "Definiciones a asignar" });
+
+    expect(within(answers).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "Copia un repositorio en tu equipo",
+      "Envía los commits al repositorio remoto",
+      "Registra los cambios en el historial local",
+    ]);
+    expect(within(region()).getByText("Respuestas: 3 definiciones para asignar a cada concepto")).toBeInTheDocument();
+  });
+
+  it("sin intro muestra conceptos y respuestas, pero sin resumen ni etapas", () => {
     render(<MemoryPlayer exercise={exercise()} shuffle={dealInOrder} />);
 
-    expect(within(region()).getAllByRole("list")).toHaveLength(1);
+    expect(within(region()).getAllByRole("list")).toHaveLength(2);
     expect(within(region()).getByRole("list", { name: "Conceptos a emparejar" })).toBeInTheDocument();
+    expect(within(region()).getByRole("list", { name: "Definiciones a asignar" })).toBeInTheDocument();
   });
 
   it("acepta un resumen sin lista de etapas", () => {
     render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: { summary: "Solo resumen." } })} shuffle={dealInOrder} />);
 
     expect(screen.getByText("Solo resumen.")).toBeInTheDocument();
-    expect(within(region()).getAllByRole("list")).toHaveLength(1);
+    expect(within(region()).getAllByRole("list")).toHaveLength(2);
   });
 
   it("descarta una intro mal formada sin romper el juego", () => {
     render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: { summary: 42, list: "x" } })} shuffle={dealInOrder} />);
 
-    expect(within(region()).getAllByRole("list")).toHaveLength(1);
+    expect(within(region()).getAllByRole("list")).toHaveLength(2);
     expect(hiddenCards()).toHaveLength(6);
   });
 });

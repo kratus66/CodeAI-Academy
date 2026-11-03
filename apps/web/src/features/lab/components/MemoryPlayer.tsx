@@ -210,6 +210,11 @@ export function MemoryPlayer({
   const [misses, setMisses] = useState(0);
   const maxMisses = readMaxMisses(exercise.config);
   const intro = useMemo(() => readIntro(exercise.config), [exercise.config]);
+  // Alfabético: si siguieran el orden de los términos, la lista delataría cada pareja.
+  const sortedDefinitions = useMemo(
+    () => pairs.map((pair) => pair.definition).sort((left, right) => left.localeCompare(right, "es")),
+    [pairs],
+  );
 
   // Un par fallado se queda a la vista un instante para que se pueda leer.
   useEffect(() => {
@@ -330,14 +335,27 @@ export function MemoryPlayer({
             </div>
           ) : null}
 
+        {intro?.list == null ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-slate-100">Conceptos que vas a emparejar</p>
+            <ul aria-label="Conceptos a emparejar" className="flex list-none flex-wrap gap-2 p-0 text-sm text-slate-200">
+              {pairs.map((pair) => (
+                <li key={pair.id} className="rounded-full border border-line/70 px-3 py-1">
+                  {pair.term}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <div className="space-y-2">
           <p className="text-sm font-medium text-slate-100">
-            Vas a emparejar estos {pairs.length} conceptos con su definición
+            Respuestas: {pairs.length} definiciones para asignar a cada concepto
           </p>
-          <ul aria-label="Conceptos a emparejar" className="flex list-none flex-wrap gap-2 p-0 text-sm text-slate-200">
-            {pairs.map((pair) => (
-              <li key={pair.id} className="rounded-full border border-line/70 px-3 py-1">
-                {pair.term}
+          <ul aria-label="Definiciones a asignar" className="grid list-none gap-2 p-0 text-sm text-slate-200 sm:grid-cols-2">
+            {sortedDefinitions.map((definition) => (
+              <li key={definition} className="rounded-lg border border-line/70 px-3 py-2 leading-snug">
+                {definition}
               </li>
             ))}
           </ul>
