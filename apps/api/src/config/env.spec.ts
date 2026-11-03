@@ -178,3 +178,11 @@ describe("loadEnv: proveedor anthropic", () => {
     ).toBe("anthropic");
   });
 });
+
+describe("loadEnv: ACCREDIT_ONLY_REVIEWED", () => {
+  it("está apagada por defecto y se activa con true", () => {
+    expect(loadEnv({}).ACCREDIT_ONLY_REVIEWED).toBe(false);
+    expect(loadEnv({ ACCREDIT_ONLY_REVIEWED: "true" }).ACCREDIT_ONLY_REVIEWED).toBe(true);
+    expect(() => loadEnv({ ACCREDIT_ONLY_REVIEWED: "si" })).toThrow(/ACCREDIT_ONLY_REVIEWED/);
+  });
+});

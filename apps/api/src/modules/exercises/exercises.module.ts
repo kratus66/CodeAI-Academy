@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 
+import type { Env } from "../../config/env";
+import { ENV } from "../../config/env.module";
 import { PrismaModule } from "../../database/prisma.module";
 import { AuthModule } from "../auth/auth.module";
 import { ProgressModule } from "../progress/progress.module";
@@ -8,7 +10,8 @@ import { ReviewService } from "../review/review.service";
 import { SandboxModule } from "../sandbox/sandbox.module";
 import { ExercisesController } from "./exercises.controller";
 import { EXERCISES_REPOSITORY } from "./exercises.repository";
-import { ExercisesService, REVIEW_SCHEDULER } from "./exercises.service";
+import { ACCREDITATION_POLICY, ExercisesService, REVIEW_SCHEDULER } from "./exercises.service";
+import type { AccreditationPolicy } from "./exercises.service";
 import { HINT_REQUESTS_REPOSITORY } from "./hint-requests.repository";
 import { HintsService } from "./hints.service";
 import { PrismaHintRequestsRepository } from "./prisma-hint-requests.repository";
@@ -36,6 +39,13 @@ import { UnitOpenGuard } from "./unit-open.guard";
     { provide: EXERCISES_REPOSITORY, useClass: PrismaExercisesRepository },
     { provide: HINT_REQUESTS_REPOSITORY, useClass: PrismaHintRequestsRepository },
     { provide: REVIEW_SCHEDULER, useExisting: ReviewService },
+    {
+      provide: ACCREDITATION_POLICY,
+      inject: [ENV],
+      useFactory: (env: Env): AccreditationPolicy => ({
+        requireHumanReview: env.ACCREDIT_ONLY_REVIEWED,
+      }),
+    },
   ],
   exports: [ExercisesService],
 })

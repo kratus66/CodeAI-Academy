@@ -79,6 +79,14 @@ const envSchema = z
     // producción sólo se acepta el adaptador aislado.
     SANDBOX_MODE: z.enum(["mock", "subprocess", "docker"]).default("mock"),
 
+    // Política de acreditación (`banco-ejercicios.md` §5): con `true`, sólo los
+    // ejercicios con `reviewedByHuman` acreditan competencia; el resto da práctica.
+    // Apagada por defecto: el banco sembrado aún no tiene revisión humana.
+    ACCREDIT_ONLY_REVIEWED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+
     // Capa de IA (S8). Debe coincidir con `AI_PROVIDER_NAMES` del puerto
     // `modules/ai/interfaces/ai-provider.interface.ts`. Una clave vacía cuenta
     // como ausente para que `AI_API_KEY=` en `.env` no falle con `mock`.

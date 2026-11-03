@@ -75,6 +75,16 @@ const RUN_LIMITS = { timeoutMs: 5_000, memoryMb: 256 } as const;
  */
 export const REVIEW_SCHEDULER = Symbol("REVIEW_SCHEDULER");
 
+/**
+ * Política de acreditación (`banco-ejercicios.md` §5): con `requireHumanReview`,
+ * un ejercicio sin `reviewedByHuman` no suma nivel de competencia.
+ */
+export const ACCREDITATION_POLICY = Symbol("ACCREDITATION_POLICY");
+
+export interface AccreditationPolicy {
+  requireHumanReview: boolean;
+}
+
 export interface ReviewScheduler {
   scheduleFromSubmission(params: {
     userId: string;
@@ -168,7 +178,21 @@ export class ExercisesService {
     @Inject(REVIEW_SCHEDULER) private readonly reviews: ReviewScheduler,
     // Sin `ProgressService` los envíos no alteran el progreso (pruebas de la capa de ejercicios).
     @Optional() private readonly progress?: ProgressService,
+    // Sin política se acredita todo, como antes de existir la revisión humana.
+    @Optional()
+    @Inject(ACCREDITATION_POLICY)
+    private readonly accreditation: AccreditationPolicy = { requireHumanReview: false },
   ) {}
+
+  /**
+   * Un ejercicio sin revisión humana da práctica y feedback, pero no acredita
+   * competencia: `achievedLevel` queda en `null`. Sólo aplica con la política activa.
+   */
+  private accreditedLevel(exercise: ExerciseRow, level: number | null): number | null {
+    return this.accreditation.requireHumanReview && exercise.reviewedByHuman !== true
+      ? null
+      : level;
+  }
 
   /** Tras cada intento: puede completar la unidad y desbloquear la siguiente. */
   private async recordProgress(userId: string, unitCode: string): Promise<void> {
@@ -246,7 +270,7 @@ export class ExercisesService {
       code: body.optionId,
       outcome,
       score,
-      achievedLevel: correct ? 1 : null,
+      achievedLevel: this.accreditedLevel(exercise, correct ? 1 : null),
       hintsUsed: 0,
       durationMs: 0,
       results: [],
@@ -449,7 +473,7 @@ export class ExercisesService {
         : { selfExplanation: body.selfExplanation }),
       outcome: grade.outcome,
       score: grade.score,
-      achievedLevel: grade.achievedLevel,
+      achievedLevel: this.accreditedLevel(exercise, grade.achievedLevel),
       hintsUsed,
       durationMs: run.durationMs,
       // Sólo las visibles: el historial no debe filtrar nombres de pruebas ocultas.

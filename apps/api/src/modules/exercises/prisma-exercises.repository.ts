@@ -44,6 +44,7 @@ const EXERCISE_SELECT = {
   estimatedMin: true,
   language: true,
   maxAttempts: true,
+  reviewedByHuman: true,
   unit: { select: { code: true } },
   hints: { select: { level: true }, orderBy: { level: "asc" } },
   tests: {
@@ -211,6 +212,7 @@ function toExerciseRow(row: ExerciseDbRow): ExerciseRow {
     language: row.language,
     hintLevels: row.hints.map((hint) => hint.level),
     maxAttempts: row.maxAttempts,
+    reviewedByHuman: row.reviewedByHuman,
     tests: row.tests,
   };
 }

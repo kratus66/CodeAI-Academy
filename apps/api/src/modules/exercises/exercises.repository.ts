@@ -33,6 +33,11 @@ export interface ExerciseRow {
   hintLevels: readonly number[];
   /** `Exercise.maxAttempts`; `null` = sin límite. Opcional para no romper datasets de S5. */
   maxAttempts?: number | null;
+  /**
+   * Un revisor humano validó el ejercicio. Opcional para no romper datasets
+   * anteriores; ausente cuenta como sin revisar.
+   */
+  reviewedByHuman?: boolean;
   tests: readonly {
     id: string;
     name: string;

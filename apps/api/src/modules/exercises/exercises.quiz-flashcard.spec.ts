@@ -216,3 +216,71 @@ describe("ExercisesService.submitReflection", () => {
     );
   });
 });
+
+describe("ExercisesService: acreditación con revisión humana", () => {
+  const reviews: ReviewScheduler = { scheduleFromSubmission: () => Promise.resolve(true) };
+
+  function build(exercise: ExerciseRow, requireHumanReview: boolean) {
+    const repository = new InMemoryExercisesRepository({ exercises: [exercise], submissions: [] });
+    const service = new ExercisesService(
+      repository,
+      new MockSandboxService(),
+      noHints,
+      reviews,
+      undefined,
+      { requireHumanReview },
+    );
+
+    return { service, repository };
+  }
+
+  async function lastLevel(repository: InMemoryExercisesRepository, exerciseId: string) {
+    const page = await repository.listSubmissions("user_a", exerciseId, { skip: 0, take: 1 });
+
+    return page.items[0]?.achievedLevel;
+  }
+
+  it("con la política activa, un quiz sin revisar da práctica pero no acredita", async () => {
+    const { service, repository } = build(QUIZ, true);
+
+    const { result } = await service.answerQuiz("user_a", "quiz_1", { optionId: "b" });
+
+    expect(result.correct).toBe(true);
+    expect(await lastLevel(repository, "quiz_1")).toBeNull();
+  });
+
+  it("con la política activa, un quiz revisado por una persona acredita", async () => {
+    const { service, repository } = build({ ...QUIZ, reviewedByHuman: true }, true);
+
+    await service.answerQuiz("user_a", "quiz_1", { optionId: "b" });
+
+    expect(await lastLevel(repository, "quiz_1")).toBe(1);
+  });
+
+  it("con la política apagada acredita igual que antes aunque no esté revisado", async () => {
+    const { service, repository } = build(QUIZ, false);
+
+    await service.answerQuiz("user_a", "quiz_1", { optionId: "b" });
+
+    expect(await lastLevel(repository, "quiz_1")).toBe(1);
+  });
+
+  it("con la política activa, un LAB sin revisar corrige pero no acredita nivel", async () => {
+    const lab = base({
+      id: "lab_1",
+      type: "LAB",
+      language: "javascript",
+      ladder: "AUTONOMOUS",
+      tests: [{ id: "t1", name: "suma", isHidden: false, spec: { code: "assert.ok(true);" } }],
+    });
+    const gated = build(lab, true);
+    const open = build({ ...lab, reviewedByHuman: true }, true);
+
+    const run = await gated.service.submit("user_a", "lab_1", { code: "const x = 1;" });
+    await open.service.submit("user_a", "lab_1", { code: "const x = 1;" });
+
+    expect(run.submission.outcome).toBe("PASSED");
+    expect(await lastLevel(gated.repository, "lab_1")).toBeNull();
+    expect(await lastLevel(open.repository, "lab_1")).toBeGreaterThanOrEqual(2);
+  });
+});

@@ -211,26 +211,28 @@ enum Ladder {
 }
 
 model Exercise {
-  id           String       @id @default(cuid())
-  unitId       String
-  slug         String       @unique
-  type         ExerciseType
-  title        String
-  statement    String
-  config       Json // configuración específica del tipo, validada con Zod
-  solution     Json? // nunca se expone al cliente
-  ladder       Ladder       @default(GUIDED)
-  difficulty   Int          @default(2)
-  concepts     String[] // para SM-2 y analítica
-  competencies String[] // ["C1", "C5"]
-  estimatedMin Int?
-  language     String?
-  sources      String[]     @default([])
-  maxAttempts  Int?
-  isPublished  Boolean      @default(false)
-  order        Int
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  unitId          String
+  slug            String       @unique
+  type            ExerciseType
+  title           String
+  statement       String
+  config          Json // configuración específica del tipo, validada con Zod
+  solution        Json? // nunca se expone al cliente
+  ladder          Ladder       @default(GUIDED)
+  difficulty      Int          @default(2)
+  concepts        String[] // para SM-2 y analítica
+  competencies    String[] // ["C1", "C5"]
+  estimatedMin    Int?
+  language        String?
+  sources         String[]     @default([])
+  maxAttempts     Int?
+  isPublished     Boolean      @default(false)
+  /// Un revisor humano validó el ejercicio. Con `ACCREDIT_ONLY_REVIEWED=true` sólo estos acreditan competencia.
+  reviewedByHuman Boolean      @default(false)
+  order           Int
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
@@ -579,33 +581,33 @@ model InterviewScenario {
 /// son `Json` validados al leer (`readTranscript` / `readInterviewScores`):
 /// una fila corrupta responde `422` de dominio, no tumba el proceso.
 model InterviewSession {
-  id            String                 @id @default(cuid())
-  userId        String
-  scenarioId    String
-  status        InterviewSessionStatus @default(IN_PROGRESS)
+  id           String                 @id @default(cuid())
+  userId       String
+  scenarioId   String
+  status       InterviewSessionStatus @default(IN_PROGRESS)
   /// Fase actual del guion; la decide el servidor por conteo de turnos.
-  phase         String                 @default("warmup")
+  phase        String                 @default("warmup")
   /// Turnos del candidato, 0..40.
-  turns         Int                    @default(0)
+  turns        Int                    @default(0)
   /// `[{ role, phase, content, at }]`, completo y en orden.
-  transcript    Json                   @default("[]")
+  transcript   Json                   @default("[]")
   /// `{ rubric, levels, score }`; conserva la rúbrica aplicada.
-  scores        Json?
+  scores       Json?
   /// Niveles 0..4 de la autoevaluación + `score` y `reflection`.
-  selfScores    Json?
-  feedback      String?
+  selfScores   Json?
+  feedback     String?
   /// Alguna respuesta se sirvió del guion estático o del filtro de fuga.
-  degraded      Boolean                @default(false)
-  reviewedById  String?
-  startedAt     DateTime               @default(now())
-  lastTurnAt    DateTime?
-  finishedAt    DateTime?
-  reviewedAt    DateTime?
-  updatedAt     DateTime               @updatedAt
+  degraded     Boolean                @default(false)
+  reviewedById String?
+  startedAt    DateTime               @default(now())
+  lastTurnAt   DateTime?
+  finishedAt   DateTime?
+  reviewedAt   DateTime?
+  updatedAt    DateTime               @updatedAt
 
-  user       User             @relation("InterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
+  user       User              @relation("InterviewSessions", fields: [userId], references: [id], onDelete: Cascade)
   scenario   InterviewScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
-  reviewedBy User?            @relation("InterviewReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedBy User?             @relation("InterviewReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   /// Historial propio y sesión abierta por escenario.
   @@index([userId, status])
