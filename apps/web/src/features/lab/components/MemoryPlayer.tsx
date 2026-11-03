@@ -23,7 +23,7 @@ const CARD_BASE =
   "flex min-h-24 items-center justify-center rounded-xl border px-3 py-4 text-center text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink";
 
 /** Tiempo que un par fallado sigue a la vista antes de girarse otra vez. */
-const DEFAULT_FLIP_BACK_MS = 1600;
+const DEFAULT_FLIP_BACK_MS = 2500;
 
 const HIDDEN_LABEL = "Carta boca abajo";
 
