@@ -23,6 +23,7 @@ function draft(overrides: Partial<ExerciseDraft> = {}): ExerciseDraft {
     solution: { code: "function suma(a, b) { return a + b; }" },
     quiz: null,
     flashcard: null,
+    memory: null,
     sources: [SOURCE],
     hints: [],
     tests: [

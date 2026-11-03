@@ -390,6 +390,24 @@ export const contentSeedQuizSchema = z.object({
   correctOptionId: z.string().regex(/^[a-d]$/),
 });
 
+/**
+ * Juego de memoria (`banco-ejercicios.md` §3.3): 6–10 pares término ↔ definición
+ * (12–20 cartas). Las dos caras están a la vista por definición, así que el juego
+ * se corrige en el cliente y los pares viajan tal cual en `config.pairs`.
+ */
+export const contentSeedMemorySchema = z.object({
+  pairs: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Id de par en minúsculas separado por guiones"),
+        term: z.string().min(1).max(60, "El término de una carta es breve (máx. 60 caracteres)"),
+        definition: z.string().min(1).max(110, "La definición de una carta es breve (máx. 110 caracteres)"),
+      }),
+    )
+    .min(6, "Un juego de memoria tiene de 6 a 10 pares")
+    .max(10, "Un juego de memoria tiene de 6 a 10 pares"),
+});
+
 /** Tarjeta de recuperación: el frente es el `statement`; el reverso se revela tras un intento. */
 export const contentSeedFlashcardSchema = z.object({
   back: z.string().min(1).max(400, "El reverso de una tarjeta es breve (máx. 400 caracteres)"),
@@ -418,6 +436,7 @@ export const contentSeedExerciseSchema = z.object({
   solution: z.object({ code: z.string().min(1) }).nullable().default(null),
   quiz: contentSeedQuizSchema.nullable().default(null),
   flashcard: contentSeedFlashcardSchema.nullable().default(null),
+  memory: contentSeedMemorySchema.nullable().default(null),
   sources: z.array(z.string().url()).min(1, "La documentación oficial es obligatoria"),
   maxAttempts: z.number().int().positive().nullable().default(null),
   isPublished: z.boolean(),
@@ -536,6 +555,24 @@ export function exerciseRuleViolations(exercise: ContentSeedExercise): string[] 
     if (exercise.flashcard === null) problems.push("una FLASHCARD requiere flashcard.back");
   } else if (exercise.flashcard !== null) {
     problems.push("solo una FLASHCARD declara flashcard");
+  }
+
+  if (exercise.type === "MEMORY") {
+    const pairs = exercise.memory?.pairs;
+
+    if (pairs === undefined) {
+      problems.push("un MEMORY requiere memory.pairs");
+    } else {
+      const ids = pairs.map((pair) => pair.id);
+      const terms = pairs.map((pair) => pair.term.trim().toLowerCase());
+      const definitions = pairs.map((pair) => pair.definition.trim().toLowerCase());
+
+      if (new Set(ids).size !== ids.length) problems.push("los pares repiten id");
+      if (new Set(terms).size !== terms.length) problems.push("los pares repiten término");
+      if (new Set(definitions).size !== definitions.length) problems.push("los pares repiten definición");
+    }
+  } else if (exercise.memory !== null) {
+    problems.push("solo un MEMORY declara memory");
   }
 
   if (CODE_EXERCISE_TYPES.includes(exercise.type)) {

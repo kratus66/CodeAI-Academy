@@ -50,6 +50,10 @@ function exerciseConfig(exercise: SeedExercise) {
     return { options: exercise.quiz.options.map(({ id, text }) => ({ id, text })) };
   }
 
+  if (exercise.memory !== null) {
+    return { pairs: exercise.memory.pairs.map(({ id, term, definition }) => ({ id, term, definition })) };
+  }
+
   return exercise.starterCode === null ? {} : { starterCode: exercise.starterCode };
 }
 

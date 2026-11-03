@@ -341,6 +341,8 @@ Esto es **deuda pedagógica declarada**, no un descuido silencioso: la regla per
 
 Reproductores del cliente: `QUIZ`, `FLASHCARD`, `MEMORY` y `REFLECT` sin sandbox; `DEBUG` exige primero un **diagnóstico** (marcar las líneas sospechosas y explicar la causa raíz) y luego se corrige en el laboratorio con pruebas reales. El diagnóstico lo escribe el estudiante pero la API no lo califica. `AUDIT`, `CHALLENGE` y `SIM` no tienen reproductor propio todavía.
 
+**Juegos de memoria sembrados (2026-11-03):** cada unidad de E0 (14) trae un `MEMORY` de 7–8 pares (`memory.pairs` en el seed; el esquema exige 6–10, términos de hasta 60 y definiciones de hasta 110 caracteres). Las definiciones salen de las tarjetas y lecciones de la propia unidad. Con ellos E0 deja de ser sólo teoría en el Laboratorio. Siguen sin revisión humana y el juego aún no registra su resultado (no aparece como superado en la unidad).
+
 `seed-exercise-quality.spec.ts` exige además: tiempo estimado, explicación propia por opción de quiz, tarjetas con reverso distinto del frente, solución y prueba oculta en todo ejercicio de código, y un escalón autónomo sin pistas por unidad (excepción declarada: `U2.3.3`).
 
 ## 6. Metadatos obligatorios de todo ejercicio

@@ -150,7 +150,8 @@ describe("calidad de los ejercicios sembrados", () => {
     // `SANDBOX_MODE=mock` dé PASSED a cualquier código sin `TODO`. La interfaz lo
     // avisa en cada laboratorio; el riesgo sigue abierto hasta tener sandbox real
     // (`sandbox-ejecucion.md`, H1 de `revision-pedagogica.md`).
-    const served = new Set(["QUIZ", "FLASHCARD", "REFLECT", "LAB", "DEBUG"]);
+    // MEMORY se sirve desde que existe su reproductor de cliente (`MemoryPlayer`).
+    const served = new Set(["QUIZ", "FLASHCARD", "REFLECT", "MEMORY", "LAB", "DEBUG"]);
     const published = exercises.filter((exercise) => exercise.isPublished);
 
     expect(published.filter((exercise) => !served.has(exercise.type))).toEqual([]);
@@ -288,5 +289,31 @@ describe("metadatos y escalera de los ejercicios sembrados (banco-ejercicios.md 
     );
 
     expect(UNITS_WITHOUT_AUTONOMOUS_LADDER.filter((unit) => conAutonomo.has(unit))).toEqual([]);
+  });
+});
+
+describe("juegos de memoria sembrados (banco-ejercicios.md §3.3)", () => {
+  const memories = exercises.filter((exercise) => exercise.type === "MEMORY");
+
+  it("cada unidad de E0 trae un juego de memoria con 6 a 10 pares", () => {
+    const e0Units = seed.stages[0]?.modules.flatMap((module) => module.units) ?? [];
+    const sinJuego = e0Units
+      .filter((unit) => !unit.exercises.some((exercise) => exercise.type === "MEMORY"))
+      .map((unit) => unit.code);
+
+    expect(sinJuego).toEqual([]);
+    expect(memories.length).toBeGreaterThanOrEqual(e0Units.length);
+    expect(memories.every((exercise) => (exercise.memory?.pairs.length ?? 0) >= 6)).toBe(true);
+  });
+
+  it("ningún par repite una cara dentro de su juego ni mezcla término y definición", () => {
+    const problemas = memories.flatMap((exercise) => {
+      const pairs = exercise.memory?.pairs ?? [];
+      const caras = pairs.flatMap((pair) => [pair.term.trim().toLowerCase(), pair.definition.trim().toLowerCase()]);
+
+      return new Set(caras).size === caras.length ? [] : [exercise.slug];
+    });
+
+    expect(problemas).toEqual([]);
   });
 });
