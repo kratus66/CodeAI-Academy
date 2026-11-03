@@ -225,6 +225,7 @@ export const LESSON_CONTENT_BLOCK_TYPES = [
   "callout",
   "diagram",
   "table",
+  "mermaid",
 ] as const;
 
 export const lessonContentBlockSchema = z.object({

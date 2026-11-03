@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 
 import { TutorPanel } from "@/features/ai/components/TutorPanel";
 import { CodeBlock } from "@/features/learning/components/CodeBlock";
+import { MermaidDiagram } from "@/features/learning/components/MermaidDiagram";
 import { StepsFlow } from "@/features/learning/components/StepsFlow";
 import { formatMinutes } from "@/features/learning/lib/format";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
@@ -109,6 +110,11 @@ function ContentBlock({
           </p>
         </figure>
       );
+
+    case "mermaid":
+      return block.code ? (
+        <MermaidDiagram code={block.code} {...(block.title ? { title: block.title } : {})} />
+      ) : null;
 
     case "table":
       return (

@@ -258,3 +258,26 @@ describe("LessonReader — completar la lección", () => {
     expect(screen.getByRole("button", { name: "Marcar como completada" })).toBeEnabled();
   });
 });
+
+describe("LessonReader: bloque mermaid", () => {
+  it("renderiza el diagrama de un bloque mermaid con su título", async () => {
+    vi.doMock("mermaid", () => ({
+      default: { initialize: vi.fn(), render: vi.fn().mockResolvedValue({ svg: "<svg></svg>" }) },
+    }));
+
+    const lesson: LessonDetail = {
+      ...LESSON,
+      content: [{ type: "mermaid", title: "Secuencia HTTP", code: "sequenceDiagram\n  A->>B: hola" }],
+    };
+
+    render(
+      <LessonReader
+        slug={lesson.slug}
+        loadLesson={() => Promise.resolve(lesson)}
+        completeLesson={() => Promise.resolve()}
+      />,
+    );
+
+    expect(await screen.findByText("Secuencia HTTP")).toBeTruthy();
+  });
+});
