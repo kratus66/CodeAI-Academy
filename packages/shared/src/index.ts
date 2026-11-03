@@ -9,6 +9,7 @@ export * from "./schemas/auth";
 export * from "./schemas/common";
 export * from "./schemas/content";
 export * from "./schemas/exercise";
+export * from "./schemas/exercise-draft";
 export * from "./schemas/hint";
 export * from "./schemas/interview";
 export * from "./schemas/progress";

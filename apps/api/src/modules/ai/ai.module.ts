@@ -5,6 +5,7 @@ import type { Env } from "../../config/env";
 import { ENV } from "../../config/env.module";
 import { AuthModule } from "../auth/auth.module";
 import { AiController } from "./ai.controller";
+import { ExerciseGeneratorService } from "./exercise-generator.service";
 import { AI_REPOSITORY } from "./ai.repository";
 import { AI_CLOCK, AiService } from "./ai.service";
 import type { AiProvider } from "./interfaces/ai-provider.interface";
@@ -24,6 +25,7 @@ import { PrismaAiRepository } from "./prisma-ai.repository";
   controllers: [AiController],
   providers: [
     AiService,
+    ExerciseGeneratorService,
     { provide: AI_REPOSITORY, useClass: PrismaAiRepository },
     { provide: AI_CLOCK, useValue: () => new Date() },
     {
@@ -47,6 +49,6 @@ import { PrismaAiRepository } from "./prisma-ai.repository";
       },
     },
   ],
-  exports: [AiService],
+  exports: [AiService, ExerciseGeneratorService],
 })
 export class AiModule {}
