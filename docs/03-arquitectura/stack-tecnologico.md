@@ -10,13 +10,14 @@
 |------|-----------|------------------|
 | Runtime | Node.js | 20 LTS o superior (entorno actual: v24) |
 | Gestor de paquetes | npm (workspaces) | 10+ |
-| Frontend | Next.js (App Router) | 14.x |
-| UI | React | 18.x |
+| Frontend | Next.js (App Router) | 16.x |
+| UI | React | 19.x |
 | Lenguaje | TypeScript | 5.x (strict) |
 | Estilos | Tailwind CSS | 3.x |
 | Estado servidor | TanStack Query | 5.x |
 | Estado cliente | Zustand | 4.x |
 | Editor de código | Monaco Editor | última estable |
+| Resaltado de lectura | Shiki (en servidor/build) | 4.x |
 | Backend | NestJS | 10.x |
 | ORM | Prisma | 5.x |
 | Base de datos | PostgreSQL | 16.x |
@@ -40,6 +41,19 @@
 | Coherencia con el curso | ✅ enseña SSR y App Router (valor de mercado) | ✅ enseña SPA |
 
 **Decisión:** Next.js. La landing pública necesita SEO para captar estudiantes, y el curso se beneficia de enseñar SSR.
+
+### ¿Por qué Shiki y no un resaltador en cliente?
+
+Entró en S12-T3 para resaltar los bloques de código de las lecciones.
+
+| Criterio | Shiki | Resaltador en cliente (p. ej. highlight.js) |
+|----------|-------|---------------------------------------------|
+| Coste en el navegador | ✅ cero: el HTML se genera en el servidor | ❌ gramática + JS de resaltado en cada visita |
+| Coherencia con RSC | ✅ encaja con Server Components y Server Actions | ⚠️ obliga a hidratar cada bloque |
+| Precisión del coloreado | ✅ gramáticas TextMate, las mismas del editor | ⚠️ aproximada en lenguajes poco comunes |
+| Degradación | ✅ lenguaje no soportado → texto plano | ✅ |
+
+**Decisión:** Shiki, invocado desde `apps/web/src/lib/highlight.ts` como Server Action y con dos temas (`github-light` / `github-dark`) emitidos como variables CSS, de modo que el cambio de tema (S12-T6) no vuelve a resaltar. El motor es JavaScript puro (`createJavaScriptRegexEngine`) para no arrastrar WASM al empaquetado del servidor, y el resaltador se memoriza por proceso para no recrear gramáticas en cada bloque.
 
 ### ¿Por qué NestJS separado?
 
