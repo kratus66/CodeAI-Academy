@@ -9,6 +9,7 @@ import { AI_REPOSITORY } from "./ai.repository";
 import { AI_CLOCK, AiService } from "./ai.service";
 import type { AiProvider } from "./interfaces/ai-provider.interface";
 import { AI_PROVIDER } from "./interfaces/ai-provider.interface";
+import { AnthropicProvider } from "./providers/anthropic.provider";
 import { MockAiProvider } from "./providers/mock.provider";
 import { OpenAiProvider } from "./providers/openai.provider";
 import { PrismaAiRepository } from "./prisma-ai.repository";
@@ -28,14 +29,22 @@ import { PrismaAiRepository } from "./prisma-ai.repository";
     {
       provide: AI_PROVIDER,
       inject: [ENV],
-      useFactory: (env: Env): AiProvider =>
-        env.AI_PROVIDER === "openai"
-          ? new OpenAiProvider({
-              apiKey: env.AI_API_KEY ?? "",
-              model: env.AI_MODEL,
-              timeoutMs: env.AI_TIMEOUT_MS,
-            })
-          : new MockAiProvider(),
+      useFactory: (env: Env): AiProvider => {
+        const config = {
+          apiKey: env.AI_API_KEY ?? "",
+          model: env.AI_MODEL,
+          timeoutMs: env.AI_TIMEOUT_MS,
+        };
+
+        switch (env.AI_PROVIDER) {
+          case "openai":
+            return new OpenAiProvider(config);
+          case "anthropic":
+            return new AnthropicProvider(config);
+          default:
+            return new MockAiProvider();
+        }
+      },
     },
   ],
   exports: [AiService],

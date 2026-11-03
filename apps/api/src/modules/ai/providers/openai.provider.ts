@@ -4,6 +4,7 @@ import type {
   AiProvider,
   AiProviderMessage,
 } from "../interfaces/ai-provider.interface";
+import { readSseData } from "./sse";
 
 /** Precio en USD por 1 000 tokens, separado en entrada y salida. */
 export interface ModelPrice {
@@ -69,6 +70,52 @@ export class OpenAiProvider implements AiProvider {
     options: AiCompletionOptions = {},
   ): Promise<AiCompletionResult> {
     const startedAt = Date.now();
+    const response = await this.post(messages, options, false);
+    const body = (await response.json()) as ChatCompletionBody;
+    const content = body.choices?.[0]?.message?.content;
+
+    if (typeof content !== "string" || content.trim() === "") {
+      throw new AiProviderError("El proveedor devolvió una respuesta vacía", "EMPTY_RESPONSE");
+    }
+
+    const model = body.model ?? this.config.model;
+    const promptTokens = body.usage?.prompt_tokens ?? 0;
+    const outputTokens = body.usage?.completion_tokens ?? 0;
+
+    return {
+      content,
+      usage: { promptTokens, outputTokens },
+      model,
+      latencyMs: Date.now() - startedAt,
+      costUsd: computeCostUsd(model, promptTokens, outputTokens),
+    };
+  }
+
+  /** Entrega la respuesta fragmento a fragmento a medida que el proveedor la genera. */
+  async *stream(
+    messages: AiProviderMessage[],
+    options: AiCompletionOptions = {},
+  ): AsyncIterable<string> {
+    const response = await this.post(messages, options, true);
+
+    for await (const data of readSseData(response)) {
+      const delta = parseChunk(data)?.choices?.[0]?.delta?.content;
+
+      if (typeof delta === "string" && delta !== "") {
+        yield delta;
+      }
+    }
+  }
+
+  isAvailable(): Promise<boolean> {
+    return Promise.resolve(this.config.apiKey.length > 0);
+  }
+
+  private async post(
+    messages: AiProviderMessage[],
+    options: AiCompletionOptions,
+    stream: boolean,
+  ): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
     options.signal?.addEventListener("abort", () => controller.abort());
@@ -87,6 +134,7 @@ export class OpenAiProvider implements AiProvider {
           messages,
           temperature: options.temperature,
           max_tokens: options.maxTokens,
+          ...(stream ? { stream: true } : {}),
           ...(options.jsonSchema === undefined
             ? {}
             : {
@@ -110,32 +158,20 @@ export class OpenAiProvider implements AiProvider {
       throw new AiProviderError(`El proveedor respondió ${response.status}`, `HTTP_${response.status}`);
     }
 
-    const body = (await response.json()) as ChatCompletionBody;
-    const content = body.choices?.[0]?.message?.content;
-
-    if (typeof content !== "string" || content.trim() === "") {
-      throw new AiProviderError("El proveedor devolvió una respuesta vacía", "EMPTY_RESPONSE");
-    }
-
-    const model = body.model ?? this.config.model;
-    const promptTokens = body.usage?.prompt_tokens ?? 0;
-    const outputTokens = body.usage?.completion_tokens ?? 0;
-
-    return {
-      content,
-      usage: { promptTokens, outputTokens },
-      model,
-      latencyMs: Date.now() - startedAt,
-      costUsd: computeCostUsd(model, promptTokens, outputTokens),
-    };
+    return response;
   }
+}
 
-  /** S8 no hace *streaming*: se entrega la respuesta completa como un único fragmento. */
-  async *stream(messages: AiProviderMessage[], options?: AiCompletionOptions): AsyncIterable<string> {
-    yield (await this.complete(messages, options)).content;
-  }
+interface ChatChunk {
+  choices?: { delta?: { content?: string | null } }[];
+}
 
-  isAvailable(): Promise<boolean> {
-    return Promise.resolve(this.config.apiKey.length > 0);
+function parseChunk(data: string): ChatChunk | null {
+  try {
+    const parsed: unknown = JSON.parse(data);
+
+    return typeof parsed === "object" && parsed !== null ? (parsed as ChatChunk) : null;
+  } catch {
+    return null;
   }
 }

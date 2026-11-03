@@ -160,3 +160,21 @@ describe("loadEnv", () => {
     expect(() => loadEnvFile(["./no-existe.env"])).not.toThrow();
   });
 });
+
+describe("loadEnv: proveedor anthropic", () => {
+  it("exige clave y un modelo claude-*", () => {
+    expect(() => loadEnv({ AI_PROVIDER: "anthropic", AI_MODEL: "claude-haiku-5-5" })).toThrow(
+      /AI_API_KEY/,
+    );
+    expect(() => loadEnv({ AI_PROVIDER: "anthropic", AI_API_KEY: "sk-ant-test" })).toThrow(
+      /AI_MODEL/,
+    );
+    expect(
+      loadEnv({
+        AI_PROVIDER: "anthropic",
+        AI_API_KEY: "sk-ant-test",
+        AI_MODEL: "claude-haiku-5-5",
+      }).AI_PROVIDER,
+    ).toBe("anthropic");
+  });
+});

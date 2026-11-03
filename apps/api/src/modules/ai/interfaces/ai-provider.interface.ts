@@ -4,7 +4,7 @@
  */
 export const AI_PROVIDER = Symbol("AI_PROVIDER");
 
-export const AI_PROVIDER_NAMES = ["mock", "openai"] as const;
+export const AI_PROVIDER_NAMES = ["mock", "openai", "anthropic"] as const;
 export type AiProviderName = (typeof AI_PROVIDER_NAMES)[number];
 
 export interface AiProviderMessage {

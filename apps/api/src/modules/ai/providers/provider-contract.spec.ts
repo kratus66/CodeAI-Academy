@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AiProvider } from "../interfaces/ai-provider.interface";
+import { AnthropicProvider } from "./anthropic.provider";
 import { MockAiProvider } from "./mock.provider";
 import { OpenAiProvider } from "./openai.provider";
 
@@ -30,14 +31,37 @@ const okResponse = (): Promise<Response> =>
     ),
   );
 
+function anthropicWith(handler: () => Promise<Response>): AnthropicProvider {
+  return new AnthropicProvider({
+    apiKey: "sk-ant-test",
+    model: "claude-haiku-5-5",
+    timeoutMs: 1000,
+    fetch: handler,
+  });
+}
+
+const anthropicOk = (): Promise<Response> =>
+  Promise.resolve(
+    new Response(
+      JSON.stringify({
+        model: "claude-haiku-5-5",
+        content: [{ type: "text", text: "¿Qué devuelve fetch?" }],
+        usage: { input_tokens: 40, output_tokens: 10 },
+      }),
+      { status: 200 },
+    ),
+  );
+
 const failing: [string, () => AiProvider][] = [
   ["mock", () => new MockAiProvider({ failWith: new Error("caído") })],
   ["openai", () => openAiWith(() => Promise.resolve(new Response("{}", { status: 503 })))],
+  ["anthropic", () => anthropicWith(() => Promise.resolve(new Response("{}", { status: 503 })))],
 ];
 
 describe.each<[string, () => AiProvider]>([
   ["mock", () => new MockAiProvider()],
   ["openai", () => openAiWith(okResponse)],
+  ["anthropic", () => anthropicWith(anthropicOk)],
 ])("contrato AiProvider: %s", (_name, create) => {
   it("devuelve contenido, tokens enteros ≥ 0 y modelo", async () => {
     const result = await create().complete([...MESSAGES], { maxTokens: 600 });
@@ -125,5 +149,106 @@ describe("OpenAiProvider", () => {
     });
 
     await expect(code(slow)).resolves.toBe("TIMEOUT");
+  });
+});
+
+describe("AnthropicProvider", () => {
+  it("separa el system, usa x-api-key y calcula el costo", async () => {
+    let captured: { url: string; init: RequestInit } | undefined;
+    const provider = new AnthropicProvider({
+      apiKey: "sk-ant-test",
+      model: "claude-haiku-5-5",
+      timeoutMs: 1000,
+      prices: { "claude-haiku-5-5": { input: 0.001, output: 0.005 } },
+      fetch: (url, init) => {
+        captured = { url, init };
+        return anthropicOk();
+      },
+    });
+
+    const result = await provider.complete([...MESSAGES], { temperature: 0.4, maxTokens: 600 });
+    const body = JSON.parse(String(captured?.init.body)) as Record<string, unknown>;
+    const headers = captured?.init.headers as Record<string, string>;
+
+    expect(captured?.url).toBe("https://api.anthropic.com/v1/messages");
+    expect(headers["x-api-key"]).toBe("sk-ant-test");
+    expect(headers["anthropic-version"]).toBe("2023-06-01");
+    expect(body).toMatchObject({
+      model: "claude-haiku-5-5",
+      system: "Eres un tutor.",
+      max_tokens: 600,
+      temperature: 0.4,
+      messages: [{ role: "user", content: "¿Por qué falla el await?" }],
+    });
+    expect(result.usage).toEqual({ promptTokens: 40, outputTokens: 10 });
+    expect(result.costUsd).toBeCloseTo((40 / 1000) * 0.001 + (10 / 1000) * 0.005, 10);
+  });
+
+  it("clasifica 5xx, red y respuesta vacía con código estable", async () => {
+    const code = async (provider: AnthropicProvider): Promise<string> => {
+      try {
+        await provider.complete([...MESSAGES]);
+        return "none";
+      } catch (error) {
+        return (error as { code?: string }).code ?? "unknown";
+      }
+    };
+
+    await expect(code(anthropicWith(() => Promise.resolve(new Response("{}", { status: 500 }))))).resolves.toBe("HTTP_500");
+    await expect(code(anthropicWith(() => Promise.reject(new Error("ECONNRESET"))))).resolves.toBe("NETWORK");
+    await expect(
+      code(anthropicWith(() => Promise.resolve(new Response(JSON.stringify({ content: [] }), { status: 200 })))),
+    ).resolves.toBe("EMPTY_RESPONSE");
+  });
+});
+
+function sse(lines: string[]): Response {
+  return new Response(lines.map((line) => `${line}\n\n`).join(""), {
+    status: 200,
+    headers: { "content-type": "text/event-stream" },
+  });
+}
+
+async function collect(stream: AsyncIterable<string>): Promise<string[]> {
+  const chunks: string[] = [];
+
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+
+  return chunks;
+}
+
+describe("streaming de proveedores", () => {
+  it("OpenAI entrega los fragmentos y descarta [DONE]", async () => {
+    const provider = openAiWith(() =>
+      Promise.resolve(
+        sse([
+          'data: {"choices":[{"delta":{"content":"¿Qué "}}]}',
+          'data: {"choices":[{"delta":{"content":"ves?"}}]}',
+          'data: {"choices":[{"delta":{}}]}',
+          "data: [DONE]",
+        ]),
+      ),
+    );
+
+    await expect(collect(provider.stream([...MESSAGES]))).resolves.toEqual(["¿Qué ", "ves?"]);
+  });
+
+  it("Anthropic entrega sólo los text_delta", async () => {
+    const provider = anthropicWith(() =>
+      Promise.resolve(
+        sse([
+          "event: message_start",
+          'data: {"type":"message_start"}',
+          "event: content_block_delta",
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hola "}}',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"mundo"}}',
+          'data: {"type":"message_stop"}',
+        ]),
+      ),
+    );
+
+    await expect(collect(provider.stream([...MESSAGES]))).resolves.toEqual(["Hola ", "mundo"]);
   });
 });

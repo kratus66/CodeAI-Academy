@@ -82,7 +82,7 @@ const envSchema = z
     // Capa de IA (S8). Debe coincidir con `AI_PROVIDER_NAMES` del puerto
     // `modules/ai/interfaces/ai-provider.interface.ts`. Una clave vacía cuenta
     // como ausente para que `AI_API_KEY=` en `.env` no falle con `mock`.
-    AI_PROVIDER: z.enum(["mock", "openai"]).default("mock"),
+    AI_PROVIDER: z.enum(["mock", "openai", "anthropic"]).default("mock"),
     AI_API_KEY: z
       .string()
       .optional()
@@ -116,11 +116,19 @@ const envSchema = z
       });
     }
 
-    if (env.AI_PROVIDER === "openai" && env.AI_API_KEY === undefined) {
+    if (env.AI_PROVIDER !== "mock" && env.AI_API_KEY === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["AI_API_KEY"],
-        message: "obligatoria con AI_PROVIDER=openai",
+        message: `obligatoria con AI_PROVIDER=${env.AI_PROVIDER}`,
+      });
+    }
+
+    if (env.AI_PROVIDER === "anthropic" && !env.AI_MODEL.startsWith("claude-")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AI_MODEL"],
+        message: "con AI_PROVIDER=anthropic define un modelo claude-* (p. ej. claude-haiku-5-5)",
       });
     }
   });
