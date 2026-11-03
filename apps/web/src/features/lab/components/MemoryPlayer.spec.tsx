@@ -56,7 +56,8 @@ describe("MemoryPlayer", () => {
 
     expect(screen.getByText("Empareja cada comando con lo que hace.")).toBeInTheDocument();
     expect(hiddenCards()).toHaveLength(6);
-    expect(screen.queryByText("git commit")).not.toBeInTheDocument();
+    // El término aparece como concepto a emparejar, pero ninguna carta está levantada.
+    expect(screen.queryByRole("button", { name: "git commit" })).not.toBeInTheDocument();
   });
 
   it("empareja el término con su definición y cuenta un movimiento", () => {
@@ -101,7 +102,7 @@ describe("MemoryPlayer", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Tablero completado en 4 movimientos.");
     expect(screen.getByText("Pares para repasar:")).toBeInTheDocument();
     expect(
-      within(screen.getByRole("list"))
+      within(screen.getByRole("list", { name: "Pares para repasar" }))
         .getAllByRole("listitem")
         .map((item) => item.textContent),
     ).toEqual(["git commit", "git push"]);
@@ -119,7 +120,7 @@ describe("MemoryPlayer", () => {
 
     expect(await screen.findByRole("status")).toHaveTextContent("Tablero completado en 3 movimientos.");
     expect(screen.getByText("Sin fallos: este tablero no necesita repaso.")).toBeInTheDocument();
-    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Pares para repasar" })).not.toBeInTheDocument();
   });
 
   it("reinicia el tablero y los contadores", () => {
@@ -260,38 +261,55 @@ describe("MemoryPlayer: qué vas a repasar", () => {
     list: { title: "Etapas del recorrido", ordered: true, items: ["Requisito", "Pruebas", "Despliegue"] },
   };
 
+  const region = () => screen.getByRole("region", { name: "Qué vas a repasar" });
+
   it("muestra el resumen y las etapas en orden antes del tablero", () => {
     render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: INTRO })} shuffle={dealInOrder} />);
 
-    const intro = screen.getByRole("region", { name: "Qué vas a repasar" });
+    expect(within(region()).getByText("Todo requisito recorre las mismas etapas.")).toBeInTheDocument();
+    expect(within(region()).getByText("Etapas del recorrido")).toBeInTheDocument();
 
-    expect(within(intro).getByText("Todo requisito recorre las mismas etapas.")).toBeInTheDocument();
-    expect(within(intro).getByText("Etapas del recorrido")).toBeInTheDocument();
-    expect(within(intro).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+    const stages = within(region()).getAllByRole("list")[0] as HTMLElement;
+
+    expect(within(stages).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
       "1Requisito",
       "→2Pruebas",
       "→3Despliegue",
     ]);
   });
 
-  it("acepta un resumen sin lista y no muestra nada si no hay intro", () => {
-    const { unmount } = render(
-      <MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: { summary: "Solo resumen." } })} shuffle={dealInOrder} />,
-    );
+  it("siempre indica qué conceptos hay que emparejar, sin dar sus definiciones", () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: INTRO })} shuffle={dealInOrder} />);
 
-    expect(screen.getByText("Solo resumen.")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Qué vas a repasar" })).queryByRole("list")).not.toBeInTheDocument();
+    const concepts = within(region()).getByRole("list", { name: "Conceptos a emparejar" });
 
-    unmount();
+    expect(within(concepts).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "git commit",
+      "git push",
+      "git clone",
+    ]);
+    expect(within(region()).getByText("Vas a emparejar estos 3 conceptos con su definición")).toBeInTheDocument();
+    expect(within(region()).queryByText(/historial local/)).not.toBeInTheDocument();
+  });
+
+  it("sin intro sigue mostrando los conceptos a emparejar, pero sin resumen ni etapas", () => {
     render(<MemoryPlayer exercise={exercise()} shuffle={dealInOrder} />);
 
-    expect(screen.queryByRole("region", { name: "Qué vas a repasar" })).not.toBeInTheDocument();
+    expect(within(region()).getAllByRole("list")).toHaveLength(1);
+    expect(within(region()).getByRole("list", { name: "Conceptos a emparejar" })).toBeInTheDocument();
+  });
+
+  it("acepta un resumen sin lista de etapas", () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: { summary: "Solo resumen." } })} shuffle={dealInOrder} />);
+
+    expect(screen.getByText("Solo resumen.")).toBeInTheDocument();
+    expect(within(region()).getAllByRole("list")).toHaveLength(1);
   });
 
   it("descarta una intro mal formada sin romper el juego", () => {
     render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, intro: { summary: 42, list: "x" } })} shuffle={dealInOrder} />);
 
-    expect(screen.queryByRole("region", { name: "Qué vas a repasar" })).not.toBeInTheDocument();
+    expect(within(region()).getAllByRole("list")).toHaveLength(1);
     expect(hiddenCards()).toHaveLength(6);
   });
 });

@@ -134,6 +134,7 @@ pairs:
 **Reglas del contrato:**
 
 - Un par produce exactamente dos cartas (`term` y `definition`); se empareja cuando se levantan sus dos cartas.
+- **Indicio de los pares:** el recuadro «Qué vas a repasar» muestra siempre, aunque no haya `intro`, los términos a emparejar (nunca sus definiciones), generados desde `pairs`: así toda unidad dice qué conceptos hay que formar.
 - **Aciertos y fallos:** un par acertado queda en verde y fijo; un fallo pinta las dos cartas en rojo mientras giran de vuelta. Cada fallo dibuja una parte del muñeco del ahorcado. Al agotar `maxMisses` se pierde el intento: se muestran los pares pendientes con su definición y «Volver a intentar la prueba» reinicia el tablero con un nuevo barajado.
 - Un par con `term` o `definition` ausente, no `string` o vacío **se descarta**; el tablero continúa con el resto en vez de romperse.
 - Si no sobrevive ningún par, la vista lo avisa (`Este juego de memoria no tiene pares disponibles.`) en lugar de dibujar un tablero vacío.

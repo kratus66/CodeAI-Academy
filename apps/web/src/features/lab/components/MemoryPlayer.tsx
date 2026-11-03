@@ -291,16 +291,15 @@ export function MemoryPlayer({
 
   return (
     <div className="space-y-4">
-      {intro !== null ? (
-        <section
-          aria-labelledby="memory-intro"
-          className="space-y-3 rounded-2xl border border-line/70 bg-ink-card/40 px-5 py-4"
-        >
-          <h2 id="memory-intro" className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-            Qué vas a repasar
-          </h2>
-          <p className="text-sm leading-relaxed text-slate-200">{intro.summary}</p>
-          {intro.list !== null ? (
+      <section
+        aria-labelledby="memory-intro"
+        className="space-y-3 rounded-2xl border border-line/70 bg-ink-card/40 px-5 py-4"
+      >
+        <h2 id="memory-intro" className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+          Qué vas a repasar
+        </h2>
+        {intro !== null ? <p className="text-sm leading-relaxed text-slate-200">{intro.summary}</p> : null}
+        {intro?.list != null ? (
             <div className="space-y-2">
               <p className="text-sm font-medium text-slate-100">{intro.list.title}</p>
               {intro.list.ordered ? (
@@ -330,8 +329,20 @@ export function MemoryPlayer({
               )}
             </div>
           ) : null}
-        </section>
-      ) : null}
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-slate-100">
+            Vas a emparejar estos {pairs.length} conceptos con su definición
+          </p>
+          <ul aria-label="Conceptos a emparejar" className="flex list-none flex-wrap gap-2 p-0 text-sm text-slate-200">
+            {pairs.map((pair) => (
+              <li key={pair.id} className="rounded-full border border-line/70 px-3 py-1">
+                {pair.term}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       <p className="text-base text-slate-100">{exercise.statement}</p>
 
@@ -383,7 +394,7 @@ export function MemoryPlayer({
           {failedTerms.length > 0 ? (
             <div className="space-y-1 text-slate-300">
               <p>Pares para repasar:</p>
-              <ul className="list-disc space-y-1 pl-5">
+              <ul aria-label="Pares para repasar" className="list-disc space-y-1 pl-5">
                 {failedTerms.map((term) => (
                   <li key={term}>{term}</li>
                 ))}
