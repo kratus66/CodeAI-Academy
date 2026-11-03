@@ -73,6 +73,7 @@ La documentación en `docs/` es la **fuente de verdad** del proyecto. Antes de e
 | Contratos compartidos | `packages/shared` (tipos + esquemas Zod) |
 | Autenticación | JWT + roles (student / instructor / admin) |
 | Editor de código | Monaco Editor |
+| Resaltado de lecciones | Shiki (en servidor, sin JS en el cliente) |
 | Ejecución de código | Sandbox aislado y limitado en recursos |
 | Capa de IA | Interfaz `AIProvider` intercambiable |
 | Pruebas | Vitest + Testing Library + Supertest |
