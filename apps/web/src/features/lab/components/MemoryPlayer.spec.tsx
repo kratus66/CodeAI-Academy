@@ -199,12 +199,12 @@ describe("MemoryPlayer: aciertos, fallos y ahorcado", () => {
   it("cuenta los fallos y dibuja el muñeco poco a poco", async () => {
     render(<MemoryPlayer exercise={exercise()} shuffle={dealInOrder} flipBackMs={0} />);
 
-    expect(screen.getByRole("img", { name: "Muñeco del ahorcado: 0 de 6 fallos" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Muñeco del ahorcado: 0 de 10 fallos" })).toBeInTheDocument();
 
     await miss(0, 2);
 
-    expect(screen.getByRole("status")).toHaveTextContent("Fallos: 1 de 6");
-    expect(screen.getByRole("img", { name: "Muñeco del ahorcado: 1 de 6 fallos" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Fallos: 1 de 10");
+    expect(screen.getByRole("img", { name: "Muñeco del ahorcado: 1 de 10 fallos" })).toBeInTheDocument();
   });
 
   it("al agotar los intentos pierde, muestra los pares pendientes y bloquea el tablero", async () => {

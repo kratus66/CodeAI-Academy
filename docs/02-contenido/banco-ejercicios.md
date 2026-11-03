@@ -128,7 +128,7 @@ pairs:
 | `pairs[].term` | `string` | sí | No vacío; es la cara A del par |
 | `pairs[].definition` | `string` | sí | No vacía; es la cara B del par |
 | `pairs[].id` | `string` | no | Si falta o está vacío, el cliente lo deriva del índice: `pair-<índice>` |
-| `maxMisses` | `number` | no | Fallos permitidos por intento antes de perder (ahorcado). Por defecto 6; se acota a 3–10 |
+| `maxMisses` | `number` | no | Fallos permitidos por intento antes de perder (ahorcado). Por defecto 10; se acota a 3–10 |
 | `intro` | `{ summary, list? }` | no | Recuadro «Qué vas a repasar» antes de jugar: `summary` (máx. 400 caracteres) y, si hay una secuencia o un mapa, `list: { title, ordered, items[2–8] }`. Se descarta entero si viene mal formado |
 
 **Reglas del contrato:**

@@ -113,7 +113,7 @@ function readIntro(config: Record<string, unknown>): MemoryIntro | null {
 }
 
 /** Fallos permitidos por intento; `config.maxMisses` lo ajusta dentro de este rango. */
-const DEFAULT_MAX_MISSES = 6;
+const DEFAULT_MAX_MISSES = 10;
 const MIN_MAX_MISSES = 3;
 const MAX_MAX_MISSES = 10;
 
