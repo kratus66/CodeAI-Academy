@@ -9,13 +9,15 @@ import { ApiError } from "@/lib/api-client";
 import { ExerciseLab, loadExerciseLab } from "./ExerciseLab";
 import type { ExerciseLabContent, LoadExerciseLab } from "./ExerciseLab";
 import { FlashcardPlayer } from "./FlashcardPlayer";
+import { MemoryPlayer } from "./MemoryPlayer";
 import { QuizPlayer } from "./QuizPlayer";
 import { ReflectionPlayer } from "./ReflectionPlayer";
 
 /**
  * Despacha un ejercicio de la unidad al jugador que corresponde a su tipo:
- * `QUIZ` y `FLASHCARD` no necesitan sandbox; el resto sigue en el laboratorio de
- * código, al que se le pasa el ejercicio ya cargado para no pedirlo dos veces.
+ * `QUIZ`, `FLASHCARD`, `MEMORY` y `REFLECT` no necesitan sandbox; el resto sigue
+ * en el laboratorio de código, al que se le pasa el ejercicio ya cargado para no
+ * pedirlo dos veces.
  */
 
 const LINK_CLASSES =
@@ -30,8 +32,12 @@ export interface ExercisePlayerProps {
 const TYPE_LABEL: Record<string, string> = {
   QUIZ: "Quiz",
   FLASHCARD: "Tarjeta de repaso",
+  MEMORY: "Juego de memoria",
   REFLECT: "Reflexión",
 };
+
+/** Tipos que se resuelven en el cliente, sin editor de código. */
+const CLIENT_TYPES: readonly string[] = ["QUIZ", "FLASHCARD", "MEMORY", "REFLECT"];
 
 export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: ExercisePlayerProps) {
   const load = useCallback(
@@ -81,7 +87,7 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
 
   const { exercise, unitTitle } = state.data;
 
-  if (exercise.type === "QUIZ" || exercise.type === "FLASHCARD" || exercise.type === "REFLECT") {
+  if (CLIENT_TYPES.includes(exercise.type)) {
     return (
       <article className="space-y-6">
         <header className="space-y-2">
@@ -101,6 +107,8 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
           <QuizPlayer exercise={exercise} />
         ) : exercise.type === "FLASHCARD" ? (
           <FlashcardPlayer exercise={exercise} />
+        ) : exercise.type === "MEMORY" ? (
+          <MemoryPlayer key={exercise.id} exercise={exercise} />
         ) : (
           <ReflectionPlayer exercise={exercise} />
         )}
