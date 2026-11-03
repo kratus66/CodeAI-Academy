@@ -83,3 +83,20 @@ describe("ExercisePlayer", () => {
     expect(screen.queryByRole("group", { name: "Tablero de memoria" })).not.toBeInTheDocument();
   });
 });
+
+describe("ExercisePlayer: DEBUG", () => {
+  it("abre con el diagnóstico en lugar del editor", async () => {
+    const debug = exercise({
+      id: "ex-debug",
+      type: "DEBUG",
+      title: "El rechazo que se pierde",
+      language: "typescript",
+      starterCode: "const a = 1;\nconst b = 2;",
+    });
+
+    render(<ExercisePlayer unitCode="U0.1.1" slug="dbg-1" loadLab={loaderFor(debug)} />);
+
+    expect(await screen.findByText(/Paso 1/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Línea 2" })).toBeInTheDocument();
+  });
+});

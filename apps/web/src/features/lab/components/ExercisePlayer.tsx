@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { ApiError } from "@/lib/api-client";
 
+import { DebugPlayer } from "./DebugPlayer";
 import { ExerciseLab, loadExerciseLab } from "./ExerciseLab";
 import type { ExerciseLabContent, LoadExerciseLab } from "./ExerciseLab";
 import { FlashcardPlayer } from "./FlashcardPlayer";
@@ -116,6 +117,8 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
     );
   }
 
+  const lab = <ExerciseLab unitCode={unitCode} slug={slug} loadLab={preloaded} />;
+
   return (
     <div className="space-y-4">
       <p role="note" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
@@ -123,7 +126,13 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
         programa de verdad, así que un «aprobado» aquí no certifica tu nivel. Comprueba
         tu solución por tu cuenta (ejecútala y escribe tus propias pruebas).
       </p>
-      <ExerciseLab unitCode={unitCode} slug={slug} loadLab={preloaded} />
+      {exercise.type === "DEBUG" ? (
+        <DebugPlayer key={exercise.id} exercise={exercise}>
+          {lab}
+        </DebugPlayer>
+      ) : (
+        lab
+      )}
     </div>
   );
 }
