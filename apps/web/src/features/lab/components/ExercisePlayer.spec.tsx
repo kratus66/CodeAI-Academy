@@ -100,3 +100,13 @@ describe("ExercisePlayer: DEBUG", () => {
     expect(screen.getByRole("button", { name: "Línea 2" })).toBeInTheDocument();
   });
 });
+
+describe("ExercisePlayer: volver a la unidad", () => {
+  it("los ejercicios del cliente ofrecen un enlace visible de regreso a la unidad", async () => {
+    render(<ExercisePlayer unitCode="U0.1.1" slug="quiz-1" loadLab={loaderFor(QUIZ)} />);
+
+    const back = await screen.findByRole("link", { name: /Volver a la unidad/ });
+
+    expect(back).toHaveAttribute("href", "/learn/units/U0.1.1");
+  });
+});

@@ -113,6 +113,15 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
         ) : (
           <ReflectionPlayer exercise={exercise} />
         )}
+
+        <footer className="border-t border-line/70 pt-5">
+          <Link
+            href={`/learn/units/${unitCode}`}
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2 text-sm font-medium text-slate-200 transition hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+          >
+            <span aria-hidden="true">←</span> Volver a la unidad
+          </Link>
+        </footer>
       </article>
     );
   }
