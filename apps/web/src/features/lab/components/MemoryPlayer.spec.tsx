@@ -153,3 +153,103 @@ describe("MemoryPlayer", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Pares: 0 de 2");
   });
 });
+
+describe("MemoryPlayer: aciertos, fallos y ahorcado", () => {
+  /** Un fallo entre dos pares distintos (sin pares acertados antes), esperando a que giren de vuelta. */
+  async function miss(first: number, second: number): Promise<void> {
+    fireEvent.click(cardAt(first));
+    fireEvent.click(cardAt(second));
+
+    await waitFor(() => expect(hiddenCards()).toHaveLength(6));
+  }
+
+  it("un par acertado se queda en verde aunque después se falle", async () => {
+    render(<MemoryPlayer exercise={exercise()} shuffle={dealInOrder} flipBackMs={0} />);
+
+    fireEvent.click(cardAt(0));
+    fireEvent.click(cardAt(1));
+
+    expect(cardAt(0).className).toContain("emerald");
+    expect(cardAt(1).className).toContain("emerald");
+
+    fireEvent.click(cardAt(2));
+    fireEvent.click(cardAt(4));
+    await waitFor(() => expect(hiddenCards()).toHaveLength(4));
+
+    expect(cardAt(0).className).toContain("emerald");
+    expect(cardAt(1).className).toContain("emerald");
+  });
+
+  it("un fallo pinta las dos cartas en rojo mientras giran y luego las deja neutras", async () => {
+    render(<MemoryPlayer exercise={exercise()} shuffle={dealInOrder} flipBackMs={40} />);
+
+    fireEvent.click(cardAt(0));
+    fireEvent.click(cardAt(2));
+
+    expect(cardAt(0).className).toContain("rose");
+    expect(cardAt(2).className).toContain("rose");
+    expect(cardAt(0).className).not.toContain("emerald");
+
+    await waitFor(() => expect(hiddenCards()).toHaveLength(6));
+
+    expect(cardAt(0).className).not.toContain("rose");
+  });
+
+  it("cuenta los fallos y dibuja el muñeco poco a poco", async () => {
+    render(<MemoryPlayer exercise={exercise()} shuffle={dealInOrder} flipBackMs={0} />);
+
+    expect(screen.getByRole("img", { name: "Muñeco del ahorcado: 0 de 6 fallos" })).toBeInTheDocument();
+
+    await miss(0, 2);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Fallos: 1 de 6");
+    expect(screen.getByRole("img", { name: "Muñeco del ahorcado: 1 de 6 fallos" })).toBeInTheDocument();
+  });
+
+  it("al agotar los intentos pierde, muestra los pares pendientes y bloquea el tablero", async () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, maxMisses: 3 })} shuffle={dealInOrder} flipBackMs={0} />);
+
+    await miss(0, 2);
+    await miss(0, 4);
+    fireEvent.click(cardAt(2));
+    fireEvent.click(cardAt(4));
+
+    expect(await screen.findByText("Se acabaron los intentos.")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Pares pendientes" })).getAllByRole("listitem"),
+    ).toHaveLength(3);
+    expect(cardAt(0)).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Reiniciar" })).not.toBeInTheDocument();
+  });
+
+  it("«Volver a intentar la prueba» reinicia tablero, fallos y muñeco", async () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, maxMisses: 3 })} shuffle={dealInOrder} flipBackMs={0} />);
+
+    await miss(0, 2);
+    await miss(0, 4);
+    fireEvent.click(cardAt(2));
+    fireEvent.click(cardAt(4));
+    fireEvent.click(await screen.findByRole("button", { name: "Volver a intentar la prueba" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("Fallos: 0 de 3");
+    expect(hiddenCards()).toHaveLength(6);
+    expect(cardAt(0)).toBeEnabled();
+  });
+
+  it("ganar con fallos de sobra no pierde y acota maxMisses al rango permitido", async () => {
+    render(<MemoryPlayer exercise={exercise({ pairs: PAIRS, maxMisses: 1 })} shuffle={dealInOrder} flipBackMs={0} />);
+
+    expect(screen.getByRole("img", { name: "Muñeco del ahorcado: 0 de 3 fallos" })).toBeInTheDocument();
+
+    await miss(0, 2);
+    fireEvent.click(cardAt(0));
+    fireEvent.click(cardAt(1));
+    fireEvent.click(cardAt(2));
+    fireEvent.click(cardAt(3));
+    fireEvent.click(cardAt(4));
+    fireEvent.click(cardAt(5));
+
+    expect(await screen.findByText(/Tablero completado/)).toBeInTheDocument();
+    expect(screen.queryByText("Se acabaron los intentos.")).not.toBeInTheDocument();
+  });
+});

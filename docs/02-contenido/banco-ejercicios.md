@@ -128,10 +128,12 @@ pairs:
 | `pairs[].term` | `string` | sí | No vacío; es la cara A del par |
 | `pairs[].definition` | `string` | sí | No vacía; es la cara B del par |
 | `pairs[].id` | `string` | no | Si falta o está vacío, el cliente lo deriva del índice: `pair-<índice>` |
+| `maxMisses` | `number` | no | Fallos permitidos por intento antes de perder (ahorcado). Por defecto 6; se acota a 3–10 |
 
 **Reglas del contrato:**
 
 - Un par produce exactamente dos cartas (`term` y `definition`); se empareja cuando se levantan sus dos cartas.
+- **Aciertos y fallos:** un par acertado queda en verde y fijo; un fallo pinta las dos cartas en rojo mientras giran de vuelta. Cada fallo dibuja una parte del muñeco del ahorcado. Al agotar `maxMisses` se pierde el intento: se muestran los pares pendientes con su definición y «Volver a intentar la prueba» reinicia el tablero con un nuevo barajado.
 - Un par con `term` o `definition` ausente, no `string` o vacío **se descarta**; el tablero continúa con el resto en vez de romperse.
 - Si no sobrevive ningún par, la vista lo avisa (`Este juego de memoria no tiene pares disponibles.`) en lugar de dibujar un tablero vacío.
 - La corrección es **en el cliente**: las dos caras del par están a la vista por definición, así que no hay respuesta que ocultar ni endpoint que consultar.
