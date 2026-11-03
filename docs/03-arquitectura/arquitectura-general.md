@@ -47,10 +47,10 @@
 
 | Aspecto | Decisión |
 |---------|----------|
-| Renderizado | SSR para landing y lecciones públicas; CSR para el laboratorio |
+| Renderizado | SSR/SSG para la landing pública; el área privada (lecciones, laboratorio) se sirve como cascarón RSC que delega en componentes cliente, porque la cookie de sesión httpOnly la emite la API en otro origen |
 | Autenticación | Token JWT en cookie httpOnly; refresh silencioso |
-| Estado servidor | TanStack Query |
-| Estado cliente | Zustand (UI, editor, preferencias) |
+| Estado de servidor | Fetch + validación Zod vía `api-client.ts`, consumido por el hook `useContentLoader` (abortable). Sin librería de caché de cliente |
+| Estado de cliente | React local (`useState`) + URL (`searchParams`) + `localStorage` (preferencias). Sin store global |
 | Editor | Monaco Editor cargado dinámicamente |
 | Estilos | Tailwind CSS + componentes propios |
 

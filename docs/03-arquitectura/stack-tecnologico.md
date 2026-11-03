@@ -14,8 +14,8 @@
 | UI | React | 19.x |
 | Lenguaje | TypeScript | 5.x (strict) |
 | Estilos | Tailwind CSS | 3.x |
-| Estado servidor | TanStack Query | 5.x |
-| Estado cliente | Zustand | 4.x |
+| Estado de servidor | Fetch + Zod vía `api-client.ts` (hook `useContentLoader`) | — |
+| Estado de cliente | React local + URL (`searchParams`) + `localStorage` | — |
 | Editor de código | Monaco Editor | última estable |
 | Resaltado de lectura | Shiki (en servidor/build) | 4.x |
 | Backend | NestJS | 10.x |
@@ -206,7 +206,9 @@ CodeAI Academy/
 
 | Tecnología | Motivo del rechazo |
 |------------|-------------------|
-| Redux Toolkit | Exceso para el tipo de estado de esta app; Zustand + TanStack Query bastan |
+| Redux Toolkit | Exceso para el tipo de estado de esta app |
+| TanStack Query | El servidor ya es la fuente de datos (RSC + `api-client.ts` con validación Zod y el hook `useContentLoader`, abortable). No hay caché de cliente que gestionar ni suficiente refetch para justificar la dependencia |
+| Zustand (u otro store global) | El estado de cliente es local y acotado: `useState` por vista, la URL (`searchParams`) para lo compartible y `localStorage` para preferencias. Ningún estado cruza tantas vistas como para necesitar un store |
 | TypeORM | Prisma ofrece mejor tipado y migraciones más simples |
 | Create React App | Obsoleto |
 | Jest | Vitest es más rápido y compatible con ESM |
