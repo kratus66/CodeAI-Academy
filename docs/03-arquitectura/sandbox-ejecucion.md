@@ -215,6 +215,15 @@ export class MockSandboxService implements SandboxService {
 
 ---
 
+## 10. Estado de la implementación (2026-11-03)
+
+- **Adaptador `docker` implementado** (`apps/api/src/modules/sandbox/docker-sandbox.service.ts`): invoca el binario `docker` del host (sin SDK), aplica los límites del §4 (`--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`, usuario `10001`, `--pids-limit`, `--cpus`, `--memory`) y destruye el contenedor en `finally`. El código se monta de **solo lectura** en `/work`, más estricto que el `tmpfs` del §4. Imagen: `node:22-alpine`.
+- **Arnés ESM.** Solución y pruebas viajan en `/work/.codeai/check.mjs` (JavaScript) o `check.mts` (TypeScript, tipos eliminados por Node ≥ 22.18). El arnés simula `require` y `module`, así que una solución con `export` o con CommonJS funciona. Antes era `check.cjs`/`check.ts` con `require` y un `export` en la solución rompía todo laboratorio TypeScript; ninguna prueba con `DockerCliPort` simulado podía verlo.
+- **Pruebas contra Docker real:** `SANDBOX_DOCKER_TESTS=1 npm run test -w apps/api` (se saltan sin la variable). Cubren JS y TS con `export`, resultado `PARTIAL`, `while(true)` → `TIMEOUT`, sin red y sin escritura en el sistema de archivos.
+- **Checklist del §9:** verificados con Docker real los puntos de red, escritura fuera de `/work` y `while(true)`. **Siguen sin prueba automática:** límite de memoria, fork bomb, cuotas y logs sin datos sensibles.
+- **Límites conocidos:** SQL no se ejecuta (responde `ERROR`); las pruebas ocultas viajan en `/work/.codeai` y el código del estudiante podría leerlas, por lo que `exercises` nunca publica el `stdout` de un envío (mover el arnés fuera del contenedor antes de exponerlo).
+- `SANDBOX_MODE` sigue en `mock` por defecto; con `NODE_ENV=production` el arranque exige `docker`.
+
 ## Documentos relacionados
 
 - [`arquitectura-general.md`](arquitectura-general.md)

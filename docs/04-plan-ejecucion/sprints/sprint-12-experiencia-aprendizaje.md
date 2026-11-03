@@ -237,3 +237,5 @@ specs nuevas o ampliadas en el mismo commit:
 | T10 | `82d7bdd` | Onboarding de primer uso en tres pasos. |
 | T9 | `594e114` | Streaming del tutor declarado como deuda (§6). |
 | — | `420b6a6` | Esta ficha entra al repositorio. |
+
+> **Actualización 2026-11-03 — T9 resuelta.** El endpoint `POST /api/ai/tutor/stream` y el lector de stream en `api-client.ts` existen, y `TutorPanel` pinta el texto a medida que llega (con `replace` cuando la guarda filtra). Se cumplieron los tres pasos de la §6 en ese orden: cuota y presupuesto compartidos con `/tutor`; guardas sobre el flujo (la prosa sale en vivo, los bloques de código se retienen hasta pasar `applyReplyGuards`); lector y pintura en el cliente. No se usó bandera: el panel sigue usando `askTutor` (sin streaming) cuando se le inyecta. Ver [`capa-ia.md`](../../03-arquitectura/capa-ia.md) §10 y [`contratos-api.md`](../../03-arquitectura/contratos-api.md) §4.7.

@@ -353,6 +353,17 @@ QUIZ y FLASHCARD no usan el sandbox. Sus envíos se guardan como `Submission` (o
 - `suggestedHints` ≤ 3 y siempre subconjunto de `Exercise.concepts` de la unidad.
 - Errores: `400 VALIDATION_ERROR` (mensaje vacío o > 2000, `history` > 10, `role: "system"`), `401`, `404` (lección inexistente o no publicada), `429 RATE_LIMITED` con `Retry-After`.
 
+
+**POST `/api/ai/tutor/stream`** — misma petición, cuota (30/h por usuario), caché y presupuesto que `/tutor`, respuesta `text/event-stream`. Cada línea `data:` es un JSON (`aiTutorStreamEventSchema`):
+
+```json
+{ "type": "delta", "text": "Antes de responderte: " }
+{ "type": "replace", "text": "Puedo darte una pista de nivel 1…" }
+{ "type": "done", "response": { "reply": "…", "suggestedHints": [], "tokensUsed": 412, "budgetRemainingUsd": 4.98, "source": "provider", "filtered": false } }
+```
+
+- `delta` añade texto; `replace` sustituye todo lo mostrado (la guarda filtró o recortó); `done` cierra con el mismo cuerpo que `/tutor`.
+- Los errores previos al primer evento (`400`, `401`, `404`, `429`) salen como respuesta HTTP normal con el sobre de error. Una vez abierto el flujo, la degradación llega como `replace` + `done` con `source: "fallback"`.
 **POST `/api/ai/explain-error`**
 
 ```json

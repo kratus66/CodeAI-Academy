@@ -233,6 +233,21 @@ Alertas:
 
 ---
 
+## 10. Estado de la implementación (2026-11-03)
+
+**Proveedores.** `mock`, `openai` y `anthropic` (`AI_PROVIDER`). Anthropic usa la Messages API por `fetch`, sin SDK; con él `AI_MODEL` debe ser `claude-*`. Su tabla de precios (`ANTHROPIC_PRICE_PER_1K`) está vacía a propósito: un modelo sin precio se cobra a 0,015 / 0,075 USD por 1 000 tokens (entrada / salida), una sobreestimación que protege el presupuesto. Rellénala con los precios reales o pásalos en `prices`.
+
+**Streaming del tutor.** `POST /api/ai/tutor/stream` (`text/event-stream`) comparte cuota, presupuesto, caché y auditoría con `POST /api/ai/tutor`. Los proveedores informan su uso real al cerrar el flujo (`onUsage`). Las guardas se aplican sobre el flujo: la prosa sale en vivo, pero un bloque de código se retiene hasta cerrarse y pasar `applyReplyGuards`; si salta, el cliente recibe `replace` con la pista segura. Una solución literal escrita en prosa (sin bloque de código) puede verse un instante antes de ese `replace`.
+
+**Autoría asistida** (la IA genera, la máquina valida, una persona aprueba):
+
+| Pieza | Qué hace |
+|-------|----------|
+| `ExerciseGeneratorService` | Pide un borrador (QUIZ, FLASHCARD, LAB, DEBUG), valida esquema, reglas de `plantilla-ejercicio.md`, escalera, longitud de la correcta y **fuentes de una lista cerrada**. Un reintento con los problemas concretos; nunca lanza. |
+| `LabDraftVerifierService` | Ejecuta en el sandbox: la solución oficial debe pasar **todas** las pruebas y el código inicial **no**. Con sandbox `mock` devuelve `unverifiable` en vez de aprobar a ciegas. |
+
+Ambos son servicios inyectables de `AiModule`, aún **sin endpoint ni CLI**. El llamador registra el consumo (`usage`) y asigna `slug` y `order`. Todo borrador nace con `reviewedByHuman: false`.
+
 ## Documentos relacionados
 
 - [`arquitectura-general.md`](arquitectura-general.md)

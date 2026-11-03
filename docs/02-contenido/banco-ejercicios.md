@@ -335,6 +335,14 @@ Esto es **deuda pedagógica declarada**, no un descuido silencioso: la regla per
 
 ---
 
+## 5b. Revisión humana y acreditación
+
+`Exercise.reviewedByHuman` (por defecto `false`) marca que una persona validó el ejercicio. Con `ACCREDIT_ONLY_REVIEWED=true`, un ejercicio sin revisar **da práctica y feedback pero no acredita competencia** (`achievedLevel` queda en `null` en quizzes y laboratorios). Está **apagada por defecto**: los 3.189 ejercicios sembrados no tienen revisión humana y activarla congelaría el progreso y los desbloqueos. Se enciende cuando el banco de una etapa esté revisado.
+
+Reproductores del cliente: `QUIZ`, `FLASHCARD`, `MEMORY` y `REFLECT` sin sandbox; `DEBUG` exige primero un **diagnóstico** (marcar las líneas sospechosas y explicar la causa raíz) y luego se corrige en el laboratorio con pruebas reales. El diagnóstico lo escribe el estudiante pero la API no lo califica. `AUDIT`, `CHALLENGE` y `SIM` no tienen reproductor propio todavía.
+
+`seed-exercise-quality.spec.ts` exige además: tiempo estimado, explicación propia por opción de quiz, tarjetas con reverso distinto del frente, solución y prueba oculta en todo ejercicio de código, y un escalón autónomo sin pistas por unidad (excepción declarada: `U2.3.3`).
+
 ## 6. Metadatos obligatorios de todo ejercicio
 
 ```yaml
