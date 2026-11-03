@@ -183,8 +183,9 @@ const WORKSPACE_PREFIX = "codeai-sbx-";
 const CONTAINER_WORKDIR = "/work";
 /** Subdirectorio del arnés de pruebas; no lo ve el estudiante. */
 const PATCH_DIR = ".codeai";
-const CHECK_JS = "check.cjs";
-const CHECK_TS = "check.ts";
+/** El arnés es ESM (`.mjs`/`.mts`): admite `export` en la solución y `require` simulado. */
+const CHECK_JS = "check.mjs";
+const CHECK_TS = "check.mts";
 /** Prefijo de la línea con los resultados; el resto de `stdout` es del estudiante. */
 const RESULT_MARKER = "__CODEAI_RESULTS__";
 /** §4: usuario sin privilegios, procesos, CPU y `/tmp` acotados. */
@@ -368,8 +369,11 @@ function buildCheckFile(
   tests: readonly { readonly id: string; readonly code: string }[],
 ): string {
   const lines: string[] = [
-    '"use strict";',
     "// Arnés del sandbox de CodeAI: solución del estudiante + sus pruebas.",
+    'import { createRequire } from "node:module";',
+    "const require = createRequire(import.meta.url);",
+    "const module = { exports: {} };",
+    "const exports = module.exports;",
     'const assert = require("node:assert");',
     "",
     entryContent,

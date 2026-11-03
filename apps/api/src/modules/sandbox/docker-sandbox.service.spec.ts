@@ -206,7 +206,7 @@ describe("DockerSandboxService: ejecución con pruebas", () => {
     let check = "";
 
     const cli = new FakeCli(({ workspace }) => {
-      check = readFileSync(join(workspace, ".codeai", "check.cjs"), "utf8");
+      check = readFileSync(join(workspace, ".codeai", "check.mjs"), "utf8");
 
       return marked([{ testId: "t1", passed: true }]);
     });
@@ -225,13 +225,13 @@ describe("DockerSandboxService: ejecución con pruebas", () => {
     expect(check).toContain("function isAdult(age) { return age >= 18; }");
     expect(check).toContain("assert.strictEqual(isAdult(18), true);");
     expect(check).toContain('require("node:assert")');
-    expect(cli.calls[0]?.args.at(-1)).toBe("/work/.codeai/check.cjs");
+    expect(cli.calls[0]?.args.at(-1)).toBe("/work/.codeai/check.mjs");
   });
 
   it("acepta la aserción serializada del contrato y el código suelto", async () => {
     let check = "";
     const cli = new FakeCli(({ workspace }) => {
-      check = readFileSync(join(workspace, ".codeai", "check.cjs"), "utf8");
+      check = readFileSync(join(workspace, ".codeai", "check.mjs"), "utf8");
 
       return marked([{ testId: "t1", passed: true }]);
     });
@@ -262,7 +262,7 @@ describe("DockerSandboxService: ejecución con pruebas", () => {
       }),
     );
 
-    expect(cli.calls[0]?.args.at(-1)).toBe("/work/.codeai/check.ts");
+    expect(cli.calls[0]?.args.at(-1)).toBe("/work/.codeai/check.mts");
   });
 });
 
