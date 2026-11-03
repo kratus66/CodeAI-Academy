@@ -5,7 +5,7 @@ import { LabHub } from "@/features/lab/components/LabHub";
 export const metadata: Metadata = {
   title: "Laboratorio",
   description:
-    "Ejercicios de código, cuestionarios, tarjetas y reflexiones de las unidades que ya puedes practicar.",
+    "Práctica de código, depuración y juegos de las unidades que ya puedes practicar.",
 };
 
 export default function LabPage() {
@@ -19,10 +19,7 @@ export default function LabPage() {
           Practica lo que ya desbloqueaste
         </h1>
         <p className="mt-4 text-base leading-relaxed text-slate-400">
-          Cada unidad trae ejercicios de código con pruebas, cuestionarios,
-          tarjetas y reflexiones. Una unidad se abre al dominar sus
-          prerrequisitos; los proyectos y las entrevistas se desbloquean con
-          tu nivel.
+          Aquí practicas con las manos: código con pruebas, depuración y juegos. Los quizzes, las tarjetas y las reflexiones están en Aprender, dentro de cada unidad. Una unidad se abre al dominar sus prerrequisitos.
         </p>
       </header>
 
