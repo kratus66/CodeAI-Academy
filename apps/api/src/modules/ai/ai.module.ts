@@ -4,8 +4,10 @@ import { PrismaModule } from "../../database/prisma.module";
 import type { Env } from "../../config/env";
 import { ENV } from "../../config/env.module";
 import { AuthModule } from "../auth/auth.module";
+import { SandboxModule } from "../sandbox/sandbox.module";
 import { AiController } from "./ai.controller";
 import { ExerciseGeneratorService } from "./exercise-generator.service";
+import { LabDraftVerifierService } from "./lab-draft-verifier.service";
 import { AI_REPOSITORY } from "./ai.repository";
 import { AI_CLOCK, AiService } from "./ai.service";
 import type { AiProvider } from "./interfaces/ai-provider.interface";
@@ -21,11 +23,12 @@ import { PrismaAiRepository } from "./prisma-ai.repository";
  * `AI_PROVIDER`. `loadEnv` ya garantiza que `openai` trae `AI_API_KEY`.
  */
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, SandboxModule],
   controllers: [AiController],
   providers: [
     AiService,
     ExerciseGeneratorService,
+    LabDraftVerifierService,
     { provide: AI_REPOSITORY, useClass: PrismaAiRepository },
     { provide: AI_CLOCK, useValue: () => new Date() },
     {
@@ -49,6 +52,6 @@ import { PrismaAiRepository } from "./prisma-ai.repository";
       },
     },
   ],
-  exports: [AiService, ExerciseGeneratorService],
+  exports: [AiService, ExerciseGeneratorService, LabDraftVerifierService],
 })
 export class AiModule {}
