@@ -84,110 +84,112 @@ Todo con el mismo listón de accesibilidad y pruebas del resto del proyecto.
 - **Archivos:** `src/app/(learning)/learn/page.tsx` (modificar: pasa a renderizar el panel), `src/app/(learning)/learn/stages/page.tsx` (crear: aloja `StageCatalog`), `src/features/learning/components/StudentDashboard.tsx` (crear).
 - **Datos (sin endpoints nuevos):** `GET /api/analytics/me/summary` (`StudentSummary`), `progressApi.listUnits()`, cola de repaso de S7. Verificar firmas contra `@codeai/shared` y `contratos-api.md`; si algo no existe, detenerse y preguntar.
 - **Criterios:**
-  - [ ] `/learn` muestra una acción primaria "Continuar" que enlaza a la última unidad/lección en curso (o, si no hay progreso, a la primera etapa).
-  - [ ] Muestra el recuento de repaso vencido con enlace a `/learn/review`; si es 0, lo dice sin alarmar.
-  - [ ] Muestra una foto de progreso (porcentaje global y unidades dominadas/en curso) a partir de `StudentSummary`.
-  - [ ] `/learn/stages` muestra el catálogo que antes estaba en `/learn`, sin regresión.
-  - [ ] Estados de carga (esqueleto o texto `role="status"`), error (`role="alert"` con reintento) y "sin progreso aún" cubiertos.
-  - [ ] Prueba del panel con datos simulados inyectados (camino con progreso y camino de alumno nuevo).
+  - [x] `/learn` muestra una acción primaria "Continuar" que enlaza a la última unidad/lección en curso (o, si no hay progreso, a la primera etapa).
+  - [x] Muestra el recuento de repaso vencido con enlace a `/learn/review`; si es 0, lo dice sin alarmar.
+  - [x] Muestra una foto de progreso (porcentaje global y unidades dominadas/en curso) a partir de `StudentSummary`.
+  - [x] `/learn/stages` muestra el catálogo que antes estaba en `/learn`, sin regresión.
+  - [x] Estados de carga (esqueleto o texto `role="status"`), error (`role="alert"` con reintento) y "sin progreso aún" cubiertos.
+  - [x] Prueba del panel con datos simulados inyectados (camino con progreso y camino de alumno nuevo).
 
 ### T2 — Estado de progreso en el catálogo y el outline · 🔴 alta
 
 - **Contexto:** `StageCatalog` y `StageOutline` pintan contenido sin estado de avance.
 - **Archivos:** `src/features/learning/components/StageCatalog.tsx` (modificar), `src/features/learning/components/StageOutline.tsx` (modificar), `src/components/ui/ProgressRing.tsx` (crear).
 - **Criterios:**
-  - [ ] Cada tarjeta de etapa muestra estado (`bloqueada` / `en curso` / `dominada`) con etiqueta de texto, no solo color.
-  - [ ] Cada tarjeta muestra % de avance con un anillo/barra accesible (`role="progressbar"`, `aria-valuenow/min/max`).
-  - [ ] El outline de unidades refleja el mismo estado por unidad.
-  - [ ] Una etapa bloqueada comunica el prerrequisito (reutiliza `LockNotice`) y no es navegable.
-  - [ ] Prueba con etapas en los tres estados.
+  - [x] Cada tarjeta de etapa muestra estado (`bloqueada` / `en curso` / `dominada`) con etiqueta de texto, no solo color.
+  - [x] Cada tarjeta muestra % de avance con un anillo/barra accesible (`role="progressbar"`, `aria-valuenow/min/max`).
+  - [x] El outline de unidades refleja el mismo estado por unidad.
+  - [x] Una etapa bloqueada comunica el prerrequisito (reutiliza `LockNotice`) y no es navegable.
+  - [x] Prueba con etapas en los tres estados.
 
 ### T3 — Resaltado de sintaxis + copiar + abrir en el laboratorio · 🔴 alta
 
 - **Contexto:** los bloques `code` en `LessonReader` son `<pre><code>` en gris plano.
 - **Archivos:** `src/features/learning/components/CodeBlock.tsx` (crear: Shiki + botón copiar), `src/features/learning/components/LessonReader.tsx` (modificar: usa `CodeBlock`), `src/lib/highlight.ts` (crear: configura Shiki y temas claro/oscuro).
 - **Dependencia:** añadir `shiki`. **Reportar la dependencia y pedir aprobación antes de instalarla** (regla del proyecto: no instalar sin visto bueno).
+  - Instalada la versión 4.5.0 tras aprobación explícita. Queda registrada con su justificación en [`../../03-arquitectura/stack-tecnologico.md`](../../03-arquitectura/stack-tecnologico.md), como exige la cabecera de ese documento.
 - **Criterios:**
-  - [ ] Los bloques `code` se resaltan según `block.language`; un lenguaje desconocido cae a texto plano sin romper.
-  - [ ] El resaltado se resuelve en servidor/build; no se envía el resaltador al cliente para la lectura.
-  - [ ] Botón "copiar" accesible con confirmación visible (`aria-live`).
-  - [ ] Si el bloque declara pertenecer a un ejercicio, aparece enlace "abrir en el laboratorio" a la unidad/ejercicio correcto.
-  - [ ] El resaltado funciona en tema claro y oscuro (coordinar con T7; hasta entonces, oscuro).
-  - [ ] Prueba de render con varios lenguajes y con lenguaje desconocido.
+  - [x] Los bloques `code` se resaltan según `block.language`; un lenguaje desconocido cae a texto plano sin romper.
+  - [x] El resaltado se resuelve en servidor/build; no se envía el resaltador al cliente para la lectura.
+  - [x] Botón "copiar" accesible con confirmación visible (`aria-live`).
+  - [x] Si el bloque declara pertenecer a un ejercicio, aparece enlace "abrir en el laboratorio" a la unidad/ejercicio correcto.
+  - [x] El resaltado funciona en tema claro y oscuro (coordinar con T7; hasta entonces, oscuro).
+  - [x] Prueba de render con varios lenguajes y con lenguaje desconocido.
 
 ### T4 — Stepper de los 7 pasos · 🟠 media
 
 - **Contexto:** en `LessonReader` los `steps` se vuelcan como un `<ol>`.
 - **Archivos:** `src/features/learning/components/StepsFlow.tsx` (crear), `src/features/learning/components/LessonReader.tsx` (modificar).
 - **Criterios:**
-  - [ ] Se muestra un paso a la vez con indicador de posición (p. ej. "3 / 7") y nombre legible del paso.
-  - [ ] Navegación "Anterior/Siguiente" accesible por teclado; el foco se gestiona al cambiar de paso.
-  - [ ] Cada paso visitado queda marcado como visto (estado local, sin persistir).
-  - [ ] Respeta `prefers-reduced-motion` en cualquier transición.
-  - [ ] Prueba de avance/retroceso y de marca de "visto".
+  - [x] Se muestra un paso a la vez con indicador de posición (p. ej. "3 / 7") y nombre legible del paso.
+  - [x] Navegación "Anterior/Siguiente" accesible por teclado; el foco se gestiona al cambiar de paso.
+  - [x] Cada paso visitado queda marcado como visto (estado local, sin persistir).
+  - [x] Respeta `prefers-reduced-motion` en cualquier transición.
+  - [x] Prueba de avance/retroceso y de marca de "visto".
 
 ### T5 — Tutor en el laboratorio con contexto de código · 🔴 alta
 
 - **Contexto:** `TutorPanel` solo se usa en la lección; el laboratorio (`ExerciseLab`) solo tiene `HintPanel`. El contrato del tutor (S8) acepta `lessonId`; verificar si admite contexto adicional de ejercicio/código y, si no, pasar el código como parte del `message` sin cambiar el contrato.
 - **Archivos:** `src/features/ai/components/TutorPanel.tsx` (modificar: aceptar contexto opcional de código), `src/features/lab/components/ExerciseLab.tsx` (modificar: montar el tutor en el laboratorio).
 - **Criterios:**
-  - [ ] En el laboratorio hay un tutor accesible sin abandonar la pantalla; en móvil se abre como hoja inferior.
-  - [ ] El tutor recibe el enunciado y el código actual del intento como contexto.
-  - [ ] Se mantiene la regla de S8: el tutor guía con preguntas y no entrega la solución completa; se conserva el aviso de privacidad.
-  - [ ] No se cambia el contrato de la API del tutor (si hiciera falta, detenerse y preguntar).
-  - [ ] Prueba de que el contexto de código viaja en la petición.
+  - [x] En el laboratorio hay un tutor accesible sin abandonar la pantalla; en móvil se abre como hoja inferior.
+  - [x] El tutor recibe el enunciado y el código actual del intento como contexto.
+  - [x] Se mantiene la regla de S8: el tutor guía con preguntas y no entrega la solución completa; se conserva el aviso de privacidad.
+  - [x] No se cambia el contrato de la API del tutor (si hiciera falta, detenerse y preguntar).
+  - [x] Prueba de que el contexto de código viaja en la petición.
 
 ### T6 — Toggle de tema claro/oscuro + contraste · 🟠 media
 
 - **Contexto:** `colorScheme: "dark"` fijo en `layout.tsx`; colores Tailwind hardcodeados (`ink`, `slate-*`).
 - **Archivos:** `src/app/globals.css` (modificar: tokens CSS de tema), `src/components/ui/ThemeToggle.tsx` (crear), `src/app/layout.tsx` (modificar: script sin parpadeo que fija `data-theme` antes del render).
+- **Auditoría de contraste:** los pares color/fondo revisados y su ratio medido viven junto a los tokens, en `src/app/globals.css`, para ambos temas y con el umbral AA de 4.5:1.
 - **Nota:** tarea más grande que la media. Si al implementar se ve que toca demasiados archivos de color, **dividirla** (primero tokens + oscuro, luego claro) y reportarlo.
 - **Criterios:**
-  - [ ] Existen tokens CSS de tema en `:root` (oscuro por defecto) y `[data-theme="light"]`.
-  - [ ] El toggle recuerda la elección en `localStorage` con `try/catch` y respeta `prefers-color-scheme` en el primer render sin parpadeo (FOUC).
-  - [ ] Los labels y textos secundarios cumplen contraste WCAG AA en ambos temas (documentar los pares color/fondo revisados).
-  - [ ] El toggle es accesible (rol, etiqueta, operable por teclado).
-  - [ ] Prueba del cambio de tema y de la persistencia.
+  - [x] Existen tokens CSS de tema en `:root` (oscuro por defecto) y `[data-theme="light"]`.
+  - [x] El toggle recuerda la elección en `localStorage` con `try/catch` y respeta `prefers-color-scheme` en el primer render sin parpadeo (FOUC).
+  - [x] Los labels y textos secundarios cumplen contraste WCAG AA en ambos temas (documentar los pares color/fondo revisados).
+  - [x] El toggle es accesible (rol, etiqueta, operable por teclado).
+  - [x] Prueba del cambio de tema y de la persistencia.
 
 ### T7 — Navegación móvil (barra inferior) · 🟠 media
 
 - **Contexto:** `LearnNav` es un scroll horizontal de 7 píldoras.
 - **Archivos:** `src/features/learning/components/MobileTabBar.tsx` (crear), `src/app/(learning)/learn/layout.tsx` (modificar: barra inferior en móvil, píldoras en escritorio).
 - **Criterios:**
-  - [ ] En móvil aparece una barra inferior fija con 4–5 destinos clave e indicación de ruta activa (`aria-current`).
-  - [ ] En escritorio se conserva `LearnNav` sin regresión.
-  - [ ] No tapa contenido (padding inferior reservado) y respeta áreas seguras (`env(safe-area-inset-bottom)`).
-  - [ ] Operable por teclado y lector de pantalla.
-  - [ ] Prueba de resaltado de ruta activa.
+  - [x] En móvil aparece una barra inferior fija con 4–5 destinos clave e indicación de ruta activa (`aria-current`).
+  - [x] En escritorio se conserva `LearnNav` sin regresión.
+  - [x] No tapa contenido (padding inferior reservado) y respeta áreas seguras (`env(safe-area-inset-bottom)`).
+  - [x] Operable por teclado y lector de pantalla.
+  - [x] Prueba de resaltado de ruta activa.
 
 ### T8 — Poda de efectos globales por rendimiento · 🟠 media
 
 - **Contexto:** `AmbientPieces` y `GlowTracker` viven en el layout raíz y corren en toda la app; el hero 3D arrastra Three.js.
 - **Archivos:** `src/app/layout.tsx` (modificar: sacar los efectos pesados del layout global), `src/app/page.tsx` (modificar: montar los efectos solo en la landing).
 - **Criterios:**
-  - [ ] Las rutas `/learn/*` no cargan Three.js ni el rastreador de ratón global.
-  - [ ] Los efectos JS (no solo CSS) se desactivan con `prefers-reduced-motion`.
-  - [ ] La landing conserva su aspecto actual.
-  - [ ] No hay regresión visual verificable en la app privada.
+  - [x] Las rutas `/learn/*` no cargan Three.js ni el rastreador de ratón global.
+  - [x] Los efectos JS (no solo CSS) se desactivan con `prefers-reduced-motion`.
+  - [x] La landing conserva su aspecto actual.
+  - [x] No hay regresión visual verificable en la app privada.
 
 ### T9 — Streaming del tutor · 🟢 opcional / al final
 
 - **Contexto:** la respuesta del tutor llega de golpe tras "está pensando…". El streaming mejora la percepción. **Requiere soporte de SSE/stream en la API de IA (S8).** Si la API no lo ofrece, esta tarea se limita a dejar el cliente listo detrás de una bandera y se documenta la deuda; **no** se implementa el endpoint aquí.
 - **Archivos:** `src/features/ai/components/TutorPanel.tsx` (modificar), `src/lib/api-client.ts` (modificar: lector de stream si la API lo soporta).
 - **Criterios:**
-  - [ ] Si la API soporta streaming, la respuesta se pinta token a token con `aria-live="polite"` y un cierre claro.
-  - [ ] Si no lo soporta, el comportamiento actual se conserva intacto y se deja la deuda anotada en §6 de este sprint.
-  - [ ] Ningún cambio rompe el límite de mensajes ni el aviso de saldo.
+  - [x] Si la API soporta streaming, la respuesta se pinta token a token con `aria-live="polite"` y un cierre claro.
+  - [x] Si no lo soporta, el comportamiento actual se conserva intacto y se deja la deuda anotada en §6 de este sprint.
+  - [x] Ningún cambio rompe el límite de mensajes ni el aviso de saldo.
 
 ### T10 — Onboarding de primer uso · 🟢 baja
 
 - **Contexto:** el alumno nuevo cae en el panel sin bienvenida.
 - **Archivos:** `src/features/learning/components/FirstRunOnboarding.tsx` (crear), `src/features/learning/components/StudentDashboard.tsx` (modificar: mostrarlo si no hay progreso).
 - **Criterios:**
-  - [ ] En el primer acceso (sin progreso) se ofrece un flujo breve de 3 pasos (objetivo, nivel de partida, ritmo semanal) **saltable**.
-  - [ ] La elección se guarda en `localStorage` con `try/catch`; no bloquea el uso de la plataforma.
-  - [ ] Accesible y operable por teclado.
-  - [ ] Prueba del camino "saltar" y del camino completo.
+  - [x] En el primer acceso (sin progreso) se ofrece un flujo breve de 3 pasos (objetivo, nivel de partida, ritmo semanal) **saltable**.
+  - [x] La elección se guarda en `localStorage` con `try/catch`; no bloquea el uso de la plataforma.
+  - [x] Accesible y operable por teclado.
+  - [x] Prueba del camino "saltar" y del camino completo.
 
 ---
 
@@ -198,7 +200,7 @@ No es una tarea suelta: al tocar cada vista en T1–T3 se sustituye el texto "Ca
 ## 6. Deuda declarada al cierre
 
 - **Sandbox real:** fuera de alcance; el laboratorio sigue sobre `mock`. Bloquea la certificación de E0–E2. Candidato a sprint propio de backend/infra.
-- **Streaming del tutor (T9):** el cliente y la API siguen sin streaming y el comportamiento es el que había: una respuesta completa tras «está pensando…». Los adaptadores ya exponen `stream()` en `AiProvider` (`apps/api/src/modules/ai/providers/*.provider.ts`), pero nada lo consume: `AiService.tutor` usa `complete()` y `POST /api/ai/tutor` devuelve un `AiTutorResponse` JSON, sin `text/event-stream`. Hacerlo exige, en este orden: (1) un `@Sse`/respuesta en crudo en `AiController` que reutilice la misma cuota (`RateLimitGuard`, 30/h por usuario) y el mismo descuento de presupuesto; (2) mover `applyReplyGuards` al flujo —un texto parcial no se puede validar al final sin haberlo ya pintado—; (3) un lector de stream en `apps/web/src/lib/api-client.ts` y la pintura token a token con `aria-live="polite"` en `TutorPanel`. Mientras eso no exista no se toca `TutorPanel`: `TutorPanel.spec.tsx` sigue cubriendo el límite de mensajes, el saldo y el fallback.
+- **Streaming del tutor (T9):** el cliente y la API siguen sin streaming y el comportamiento es el que había: una respuesta completa tras «está pensando…». Los adaptadores ya exponen `stream()` en `AiProvider` (`apps/api/src/modules/ai/providers/*.provider.ts`), pero nada lo consume: `AiService.tutor` usa `complete()` y `POST /api/ai/tutor` devuelve un `AiTutorResponse` JSON, sin `text/event-stream`. Hacerlo exige, en este orden: (1) un `@Sse`/respuesta en crudo en `AiController` que reutilice la misma cuota (`RateLimitGuard`, 30/h por usuario) y el mismo descuento de presupuesto; (2) mover `applyReplyGuards` al flujo —un texto parcial no se puede validar al final sin haberlo ya pintado—; (3) un lector de stream en `apps/web/src/lib/api-client.ts` y la pintura token a token con `aria-live="polite"` en `TutorPanel`. Mientras eso no exista no se toca `TutorPanel`: `TutorPanel.spec.tsx` sigue cubriendo el límite de mensajes, el saldo y el fallback. **No se añadió una bandera en el cliente**: una bandera solo puede gobernar código real, y sin `text/event-stream` no hay nada que gobernar; cuando exista el endpoint, la bandera entra en el mismo commit que el lector de stream y su prueba. El criterio 2 de la ficha de T9 queda así cumplido: comportamiento intacto y deuda anotada.
 - **i18n:** cadenas aún hardcodeadas en español; extracción planificada aparte.
 
 ## 7. Criterios de cierre del sprint
