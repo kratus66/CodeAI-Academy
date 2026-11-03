@@ -1603,3 +1603,68 @@ describe("analyticsApi", () => {
 });
 
 
+
+function sseResponse(events: readonly unknown[]): Response {
+  const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("");
+
+  return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
+}
+
+describe("aiApi.tutorStream", () => {
+  it("acumula deltas, aplica replace y devuelve el resumen de done", async () => {
+    fetchMock.mockResolvedValue(
+      sseResponse([
+        { type: "delta", text: "¿Qué " },
+        { type: "delta", text: "ves?" },
+        { type: "replace", text: "Pista segura" },
+        { type: "done", response: AI_TUTOR_RESPONSE },
+      ]),
+    );
+    const progress: string[] = [];
+
+    const result = await aiApi.tutorStream({ lessonId: "les_1", message: "hola" }, (text) =>
+      progress.push(text),
+    );
+
+    expect(progress).toEqual(["¿Qué ", "¿Qué ves?", "Pista segura"]);
+    expect(result).toEqual(AI_TUTOR_RESPONSE);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/ai/tutor/stream"),
+      expect.objectContaining({ method: "POST", credentials: "include" }),
+    );
+  });
+
+  it("propaga el error HTTP previo al flujo (429)", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { error: { code: "RATE_LIMITED", message: "Demasiadas peticiones", traceId: "t" } },
+        { status: 429, headers: { "Retry-After": "60" } },
+      ),
+    );
+
+    const error = await captureApiError(
+      aiApi.tutorStream({ lessonId: "les_1", message: "hola" }, () => undefined),
+    );
+
+    expect(error.status).toBe(429);
+    expect(error.retryAfterSeconds).toBe(60);
+  });
+
+  it("falla si el flujo termina sin done o con un evento fuera de contrato", async () => {
+    fetchMock.mockResolvedValueOnce(sseResponse([{ type: "delta", text: "a" }]));
+
+    const sinDone = await captureApiError(
+      aiApi.tutorStream({ lessonId: "les_1", message: "hola" }, () => undefined),
+    );
+
+    expect(sinDone.code).toBe("INTERNAL_ERROR");
+
+    fetchMock.mockResolvedValueOnce(sseResponse([{ type: "raro" }]));
+
+    const raro = await captureApiError(
+      aiApi.tutorStream({ lessonId: "les_1", message: "hola" }, () => undefined),
+    );
+
+    expect(raro.code).toBe("INTERNAL_ERROR");
+  });
+});

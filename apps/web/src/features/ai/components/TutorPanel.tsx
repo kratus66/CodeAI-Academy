@@ -12,6 +12,11 @@ const BUTTON_CLASSES =
   "inline-flex items-center rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink";
 
 export type AskTutor = (input: AiTutorRequest) => Promise<AiTutorResponse>;
+/** Variante con *streaming*: `onProgress` recibe el texto acumulado que ya puede mostrarse. */
+export type StreamTutor = (
+  input: AiTutorRequest,
+  onProgress: (text: string) => void,
+) => Promise<AiTutorResponse>;
 export type LoadUsage = () => Promise<AiUsageResponse>;
 
 /** Enunciado y código del intento que acompañan a la pregunta del estudiante. */
@@ -87,8 +92,12 @@ interface TutorPanelProps {
   readonly lessonId: string;
   /** Enunciado y código del intento; se adjuntan al mensaje si el estudiante quiere. */
   readonly context?: TutorContext;
-  /** Inyectables en pruebas; por defecto llaman a `/api/ai/*`. */
+  /**
+   * Inyectables en pruebas; por defecto el tutor responde en *streaming* por
+   * `/api/ai/tutor/stream`. Si se inyecta `askTutor`, se usa la vía sin streaming.
+   */
   readonly askTutor?: AskTutor;
+  readonly streamTutor?: StreamTutor;
   readonly loadUsage?: LoadUsage;
 }
 
@@ -97,6 +106,8 @@ interface ChatEntry extends AiMessage {
   readonly hints?: readonly string[];
   readonly source?: AiTutorResponse["source"];
 }
+
+const defaultStreamTutor: StreamTutor = (input, onProgress) => aiApi.tutorStream(input, onProgress);
 
 /** Aviso mostrado al estudiante según el fallo; nunca el cuerpo crudo de la API. */
 function describeError(error: unknown): string {
@@ -118,6 +129,19 @@ function describeError(error: unknown): string {
   return "No pudimos contactar al tutor. Inténtalo de nuevo en unos segundos.";
 }
 
+/** Crea o actualiza la respuesta del tutor con ese id, conservando su posición. */
+function upsertAssistant(
+  entries: readonly ChatEntry[],
+  id: number,
+  patch: Partial<Omit<ChatEntry, "id" | "role">>,
+): readonly ChatEntry[] {
+  if (entries.some((entry) => entry.id === id)) {
+    return entries.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
+  }
+
+  return [...entries, { id, role: "assistant", content: "", ...patch }];
+}
+
 const FALLBACK_NOTE =
   "El tutor no está disponible ahora mismo; esta es una pista general. Puedes seguir con la lección.";
 
@@ -125,13 +149,15 @@ const FALLBACK_NOTE =
 export function TutorPanel({
   lessonId,
   context,
-  askTutor = aiApi.tutor,
+  askTutor,
+  streamTutor = defaultStreamTutor,
   loadUsage = aiApi.usage,
 }: TutorPanelProps) {
   const inputId = useId();
   const [entries, setEntries] = useState<readonly ChatEntry[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [attachContext, setAttachContext] = useState(true);
@@ -176,22 +202,30 @@ export function TutorPanel({
       // viaja dentro del mensaje, recortado a `AI_MESSAGE_MAX`.
       const payload =
         hasContext && attachContext ? composeTutorMessage(message, context) : message;
-      const response = await askTutor({ lessonId, message: payload, history });
+      const request = { lessonId, message: payload, history };
+      const replyId = nextId + 1;
+      const response =
+        askTutor !== undefined
+          ? await askTutor(request)
+          : await streamTutor(request, (text) => {
+              setStreaming(true);
+              setEntries((current) => upsertAssistant(current, replyId, { content: text }));
+            });
 
-      setEntries((current) => [
-        ...current,
-        {
-          id: nextId + 1,
-          role: "assistant",
+      setEntries((current) =>
+        upsertAssistant(current, replyId, {
           content: response.reply,
           hints: response.suggestedHints,
           source: response.source,
-        },
-      ]);
+        }),
+      );
       setRemaining(response.budgetRemainingUsd);
     } catch (caught) {
+      // Un flujo cortado deja medio mensaje en pantalla: se retira antes de avisar.
+      setEntries((current) => current.filter((entry) => entry.id !== nextId + 1));
       setError(describeError(caught));
     } finally {
+      setStreaming(false);
       setPending(false);
     }
   }
@@ -265,7 +299,7 @@ export function TutorPanel({
         </ol>
       ) : null}
 
-      {pending ? (
+      {pending && !streaming ? (
         <p role="status" aria-live="polite" className="flex items-center gap-3 text-sm text-slate-400">
           <TetrisLoader />
           El tutor está pensando…

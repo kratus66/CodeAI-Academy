@@ -225,3 +225,54 @@ describe("TutorPanel", () => {
     expect(screen.queryByRole("checkbox")).toBeNull();
   });
 });
+
+describe("TutorPanel con streaming", () => {
+  it("pinta el texto a medida que llega y lo cierra con pistas y saldo", async () => {
+    let finish: (response: AiTutorResponse) => void = () => undefined;
+    let progress: (text: string) => void = () => undefined;
+    const streamTutor = vi.fn(
+      (_input: AiTutorRequest, onProgress: (text: string) => void) => {
+        progress = onProgress;
+
+        return new Promise<AiTutorResponse>((done) => {
+          finish = done;
+        });
+      },
+    );
+
+    render(<TutorPanel lessonId="les_1" loadUsage={vi.fn().mockResolvedValue(USAGE)} streamTutor={streamTutor} />);
+
+    fireEvent.change(screen.getByLabelText("Pregúntale al tutor"), { target: { value: "No entiendo el await" } });
+    fireEvent.keyDown(screen.getByLabelText("Pregúntale al tutor"), { key: "Enter" });
+
+    await waitFor(() => expect(streamTutor).toHaveBeenCalledTimes(1));
+
+    progress("¿Qué devuelve ");
+    expect(await screen.findByText("¿Qué devuelve")).toBeTruthy();
+    expect(screen.queryByText("El tutor está pensando…")).toBeNull();
+
+    progress("¿Qué devuelve fetch?");
+    finish(RESPONSE);
+
+    expect(await screen.findByText(RESPONSE.reply)).toBeTruthy();
+    expect(screen.getByText("promesas")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/Saldo de IA del mes: 4.98/)).toBeTruthy());
+  });
+
+  it("retira la respuesta a medias y avisa si el flujo se corta", async () => {
+    const streamTutor = vi.fn(
+      async (_input: AiTutorRequest, onProgress: (text: string) => void): Promise<AiTutorResponse> => {
+        onProgress("Respuesta a medi");
+        throw new Error("corte");
+      },
+    );
+
+    render(<TutorPanel lessonId="les_1" loadUsage={vi.fn().mockResolvedValue(USAGE)} streamTutor={streamTutor} />);
+
+    fireEvent.change(screen.getByLabelText("Pregúntale al tutor"), { target: { value: "hola" } });
+    fireEvent.keyDown(screen.getByLabelText("Pregúntale al tutor"), { key: "Enter" });
+
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByText(/Respuesta a medi/)).toBeNull();
+  });
+});

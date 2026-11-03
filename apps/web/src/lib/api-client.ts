@@ -4,6 +4,7 @@ import {
   ERROR_CODE_BY_HTTP_STATUS,
   aiExplainErrorResponseSchema,
   aiTutorResponseSchema,
+  aiTutorStreamEventSchema,
   aiUsageResponseSchema,
   cohortAnalyticsSchema,
   competencyProgressSchema,
@@ -597,6 +598,62 @@ export const aiApi = {
     );
   },
 
+  /**
+   * Tutor en *streaming* (`POST /ai/tutor/stream`). `onProgress` recibe el texto
+   * acumulado que ya puede mostrarse (un `replace` lo sustituye entero); la promesa
+   * se resuelve con el mismo resumen que `tutor` cuando llega `done`.
+   */
+  async tutorStream(
+    input: AiTutorRequest,
+    onProgress: (text: string) => void,
+    signal?: AbortSignal,
+  ): Promise<AiTutorResponse> {
+    const baseUrl = resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+    const response = await fetch(`${baseUrl}/ai/tutor/stream`, {
+      method: "POST",
+      headers: { Accept: "text/event-stream", "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(input),
+      ...(signal ? { signal } : {}),
+    });
+
+    if (!response.ok) {
+      throw toApiError(response, await readJson(response));
+    }
+
+    if (response.body === null) {
+      throw new ApiError({ status: 500, code: "INTERNAL_ERROR", message: CONTRACT_ERROR_MESSAGE });
+    }
+
+    let text = "";
+    let done: AiTutorResponse | null = null;
+
+    for await (const data of readSseData(response.body)) {
+      let payload: unknown;
+
+      try {
+        payload = JSON.parse(data);
+      } catch {
+        throw new ApiError({ status: 500, code: "INTERNAL_ERROR", message: CONTRACT_ERROR_MESSAGE });
+      }
+
+      const event = parseContract(aiTutorStreamEventSchema, payload);
+
+      if (event.type === "done") {
+        done = event.response;
+      } else {
+        text = event.type === "delta" ? text + event.text : event.text;
+        onProgress(text);
+      }
+    }
+
+    if (done === null) {
+      throw new ApiError({ status: 500, code: "INTERNAL_ERROR", message: CONTRACT_ERROR_MESSAGE });
+    }
+
+    return done;
+  },
+
   async explainError(submissionId: string): Promise<AiExplainErrorResponse> {
     return parseContract(
       aiExplainErrorResponseSchema,
@@ -901,6 +958,39 @@ function toInterviewQueryString(query: InterviewListParams): string {
 
 function normalizePath(path: string): string {
   return path.startsWith("/") ? path : `/${path}`;
+}
+
+/** Entrega el contenido de cada línea `data:` de un cuerpo `text/event-stream`. */
+async function* readSseData(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      let newline = buffer.indexOf("\n");
+
+      while (newline !== -1) {
+        const line = buffer.slice(0, newline).replace(/\r$/, "");
+
+        buffer = buffer.slice(newline + 1);
+
+        if (line.startsWith("data:") && line.slice(5).trim() !== "") {
+          yield line.slice(5).trim();
+        }
+
+        newline = buffer.indexOf("\n");
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
 }
 
 async function readJson(response: Response): Promise<unknown> {
