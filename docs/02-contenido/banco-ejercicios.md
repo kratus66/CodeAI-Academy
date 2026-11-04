@@ -124,6 +124,7 @@ pairs:
 
 | Campo | Tipo | Obligatorio | Regla |
 |-------|------|-------------|-------|
+| `mode` | `"flip" | "match"` | no | `flip` (por defecto): voltear cartas con tope de fallos (ahorcado). `match`: **unir** arrastrando cada definición hasta su concepto, sin tope de fallos; los errores se cuentan para el repaso final. Con `match` el juego también se puede resolver tocando la definición y luego el concepto |
 | `pairs` | `MemoryPair[]` | sí | 6–10 pares (12–20 cartas) |
 | `pairs[].term` | `string` | sí | No vacío; es la cara A del par |
 | `pairs[].definition` | `string` | sí | No vacía; es la cara B del par |
@@ -135,6 +136,7 @@ pairs:
 
 - Un par produce exactamente dos cartas (`term` y `definition`); se empareja cuando se levantan sus dos cartas.
 - **Indicio de los pares:** el recuadro «Qué vas a repasar» muestra qué hay que emparejar y, debajo, las respuestas. Si el juego trae `intro.list` (etapas o mapa), esa lista ya nombra los conceptos; si no, se muestran los términos. Siempre se listan las definiciones en orden alfabético (no el de los términos, para no delatar cada pareja). Todo se genera desde `pairs`.
+- **Modo unir (`mode: "match"`, desde 2026-11-04):** recordar posiciones no ayuda en temas de razonamiento y con 8 pares el tope de fallos resultaba demasiado exigente. En este modo los conceptos van en una columna y las definiciones (en orden barajado, nunca el de los conceptos) en otra; acertar deja el par fijo en verde, fallar pinta la definición en rojo unos segundos y la devuelve al grupo. U0.1.1 lo usa; el resto de E0 sigue en `flip`.
 - **Aciertos y fallos:** un par acertado queda en verde y fijo; un fallo pinta las dos cartas en rojo mientras giran de vuelta. Cada fallo dibuja una parte del muñeco del ahorcado. Al agotar `maxMisses` se pierde el intento: se muestran los pares pendientes con su definición y «Volver a intentar la prueba» reinicia el tablero con un nuevo barajado.
 - Un par con `term` o `definition` ausente, no `string` o vacío **se descarta**; el tablero continúa con el resto en vez de romperse.
 - Si no sobrevive ningún par, la vista lo avisa (`Este juego de memoria no tiene pares disponibles.`) en lugar de dibujar un tablero vacío.

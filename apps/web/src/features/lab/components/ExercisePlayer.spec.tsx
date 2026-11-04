@@ -110,3 +110,28 @@ describe("ExercisePlayer: volver a la unidad", () => {
     expect(back).toHaveAttribute("href", "/learn/units/U0.1.1");
   });
 });
+
+describe("ExercisePlayer: MEMORY en modo unir", () => {
+  it("despacha config.mode «match» al tablero de unir, no al de voltear", async () => {
+    const match = exercise({
+      id: "ex-match",
+      type: "MEMORY",
+      title: "Une los conceptos",
+      statement: "Une cada concepto con su definición.",
+      config: {
+        mode: "match",
+        pairs: [
+          { id: "p1", term: "Alcance", definition: "Lo que entra y lo que queda fuera" },
+          { id: "p2", term: "Pruebas", definition: "Comprobar que cumple el requisito" },
+          { id: "p3", term: "Despliegue", definition: "Llevar el cambio a producción" },
+        ],
+      },
+    });
+
+    render(<ExercisePlayer unitCode="U0.1.1" slug="memoria-u0-1-1" loadLab={loaderFor(match)} />);
+
+    expect(await screen.findByRole("group", { name: "Tablero de unir" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Tablero de memoria" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Unir conceptos/)).toBeInTheDocument();
+  });
+});

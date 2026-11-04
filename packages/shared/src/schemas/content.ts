@@ -396,6 +396,12 @@ export const contentSeedQuizSchema = z.object({
  * se corrige en el cliente y los pares viajan tal cual en `config.pairs`.
  */
 export const contentSeedMemorySchema = z.object({
+  /**
+   * `flip`: voltear cartas con un tope de fallos (ahorcado). `match`: arrastrar cada
+   * definición hasta su concepto, sin tope de fallos; mejor para temas de razonamiento
+   * donde recordar posiciones no aporta.
+   */
+  mode: z.enum(["flip", "match"]).default("flip"),
   pairs: z
     .array(
       z.object({

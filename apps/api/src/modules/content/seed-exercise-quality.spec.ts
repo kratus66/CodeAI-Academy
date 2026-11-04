@@ -339,3 +339,21 @@ describe("introducción de los juegos de memoria", () => {
     expect(repetidas).toEqual([]);
   });
 });
+
+describe("modo de los juegos de memoria", () => {
+  const memories = exercises.filter((exercise) => exercise.type === "MEMORY");
+
+  it("sólo declara modos que el cliente sabe jugar", () => {
+    const desconocidos = memories
+      .filter((exercise) => !["flip", "match"].includes(exercise.memory?.mode ?? "flip"))
+      .map((exercise) => exercise.slug);
+
+    expect(desconocidos).toEqual([]);
+  });
+
+  it("U0.1.1 se une arrastrando: voltear 8 pares con 10 fallos resultaba demasiado difícil", () => {
+    const requisito = memories.find((exercise) => exercise.slug === "memoria-u0-1-1");
+
+    expect(requisito?.memory?.mode).toBe("match");
+  });
+});

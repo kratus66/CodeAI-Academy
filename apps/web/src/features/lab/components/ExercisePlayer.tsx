@@ -10,6 +10,7 @@ import { DebugPlayer } from "./DebugPlayer";
 import { ExerciseLab, loadExerciseLab } from "./ExerciseLab";
 import type { ExerciseLabContent, LoadExerciseLab } from "./ExerciseLab";
 import { FlashcardPlayer } from "./FlashcardPlayer";
+import { MatchPlayer } from "./MatchPlayer";
 import { MemoryPlayer } from "./MemoryPlayer";
 import { QuizPlayer } from "./QuizPlayer";
 import { ReflectionPlayer } from "./ReflectionPlayer";
@@ -98,7 +99,7 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
             </Link>
           </nav>
           <p className="text-xs font-semibold uppercase tracking-widest text-accent">
-            {TYPE_LABEL[exercise.type]}
+            {exercise.type === "MEMORY" && exercise.config.mode === "match" ? "Unir conceptos" : TYPE_LABEL[exercise.type]}
             {exercise.estimatedMin ? ` · ${exercise.estimatedMin} min` : ""}
           </p>
           <h1 className="text-2xl font-semibold text-white">{exercise.title}</h1>
@@ -109,7 +110,11 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
         ) : exercise.type === "FLASHCARD" ? (
           <FlashcardPlayer exercise={exercise} />
         ) : exercise.type === "MEMORY" ? (
-          <MemoryPlayer key={exercise.id} exercise={exercise} />
+          exercise.config.mode === "match" ? (
+            <MatchPlayer key={exercise.id} exercise={exercise} />
+          ) : (
+            <MemoryPlayer key={exercise.id} exercise={exercise} />
+          )
         ) : (
           <ReflectionPlayer exercise={exercise} />
         )}
