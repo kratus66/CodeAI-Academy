@@ -1,8 +1,8 @@
 import type { ExerciseDetail } from "@codeai/shared";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { MatchPlayer } from "./MatchPlayer";
+import { MatchPlayer, autoScrollVelocity } from "./MatchPlayer";
 import type { ShuffleCards } from "./MemoryShared";
 
 const PAIRS = [
@@ -212,5 +212,108 @@ describe("MatchPlayer", () => {
 
     expect(within(intro).getByText("Resumen del tema.")).toBeInTheDocument();
     expect(within(intro).getByText("Etapas")).toBeInTheDocument();
+  });
+});
+
+describe("MatchPlayer: tablero largo", () => {
+  const dataTransfer = () => {
+    const data = new Map<string, string>();
+
+    return {
+      setData: (type: string, value: string) => data.set(type, value),
+      getData: (type: string) => data.get(type) ?? "",
+    };
+  };
+
+  it("soltar sobre cualquier parte de la fila del concepto basta, no sólo sobre el hueco", () => {
+    render(<MatchPlayer exercise={exercise()} shuffle={dealInOrder} />);
+
+    const transfer = dataTransfer();
+    const row = screen.getByRole("button", { name: "Colocar la definición en Pruebas" }).closest("li") as HTMLElement;
+
+    fireEvent.dragStart(definition(DEF.p2), { dataTransfer: transfer });
+    fireEvent.drop(row, { dataTransfer: transfer });
+
+    expect(screen.getByRole("button", { name: `Pruebas: ${DEF.p2}` })).toBeDisabled();
+  });
+
+  it("el grupo de definiciones es un bloque fijo con su propio desplazamiento", () => {
+    render(<MatchPlayer exercise={exercise()} shuffle={dealInOrder} />);
+
+    const pool = screen.getByRole("list", { name: "Definiciones disponibles" }).parentElement as HTMLElement;
+
+    expect(pool.className).toContain("md:sticky");
+    expect(pool.className).toContain("md:overflow-y-auto");
+  });
+
+  it("al arrastrar cerca del borde inferior desplaza la página, y deja de hacerlo al soltar", async () => {
+    const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => undefined);
+
+    render(<MatchPlayer exercise={exercise()} shuffle={dealInOrder} />);
+    fireEvent.dragStart(definition(DEF.p1), { dataTransfer: dataTransfer() });
+
+    const nearBottom = new Event("dragover", { bubbles: true });
+    Object.assign(nearBottom, { clientY: window.innerHeight - 5 });
+    document.body.dispatchEvent(nearBottom);
+
+    await waitFor(() => expect(scrollBy).toHaveBeenCalledWith(0, expect.any(Number)));
+    expect((scrollBy.mock.calls[0]?.[1] ?? 0) > 0).toBe(true);
+
+    fireEvent.dragEnd(definition(DEF.p1));
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    scrollBy.mockClear();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(scrollBy).not.toHaveBeenCalled();
+    scrollBy.mockRestore();
+  });
+
+  it("no desplaza la página si no se está arrastrando", async () => {
+    const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => undefined);
+
+    render(<MatchPlayer exercise={exercise()} shuffle={dealInOrder} />);
+
+    const nearBottom = new Event("dragover", { bubbles: true });
+    Object.assign(nearBottom, { clientY: window.innerHeight - 5 });
+    document.body.dispatchEvent(nearBottom);
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(scrollBy).not.toHaveBeenCalled();
+    scrollBy.mockRestore();
+  });
+
+  it("la introducción se puede plegar para dejar sitio al tablero", () => {
+    render(
+      <MatchPlayer exercise={exercise({ mode: "match", pairs: PAIRS, intro: { summary: "Resumen del tema." } })} shuffle={dealInOrder} />,
+    );
+
+    const details = screen.getByRole("region", { name: "Qué vas a repasar" }).querySelector("details");
+
+    expect(details).not.toBeNull();
+    expect(details?.open).toBe(true);
+  });
+});
+
+describe("autoScrollVelocity", () => {
+  it("es 0 en la zona central del visor", () => {
+    expect(autoScrollVelocity(400, 800)).toBe(0);
+  });
+
+  it("baja (positivo) cerca del borde inferior y más rápido cuanto más cerca", () => {
+    const near = autoScrollVelocity(700, 800);
+    const edge = autoScrollVelocity(795, 800);
+
+    expect(near).toBeGreaterThan(0);
+    expect(edge).toBeGreaterThan(near);
+  });
+
+  it("sube (negativo) cerca del borde superior, por debajo del menú fijo", () => {
+    expect(autoScrollVelocity(150, 800)).toBeLessThan(0);
+    expect(autoScrollVelocity(10, 800)).toBeLessThan(autoScrollVelocity(150, 800));
+  });
+
+  it("no pasa de la velocidad máxima ni siquiera fuera del visor", () => {
+    expect(Math.abs(autoScrollVelocity(-500, 800))).toBeLessThanOrEqual(26);
+    expect(autoScrollVelocity(5000, 800)).toBeLessThanOrEqual(26);
   });
 });

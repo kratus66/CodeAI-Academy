@@ -25,6 +25,64 @@ const SECONDARY_BUTTON =
 const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink";
 
+/** Zona, en píxeles, junto a cada borde del visor donde arrastrar desplaza la página. */
+const SCROLL_EDGE_TOP = 170; // el menú fijo de Aprender ocupa hasta ~142 px
+const SCROLL_EDGE_BOTTOM = 110;
+const SCROLL_MAX_SPEED = 26;
+
+/**
+ * Píxeles por fotograma que debe desplazarse la página mientras se arrastra con el
+ * puntero en `clientY` (negativo: hacia arriba). Cuanto más cerca del borde, más rápido.
+ * El navegador no desplaza solo al arrastrar entre zonas lejanas, y aquí el concepto
+ * de destino puede quedar fuera de pantalla.
+ */
+export function autoScrollVelocity(clientY: number, viewportHeight: number): number {
+  if (clientY < SCROLL_EDGE_TOP) {
+    return -Math.ceil((Math.min(SCROLL_EDGE_TOP, SCROLL_EDGE_TOP - clientY) / SCROLL_EDGE_TOP) * SCROLL_MAX_SPEED);
+  }
+
+  const bottomStart = viewportHeight - SCROLL_EDGE_BOTTOM;
+
+  if (clientY > bottomStart) {
+    return Math.ceil((Math.min(SCROLL_EDGE_BOTTOM, clientY - bottomStart) / SCROLL_EDGE_BOTTOM) * SCROLL_MAX_SPEED);
+  }
+
+  return 0;
+}
+
+/** Mientras `active`, desplaza la página al acercar el puntero al borde superior o inferior. */
+function useEdgeAutoScroll(active: boolean): void {
+  useEffect(() => {
+    if (!active || typeof requestAnimationFrame !== "function") {
+      return;
+    }
+
+    let velocity = 0;
+    let frame = 0;
+
+    const onDragOver = (event: Event): void => {
+      const { clientY } = event as Event & { clientY?: number };
+
+      velocity = typeof clientY === "number" ? autoScrollVelocity(clientY, window.innerHeight) : 0;
+    };
+    const tick = (): void => {
+      if (velocity !== 0) {
+        window.scrollBy(0, velocity);
+      }
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener("dragover", onDragOver);
+    frame = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener("dragover", onDragOver);
+      cancelAnimationFrame(frame);
+    };
+  }, [active]);
+}
+
 /** Tiempo que una definición mal colocada sigue a la vista, en rojo, antes de volver al grupo. */
 const DEFAULT_WRONG_MS = 2500;
 
@@ -59,6 +117,8 @@ export function MatchPlayer({ exercise, shuffle = shuffleCards, flipBackMs = DEF
   const [wrong, setWrong] = useState<{ readonly slotId: string; readonly cardId: string } | null>(null);
   const [misses, setMisses] = useState(0);
   const [failed, setFailed] = useState<readonly string[]>([]);
+
+  useEdgeAutoScroll(dragging !== null);
 
   // La definición mal colocada se queda un instante en rojo para que se pueda leer y vuelve al grupo.
   useEffect(() => {
@@ -106,7 +166,7 @@ export function MatchPlayer({ exercise, shuffle = shuffleCards, flipBackMs = DEF
     setFailed([]);
   }
 
-  function onDrop(event: DragEvent<HTMLButtonElement>, slotId: string): void {
+  function onDrop(event: DragEvent<HTMLElement>, slotId: string): void {
     event.preventDefault();
     place(event.dataTransfer?.getData("text/plain") || dragging, slotId);
   }
@@ -121,15 +181,15 @@ export function MatchPlayer({ exercise, shuffle = shuffleCards, flipBackMs = DEF
 
   return (
     <div className="space-y-4">
-      <MemoryIntroBox intro={intro} pairs={pairs} showTerms={false} showAnswers={false} />
+      <MemoryIntroBox intro={intro} pairs={pairs} showTerms={false} showAnswers={false} collapsible />
 
       <p className="text-base text-slate-100">{exercise.statement}</p>
       <p className="text-xs text-slate-400">
         Arrastra cada definición hasta su concepto. Si no puedes arrastrar, toca la definición y luego el concepto.
       </p>
 
-      <div role="group" aria-label="Tablero de unir" className="grid gap-4 md:grid-cols-2">
-        <ul aria-label="Conceptos" className="grid list-none content-start gap-3 p-0">
+      <div role="group" aria-label="Tablero de unir" className="grid items-start gap-4 md:grid-cols-2">
+        <ul aria-label="Conceptos" className="grid list-none content-start gap-2 p-0">
           {pairs.map((pair) => {
             const isMatched = matched.includes(pair.id);
             const wrongHere = wrong?.slotId === pair.id;
@@ -137,18 +197,27 @@ export function MatchPlayer({ exercise, shuffle = shuffleCards, flipBackMs = DEF
             const canReceive = !isMatched && !wrongHere;
 
             return (
+              // Toda la fila recibe la definición: apuntar al hueco exacto no hace falta.
               <li
                 key={pair.id}
+                onDragOver={(event) => {
+                  if (canReceive) {
+                    event.preventDefault();
+                  }
+                }}
+                onDrop={(event) => onDrop(event, pair.id)}
                 className={cn(
-                  "rounded-xl border p-3 transition",
+                  "flex flex-col gap-2 rounded-xl border p-2 transition sm:flex-row sm:items-center",
                   isMatched
                     ? "border-emerald-400/70 bg-emerald-500/10"
                     : wrongHere
                       ? "border-rose-400/70 bg-rose-500/10"
-                      : "border-line/70 bg-ink-card/40",
+                      : dragging !== null && canReceive
+                        ? "border-accent/60 bg-accent/5"
+                        : "border-line/70 bg-ink-card/40",
                 )}
               >
-                <p className="text-sm font-semibold text-slate-100">{pair.term}</p>
+                <p className="px-1 text-sm font-semibold text-slate-100 sm:w-36 sm:shrink-0">{pair.term}</p>
                 <button
                   type="button"
                   disabled={isMatched}
@@ -158,14 +227,8 @@ export function MatchPlayer({ exercise, shuffle = shuffleCards, flipBackMs = DEF
                       : `Colocar la definición en ${pair.term}`
                   }
                   onClick={() => place(selected, pair.id)}
-                  onDragOver={(event) => {
-                    if (canReceive) {
-                      event.preventDefault();
-                    }
-                  }}
-                  onDrop={(event) => onDrop(event, pair.id)}
                   className={cn(
-                    "mt-2 flex min-h-14 w-full items-center justify-center rounded-lg border-2 px-3 py-2 text-center text-sm transition",
+                    "flex min-h-11 w-full flex-1 items-center justify-center rounded-lg border-2 px-3 py-1.5 text-center text-sm leading-snug transition",
                     FOCUS,
                     isMatched
                       ? "border-solid border-emerald-400/70 bg-emerald-500/15 text-emerald-200"
@@ -199,7 +262,8 @@ export function MatchPlayer({ exercise, shuffle = shuffleCards, flipBackMs = DEF
           })}
         </ul>
 
-        <div className="space-y-2">
+        {/* Fijo bajo el menú: sigue en pantalla mientras se recorre la lista de conceptos. */}
+        <div className="space-y-2 md:sticky md:top-40 md:max-h-[calc(100vh-11rem)] md:overflow-y-auto md:pr-1">
           <p className="text-sm font-medium text-slate-100">Definiciones</p>
           {pool.length === 0 ? (
             <p className="text-sm text-slate-400">No quedan definiciones por colocar.</p>

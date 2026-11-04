@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 /**
@@ -112,10 +113,18 @@ interface MemoryIntroBoxProps {
   readonly showTerms?: boolean;
   /** Mostrar las definiciones como respuestas (el modo unir ya las muestra). */
   readonly showAnswers?: boolean;
+  /** Permite plegar el recuadro para dejar sitio al tablero (se muestra abierto). */
+  readonly collapsible?: boolean;
 }
 
 /** Recuadro «Qué vas a repasar»: resumen, etapas y, según el modo, conceptos y respuestas. */
-export function MemoryIntroBox({ intro, pairs, showTerms = true, showAnswers = true }: MemoryIntroBoxProps) {
+export function MemoryIntroBox({
+  intro,
+  pairs,
+  showTerms = true,
+  showAnswers = true,
+  collapsible = false,
+}: MemoryIntroBoxProps) {
   // Alfabético: si siguieran el orden de los términos, la lista delataría cada pareja.
   const sortedDefinitions = useMemo(
     () => pairs.map((pair) => pair.definition).sort((left, right) => left.localeCompare(right, "es")),
@@ -125,11 +134,9 @@ export function MemoryIntroBox({ intro, pairs, showTerms = true, showAnswers = t
   return (
     <section
       aria-labelledby="memory-intro"
-      className="space-y-3 rounded-2xl border border-line/70 bg-ink-card/40 px-5 py-4"
+      className="rounded-2xl border border-line/70 bg-ink-card/40 px-5 py-4"
     >
-      <h2 id="memory-intro" className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-        Qué vas a repasar
-      </h2>
+      <Collapsible enabled={collapsible} title={title}>
       {intro !== null ? <p className="text-sm leading-relaxed text-slate-200">{intro.summary}</p> : null}
       {intro?.list != null ? (
         <div className="space-y-2">
@@ -189,6 +196,47 @@ export function MemoryIntroBox({ intro, pairs, showTerms = true, showAnswers = t
           </ul>
         </div>
       ) : null}
+      </Collapsible>
     </section>
+  );
+}
+
+const TITLE_CLASSES = "text-xs font-semibold uppercase tracking-[0.18em] text-accent";
+
+const title = (
+  <h2 id="memory-intro" className={TITLE_CLASSES}>
+    Qué vas a repasar
+  </h2>
+);
+
+/** Con `enabled` el contenido cuelga de un `<details>` abierto; si no, se muestra siempre. */
+function Collapsible({
+  enabled,
+  title: heading,
+  children,
+}: {
+  readonly enabled: boolean;
+  readonly title: ReactNode;
+  readonly children: ReactNode;
+}) {
+  if (!enabled) {
+    return (
+      <div className="space-y-3">
+        {heading}
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <details open className="group space-y-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        {heading}
+        <span aria-hidden="true" className="text-xs text-slate-500 group-open:rotate-180">
+          ▾
+        </span>
+      </summary>
+      <div className="space-y-3 pt-3">{children}</div>
+    </details>
   );
 }
