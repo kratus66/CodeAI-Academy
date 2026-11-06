@@ -89,10 +89,16 @@ function unitSummary(code: string, stageId: number, moduleCode: string): UnitSum
   };
 }
 
-function stage(id: number, level: number, code: string, units: UnitSummary[]): StageDetail {
+function stage(
+  id: number,
+  level: number,
+  code: string,
+  units: UnitSummary[],
+  slugPrefix = "e",
+): StageDetail {
   return {
     id,
-    slug: `e${id}-etapa-${id}`,
+    slug: `${slugPrefix}${id}-etapa-${id}`,
     title: `Etapa ${id}`,
     objective: `Objetivo de la etapa ${id}`,
     level,
@@ -145,12 +151,29 @@ function dataset(): ContentDataset {
       stage(0, 1, "M0.1", publishedUnits),
       stage(1, 2, "M1.1", []),
       stage(2, 2, "M2.1", []),
+      stage(100, 1, "AWS-M1.1", [], "aws"),
     ],
     units,
     lessons: [lesson("hola-mundo", "U0.1.1", 1)],
     resources: [
       { stageId: 0, resource },
       { stageId: 1, resource: videoResource },
+    ],
+    courses: [
+      {
+        slug: "fullstack-ia",
+        title: "Desarrollo de software con IA",
+        objective: "Comprender, diseñar, construir y mantener software con IA",
+        notice: null,
+        order: 0,
+      },
+      {
+        slug: "aws-cloud",
+        title: "Preparación AWS Cloud",
+        objective: "Fundamentos de nube sobre AWS",
+        notice: "Ruta independiente de preparación",
+        order: 1,
+      },
     ],
   };
 }
@@ -319,6 +342,84 @@ describe("ContentService", () => {
 
       expect(response.data).toEqual([]);
       expect(response.meta).toEqual({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
+    });
+  });
+
+  describe("listStages por ruta", () => {
+    it("pide la ruta por defecto cuando la consulta no la indica", async () => {
+      const repository = new InMemoryContentRepository(dataset());
+      const listStages = vi.spyOn(repository, "listStages");
+      const routed = new ContentService(repository, new ContentCache());
+
+      const response = await routed.listStages({ page: 1, pageSize: 20 });
+
+      expect(listStages).toHaveBeenCalledWith(
+        expect.objectContaining({ course: "fullstack-ia" }),
+      );
+      expect(response.data.map((item) => item.id)).toEqual([0, 1, 2]);
+    });
+
+    it("pide la ruta indicada en la consulta", async () => {
+      const repository = new InMemoryContentRepository(dataset());
+      const listStages = vi.spyOn(repository, "listStages");
+      const routed = new ContentService(repository, new ContentCache());
+
+      const response = await routed.listStages({
+        page: 1,
+        pageSize: 20,
+        course: "aws-cloud",
+      });
+
+      expect(listStages).toHaveBeenCalledWith(
+        expect.objectContaining({ course: "aws-cloud" }),
+      );
+      expect(response.data.map((item) => item.id)).toEqual([100]);
+      expect(response.meta).toEqual({ page: 1, pageSize: 20, total: 1, totalPages: 1 });
+    });
+
+    it("guarda una entrada de caché por ruta", async () => {
+      const repository = new InMemoryContentRepository(dataset());
+      const listStages = vi.spyOn(repository, "listStages");
+      const routed = new ContentService(repository, new ContentCache());
+
+      await routed.listStages({ page: 1, pageSize: 20, course: "aws-cloud" });
+      await routed.listStages({ page: 1, pageSize: 20, course: "aws-cloud" });
+
+      expect(listStages).toHaveBeenCalledTimes(1);
+
+      await routed.listStages({ page: 1, pageSize: 20, course: "fullstack-ia" });
+      await routed.listStages({ page: 1, pageSize: 20 });
+
+      expect(listStages).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("listCourses", () => {
+    it("devuelve el catálogo paginado con metadatos", async () => {
+      const response = await service.listCourses({ page: 1, pageSize: 20 });
+
+      expect(response.data.map((item) => item.slug)).toEqual(["fullstack-ia", "aws-cloud"]);
+      expect(response.data.map((item) => item.stageLabelPrefix)).toEqual(["E", "A"]);
+      expect(response.data.map((item) => item.stageCount)).toEqual([3, 1]);
+      expect(response.meta).toEqual({ page: 1, pageSize: 20, total: 2, totalPages: 1 });
+    });
+
+    it("pagina con la ventana de la consulta", async () => {
+      const response = await service.listCourses({ page: 2, pageSize: 1 });
+
+      expect(response.data.map((item) => item.slug)).toEqual(["aws-cloud"]);
+      expect(response.meta).toEqual({ page: 2, pageSize: 1, total: 2, totalPages: 2 });
+    });
+
+    it("no repite la consulta en la segunda lectura idéntica", async () => {
+      const repository = new InMemoryContentRepository(dataset());
+      const listCourses = vi.spyOn(repository, "listCourses");
+      const cached = new ContentService(repository, new ContentCache());
+
+      await cached.listCourses({ page: 1, pageSize: 20 });
+      await cached.listCourses({ page: 1, pageSize: 20 });
+
+      expect(listCourses).toHaveBeenCalledTimes(1);
     });
   });
 });

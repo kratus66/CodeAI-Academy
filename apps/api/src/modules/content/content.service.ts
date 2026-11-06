@@ -1,4 +1,6 @@
 import type {
+  CourseListQuery,
+  CourseListResponse,
   LessonDetailResponse,
   PaginationMeta,
   ResourceListQuery,
@@ -8,6 +10,7 @@ import type {
   StageListResponse,
   UnitDetailResponse,
 } from "@codeai/shared";
+import { DEFAULT_COURSE_SLUG } from "@codeai/shared";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
 // Import de valor obligatorio: Nest resuelve `ContentCache` por `design:paramtypes`.
@@ -40,12 +43,14 @@ export class ContentService {
 
   async listStages(query: StageListQuery): Promise<StageListResponse> {
     const window = toWindow(query);
-    const key = `stages:${query.page}:${query.pageSize}:${query.level ?? "all"}`;
+    const course = query.course ?? DEFAULT_COURSE_SLUG;
+    const key = `stages:${course}:${query.page}:${query.pageSize}:${query.level ?? "all"}`;
 
     return this.cache.getOrLoad(key, async () =>
       toPaginated(
         await this.repository.listStages({
           ...window,
+          course,
           ...(query.level === undefined ? {} : { level: query.level }),
         }),
         query,
@@ -104,6 +109,14 @@ export class ContentService {
         }),
         query,
       ),
+    );
+  }
+
+  async listCourses(query: CourseListQuery): Promise<CourseListResponse> {
+    const key = `courses:${query.page}:${query.pageSize}`;
+
+    return this.cache.getOrLoad(key, async () =>
+      toPaginated(await this.repository.listCourses(toWindow(query)), query),
     );
   }
 

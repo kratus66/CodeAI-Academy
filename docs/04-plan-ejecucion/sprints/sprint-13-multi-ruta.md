@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (7/19: T1 ✅ · T2 ✅ · T3 ✅ · T3b ✅ · T3c ✅ · T4 ✅ · T5 ✅) · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (8/19: T1–T6 ✅, incluidas T3b y T3c) · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -414,10 +414,12 @@ GET /api/content/stages?course=aws-cloud&page=1&pageSize=20
 - El controlador valida con `courseListQuerySchema` y `stageListQuerySchema` mediante `ZodValidationPipe`, como el resto.
 
 **Criterios de aceptación**
-- [ ] Prueba: sin `course` el servicio pide `fullstack-ia`; con `aws-cloud` pide `aws-cloud`; dos rutas distintas no comparten entrada de caché.
-- [ ] Prueba: `listCourses` devuelve el formato paginado.
-- [ ] `GET /api/content/stages/102` y `GET /api/content/units/AWS-U2.3.1` responden `404` (no `400`) mientras no existan o no estén publicados (comprobación HTTP manual descrita en el reporte).
-- [ ] Verificación común en verde.
+- [x] Prueba: sin `course` el servicio pide `fullstack-ia`; con `aws-cloud` pide `aws-cloud`; dos rutas distintas no comparten entrada de caché.
+- [x] Prueba: `listCourses` devuelve el formato paginado.
+- [x] `GET /api/content/stages/102` y `GET /api/content/units/AWS-U2.3.1` responden `404` (no `400`) mientras no existan o no estén publicados (comprobación HTTP manual descrita en el reporte).
+- [x] Verificación común en verde.
+
+**Revisión (2026-11-06): ✅ aprobada.** La ruta se resuelve una sola vez y alimenta a la vez la clave de caché y el filtro. La prueba de caché demuestra también que «sin `course`» y `fullstack-ia` comparten entrada. Verificación repetida: build, `typecheck` y `lint` en 0; api 887 · web 407 · shared 312. HTTP contra la API de desarrollo, repetido por el Orquestador: `courses` 200 (sólo `fullstack-ia`), `stages` 200 (ids 0–11), `?course=aws-cloud` 200 vacío, `?course=gcp` 400, `stages/102` 404, `units/AWS-U2.3.1` 404.
 
 ---
 

@@ -1,4 +1,5 @@
 import {
+  courseListQuerySchema,
   lessonSlugParamsSchema,
   resourceListQuerySchema,
   stageIdParamsSchema,
@@ -6,6 +7,8 @@ import {
   unitCodeParamsSchema,
 } from "@codeai/shared";
 import type {
+  CourseListQuery,
+  CourseListResponse,
   LessonDetailResponse,
   LessonSlugParams,
   ResourceListQuery,
@@ -69,5 +72,12 @@ export class ContentController {
     @Query(new ZodValidationPipe(resourceListQuerySchema)) query: ResourceListQuery,
   ): Promise<ResourceListResponse> {
     return this.content.listResources(query);
+  }
+
+  @Get("courses")
+  async listCourses(
+    @Query(new ZodValidationPipe(courseListQuerySchema)) query: CourseListQuery,
+  ): Promise<CourseListResponse> {
+    return this.content.listCourses(query);
   }
 }
