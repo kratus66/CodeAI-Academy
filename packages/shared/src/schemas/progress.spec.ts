@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +8,10 @@ import {
   progressPctSchema,
   unitProgressSummarySchema,
 } from "./progress";
+
+function issueMessages(result: { success: false; error: z.ZodError }): string[] {
+  return result.error.issues.map((issue) => issue.message);
+}
 
 describe("progressPctSchema", () => {
   it("acepta los extremos del rango 0–100", () => {
@@ -45,6 +50,22 @@ describe("competencyCodeSchema", () => {
 
   it("rechaza una letra suelta sin número", () => {
     expect(competencyCodeSchema.safeParse("C").success).toBe(false);
+  });
+
+  it("acepta los códigos de la ruta AWS C1–C15", () => {
+    expect(competencyCodeSchema.safeParse("AWS-C1").success).toBe(true);
+    expect(competencyCodeSchema.safeParse("AWS-C15").success).toBe(true);
+  });
+
+  it("rechaza códigos fuera de ambas rutas con el mensaje del contrato", () => {
+    for (const code of ["C0", "C15", "AWS-C16", "aws-c1"]) {
+      const result = competencyCodeSchema.safeParse(code);
+
+      expect(result.success).toBe(false);
+      expect(result.success ? [] : issueMessages(result)).toContain(
+        "La competencia debe ser C1–C14 o AWS-C1–AWS-C15",
+      );
+    }
   });
 });
 
@@ -163,5 +184,24 @@ describe("progressOverviewSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("acepta la etapa actual de cualquier ruta", () => {
+    for (const currentStage of [0, 11, 100, 112]) {
+      expect(
+        progressOverviewSchema.safeParse({ ...overview, currentStage }).success,
+      ).toBe(true);
+    }
+  });
+
+  it("rechaza una etapa actual fuera de toda ruta con el mensaje del contrato", () => {
+    for (const currentStage of [12, 99]) {
+      const result = progressOverviewSchema.safeParse({ ...overview, currentStage });
+
+      expect(result.success).toBe(false);
+      expect(result.success ? [] : issueMessages(result)).toContain(
+        "La etapa actual debe pertenecer a una ruta",
+      );
+    }
   });
 });

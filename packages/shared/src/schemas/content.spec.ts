@@ -141,6 +141,18 @@ describe("stageListQuerySchema", () => {
       false,
     );
   });
+
+  it("acepta filtrar por una ruta conocida", () => {
+    const query = stageListQuerySchema.parse({ course: "aws-cloud" });
+
+    expect(query.course).toBe("aws-cloud");
+  });
+
+  it("rechaza una ruta desconocida", () => {
+    expect(stageListQuerySchema.safeParse({ course: "gcp" }).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("resourceListQuerySchema", () => {
@@ -153,6 +165,13 @@ describe("resourceListQuerySchema", () => {
 
   it("rechaza un tipo de recurso desconocido", () => {
     expect(resourceListQuerySchema.safeParse({ type: "BLOG" }).success).toBe(
+      false,
+    );
+  });
+
+  it("acepta una etapa de una ruta secundaria y rechaza un id fuera de ruta", () => {
+    expect(resourceListQuerySchema.parse({ stage: "102" }).stage).toBe(102);
+    expect(resourceListQuerySchema.safeParse({ stage: "12" }).success).toBe(
       false,
     );
   });
@@ -179,6 +198,17 @@ describe("parámetros de ruta", () => {
     }
   });
 
+  it("acepta ids de etapa de cualquier ruta y rechaza los desconocidos", () => {
+    expect(stageIdParamsSchema.parse({ id: "0" })).toEqual({ id: 0 });
+    expect(stageIdParamsSchema.parse({ id: "102" })).toEqual({ id: 102 });
+
+    for (const invalidId of ["12", "99", "113", "abc"]) {
+      expect(stageIdParamsSchema.safeParse({ id: invalidId }).success).toBe(
+        false,
+      );
+    }
+  });
+
   it("acepta un código de unidad bien formado y rechaza el resto", () => {
     expect(unitCodeParamsSchema.parse({ code: "U1.1.1" })).toEqual({
       code: "U1.1.1",
@@ -187,6 +217,27 @@ describe("parámetros de ruta", () => {
       false,
     );
     expect(unitCodeParamsSchema.safeParse({ code: "U1.1" }).success).toBe(false);
+  });
+
+  it("acepta códigos de unidad de cualquier ruta y rechaza el resto", () => {
+    expect(unitCodeParamsSchema.parse({ code: "U2.3.1" })).toEqual({
+      code: "U2.3.1",
+    });
+    expect(unitCodeParamsSchema.parse({ code: "AWS-U2.3.1" })).toEqual({
+      code: "AWS-U2.3.1",
+    });
+
+    for (const invalidCode of ["aws-U2.3.1", "AWS-M2.3", "X2.3.1"]) {
+      expect(unitCodeParamsSchema.safeParse({ code: invalidCode }).success).toBe(
+        false,
+      );
+    }
+
+    const malformed = unitCodeParamsSchema.safeParse({ code: "X2.3.1" });
+
+    expect(malformed.success ? [] : issueMessages(malformed)).toContain(
+      "Formato esperado: U<etapa>.<módulo>.<unidad> o AWS-U<etapa>.<módulo>.<unidad>",
+    );
   });
 
   it("acepta un slug en kebab-case y rechaza mayúsculas", () => {
@@ -423,5 +474,55 @@ describe("contentSeedSchema", () => {
     expect(result.success ? [] : issueMessages(result)).toContain(
       "La unidad U0.1.1 no puede ser su propio prerrequisito",
     );
+  });
+
+  it("rechaza una etapa con un id de una ruta secundaria", () => {
+    const seed = seedFixture();
+    stageOf(seed, 0).id = 100;
+    const result = contentSeedSchema.safeParse(seed);
+
+    expect(result.success).toBe(false);
+    expect(result.success ? [] : result.error.issues.map((issue) => issue.path)).toContainEqual([
+      "stages",
+      0,
+      "id",
+    ]);
+  });
+
+  it("rechaza un ejercicio con una competencia de una ruta distinta", () => {
+    const seed = seedFixture();
+    firstUnitOf(seed, 0).exercises = [
+      {
+        slug: "reading-competencia-aws",
+        type: "READING",
+        title: "Ejercicio con competencia de otra ruta",
+        statement: "Enunciado con ejemplo.",
+        ladder: "GUIDED",
+        difficulty: 2,
+        concepts: ["promises"],
+        competencies: ["AWS-C2"],
+        sources: ["https://developer.mozilla.org/es/"],
+        isPublished: false,
+        order: 1,
+      },
+    ];
+    const result = contentSeedSchema.safeParse(seed);
+
+    expect(result.success).toBe(false);
+    expect(result.success ? [] : issueMessages(result)).toContain(
+      "La competencia AWS-C2 no pertenece a la ruta fullstack-ia",
+    );
+    expect(result.success ? [] : result.error.issues.map((issue) => issue.path)).toContainEqual([
+      "stages",
+      0,
+      "modules",
+      0,
+      "units",
+      0,
+      "exercises",
+      0,
+      "competencies",
+      0,
+    ]);
   });
 });

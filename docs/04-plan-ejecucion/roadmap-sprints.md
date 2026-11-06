@@ -34,8 +34,22 @@
 | **S10** | Simulaciones de entrevista | E11 | `interviews` | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
 | **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | 🔄 14/16 tareas; lanzamiento bloqueado por el adaptador de sandbox `docker` |
 | **S12** | Experiencia de aprendizaje (UX / frontend) | E1–E11 | — | ✅ 10/10 tareas; T9 (streaming del tutor) como deuda documentada |
+| **S13** | Multi-ruta: la plataforma sirve más de un curso | A0–A12 | `content` (rutas), semilla por unidad | 🔄 5/19 tareas (T1–T3c ✅) |
+| **S14** | Preguntas tipo examen y metadatos de certificación | A1–A11 | `exercises` | ⬜ |
+| **S15** | Simulador de examen y preparación por certificación | A1–A11 | `exams` (nuevo) | ⬜ |
+| **S16** | Laboratorios AWS: arnés en el sandbox y laboratorio en tu cuenta | A0–A11 | `sandbox`, `exercises` | ⬜ (requiere sandbox `docker`, S11-T16) |
+| **S17** | Contenido A0–A1 (CLF-C02) | A0–A1 | — | ⬜ |
+| **S18** | Contenido A2 (SAA-C03) | A2 | — | ⬜ |
+| **S19** | Contenido A3 (DVA-C03) | A3 | — | ⬜ |
+| **S20** | Contenido A4 (SOA-C03) | A4 | — | ⬜ |
+| **S21** | Contenido A5 (DOP-C02) | A5 | — | ⬜ |
+| **S22** | Contenido A6 (SAP-C03) | A6 | — | ⬜ |
+| **S23** | Contenido A7–A8 (AIF-C01, AIP-C01) | A7–A8 | — | ⬜ |
+| **S24** | Contenido A9 (SCS-C03) | A9 | — | ⬜ |
+| **S25** | Contenido A10–A11 (DEA-C01, MLA-C02) | A10–A11 | — | ⬜ |
+| **S26** | A12, entrevistas por rol y lanzamiento de la ruta AWS | A12 | `interviews`, `analytics` | ⬜ |
 
-> Son **12 sprints (S0–S11)**. Las etapas curriculares indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
+> **S0–S12** construyen la plataforma y la ruta `fullstack-ia` (etapas E0–E11). **S13–S26** (planificados el 2026-11-06) añaden la **ruta AWS Cloud** (etapas A0–A12, once certificaciones; ver [`../01-curriculo/curriculo-aws.md`](../01-curriculo/curriculo-aws.md) y §3.1). Las etapas indicadas son el contenido que cada sprint hace *posible*, no lo que el sprint enseña.
 >
 > **Verificación (2026-10-28):** `typecheck`, `lint` y `build` en verde; suite `shared 241 · API 739 · web 220 = 1 200 pruebas`. Contenido sembrado: 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas, 34 recursos y el banco de ejercicios. Existen los módulos `users` (con `RolesGuard`), `ai`, `projects` e `interviews`; falta `analytics` (S11).
 >
@@ -158,6 +172,33 @@
 - **Deuda:** el streaming del tutor no se implementó —`POST /api/ai/tutor` responde JSON completo— y queda anotado en el §6 de la ficha con lo que falta.
 - **Cierre:** suite web **342 pruebas en 46 archivos** en verde, typecheck, lint y build en 0; el HTML prerenderizado de `/learn/*` ya no referencia el chunk de Three.js que sí sirve la portada.
 - **Ficha:** [`sprints/sprint-12-experiencia-aprendizaje.md`](sprints/sprint-12-experiencia-aprendizaje.md).
+
+### 3.1 Ruta AWS Cloud (S13–S26)
+
+Misma pedagogía (7 pasos, 4 niveles, escalera de dificultad, SM-2, revisión humana) aplicada a la preparación de certificaciones; la adaptación está en [`../02-contenido/metodo-aws.md`](../02-contenido/metodo-aws.md). Cuatro sprints de plataforma y diez de contenido:
+
+| Sprint | Objetivo | Ficha |
+|--------|----------|-------|
+| **S13** | Rutas en la base de datos y la API (`Course`, etapas 100–112, códigos `AWS-…`), semilla por unidad y catálogo de rutas en la web | [`sprint-13-multi-ruta.md`](sprints/sprint-13-multi-ruta.md) — **19 fichas listas para el Constructor** |
+| **S14** | Respuesta múltiple, ordenar y emparejar; metadatos de certificación y dominio; banco reservado; reproductor `AUDIT` | [`sprint-14-preguntas-examen.md`](sprints/sprint-14-preguntas-examen.md) |
+| **S15** | Simulacros cronometrados por forma y por dominio, informe por dominio y criterio «listo para presentar» | [`sprint-15-simulador-examen.md`](sprints/sprint-15-simulador-examen.md) |
+| **S16** | Arnés de evaluadores AWS en el sandbox y `CLOUD_LAB` con evidencia de solo lectura | [`sprint-16-laboratorios-aws.md`](sprints/sprint-16-laboratorios-aws.md) |
+| **S17–S25** | Contenido por etapa: unidad molde revisada, unidades, banco reservado de tres formas, proyecto y SIM | [`sprint-17`](sprints/sprint-17-aws-fundamentos.md) · [`18`](sprints/sprint-18-aws-arquitecto-asociado.md) · [`19`](sprints/sprint-19-aws-desarrollador.md) · [`20`](sprints/sprint-20-aws-cloudops.md) · [`21`](sprints/sprint-21-aws-devops-pro.md) · [`22`](sprints/sprint-22-aws-arquitecto-pro.md) · [`23`](sprints/sprint-23-aws-ia.md) · [`24`](sprints/sprint-24-aws-seguridad.md) · [`25`](sprints/sprint-25-aws-datos-ml.md) |
+| **S26** | A12, entrevistas por rol, panel por ruta, proceso de vigencia y publicación | [`sprint-26-aws-profesionalizacion.md`](sprints/sprint-26-aws-profesionalizacion.md) |
+
+```
+S13 ──► S14 ──┬──► S15 ─────────────────────────────┐
+              ├──► S17 (A0–A1) ──► S18 (A2) ──┬──► S19 (A3) ──┬──► S21 (A5) ──┐
+S11-T16 ──► S16 ─────────┘ (labs)             ├──► S20 (A4) ──┘               ├──► S26
+                                              ├──► S22 (A6) ──────────────────┘
+                                              ├──► S24 (A9; requiere S20)
+                                              └──► S25 (A10; A11 requiere S23)
+                          S17 ──► S23 (A7; A8 requiere S19)
+```
+
+- **S14 es el cuello de botella:** ninguna pregunta se escribe antes de su T0 (guías oficiales verificadas por una persona).
+- **S16 depende del sandbox `docker`** (S11-T16). Mientras no exista, el contenido avanza sin `LAB` con arnés y se completa después, como se hizo con E0–E2.
+- Fechas de examen que condicionan el contenido: SAP-C03 (GA 2026-11-17), DVA-C03 (GA 2026-12-01), retiro de ANS-C01 (2026-12-31), MLA-C02 (GA 2027-01-14).
 
 ---
 

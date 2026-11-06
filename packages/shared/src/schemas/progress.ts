@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { UNIT_STATES } from "../enums/exercise";
-import { CURRICULUM_STAGE_COUNT } from "./content";
+import { COMPETENCY_CODE_PATTERN, isKnownStageId } from "./course";
 
 /**
  * Avance de una unidad o global, en porcentaje 0–100
@@ -13,10 +13,10 @@ export const progressPctSchema = z
   .min(0, "El avance no puede ser negativo")
   .max(100, "El avance no puede superar 100");
 
-/** Competencias del perfil profesional: C1–C14 (`mapa-competencias.md`). */
+/** Competencias del perfil profesional: C1–C14 (`mapa-competencias.md`) y de la ruta AWS: AWS-C1–AWS-C15 (`curriculo-aws.md` §4). */
 export const competencyCodeSchema = z
   .string({ invalid_type_error: "La competencia debe ser un código" })
-  .regex(/^C([1-9]|1[0-4])$/, "La competencia debe ser un código entre C1 y C14");
+  .regex(COMPETENCY_CODE_PATTERN, "La competencia debe ser C1–C14 o AWS-C1–AWS-C15");
 
 /** Nivel de dominio de una competencia: 0 (sin evidencia) a 4 (autónomo). */
 export const competencyLevelSchema = z
@@ -69,9 +69,9 @@ export const progressCountsSchema = z.object({
 export type ProgressCounts = z.infer<typeof progressCountsSchema>;
 
 /**
- * Resumen global del avance. `currentStage` es la etapa en curso (0–11) y
- * `dueReviews` cuenta los repasos vencidos; mientras no exista `ReviewItem`
- * (S7) el servicio responde `0`.
+ * Resumen global del avance. `currentStage` es la etapa en curso (0–11 en
+ * `fullstack-ia`, 100–112 en `aws-cloud`) y `dueReviews` cuenta los repasos
+ * vencidos; mientras no exista `ReviewItem` (S7) el servicio responde `0`.
  */
 export const progressOverviewSchema = z.object({
   user: z.object({
@@ -81,8 +81,7 @@ export const progressOverviewSchema = z.object({
   currentStage: z
     .number({ invalid_type_error: "La etapa actual debe ser un número" })
     .int("La etapa actual debe ser un número entero")
-    .min(0, "La etapa actual debe estar entre 0 y 11")
-    .max(CURRICULUM_STAGE_COUNT - 1, "La etapa actual debe estar entre 0 y 11"),
+    .refine(isKnownStageId, "La etapa actual debe pertenecer a una ruta"),
   overallPct: progressPctSchema,
   units: progressCountsSchema,
   competencies: z.array(competencyProgressSchema),

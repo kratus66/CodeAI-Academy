@@ -42,7 +42,9 @@ describe("contentSeedExerciseSchema", () => {
 
   it("exige concepto, competencia válida y documentación oficial", () => {
     expect(() => exercise({ concepts: [] })).toThrow(/concepto/);
-    expect(() => exercise({ competencies: ["C15"] })).toThrow(/C1 y C14/);
+    expect(() => exercise({ competencies: ["C15"] })).toThrow(
+      "La competencia debe ser C1–C14 o AWS-C1–AWS-C15",
+    );
     expect(() => exercise({ sources: [] })).toThrow(/documentación oficial/);
   });
 });

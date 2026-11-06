@@ -4,6 +4,13 @@ import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from "../constants/pagination";
 import { EXERCISE_TYPES, LADDERS } from "../enums/exercise";
 import { RESOURCE_STATUSES, RESOURCE_TYPES } from "../enums/resource";
 import { paginatedSchema } from "./common";
+import {
+  COMPETENCY_CODE_PATTERN,
+  courseSlugSchema,
+  isCompetencyOfCourse,
+  isKnownStageId,
+  UNIT_CODE_PATTERN,
+} from "./course";
 import { sandboxLanguageSchema } from "./sandbox";
 
 /** Etapas del currículo maestro: E0…E11. */
@@ -18,6 +25,9 @@ export const stageLevelSchema = z
   .int()
   .min(STAGE_LEVEL_MIN)
   .max(STAGE_LEVEL_MAX);
+
+/** Mensaje único para ids de etapa que no pertenecen a ninguna ruta. */
+const STAGE_ID_MESSAGE = "La etapa debe pertenecer a una ruta (0–11 o 100–112)";
 
 /**
  * Parámetros de paginación comunes. Se usa `coerce` porque los query strings
@@ -52,10 +62,15 @@ export const stageListQuerySchema = pageQuerySchema
         `El nivel debe estar entre ${STAGE_LEVEL_MIN} y ${STAGE_LEVEL_MAX}`,
       )
       .optional(),
+    course: courseSlugSchema.optional(),
   })
   .strict();
 
 export type StageListQuery = z.infer<typeof stageListQuerySchema>;
+
+/** `GET /api/content/courses?page&pageSize` */
+export const courseListQuerySchema = pageQuerySchema.strict();
+export type CourseListQuery = z.infer<typeof courseListQuerySchema>;
 
 /** `GET /api/content/resources?page&pageSize&stage&type` */
 export const resourceListQuerySchema = pageQuerySchema
@@ -64,11 +79,7 @@ export const resourceListQuerySchema = pageQuerySchema
       .coerce
       .number({ invalid_type_error: "La etapa debe ser un número entero" })
       .int("La etapa debe ser un número entero")
-      .min(0, `La etapa debe estar entre 0 y ${CURRICULUM_STAGE_COUNT - 1}`)
-      .max(
-        CURRICULUM_STAGE_COUNT - 1,
-        `La etapa debe estar entre 0 y ${CURRICULUM_STAGE_COUNT - 1}`,
-      )
+      .refine(isKnownStageId, STAGE_ID_MESSAGE)
       .optional(),
     type: z.enum(RESOURCE_TYPES).optional(),
   })
@@ -82,15 +93,13 @@ export type ResourceListQuery = z.infer<typeof resourceListQuerySchema>;
  * que oculte un error del cliente.
  */
 const stageIdParamMessage = "El id de etapa debe ser un número entero";
-const stageIdRangeMessage = `El id de etapa debe estar entre 0 y ${CURRICULUM_STAGE_COUNT - 1}`;
 
 export const stageIdParamsSchema = z
   .object({
     id: z.coerce
       .number({ invalid_type_error: stageIdParamMessage })
       .int(stageIdParamMessage)
-      .min(0, stageIdRangeMessage)
-      .max(CURRICULUM_STAGE_COUNT - 1, stageIdRangeMessage),
+      .refine(isKnownStageId, STAGE_ID_MESSAGE),
   })
   .strict();
 
@@ -101,8 +110,8 @@ export const unitCodeParamsSchema = z
     code: z
       .string()
       .regex(
-        /^U\d{1,2}\.\d{1,2}\.\d{1,2}$/,
-        "Formato esperado: U<etapa>.<módulo>.<unidad>",
+        UNIT_CODE_PATTERN,
+        "Formato esperado: U<etapa>.<módulo>.<unidad> o AWS-U<etapa>.<módulo>.<unidad>",
       ),
   })
   .strict();
@@ -123,7 +132,7 @@ const estimatedMinSchema = z.number().int().positive().nullable();
 
 /** Ficha mínima de una etapa en el catálogo. */
 export const stageSummarySchema = z.object({
-  id: z.number().int().min(0).max(CURRICULUM_STAGE_COUNT - 1),
+  id: z.number().int().refine(isKnownStageId, STAGE_ID_MESSAGE),
   slug: z.string().min(1),
   title: z.string().min(1),
   objective: z.string().min(1),
@@ -146,11 +155,7 @@ export const unitSummarySchema = z.object({
   objective: z.string().min(1),
   estimatedMin: estimatedMinSchema,
   order: z.number().int().nonnegative(),
-  stageId: z
-    .number()
-    .int()
-    .min(0)
-    .max(CURRICULUM_STAGE_COUNT - 1),
+  stageId: z.number().int().refine(isKnownStageId, STAGE_ID_MESSAGE),
   moduleCode: z.string().min(1),
   prerequisiteIds: z.array(z.string().min(1)),
 });
@@ -438,8 +443,6 @@ export const contentSeedFlashcardSchema = z.object({
   back: z.string().min(1).max(400, "El reverso de una tarjeta es breve (máx. 400 caracteres)"),
 });
 
-const COMPETENCY_CODE = /^C([1-9]|1[0-4])$/;
-
 /**
  * Ejercicio sembrado (`plantilla-ejercicio.md`, `banco-ejercicios.md` §6). Las
  * reglas duras de la plantilla se validan en el esquema de la semilla completa.
@@ -453,7 +456,9 @@ export const contentSeedExerciseSchema = z.object({
   difficulty: z.number().int().min(1).max(4),
   concepts: z.array(z.string().min(1)).min(1, "Declara al menos un concepto (alimenta el repaso)"),
   competencies: z
-    .array(z.string().regex(COMPETENCY_CODE, "La competencia debe ser un código entre C1 y C14"))
+    .array(
+      z.string().regex(COMPETENCY_CODE_PATTERN, "La competencia debe ser C1–C14 o AWS-C1–AWS-C15"),
+    )
     .min(1),
   estimatedMin: estimatedMinSchema.default(null),
   language: sandboxLanguageSchema.nullable().default(null),
@@ -717,6 +722,15 @@ export const contentSeedSchema = z
 
             for (const message of exerciseRuleViolations(exercise)) {
               fail(`Ejercicio ${exercise.slug}: ${message}`, exercisePath);
+            }
+
+            for (const [competencyIndex, code] of exercise.competencies.entries()) {
+              if (!isCompetencyOfCourse(code, "fullstack-ia")) {
+                fail(
+                  `La competencia ${code} no pertenece a la ruta fullstack-ia`,
+                  [...exercisePath, "competencies", competencyIndex],
+                );
+              }
             }
           }
 

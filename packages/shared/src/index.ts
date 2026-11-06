@@ -8,6 +8,7 @@ export * from "./schemas/analytics";
 export * from "./schemas/auth";
 export * from "./schemas/common";
 export * from "./schemas/content";
+export * from "./schemas/course";
 export * from "./schemas/exercise";
 export * from "./schemas/exercise-draft";
 export * from "./schemas/hint";
