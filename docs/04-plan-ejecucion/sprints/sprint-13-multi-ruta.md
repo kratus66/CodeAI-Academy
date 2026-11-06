@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (6/19: T1 ✅ · T2 ✅ · T3 ✅ · T3b ✅ · T3c ✅ · T4 ✅) · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (7/19: T1 ✅ · T2 ✅ · T3 ✅ · T3b ✅ · T3c ✅ · T4 ✅ · T5 ✅) · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -344,15 +344,16 @@ VALUES ('fullstack-ia', 'Desarrollo de software con IA', 'Comprender, diseñar, 
 | Campo | Valor |
 |-------|-------|
 | **Depende de** | S13-T4 |
-| **Archivos** | `apps/api/src/modules/content/content.repository.ts` (modificar) · `apps/api/src/modules/content/prisma-content.repository.ts` (modificar) · `apps/api/src/modules/content/in-memory-content.repository.ts` (modificar) |
+| **Archivos** | `apps/api/src/modules/content/content.repository.ts` (modificar) · `apps/api/src/modules/content/prisma-content.repository.ts` (modificar) · `apps/api/src/modules/content/in-memory-content.repository.ts` (modificar) · `apps/api/src/modules/content/in-memory-content.repository.spec.ts` (crear). **Excepción declarada:** 4 archivos, porque el puerto obliga a cambiar los dos adaptadores a la vez y el cuarto es sólo la prueba |
 
-**Contrato:**
+**Contrato** (revisado contra el código el 2026-11-06):
 
 ```ts
 // content.repository.ts
 export interface StageListFilter extends PageWindow {
   level?: number;          // ya existe
-  course: CourseSlug;      // nuevo, obligatorio: el servicio aplica el valor por defecto
+  /** Ruta de las etapas. Opcional para no romper al servicio actual: sin valor, el adaptador usa DEFAULT_COURSE_SLUG. S13-T6 lo pasa siempre. */
+  course?: CourseSlug;
 }
 
 export interface ContentRepository {
@@ -361,15 +362,32 @@ export interface ContentRepository {
 }
 ```
 
-- **Prisma:** `listStages` añade `courseSlug: filter.course` al `where`. `listCourses` devuelve rutas con `isPublished = true` ordenadas por `order` y `slug`, con `stageCount` = etapas publicadas de la ruta, `stageLabelPrefix` tomado de `COURSE_REGISTRY[slug]` y `notice` de la fila. Una fila cuyo `slug` no esté en `COURSE_SLUGS` se omite (no rompe la respuesta).
-- **En memoria:** mismas reglas; la ruta de cada etapa se deduce con `courseForStageId`.
+```ts
+// in-memory-content.repository.ts
+/** Ruta del conjunto en memoria: como el resto del conjunto, publicada por definición. */
+export interface InMemoryCourse {
+  slug: CourseSlug;
+  title: string;
+  objective: string;
+  notice: string | null;
+  order: number;
+}
+// ContentDataset gana `courses?: readonly InMemoryCourse[]` (opcional; ausente = []).
+// EMPTY_CONTENT_DATASET no necesita cambiar si el campo es opcional.
+```
+
+- **Prisma, `listStages`:** añade `courseSlug: filter.course ?? DEFAULT_COURSE_SLUG` al `where` (el filtro `isPublished` y el de `level` siguen igual).
+- **Prisma, `listCourses`:** `where: { isPublished: true, slug: { in: [...COURSE_SLUGS] } }` (así el `total` cuadra con los elementos), orden `[{ order: "asc" }, { slug: "asc" }]`, `skip`/`take` de la ventana y `_count` de etapas **publicadas**. Cada fila se convierte en `CourseSummary` con `stageLabelPrefix = COURSE_REGISTRY[slug].stageLabelPrefix` y `notice` de la fila, mediante una función local del archivo (el mapper no está en la lista).
+- **En memoria** (el conjunto ya es publicado por definición, ver el comentario de `ContentDataset`): `listStages` filtra además por `courseForStageId(stage.id)?.slug === (filter.course ?? DEFAULT_COURSE_SLUG)`; `listCourses` toma `dataset.courses ?? []`, ordena por `order` y `slug`, pagina con el `paginate` existente y calcula `stageCount` como el número de etapas de `dataset.stages` que pertenecen a esa ruta.
 
 **Criterios de aceptación**
-- [ ] `listStages({ course: "fullstack-ia", … })` en memoria devuelve sólo etapas 0–11; con `"aws-cloud"`, sólo 100–112.
-- [ ] `listCourses` en memoria excluye rutas no publicadas y cuenta sólo etapas publicadas.
-- [ ] Verificación común en verde (si un spec existente construye `StageListFilter` sin `course`, se añade el campo en ese spec **sólo si** está en la lista; si no, detenerse y reportar).
+- [x] `in-memory-content.repository.spec.ts`: `listStages` sin `course` y con `"fullstack-ia"` devuelve sólo etapas 0–11; con `"aws-cloud"`, sólo 100–112.
+- [x] `listCourses` en memoria respeta el orden (`order`, luego `slug`), pagina y cuenta las etapas de cada ruta (prueba con etapas de las dos rutas en el conjunto).
+- [x] Verificación común en verde, sin tocar el servicio (el servicio actual sigue funcionando porque `course` es opcional).
 
 **Qué NO hacer:** no tocar servicio, controlador ni mapper.
+
+**Revisión (2026-11-06): ✅ aprobada.** Diff exacto a la ficha revisada; `toCourseSummary` usa una guarda de tipo en lugar de `as` y el orden en memoria replica el de Prisma sin mutar el conjunto. 9 pruebas nuevas (incluidos el desempate por `slug` y el conjunto sin rutas). Verificación repetida: build, `typecheck` y `lint` en 0; api 881 · web 407 · shared 312. El Constructor ejecutó además una consulta de humo de solo lectura contra la base con un script temporal que luego borró: está fuera de su lista de archivos, pero no tuvo efecto y lo reportó.
 
 ---
 

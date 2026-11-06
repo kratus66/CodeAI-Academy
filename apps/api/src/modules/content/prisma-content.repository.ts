@@ -7,10 +7,20 @@ import { PrismaService } from "../../database/prisma.service";
 import type {
   ContentRepository,
   Page,
+  PageWindow,
   ResourceListFilter,
   StageListFilter,
 } from "./content.repository";
-import type { ResourceSummary, StageDetail, StageSummary, UnitDetail, LessonDetail } from "@codeai/shared";
+import type {
+  CourseSlug,
+  CourseSummary,
+  LessonDetail,
+  ResourceSummary,
+  StageDetail,
+  StageSummary,
+  UnitDetail,
+} from "@codeai/shared";
+import { COURSE_REGISTRY, COURSE_SLUGS, DEFAULT_COURSE_SLUG } from "@codeai/shared";
 import {
   toExerciseSummary,
   toLessonDetail,
@@ -77,6 +87,7 @@ export class PrismaContentRepository implements ContentRepository {
   async listStages(filter: StageListFilter): Promise<Page<StageSummary>> {
     const where: Prisma.StageWhereInput = {
       isPublished: true,
+      courseSlug: filter.course ?? DEFAULT_COURSE_SLUG,
       ...(filter.level === undefined ? {} : { level: filter.level }),
     };
 
@@ -239,4 +250,63 @@ export class PrismaContentRepository implements ContentRepository {
 
     return { items: rows.map(toResourceSummary), total };
   }
+
+  async listCourses(window: PageWindow): Promise<Page<CourseSummary>> {
+    const where: Prisma.CourseWhereInput = {
+      isPublished: true,
+      slug: { in: [...COURSE_SLUGS] },
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.course.findMany({
+        where,
+        orderBy: [{ order: "asc" }, { slug: "asc" }],
+        skip: window.skip,
+        take: window.take,
+        include: {
+          _count: { select: { stages: { where: { isPublished: true } } } },
+        },
+      }),
+      this.prisma.course.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => toCourseSummary(row, row._count.stages)),
+      total,
+    };
+  }
+}
+
+/** Fila de `Course` que necesita la ficha de ruta. */
+interface CourseRow {
+  slug: string;
+  title: string;
+  objective: string;
+  notice: string | null;
+  order: number;
+}
+
+/**
+ * `stageLabelPrefix` no se guarda en la base: sale del registro de rutas de
+ * `@codeai/shared`. El `where` de `listCourses` limita a `COURSE_SLUGS`, así que
+ * la guarda solo convierte esa invariante del adaptador en tipos.
+ */
+function toCourseSummary(row: CourseRow, stageCount: number): CourseSummary {
+  if (!isCourseSlug(row.slug)) {
+    throw new Error(`Ruta desconocida en la base de datos: ${row.slug}`);
+  }
+
+  return {
+    slug: row.slug,
+    title: row.title,
+    objective: row.objective,
+    stageLabelPrefix: COURSE_REGISTRY[row.slug].stageLabelPrefix,
+    order: row.order,
+    stageCount,
+    notice: row.notice,
+  };
+}
+
+function isCourseSlug(value: string): value is CourseSlug {
+  return COURSE_SLUGS.some((slug) => slug === value);
 }

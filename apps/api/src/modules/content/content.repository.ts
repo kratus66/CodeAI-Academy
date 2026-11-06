@@ -1,4 +1,6 @@
 import type {
+  CourseSlug,
+  CourseSummary,
   LessonDetail,
   ResourceSummary,
   ResourceType,
@@ -22,6 +24,11 @@ export interface PageWindow {
 
 export interface StageListFilter extends PageWindow {
   level?: number;
+  /**
+   * Ruta de las etapas. Opcional para no romper al servicio actual: sin valor,
+   * el adaptador usa `DEFAULT_COURSE_SLUG`. S13-T6 lo pasa siempre.
+   */
+  course?: CourseSlug;
 }
 
 export interface ResourceListFilter extends PageWindow {
@@ -41,4 +48,6 @@ export interface ContentRepository {
   findUnit(code: string): Promise<UnitDetail | null>;
   findLesson(slug: string): Promise<LessonDetail | null>;
   listResources(filter: ResourceListFilter): Promise<Page<ResourceSummary>>;
+  /** Catálogo de rutas publicadas: la ventana la calcula el servicio. */
+  listCourses(window: PageWindow): Promise<Page<CourseSummary>>;
 }
