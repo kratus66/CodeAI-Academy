@@ -70,8 +70,22 @@ model RefreshToken {
 
 // ─────────────────────────── CONTENIDO ───────────────────────────
 
+/// Ruta formativa (`docs/01-curriculo/curriculo-aws.md` §3.1). Rangos y prefijos viven en `COURSE_REGISTRY` de @codeai/shared.
+model Course {
+  slug        String   @id // "fullstack-ia" | "aws-cloud"
+  title       String
+  objective   String
+  notice      String?
+  order       Int
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stages Stage[]
+}
+
 model Stage {
-  id           Int      @id // 0..11
+  id           Int      @id // 0..11 en fullstack-ia · 100..112 en aws-cloud
   slug         String   @unique
   title        String
   objective    String
@@ -81,11 +95,15 @@ model Stage {
   isPublished  Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  courseSlug   String   @default("fullstack-ia")
+
+  course Course @relation(fields: [courseSlug], references: [slug], onDelete: Restrict)
 
   modules  Module[]
   projects Project[]
 
   @@index([level])
+  @@index([courseSlug])
 }
 
 model Module {

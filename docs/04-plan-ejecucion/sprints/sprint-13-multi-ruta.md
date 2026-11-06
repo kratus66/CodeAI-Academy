@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (5/19: T1 ✅ · T2 ✅ · T3 ✅ · T3b ✅ · T3c ✅) · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (6/19: T1 ✅ · T2 ✅ · T3 ✅ · T3b ✅ · T3c ✅ · T4 ✅) · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -322,12 +322,20 @@ VALUES ('fullstack-ia', 'Desarrollo de software con IA', 'Comprender, diseñar, 
 (3) añada `Stage.courseSlug` con `DEFAULT 'fullstack-ia'`, el índice y la clave foránea `ON DELETE RESTRICT`.
 
 **Criterios de aceptación**
-- [ ] `npx prisma validate` y `npx prisma format --check` (o `format` sin diferencias) en `apps/api`.
-- [ ] `npm run db:migrate` aplica la migración sobre una base con datos existentes sin error; todas las etapas quedan con `courseSlug = 'fullstack-ia'`.
-- [ ] `npm run db:seed` sigue funcionando y reporta 12 etapas, 48 módulos, 207 unidades.
-- [ ] Verificación común en verde.
+- [x] `npx prisma validate` y `npx prisma format --check` (o `format` sin diferencias) en `apps/api`.
+- [x] `npm run db:migrate` aplica la migración sobre una base con datos existentes sin error; todas las etapas quedan con `courseSlug = 'fullstack-ia'`.
+- [x] `npm run db:seed` sigue funcionando y reporta 12 etapas, 48 módulos, 207 unidades.
+- [x] Verificación común en verde.
+
+**Revisión (2026-11-06): ✅ aprobada (reintento 3).** Migración `20261106160012_courses` en el orden de la ficha (tabla → `INSERT` literal → columna, índice y FK `RESTRICT`). Comprobado en la base: 12 etapas en `fullstack-ia`, una fila en `Course` (publicada, sin aviso), 12 filas de historial sin revertidas, `Stage_courseSlug_fkey` con `confdeltype = r`; `migrate status` al día. Verificación repetida: build, `typecheck` y `lint` en 0; shared 312 · api 872 · web 407. **Notas:** (1) `prisma generate` no pudo reemplazar el binario del motor (`EPERM`) porque el servidor de desarrollo del responsable lo tiene abierto; los tipos sí se regeneraron (el motor es de la misma versión). Tras parar `npm run dev`, conviene ejecutar `npm run db:generate -w apps/api`. (2) El Constructor borró tres temporales `query_engine-*.tmp*` de `node_modules/.prisma/client` que dejaron los reintentos: está fuera de su lista de archivos, pero es inocuo. (3) Riesgo de finales de línea registrado en §6.
 
 **Qué NO hacer:** no insertar la ruta `aws-cloud` en la migración (la crea su semilla en T9); no tocar otros modelos.
+
+**Incidencia (2026-11-06): 🔴 bloqueo bien reportado por el Constructor.** `prisma migrate dev --create-only` respondió «The migration `20261028170000_interviews` was modified after it was applied» y propuso un reset. No es drift de esquema (`migrate status`: «up to date»). La base local guarda dos filas de esa migración en `_prisma_migrations`: un intento fallido de S10 (checksum `429abb9f8784…`, `applied_steps_count = 0`, **`rolled_back_at` = 2026-10-28 19:47:05**) y la aplicación buena de dos segundos después (checksum `0ba3d5b7adca…`, que coincide con el archivo). `migrate dev` compara también el checksum de la fila revertida. **Resolución:** respaldo con `npm run db:backup` y borrado de esa única fila revertida, que no cambia el esquema (lo ejecuta una persona; el Orquestador no tiene permiso para escribir en la base). Sin esto, toda migración futura (S14, S15, S16) chocaría igual. Tras la resolución, T4 se reintenta partiendo del `schema.prisma` ya modificado, que el Orquestador revisó y coincide con el contrato. En el reintento se actualiza también el comentario `// 0..11` de `Stage.id` a `// 0..11 en fullstack-ia · 100..112 en aws-cloud`.
+
+**Reintento 1 (2026-11-06): 🔴 bloqueado otra vez, por la misma causa.** El prompt de reintento se envió antes de borrar la fila. El Constructor se detuvo sin tocar la base y dejó hecho el comentario de `Stage.id`. Respaldo tomado por el Orquestador: `backups/2026-11-06T15-48-34-978Z.sql.gz`. Falta el borrado de la fila, a cargo de una persona. El siguiente reintento empieza **comprobando** el historial y se detiene si la fila sigue ahí.
+
+**Reintento 2 (2026-11-06):** el Constructor se detuvo en el paso 0 (12 filas, 1 revertida), como se le pidió. **Resolución aplicada:** con autorización explícita del responsable, el Orquestador borró la fila por su checksum completo (`DELETE 1`). Historial: 11 filas, 0 revertidas; `prisma migrate status`: «11 migrations found… Database schema is up to date!». T4 queda lista para el reintento 3.
 
 ---
 
@@ -712,6 +720,7 @@ No es tarea del Constructor. Al aprobar T1–T17, el Orquestador actualiza en el
 - **Proyectos y entrevistas** validan etapas 0–11 (`project.ts`, `interview.ts`): se amplían en S17-T1, antes del primer proyecto de AWS.
 - **Panel «Continuar» y analítica** mezclan rutas: se separan por ruta en S15 (preparación por certificación) y S26.
 - `contentSeedSchema` y `courseSeedSchema` duplican reglas de árbol; unificarlas es refactor posterior, no bloquea.
+- **Finales de línea de las migraciones (descubierto en S13-T4):** el repositorio tiene `core.autocrlf=true` y no tiene `.gitattributes`. Prisma guarda el checksum de cada `migration.sql` tal como estaba en disco al aplicarlo. En la base local, `20261028170000_interviews` y `20261106160012_courses` se aplicaron con CRLF y el resto con LF (`git ls-files --eol`). Si una operación de Git reescribe uno de esos archivos con otros finales de línea, `migrate dev` podría volver a decir «modified after it was applied». **Antes de la primera migración de S14** se comprueba si la versión de Prisma del proyecto compara checksums sin importar el final de línea; si no lo hace, se añade un `.gitattributes` para `apps/api/prisma/migrations/**` y se documenta en `modelo-datos.md`.
 - **Prueba intermitente descubierta durante S13-T3b (no planificada):** `apps/web/src/features/interviews/components/InterviewRoom.spec.tsx`, prueba «inicia la sesión y muestra fase, turnos restantes y cronómetro», línea ~89. Comprueba `startSession` en cuanto aparece el título, pero el título depende de `loadScenario` y el arranque de sesión puede resolverse después; con carga en paralelo falla una vez de cada varias. Corrección probable: envolver esa expectativa en `await waitFor(…)`. Es código de S10; por la regla 4 del roadmap pasa al sprint siguiente salvo que bloquee el cierre de este, en cuyo caso se convierte en una microtarea de un archivo.
 
 ## 7. Documentos relacionados
