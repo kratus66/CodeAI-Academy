@@ -353,6 +353,25 @@ describe("StudentDashboard", () => {
     );
   });
 
+  it("ofrece el acceso a las rutas junto a los demás accesos del área", async () => {
+    render(<StudentDashboard loadDashboard={vi.fn(async () => data())} />);
+
+    const accesos = await screen.findByRole("navigation", {
+      name: "Accesos del área de aprendizaje",
+    });
+
+    expect(within(accesos).getAllByRole("link")).toHaveLength(3);
+    expect(
+      within(accesos).getByRole("link", { name: /Rutas de aprendizaje/ }),
+    ).toHaveAttribute("href", "/learn/courses");
+    expect(
+      within(accesos).getByRole("link", { name: /Catálogo de etapas/ }),
+    ).toHaveAttribute("href", "/learn/stages");
+    expect(
+      within(accesos).getByRole("link", { name: /Tu avance completo/ }),
+    ).toHaveAttribute("href", "/learn/progress");
+  });
+
   it("muestra el error con reintento cuando la API no responde", async () => {
     const loadDashboard = vi
       .fn<() => Promise<StudentDashboardData>>()

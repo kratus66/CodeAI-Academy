@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (16/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13–T16 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (17/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13–T17 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -812,18 +812,24 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 
 ---
 
-### S13-T17 — Acceso a «Rutas» en la navegación
+### S13-T17 — Acceso a las rutas desde el panel de inicio
 
 | Campo | Valor |
 |-------|-------|
 | **Depende de** | S13-T14 |
-| **Archivos** | `apps/web/src/features/learning/components/LearnNav.tsx` (modificar) · `apps/web/src/features/learning/components/LearnNav.spec.tsx` (modificar) |
+| **Archivos** | `apps/web/src/features/learning/components/StudentDashboard.tsx` (modificar) · `apps/web/src/features/learning/components/StudentDashboard.spec.tsx` (modificar) |
 
-**Contrato:** nuevo destino «Rutas» → `/learn/courses` en la navegación de escritorio, con `aria-current` cuando la ruta activa empieza por `/learn/courses`. La barra móvil no cambia (el acceso móvil es el enlace «Cambiar de ruta» de T15).
+**Cambio de enfoque (2026-11-08, revisado contra el código).** La ficha original añadía «Rutas» a `LearnNav`, pero cada destino de la navegación lleva una pieza de Tetris propia, `TetrominoId` sólo tiene siete (`I O T S Z J L`) y las siete están en uso (también en `MobileTabBar`). Un octavo destino rompería el sistema visual de la rama. Además, `/learn/courses` ya queda bajo «Aprender», porque `activeHref` resuelve por prefijo `/learn`. **La navegación no se toca.** El acceso va en el panel de inicio (`/learn`), donde el alumno decide qué estudiar, junto a los accesos que ya tiene.
+
+**Contrato:** en el bloque `<nav aria-label="Accesos del área de aprendizaje">` de `StudentDashboard`, un enlace nuevo «Rutas de aprendizaje →» a `/learn/courses`, el primero del bloque, con las mismas `SECONDARY_LINK_CLASSES` y el mismo `<span aria-hidden="true"> →</span>` que los demás. Nada más cambia.
 
 **Criterios de aceptación**
-- [ ] Prueba del destino nuevo y de su `aria-current`.
-- [ ] Verificación de `apps/web` en verde.
+- [x] Prueba: el bloque «Accesos del área de aprendizaje» contiene un enlace «Rutas de aprendizaje» a `/learn/courses`, además de los dos que ya había.
+- [x] Las pruebas existentes del panel siguen pasando sin cambios.
+- [x] `LearnNav.tsx` y `MobileTabBar.tsx` sin cambios.
+- [x] Verificación de `apps/web` en verde.
+
+**Revisión (2026-11-08): ✅ aprobada.** El diff añade sólo el enlace, primero del bloque. La prueba fija los tres enlaces y sus destinos. Verificación repetida: build, `typecheck` y `lint` en 0; api 887 · web 422 · shared 341; `next build` en 0.
 
 ---
 

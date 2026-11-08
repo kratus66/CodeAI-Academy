@@ -326,6 +326,10 @@ export function StudentDashboard({
         aria-label="Accesos del área de aprendizaje"
         className="flex flex-wrap gap-x-6 gap-y-2"
       >
+        <Link href="/learn/courses" className={SECONDARY_LINK_CLASSES}>
+          Rutas de aprendizaje
+          <span aria-hidden="true"> →</span>
+        </Link>
         <Link href="/learn/stages" className={SECONDARY_LINK_CLASSES}>
           Catálogo de etapas
           <span aria-hidden="true"> →</span>
