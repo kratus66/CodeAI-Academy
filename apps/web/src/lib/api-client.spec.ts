@@ -333,6 +333,66 @@ describe("contentApi", () => {
     );
   });
 
+  it("añade el filtro de ruta a la URL de etapas solo cuando se indica", async () => {
+    fetchMock.mockImplementation(async () =>
+      jsonResponse({
+        data: [STAGE],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      }),
+    );
+
+    await contentApi.listStages(undefined, { course: "aws-cloud" });
+    await contentApi.listStages(undefined, {});
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/content/stages?course=aws-cloud",
+    );
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      "http://localhost:3001/api/content/stages",
+    );
+  });
+
+  it("lista las rutas validando la respuesta", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            slug: "aws-cloud",
+            title: "AWS Cloud",
+            objective: "Prepararse para AWS",
+            stageLabelPrefix: "A",
+            order: 1,
+            stageCount: 13,
+            notice: null,
+          },
+        ],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      }),
+    );
+
+    const page = await contentApi.listCourses();
+
+    expect(page.courses.map((item) => item.slug)).toEqual(["aws-cloud"]);
+    expect(page.meta.total).toBe(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/content/courses",
+    );
+  });
+
+  it("rechaza un catálogo de rutas fuera de contrato", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [{ slug: "otra-ruta" }],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      }),
+    );
+
+    const error = await captureApiError(contentApi.listCourses());
+
+    expect(error.code).toBe("INTERNAL_ERROR");
+    expect(error.message).toContain("contrato");
+  });
+
   it("devuelve el detalle de la etapa con las unidades de cada módulo", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ stage: STAGE_DETAIL }));
 

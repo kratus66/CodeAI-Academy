@@ -8,6 +8,7 @@ import {
   aiUsageResponseSchema,
   cohortAnalyticsSchema,
   competencyProgressSchema,
+  courseListResponseSchema,
   errorBreakdownSchema,
   errorResponseSchema,
   exerciseDetailResponseSchema,
@@ -50,6 +51,8 @@ import type {
   AnalyticsRange,
   CohortAnalytics,
   CompetencyProgress,
+  CourseSlug,
+  CourseSummary,
   CreateProjectSubmissionInput,
   CreateSubmissionInput,
   ErrorBreakdown,
@@ -291,6 +294,12 @@ export interface StageCatalogPage {
   readonly meta: PaginationMeta;
 }
 
+/** Catálogo paginado de rutas de aprendizaje. */
+export interface CourseCatalogPage {
+  readonly courses: readonly CourseSummary[];
+  readonly meta: PaginationMeta;
+}
+
 const stagePageSchema = paginatedSchema(stageSummarySchema);
 const stageResponseSchema = z.object({ stage: stageDetailSchema });
 const unitResponseSchema = z.object({ unit: unitDetailSchema });
@@ -301,12 +310,25 @@ const lessonResponseSchema = z.object({ lesson: lessonDetailSchema });
  * de `@codeai/shared`: si la API cambia de forma, falla aquí y no en la vista.
  */
 export const contentApi = {
-  async listStages(signal?: AbortSignal): Promise<StageCatalogPage> {
+  async listCourses(signal?: AbortSignal): Promise<CourseCatalogPage> {
     const page = await requestParsed(
-      stagePageSchema,
-      "/content/stages",
+      courseListResponseSchema,
+      "/content/courses",
       signal,
     );
+
+    return { courses: page.data, meta: page.meta };
+  },
+
+  async listStages(
+    signal?: AbortSignal,
+    options?: { readonly course?: CourseSlug },
+  ): Promise<StageCatalogPage> {
+    const path =
+      options?.course === undefined
+        ? "/content/stages"
+        : `/content/stages?course=${encodeURIComponent(options.course)}`;
+    const page = await requestParsed(stagePageSchema, path, signal);
 
     return { stages: page.data, meta: page.meta };
   },

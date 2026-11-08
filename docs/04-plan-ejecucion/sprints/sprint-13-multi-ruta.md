@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (9/19: T1–T7 ✅, incluidas T3b y T3c) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (10/22: T1–T7 ✅ con T3b y T3c, y T13 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -38,7 +38,7 @@ Al cerrar el sprint:
 
 ## 4. Tareas
 
-> Fichas atómicas según [`../../05-orquestacion/plantilla-tarea.md`](../../05-orquestacion/plantilla-tarea.md). **Orden obligatorio:** T1 → T2 → T3 → T3b → T3c → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11 → T12 → T13 → T14 → T15 → T16 → T17. T18 es del Orquestador.
+> Fichas atómicas según [`../../05-orquestacion/plantilla-tarea.md`](../../05-orquestacion/plantilla-tarea.md). **Orden obligatorio:** T1 → T2 → T3 → T3b → T3c → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11 → T12 → T13 → T14 → T15 → T16 → T17. T18 es del Orquestador. **Ajuste del 2026-11-08:** la cadena web (T13 → T17) sólo depende de T6, así que avanza mientras T8–T11 esperan a que la base de datos vuelva a estar disponible. Se añaden **T12b** (etapa de una unidad a partir de su código, antes de T15) y **T16b** (analítica del estudiante), tras descubrir que la web deducía la etapa con una expresión que sólo entiende `U<n>`. Orden web: T13 → T19 → T12b → T14 → T15 → T16 → T16b → T17. **T19** arregla la prueba intermitente de `InterviewRoom`, que ya entorpecía cada verificación.
 >
 > **Verificación común** (salvo que la ficha diga otra cosa), desde la raíz:
 > ```bash
@@ -563,6 +563,8 @@ export async function countCourse(
 
 **Qué NO hacer:** no cambiar el orden de escritura, las claves de `upsert` ni los mensajes; no añadir la semilla de AWS (T9); en `tsconfig.seed.json`, nada más que la opción indicada.
 
+**Estado (2026-11-08): 🟡 verificación estática ✅, pendiente de la base.** Docker Desktop estaba apagado. El Constructor se detuvo antes de tocar nada; después se le autorizó a hacer el refactor sin la base, porque la foto previa de prerrequisitos describe lo que dejó la semilla antigua (última siembra: 2026-11-06; `content.seed.json` sin cambios desde el 2026-11-04) y sigue siendo válida mientras nadie siembre con el código nuevo. El Orquestador comparó el código movido con el original línea a línea: es idéntico salvo `courseSlug` en la etapa y el conteo por ruta. `typecheck:seed`, build, `typecheck` y `lint` en 0; api 887 · web 407 · shared 329. **Falta**, en este orden: foto previa (207 líneas), `npm run db:seed` dos veces, foto posterior y `diff` idéntico. Hasta entonces T8 no se da por aprobada ni se hace su commit.
+
 ---
 
 ### S13-T9 — Cargador de la semilla de una ruta y script `db:seed:aws`
@@ -580,7 +582,7 @@ export async function countCourse(
 - Scripts: en `apps/api/package.json`, `"db:seed:aws": "npm run typecheck:seed && node prisma/seed/seed-course.mts aws-cloud"`; en la raíz, `"db:seed:aws": "npm run db:seed:aws -w apps/api"`.
 
 **Criterios de aceptación**
-- [ ] Con un esqueleto temporal mínimo válido (creado sólo para la prueba manual y **no** dejado en el repo), `npm run db:seed:aws` dos veces seguidas da las mismas cifras.
+- [ ] Con un esqueleto temporal mínimo válido (creado sólo para la prueba manual y **no** dejado en el repo), `npm run db:seed:aws` dos veces seguidas da las mismas cifras. Como esa prueba **escribe en la base**, el esqueleto temporal usa sólo identificadores reales del currículo para que T10 los sobrescriba con `upsert` y no queden filas huérfanas: ruta `aws-cloud` (`isPublished: false`), etapa 100 con slug `aws0-diagnostico-cuenta-segura-nivelacion`, módulo `AWS-M0.1` y unidad `AWS-U0.1.1`, con los títulos de `curriculo-aws.md` y todo sin publicar.
 - [ ] Un archivo de unidad con nombre equivocado detiene la carga sin escribir nada.
 - [ ] `npm run db:seed` (ruta por defecto) sigue dando sus cifras.
 - [ ] `npm run typecheck:seed -w apps/api` incluye el archivo nuevo y está en verde.
@@ -599,7 +601,19 @@ export async function countCourse(
 **Contrato:**
 - `course`: `{ "slug": "aws-cloud", "title": "Ruta AWS Cloud: arquitectura y desarrollo", "objective": "<objetivo de §1 del currículo en una frase>", "notice": "<texto exacto de COURSE_NOTICES['aws-cloud']>", "order": 1, "isPublished": false }`.
 - `resources`: `[]`.
-- Etapas A0–A6 (ids 100–106): `slug` = `aws<n>-<palabras-clave-del-título>` en minúsculas sin tildes; `title` = título de la etapa; `objective` = campo **Objetivo** de su tabla; `level` = nivel del currículo (A0–A1 → 1, A2–A4 → 2, A5–A6 → 3); `estimatedMin` = límite inferior de horas × 60; `order` = n + 1; `isPublished: false`.
+- Etapas A0–A6 (ids 100–106): `slug` exacto de esta tabla (también vale para T11);
+
+  | Id | Slug | Id | Slug |
+  |----|------|----|------|
+  | 100 | `aws0-diagnostico-cuenta-segura-nivelacion` | 107 | `aws7-fundamentos-ia` |
+  | 101 | `aws1-fundamentos-nube` | 108 | `aws8-desarrollo-ia-generativa` |
+  | 102 | `aws2-arquitectura-soluciones-asociado` | 109 | `aws9-seguridad` |
+  | 103 | `aws3-desarrollo-aws` | 110 | `aws10-ingenieria-datos` |
+  | 104 | `aws4-operaciones-nube` | 111 | `aws11-ingenieria-ml` |
+  | 105 | `aws5-devops-profesional` | 112 | `aws12-portafolio-entrevistas-vigencia` |
+  | 106 | `aws6-arquitectura-soluciones-profesional` | | |
+
+  `title` = título de la etapa; `objective` = campo **Objetivo** de su tabla; `level` = nivel del currículo (A0–A1 → 1, A2–A4 → 2, A5–A6 → 3); `estimatedMin` = límite inferior de horas × 60; `order` = n + 1; `isPublished: false`.
 - Módulos y unidades: `code`, `title` y `order` del currículo; `isPublished: false`; unidades con `lessons: []`, `exercises: []`, `estimatedMin: null` y `objective` = **una capacidad observable que empieza por un verbo en infinitivo** derivada del título (p. ej., AWS-U2.2.3 → «Decidir si un flujo de red se permite combinando security groups y network ACL»).
 - `prerequisiteIds`: cada unidad depende de la anterior de su módulo; la primera de un módulo, de la última del módulo anterior; la primera de una etapa, de la última unidad de cada etapa prerrequisito según el grafo del currículo §5, **sólo con Y** (A3 y A4 ← AWS-U2.10.2; A5 ← AWS-U3.8.1 y AWS-U4.7.1; A6 ← AWS-U2.10.2). La primera unidad de A0 no tiene prerrequisitos.
 
@@ -649,6 +663,31 @@ export async function countCourse(
 
 ---
 
+### S13-T12b — Etapa de una unidad a partir de su código
+
+| Campo | Valor |
+|-------|-------|
+| **Depende de** | S13-T1 |
+| **Archivos** | `packages/shared/src/schemas/course.ts` (modificar) · `packages/shared/src/schemas/course.spec.ts` (modificar) |
+
+**Contexto mínimo** (descubierto el 2026-11-08 al revisar T14–T15 contra el código). La web deduce la etapa de cada unidad leyendo su código con `/^U(\d+)(?:\.|$)/` en dos sitios: `stageIndexOf` de `StageCatalog.tsx` y `summarizeStages` de `StudentInsights.tsx`. Con la ruta AWS falla: `AWS-U2.3.1` no encaja en la expresión, y aunque encajara daría 2 y no 102. La API no tiene el problema, porque usa `Unit.stageId` de la base. Esta tarea pone la regla en un único sitio; T15 y T16b la usan.
+
+**Contrato** (añadido a `course.ts`, sin cambiar nada de lo existente):
+
+```ts
+/** Id de etapa de un código de unidad o de módulo de cualquier ruta: "U2.3.1" → 2, "AWS-U2.3.1" → 102, "AWS-M0.1" → 100. Código mal formado, o número fuera del rango de su ruta → null. */
+export function stageIdOfCode(code: string): number | null;
+```
+
+Regla: el código debe cumplir `UNIT_CODE_PATTERN` o `MODULE_CODE_PATTERN`; la ruta sale de `courseForCode`; el id es `stageIdMin + número de etapa` y debe quedar dentro de `[stageIdMin, stageIdMax]`.
+
+**Criterios de aceptación**
+- [ ] Pruebas: `U0.1.1` → 0, `U11.2.3` → 11, `AWS-U2.3.1` → 102, `AWS-U12.3.2` → 112, `M2.3` → 2, `AWS-M0.1` → 100.
+- [ ] Pruebas de `null`: `U12.1.1` (fuera de rango), `AWS-U13.1.1` (fuera de rango), `X2.3.1`, `aws-U2.3.1`, `U2`, cadena vacía.
+- [ ] Verificación común en verde.
+
+---
+
 ### S13-T13 — Cliente web: rutas y etapas por ruta
 
 | Campo | Valor |
@@ -659,20 +698,22 @@ export async function countCourse(
 **Contrato:**
 
 ```ts
-export interface CourseCatalogPage { readonly courses: readonly CourseSummary[]; readonly meta: PageMeta; }
+export interface CourseCatalogPage { readonly courses: readonly CourseSummary[]; readonly meta: PaginationMeta; }
 
-contentApi.listCourses(signal?: AbortSignal): Promise<CourseCatalogPage>; // GET /content/courses, validado con courseListResponseSchema
+contentApi.listCourses(signal?: AbortSignal): Promise<CourseCatalogPage>; // GET /content/courses, validado con courseListResponseSchema de @codeai/shared
 contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): Promise<StageCatalogPage>;
-// sin options → "/content/stages" (URL idéntica a la actual); con course → "/content/stages?course=<slug>"
+// sin options o sin course → "/content/stages" (URL idéntica a la actual); con course → "/content/stages?course=<slug>" (con encodeURIComponent)
 ```
 
-(`PageMeta` es el tipo de `meta` que ya usa `StageCatalogPage`; reutilizarlo.)
+(`PaginationMeta` es el tipo de `meta` que ya usa `StageCatalogPage` en `api-client.ts`; se reutiliza. La petición usa el `requestParsed` existente.)
 
 **Criterios de aceptación**
-- [ ] Prueba: `listStages()` llama exactamente a la URL actual (no rompe llamadas existentes).
-- [ ] Prueba: `listStages(undefined, { course: "aws-cloud" })` añade `?course=aws-cloud`.
-- [ ] Prueba: `listCourses` valida la respuesta y falla con una forma inválida.
-- [ ] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
+- [x] Prueba: `listStages()` llama exactamente a la URL actual (no rompe llamadas existentes).
+- [x] Prueba: `listStages(undefined, { course: "aws-cloud" })` añade `?course=aws-cloud`.
+- [x] Prueba: `listCourses` valida la respuesta y falla con una forma inválida.
+- [x] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
+
+**Revisión (2026-11-08): ✅ aprobada tras una corrección.** En la primera entrega, el cambio quitó el espacio de `const stagePageSchema = …`, una línea fuera del contrato; el Constructor la restauró cuando se le pidió. 3 pruebas nuevas (la URL sin filtro ya la cubría una prueba existente). Verificación: build, `typecheck` y `lint` en 0; api 887 · shared 329 · web 410. La primera corrida de web falló en `InterviewRoom.spec.tsx` («inicia la sesión…»), la prueba intermitente de §6; al repetir, 410/410. Como ya entorpece cada verificación, pasa a ser la microtarea **S13-T19**.
 
 ---
 
@@ -702,6 +743,7 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 **Contrato:**
 - La página lee `searchParams.course`; si no cumple `courseSlugSchema`, usa `DEFAULT_COURSE_SLUG`. Pasa `course` a `StageCatalog`.
 - `StageCatalog` recibe `course?: CourseSlug` (por defecto `DEFAULT_COURSE_SLUG`), llama `contentApi.listStages(signal, { course })` **sólo** si `course` no es el de por defecto (para no cambiar la llamada actual), muestra la etiqueta con `stageLabel(stage.id)` donde hoy muestra el número de etapa, muestra `COURSE_NOTICES[course]` cuando no es `null` y enlaza «Cambiar de ruta» a `/learn/courses`.
+- La función local `stageIndexOf` (regex `/^U(\d+)…/`) se elimina; la agrupación del avance por etapa usa `stageIdOfCode` de `@codeai/shared` (S13-T12b), para que las unidades `AWS-U…` cuenten en su etapa 100–112.
 
 **Criterios de aceptación**
 - [ ] Las pruebas existentes de la ruta por defecto pasan sin cambios de comportamiento (sólo se ajusta texto si mostraba «Etapa N» y ahora «E N»/«EN»: reportarlo).
@@ -725,6 +767,24 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 
 ---
 
+### S13-T16b — Analítica del estudiante con etapas de cualquier ruta
+
+| Campo | Valor |
+|-------|-------|
+| **Depende de** | S13-T12b |
+| **Archivos** | `apps/web/src/features/analytics/components/StudentInsights.tsx` (modificar) · `apps/web/src/features/analytics/components/StudentInsights.spec.tsx` (modificar) |
+
+**Contexto mínimo.** `summarizeStages` agrupa el avance por etapa con `/^U(\d+)(?:\.|$)/`, así que descarta las unidades `AWS-U…` (ver S13-T12b).
+
+**Contrato:** `summarizeStages` usa `stageIdOfCode(unit.unitCode)` y descarta sólo los códigos para los que devuelve `null`. Donde la vista muestre el número de etapa, usa `stageLabel(stage) ?? String(stage)`. El resto no cambia.
+
+**Criterios de aceptación**
+- [ ] Prueba: con unidades `U0.1.1`, `U0.1.2` y `AWS-U2.3.1`, `summarizeStages` devuelve las etapas 0 y 102, cada una con su media.
+- [ ] Las pruebas existentes de la vista siguen pasando (si fijaban el texto «Etapa N», se ajustan sólo en ese texto).
+- [ ] Verificación de `apps/web` en verde.
+
+---
+
 ### S13-T17 — Acceso a «Rutas» en la navegación
 
 | Campo | Valor |
@@ -740,6 +800,25 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 
 ---
 
+### S13-T19 — Prueba intermitente de `InterviewRoom`
+
+| Campo | Valor |
+|-------|-------|
+| **Depende de** | — |
+| **Archivos** | `apps/web/src/features/interviews/components/InterviewRoom.spec.tsx` (modificar) |
+
+**Contexto mínimo.** La prueba «inicia la sesión y muestra fase, turnos restantes y cronómetro» falla una vez de cada pocas corridas completas de `apps/web` (§6). Espera el título del escenario, que llega con `loadScenario`, y justo después comprueba de forma síncrona que se llamó a `startSession` y que ya se ven la fase, los turnos y el cronómetro. Esas tres cosas dependen de que `startSession` haya resuelto, que puede ocurrir un instante después. Es una carrera de la prueba, no del componente.
+
+**Contrato:** sólo esa prueba. Las expectativas que dependen de la sesión (la llamada a `startSession`, «1 de 6 · Presentación», «40» y el `timer`) se esperan con `await waitFor(…)` o con consultas `findBy…`, con el mismo estilo que el resto del archivo. Lo que se comprueba no cambia: ni se quita ni se relaja ninguna expectativa. El componente no se toca.
+
+**Criterios de aceptación**
+- [ ] `git diff` sólo toca esa prueba.
+- [ ] `npx vitest run src/features/interviews/components/InterviewRoom.spec.tsx` (desde `apps/web`) pasa 10 veces seguidas.
+- [ ] `npm run test -w apps/web` pasa 3 veces seguidas sin fallos.
+- [ ] Verificación común en verde.
+
+---
+
 ### S13-T18 — Documentación (Orquestador)
 
 No es tarea del Constructor. Al aprobar T1–T17, el Orquestador actualiza en el mismo commit de cierre: [`../../03-arquitectura/contratos-api.md`](../../03-arquitectura/contratos-api.md) §3 (rutas `courses` y `?course=`), [`../../03-arquitectura/modelo-datos.md`](../../03-arquitectura/modelo-datos.md) (`Course`, `Stage.courseSlug`, semilla por unidad), `README.md` (estado y comando `db:seed:aws`) y [`../roadmap-sprints.md`](../roadmap-sprints.md).
@@ -748,7 +827,7 @@ No es tarea del Constructor. Al aprobar T1–T17, el Orquestador actualiza en el
 
 ## 5. Criterios de cierre del sprint
 
-- [ ] T1–T17, T3b y T3c aprobadas; T18 hecha.
+- [ ] T1–T17, T3b, T3c, T12b, T16b y T19 aprobadas; T18 hecha.
 - [ ] `npm run typecheck`, `npm run lint`, `npm run test` y `npm run build` en verde en todos los workspaces.
 - [ ] `npm run db:migrate`, `npm run db:seed` (12/48/207) y `npm run db:seed:aws` (13/77/262) desde una base vacía, dos veces cada semilla, con las mismas cifras.
 - [ ] Sin `course`, `GET /api/content/stages` devuelve exactamente lo mismo que antes del sprint (comparación de la respuesta).
