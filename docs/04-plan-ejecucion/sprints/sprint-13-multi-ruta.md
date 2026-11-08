@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (19/23: T1–T7 ✅ con T3b y T3c, T10 y T10b ✅, T12b ✅, T13–T17 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (20/23: T1–T7 ✅ con T3b y T3c, T10–T11 ✅ con T10b, T12b ✅, T13–T17 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -672,10 +672,12 @@ export async function countCourse(
 **Contrato:** mismas reglas que T10 para las etapas A7–A12 (ids 107–112; `level` 4). Prerrequisitos (sólo Y): A7 ← AWS-U1.5.1; A8 ← AWS-U7.4.1 y AWS-U3.8.1; A9 ← AWS-U2.10.2 y AWS-U4.7.1; A10 ← AWS-U2.10.2; A11 ← AWS-U7.4.1 y AWS-U10.5.1; A12 ← AWS-U6.7.2. Lo ya escrito no cambia.
 
 **Criterios de aceptación** (sin base de datos, como T10)
-- [ ] `courseSeedSchema` valida el archivo completo: 13 etapas, 77 módulos, 262 unidades.
-- [ ] La comparación automática de títulos con el currículo da 0 diferencias para A0–A12.
-- [ ] Objetivos en infinitivo y nada publicado.
+- [x] `courseSeedSchema` valida el archivo completo: 13 etapas, 77 módulos, 262 unidades.
+- [x] La comparación automática de títulos con el currículo da 0 diferencias para A0–A12.
+- [x] Objetivos en infinitivo y nada publicado.
 - [ ] La siembra (`npm run db:seed:aws` dos veces con las mismas cifras: 13 / 77 / 262) se comprueba en la verificación de T9, cuando haya base de datos.
+
+**Revisión (2026-11-08): ✅ aprobada (la siembra sigue pendiente de T9).** La validación independiente del Orquestador sobre el archivo completo da 0 problemas. Prerrequisitos entre etapas según el grafo: A7 ← U1.5.1; A8 ← U7.4.1 + U3.8.1; A9 ← U2.10.2 + U4.7.1; A10 ← U2.10.2; A11 ← U7.4.1 + U10.5.1; A12 ← U6.7.2. Una sola raíz (AWS-U0.1.1), sin ciclos. Diff +1368/−0 respecto a T10b. El Orquestador leyó los 81 objetivos nuevos sin encontrar inexactitudes. Las dudas del Constructor estaban bien resueltas: WAF y Shield «en capas» con los controles de red; el papel de CloudHSM respecto a KMS; Bedrock Agents y AgentCore sin atribuirles funciones concretas.
 
 ---
 
