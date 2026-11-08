@@ -193,6 +193,44 @@ describe("StageOutline", () => {
     });
   });
 
+  it("etiqueta la etapa de la ruta por defecto y vuelve a su catálogo", async () => {
+    const stage: StageDetail = { ...STAGE, id: 2, order: 3 };
+
+    render(
+      <StageOutline
+        stageId={2}
+        loadStage={async () => stage}
+        loadProgress={loadProgress}
+      />,
+    );
+
+    expect(await screen.findByText("Etapa E2 · Nivel 1")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Catálogo/ })).toHaveAttribute(
+      "href",
+      "/learn/stages",
+    );
+    expect(screen.queryByText(/No está afiliada/)).toBeNull();
+  });
+
+  it("etiqueta la etapa de AWS, avisa y vuelve al catálogo de su ruta", async () => {
+    const stage: StageDetail = { ...STAGE, id: 102, order: 3 };
+
+    render(
+      <StageOutline
+        stageId={102}
+        loadStage={async () => stage}
+        loadProgress={loadProgress}
+      />,
+    );
+
+    expect(await screen.findByText("Etapa A2 · Nivel 1")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Catálogo/ })).toHaveAttribute(
+      "href",
+      "/learn/stages?course=aws-cloud",
+    );
+    expect(screen.getByText(/No está afiliada ni avalada/)).toBeInTheDocument();
+  });
+
   it("refleja el estado y el avance de cada unidad", async () => {
     const progress = [
       unitProgress("U0.1.1", "MASTERED", 100),

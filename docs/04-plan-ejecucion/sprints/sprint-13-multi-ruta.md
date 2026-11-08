@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (14/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13–T15 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (15/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13–T16 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -768,13 +768,22 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 | Campo | Valor |
 |-------|-------|
 | **Depende de** | S13-T15 |
-| **Archivos** | `apps/web/src/features/learning/components/StageOutline.tsx` (modificar) · `apps/web/src/features/learning/components/UnitView.tsx` (modificar) · `apps/web/src/features/learning/components/StageOutline.spec.tsx` (modificar) |
+| **Archivos** | `apps/web/src/features/learning/components/StageOutline.tsx` (modificar) · `apps/web/src/features/learning/components/StageOutline.spec.tsx` (modificar) |
 
-**Contrato:** donde hoy se muestra el número de etapa se usa `stageLabel(id) ?? String(id)`; en la ruta AWS se muestra `COURSE_NOTICES` al pie del outline. Sin otros cambios.
+**Contexto** (revisado contra el código el 2026-11-08). `UnitView.tsx` **sale de la tarea**: no muestra el número de etapa (su miga de pan usa `stage.title`). `StageOutline` tiene dos cosas que arreglar: la cabecera dice `Etapa {stage.order} · Nivel …` (el mismo desfase que T15) y el enlace «← Catálogo» va siempre a `/learn/stages`, así que desde una etapa de AWS devolvería al catálogo de la otra ruta.
+
+**Contrato:**
+- La cabecera pasa a `Etapa {stageLabel(stage.id) ?? stage.order} · Nivel {stage.level}`.
+- El enlace «← Catálogo» lleva a `/learn/stages` si la etapa es de la ruta por defecto, y a `/learn/stages?course=<slug>` si es de otra ruta (`courseForStageId(stage.id)`).
+- Si `COURSE_NOTICES[slug]` de la ruta de la etapa no es `null`, se muestra al pie del outline en texto secundario.
+- Nada más cambia.
 
 **Criterios de aceptación**
-- [ ] Prueba: el outline de la etapa 102 muestra «A2» y el aviso; el de la etapa 2 muestra «E2» y ningún aviso.
-- [ ] Pruebas de `UnitView` existentes en verde (si fijaban el texto «Etapa N», detenerse y reportar: su spec no está en la lista).
+- [x] Prueba: el outline de la etapa 102 muestra «Etapa A2», el aviso y el enlace a `/learn/stages?course=aws-cloud`.
+- [x] Prueba: el outline de la etapa 2 muestra «Etapa E2», ningún aviso y el enlace a `/learn/stages`.
+- [x] Las pruebas existentes de `StageOutline` sólo se ajustan en el texto «Etapa N»; las de `UnitView` siguen en verde sin tocarlas.
+
+**Revisión (2026-11-08): ✅ aprobada.** Diff exacto al contrato; las pruebas nuevas usan un `order` distinto del id, así que demuestran que la etiqueta sale del id. Ninguna prueba existente fijaba «Etapa N». El enlace «Volver al catálogo» del estado de error sigue en `/learn/stages`, porque sin etapa cargada no hay ruta que deducir. Verificación repetida: build, `typecheck` y `lint` en 0; api 887 · web 419 · shared 341; `next build` en 0.
 
 ---
 

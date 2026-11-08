@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  COURSE_NOTICES,
+  DEFAULT_COURSE_SLUG,
+  courseForStageId,
+  stageLabel,
+} from "@codeai/shared";
 import type {
   StageDetail,
   UnitProgressSummary,
@@ -177,16 +183,22 @@ export function StageOutline({
   const { stage, units } = state.data;
   const duration = formatMinutes(stage.estimatedMin);
   const progressByCode = new Map(units.map((unit) => [unit.unitCode, unit]));
+  const courseSlug = courseForStageId(stage.id)?.slug ?? DEFAULT_COURSE_SLUG;
+  const notice = COURSE_NOTICES[courseSlug];
+  const catalogHref =
+    courseSlug === DEFAULT_COURSE_SLUG
+      ? "/learn/stages"
+      : `/learn/stages?course=${courseSlug}`;
 
   return (
     <article className="space-y-10">
       <header>
-        <Link href="/learn/stages" className={BACK_LINK_CLASSES}>
+        <Link href={catalogHref} className={BACK_LINK_CLASSES}>
           <span aria-hidden>←</span>
           Catálogo
         </Link>
         <p className="mt-6 text-xs font-medium uppercase tracking-[0.2em] text-accent">
-          Etapa {stage.order} · Nivel {stage.level}
+          Etapa {stageLabel(stage.id) ?? stage.order} · Nivel {stage.level}
         </p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
           {stage.title}
@@ -278,6 +290,10 @@ export function StageOutline({
           </section>
         ))}
       </div>
+
+      {notice === null ? null : (
+        <p className="text-sm text-slate-400">{notice}</p>
+      )}
     </article>
   );
 }
