@@ -581,11 +581,20 @@ export async function countCourse(
 - Orden: parsear esqueleto con `courseSeedSchema` → parsear cada archivo con `courseUnitFileSchema` → `mergeCourseSeed` → si hay `problems`, imprimirlos y salir con 1 **sin tocar la base** → volver a validar el resultado con `courseSeedSchema` → `prepareDatabaseEnv()` → `upsert` de `Course` por `slug` → `upsertResources` → `previousUnitCodes(seed.stages)` → `upsertStageTree(…, { courseSlug: course.slug, resourceIdsBySlug, previousUnitCode })` por etapa → `countCourse(prisma, course.slug)` y comparación con lo declarado. Importa de `./seed-lib.mts` con la extensión explícita.
 - Scripts: en `apps/api/package.json`, `"db:seed:aws": "npm run typecheck:seed && node prisma/seed/seed-course.mts aws-cloud"`; en la raíz, `"db:seed:aws": "npm run db:seed:aws -w apps/api"`.
 
+**Ajuste del 2026-11-08.** El esqueleto real ya existe (T10, T10b y T11), así que la prueba usa ese esqueleto y no uno temporal. Con la base apagada, la tarea se divide en dos partes:
+- **ahora:** código y verificación estática;
+- **cuando haya base de datos:** la verificación contra ella, junto con la de T8, en una sola sesión.
+
+T8 y T9 se aprueban y se commitean juntas tras esa verificación.
+
 **Criterios de aceptación**
-- [ ] Con un esqueleto temporal mínimo válido (creado sólo para la prueba manual y **no** dejado en el repo), `npm run db:seed:aws` dos veces seguidas da las mismas cifras. Como esa prueba **escribe en la base**, el esqueleto temporal usa sólo identificadores reales del currículo para que T10 los sobrescriba con `upsert` y no queden filas huérfanas: ruta `aws-cloud` (`isPublished: false`), etapa 100 con slug `aws0-diagnostico-cuenta-segura-nivelacion`, módulo `AWS-M0.1` y unidad `AWS-U0.1.1`, con los títulos de `curriculo-aws.md` y todo sin publicar.
-- [ ] Un archivo de unidad con nombre equivocado detiene la carga sin escribir nada.
-- [ ] `npm run db:seed` (ruta por defecto) sigue dando sus cifras.
-- [ ] `npm run typecheck:seed -w apps/api` incluye el archivo nuevo y está en verde.
+- [x] *(estático)* `npm run typecheck:seed -w apps/api` incluye el archivo nuevo y está en verde; verificación común en verde.
+- [x] *(estático)* `node prisma/seed/seed-course.mts` sin argumento o con `fullstack-ia` termina con un mensaje claro y código 1 **antes** de conectarse a la base.
+- [ ] *(base de datos)* `npm run db:seed:aws` dos veces seguidas: «13 etapas, 77 módulos, 262 unidades» (0 publicadas) y las mismas cifras en la segunda ejecución.
+- [ ] *(base de datos)* Un archivo de unidad con nombre equivocado en `aws/units/` (temporal, se borra después) detiene la carga sin escribir nada: las cifras no cambian.
+- [ ] *(base de datos)* `npm run db:seed` (ruta por defecto) sigue dando sus cifras (12/48/207/3203).
+
+**Estado (2026-11-08): 🟡 parte estática ✅, pendiente de la base.** El Orquestador revisó el código. Valida el argumento, lee y fusiona la semilla, y sólo entonces carga el entorno y crea el `PrismaClient`; un argumento, un archivo o una fusión inválidos terminan antes de conectarse. Comprobado: sin argumento, `fullstack-ia` y `gcp` salen con código 1 y un mensaje claro. `typecheck:seed`, `typecheck` y `lint` de la api en 0; suite del Constructor en verde (api 896 · web 422 · shared 341). **T8 y T9 se verifican juntas contra la base, y se aprueban y commitean juntas.**
 
 ---
 

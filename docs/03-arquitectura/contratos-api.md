@@ -131,7 +131,8 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| GET | `/stages` | — | Etapas publicadas (`?page&pageSize&level`) |
+| GET | `/courses` | — | Rutas publicadas (`?page&pageSize`) — S13 |
+| GET | `/stages` | — | Etapas publicadas de una ruta (`?page&pageSize&level&course`; sin `course`, `fullstack-ia`) |
 | GET | `/stages/:id` | — | Etapa con módulos |
 | GET | `/units/:code` | opcional | Unidad con lecciones y ejercicios (oculta soluciones) |
 | GET | `/lessons/:slug` | opcional | Lección con bloques de contenido |
@@ -177,6 +178,33 @@ Todas las respuestas de error comparten **la misma forma**. Sin excepciones.
 - `stageId` es obligatorio en `UnitSummary` y es el dato con el que la web pide la etapa desde la vista de unidad (migas y navegación anterior/siguiente). El cliente **no** deduce la etapa parseando `U0.1.1`.
 - `GET /api/content/units/:code` devuelve `{ unit }` con `lessons` y `exercises` (listas vacías hoy, porque la semilla no siembra lecciones) y sigue sin exponer `solution` ni `sources`.
 - Verificado por HTTP el 2026-10-27 (S3-T9): `stages/1` devuelve 5 módulos con sus unidades ordenadas y `units/U0.1.1` responde `stageId: 0` con `lessons: []`.
+
+**Ampliación de S13: varias rutas** ([`sprint-13-multi-ruta.md`](../04-plan-ejecucion/sprints/sprint-13-multi-ruta.md))
+
+```json
+GET /api/content/courses
+{
+  "data": [
+    {
+      "slug": "fullstack-ia",
+      "title": "Desarrollo de software con IA",
+      "objective": "Comprender, diseñar, construir, probar, desplegar y mantener software con inteligencia artificial, sin depender ciegamente de ella.",
+      "stageLabelPrefix": "E",
+      "order": 0,
+      "stageCount": 12,
+      "notice": null
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 1, "totalPages": 1 }
+}
+```
+
+- `GET /courses` lista sólo las rutas con `isPublished = true` y cuenta sólo sus etapas publicadas. `stageLabelPrefix` no se guarda en la base: sale de `COURSE_REGISTRY` de `@codeai/shared`. La ruta `aws-cloud` no aparece hasta que se publique (S26).
+- `GET /stages?course=aws-cloud` filtra por `Stage.courseSlug`; sin `course` responde exactamente lo mismo que antes de S13. Un `course` fuera de `COURSE_SLUGS` da `400 VALIDATION_ERROR`. La caché del servicio separa cada ruta (`stages:<course>:<page>:<pageSize>:<level>`).
+- **Ids de etapa por rango:** 0–11 son de `fullstack-ia` y 100–112 de `aws-cloud`. `stages/:id`, `resources?stage=` y los esquemas de resumen aceptan cualquier id de ruta conocida (`isKnownStageId`); `stages/102` sin publicar da `404`, no `400`.
+- **Códigos con espacio de nombres:** `units/:code` acepta `U2.3.1` y `AWS-U2.3.1`; `AWS-U2.3.1` inexistente da `404`. Competencias válidas: `C1`–`C14` y `AWS-C1`–`AWS-C15`.
+- `StageSummary` **no** lleva la ruta: el cliente la deduce del id con `courseForStageId`, y la etiqueta con `stageLabel` (`E2`, `A2`). La etapa de una unidad se obtiene con `stageIdOfCode` (`AWS-U2.3.1` → 102), nunca con una expresión sobre `U<n>`.
+- Verificado por HTTP el 2026-11-06 (S13-T6): `courses` 200, `stages` 200 (0–11), `?course=aws-cloud` 200 vacío, `?course=gcp` 400, `stages/102` 404, `units/AWS-U2.3.1` 404.
 
 ### 4.3 Ejercicios (`/api/exercises`)
 
