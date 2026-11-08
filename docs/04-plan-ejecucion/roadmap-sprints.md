@@ -34,7 +34,7 @@
 | **S10** | Simulaciones de entrevista | E11 | `interviews` | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
 | **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | 🔄 14/16 tareas; lanzamiento bloqueado por el adaptador de sandbox `docker` |
 | **S12** | Experiencia de aprendizaje (UX / frontend) | E1–E11 | — | ✅ 10/10 tareas; T9 (streaming del tutor) como deuda documentada |
-| **S13** | Multi-ruta: la plataforma sirve más de un curso | A0–A12 | `content` (rutas), semilla por unidad | 🔄 8/19 tareas (T1–T6 ✅) |
+| **S13** | Multi-ruta: la plataforma sirve más de un curso | A0–A12 | `content` (rutas), semilla por unidad | 🔄 9/19 tareas (T1–T7 ✅) |
 | **S14** | Preguntas tipo examen y metadatos de certificación | A1–A11 | `exercises` | ⬜ |
 | **S15** | Simulador de examen y preparación por certificación | A1–A11 | `exams` (nuevo) | ⬜ |
 | **S16** | Laboratorios AWS: arnés en el sandbox y laboratorio en tu cuenta | A0–A11 | `sandbox`, `exercises` | ⬜ (requiere sandbox `docker`, S11-T16) |

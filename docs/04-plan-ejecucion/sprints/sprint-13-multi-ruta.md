@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (8/19: T1–T6 ✅, incluidas T3b y T3c) · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (9/19: T1–T7 ✅, incluidas T3b y T3c) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -464,6 +464,9 @@ export const courseSeedSchema = z.object({
   stages: z.array(courseSeedStageSchema).min(1),
 }).superRefine(/* reglas de abajo */);
 export type CourseSeed = z.infer<typeof courseSeedSchema>;
+export type CourseSeedStage = z.infer<typeof courseSeedStageSchema>;
+export type CourseSeedModule = z.infer<typeof courseSeedModuleSchema>;
+export type CourseSeedUnit = z.infer<typeof courseSeedUnitSchema>;
 
 /** Contenido de `aws/units/<código>.json`. */
 export const courseUnitFileSchema = z.object({
@@ -498,12 +501,14 @@ export function mergeCourseSeed(
 - La unidad del esqueleto no puede traer ya lecciones ni ejercicios (una sola fuente por unidad).
 
 **Criterios de aceptación**
-- [ ] Una semilla mínima válida de `aws-cloud` (1 etapa 100, 1 módulo `AWS-M0.1`, 1 unidad `AWS-U0.1.1`) pasa.
-- [ ] Una prueba por regla 1–7 que falla con su mensaje.
-- [ ] Una prueba por regla de `mergeCourseSeed`, y una de fusión correcta que conserva el orden de las unidades.
-- [ ] Verificación común en verde.
+- [x] Una semilla mínima válida de `aws-cloud` (1 etapa 100, 1 módulo `AWS-M0.1`, 1 unidad `AWS-U0.1.1`) pasa.
+- [x] Una prueba por regla 1–7 que falla con su mensaje.
+- [x] Una prueba por regla de `mergeCourseSeed`, y una de fusión correcta que conserva el orden de las unidades.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no modificar `content.ts`; no leer archivos (eso es del cargador, T9).
+
+**Revisión (2026-11-08): ✅ aprobada.** El código lo escribió DeepSeek el 2026-11-06, en una sesión que no llegó a reportarse. El Constructor de esta sesión (Sonnet 5.5) lo encontró en el árbol, lo revisó contra la ficha y sólo quitó líneas en blanco; el Orquestador lo leyó entero. Cumple las 7 reglas y las 4 de fusión. Además exige `order` único entre etapas, lecciones y ejercicios hermanos, que es coherente con la regla 2. 17 pruebas (el reporte habló de «doce para la regla 2»: son dos, y el total sí cuadra). Verificación repetida: build, `typecheck` y `lint` en 0; shared 329 · api 887 · web 407. **Laguna de la ficha:** la regla 4 no impide que una unidad sea su propio prerrequisito ni los ciclos; queda cubierto en la guarda de S13-T12 (regla 6).
 
 ---
 
@@ -512,35 +517,51 @@ export function mergeCourseSeed(
 | Campo | Valor |
 |-------|-------|
 | **Depende de** | S13-T7 |
-| **Archivos** | `apps/api/prisma/seed/seed-lib.mts` (crear) · `apps/api/prisma/seed/seed.mts` (modificar) |
+| **Archivos** | `apps/api/prisma/seed/seed-lib.mts` (crear) · `apps/api/prisma/seed/seed.mts` (modificar) · `apps/api/prisma/tsconfig.seed.json` (modificar: sólo `"allowImportingTsExtensions": true`) |
 
-**Contexto mínimo.** `seed.mts` mezcla lectura, validación y escritura en una sola función `main`. La semilla de AWS necesita la misma escritura. Además, tras S13, el conteo final de `seed.mts` (`prisma.stage.count()` sin filtro) fallaría en cuanto exista otra ruta.
+**Contexto mínimo** (revisado contra el código el 2026-11-08). `seed.mts` mezcla lectura, validación y escritura en una sola función `main`, y la semilla de AWS necesita la misma escritura. Tres detalles del código actual condicionan el contrato:
 
-**Contrato:** `seed-lib.mts` exporta, **moviendo el código existente sin cambiar su comportamiento**:
+1. **Prerrequisitos por defecto.** Si una unidad no declara prerrequisitos, `main` le asigna la unidad anterior en el orden global del currículo (etapa → módulo → unidad, por `order`), con un mapa `previousUnitCode` calculado sobre **todas** las etapas antes de escribir. Una función que reciba una sola etapa no puede calcularlo, así que el mapa se calcula aparte y se le pasa.
+2. **Conteo final.** Hoy cuenta sin filtro (`prisma.stage.count()`…). En cuanto exista otra ruta en la base, `seed.mts` mostraría cifras mezcladas y el aviso de «filas no declaradas».
+3. **Imports locales.** La semilla se ejecuta con el *type stripping* nativo de Node 24 (`node prisma/seed/seed.mts`), que exige la extensión explícita: `import … from "./seed-lib.mts"`. El `tsc` de la semilla (`prisma/tsconfig.seed.json`, `noEmit`) sólo la acepta con `"allowImportingTsExtensions": true`.
+
+**Contrato:** `seed-lib.mts` exporta, **moviendo el código existente sin cambiar su comportamiento** (mismos campos, mismas claves de `upsert`, mismo orden de escritura y mismas reconciliaciones de pistas, pruebas y enlaces de recursos):
 
 ```ts
-export function loadEnvFile(): void;
+/** Carga `.env` (raíz o apps/api) y aplica DATABASE_URL_FALLBACK si falta: lo que hoy hacen las dos primeras líneas de `main`. */
+export function prepareDatabaseEnv(): void;
 export function describeIssues(issues: readonly { path: (string | number)[]; message: string }[]): string;
+/** Mapa unidad → unidad anterior en el orden etapa → módulo → unidad (por `order`) de las etapas dadas. */
+export function previousUnitCodes(stages: readonly (ContentSeedStage | CourseSeedStage)[]): ReadonlyMap<string, string>;
 export async function upsertResources(prisma: PrismaClient, resources: readonly ContentSeedResource[]): Promise<ReadonlyMap<string, string>>; // slug → id
 export async function upsertStageTree(
   prisma: PrismaClient,
   stage: ContentSeedStage | CourseSeedStage,
-  resourceIdsBySlug: ReadonlyMap<string, string>,
+  context: {
+    courseSlug: CourseSlug;
+    resourceIdsBySlug: ReadonlyMap<string, string>;
+    previousUnitCode: ReadonlyMap<string, string>;
+  },
+): Promise<void>; // etapa (con courseSlug en create y update) → módulos → unidades → ejercicios (+pistas, +pruebas) → lecciones (+recursos)
+export async function countCourse(
+  prisma: PrismaClient,
   courseSlug: CourseSlug,
-): Promise<void>; // etapa (con courseSlug) → módulos → unidades → lecciones (+recursos) → ejercicios (+pistas, +pruebas)
-export async function countCourse(prisma: PrismaClient, courseSlug: CourseSlug): Promise<{ stages: number; publishedStages: number; modules: number; units: number; exercises: number }>;
+): Promise<{ stages: number; publishedStages: number; modules: number; units: number; exercises: number }>;
 ```
 
-(`CourseSeedStage` = `z.infer<typeof courseSeedStageSchema>`; si no está exportado como tipo en T7, usar `CourseSeed["stages"][number]`.)
+- `exerciseConfig`, `exerciseSolution` y `unitPrerequisites` pasan a `seed-lib.mts` como funciones internas, con el tipo `ContentSeedExercise` de `@codeai/shared` en lugar del tipo derivado de `readSeed`.
+- `countCourse` filtra por ruta a través de las relaciones: `stage: { courseSlug }` para módulos, `module: { stage: { courseSlug } }` para unidades, `unit: { module: { stage: { courseSlug } } }` para ejercicios.
+- `CourseSeedStage` lo exporta `@codeai/shared` desde S13-T7.
 
-`seed.mts` queda como: leer → validar con `contentSeedSchema` → `upsertResources` → `upsertStageTree(…, "fullstack-ia")` por etapa → `countCourse(prisma, "fullstack-ia")` → comparar con lo declarado.
+`seed.mts` queda así: `prepareDatabaseEnv()` → leer y validar con `contentSeedSchema` (su `readSeed` y su mensaje de error no cambian) → `upsertResources` → `previousUnitCodes(seed.stages)` → `upsertStageTree(…, { courseSlug: "fullstack-ia", … })` por etapa → `countCourse(prisma, "fullstack-ia")` → **los mismos dos `console.log` y el mismo aviso** que hoy.
 
 **Criterios de aceptación**
-- [ ] `npm run db:seed -w apps/api` dos veces seguidas imprime las mismas cifras que antes del cambio (12 etapas, 48 módulos, 207 unidades y el mismo número de ejercicios).
+- [ ] `npm run db:seed` (desde la raíz) dos veces seguidas imprime exactamente: «Semilla aplicada: 12 etapas (12 publicadas), 48 módulos, 207 unidades, 3203 ejercicios.» y «Declarado en content.seed.json: 12 etapas, 48 módulos, 207 unidades.», sin el aviso de filas no declaradas.
+- [ ] Tras sembrar, una consulta de solo lectura confirma que los prerrequisitos no cambiaron. Antes de tocar el código se guarda la salida de `SELECT code, "prerequisiteIds" FROM "Unit" ORDER BY code;` en un archivo del directorio temporal del sistema (fuera del repositorio), y al terminar la salida es idéntica.
 - [ ] `npm run typecheck:seed -w apps/api` en verde.
 - [ ] Verificación común en verde.
 
-**Qué NO hacer:** no cambiar el orden de escritura ni las claves de `upsert`; no añadir la semilla de AWS (T9).
+**Qué NO hacer:** no cambiar el orden de escritura, las claves de `upsert` ni los mensajes; no añadir la semilla de AWS (T9); en `tsconfig.seed.json`, nada más que la opción indicada.
 
 ---
 
@@ -555,7 +576,7 @@ export async function countCourse(prisma: PrismaClient, courseSlug: CourseSlug):
 
 - `node prisma/seed/seed-course.mts aws-cloud` (el argumento se valida con `courseSlugSchema`; `fullstack-ia` o vacío → error claro y código de salida 1).
 - Directorio por ruta: `const COURSE_DIRS = { "aws-cloud": "aws" } as const;` → lee `prisma/seed/aws/course.seed.json` y todos los `prisma/seed/aws/units/*.json` en orden alfabético (si la carpeta no existe, cero archivos).
-- Orden: parsear esqueleto con `courseSeedSchema` → parsear cada archivo con `courseUnitFileSchema` → `mergeCourseSeed` → si hay `problems`, imprimirlos y salir con 1 **sin tocar la base** → volver a validar el resultado con `courseSeedSchema` → `upsert` de `Course` por `slug` → `upsertResources` → `upsertStageTree(…, course.slug)` → `countCourse` y comparación con lo declarado.
+- Orden: parsear esqueleto con `courseSeedSchema` → parsear cada archivo con `courseUnitFileSchema` → `mergeCourseSeed` → si hay `problems`, imprimirlos y salir con 1 **sin tocar la base** → volver a validar el resultado con `courseSeedSchema` → `prepareDatabaseEnv()` → `upsert` de `Course` por `slug` → `upsertResources` → `previousUnitCodes(seed.stages)` → `upsertStageTree(…, { courseSlug: course.slug, resourceIdsBySlug, previousUnitCode })` por etapa → `countCourse(prisma, course.slug)` y comparación con lo declarado. Importa de `./seed-lib.mts` con la extensión explícita.
 - Scripts: en `apps/api/package.json`, `"db:seed:aws": "npm run typecheck:seed && node prisma/seed/seed-course.mts aws-cloud"`; en la raíz, `"db:seed:aws": "npm run db:seed:aws -w apps/api"`.
 
 **Criterios de aceptación**
@@ -620,6 +641,7 @@ export async function countCourse(prisma: PrismaClient, courseSlug: CourseSlug):
 3. Cada `objective` de unidad empieza por un verbo en infinitivo: `/^[A-ZÁÉÍÓÚ][a-záéíóúñ]+(?:ar|er|ir)\b/`.
 4. Toda URL de `sources` de un ejercicio pertenece a un dominio permitido: `docs.aws.amazon.com`, `aws.amazon.com`, `skillbuilder.aws` o sus subdominios.
 5. Ningún ejercicio de la ruta AWS está publicado (`isPublished: false`) mientras no exista S14 (esta regla se retira en S14 con su propia guarda).
+6. Ninguna unidad es su propio prerrequisito y el grafo de prerrequisitos no tiene ciclos. `courseSeedSchema` (S13-T7) sólo comprueba que el prerrequisito exista, y una autorreferencia o un ciclo dejarían unidades bloqueadas para siempre.
 
 **Criterios de aceptación**
 - [ ] La guarda pasa con el esqueleto actual y falla (prueba de mutación manual descrita en el reporte) si se cambia un objetivo a «Entender…» por «Comprensión de…».
