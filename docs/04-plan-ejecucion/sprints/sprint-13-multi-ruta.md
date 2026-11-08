@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (11/22: T1–T7 ✅ con T3b y T3c, T13 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (12/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -682,9 +682,11 @@ export function stageIdOfCode(code: string): number | null;
 Regla: el código debe cumplir `UNIT_CODE_PATTERN` o `MODULE_CODE_PATTERN`; la ruta sale de `courseForCode`; el id es `stageIdMin + número de etapa` y debe quedar dentro de `[stageIdMin, stageIdMax]`.
 
 **Criterios de aceptación**
-- [ ] Pruebas: `U0.1.1` → 0, `U11.2.3` → 11, `AWS-U2.3.1` → 102, `AWS-U12.3.2` → 112, `M2.3` → 2, `AWS-M0.1` → 100.
-- [ ] Pruebas de `null`: `U12.1.1` (fuera de rango), `AWS-U13.1.1` (fuera de rango), `X2.3.1`, `aws-U2.3.1`, `U2`, cadena vacía.
-- [ ] Verificación común en verde.
+- [x] Pruebas: `U0.1.1` → 0, `U11.2.3` → 11, `AWS-U2.3.1` → 102, `AWS-U12.3.2` → 112, `M2.3` → 2, `AWS-M0.1` → 100.
+- [x] Pruebas de `null`: `U12.1.1` (fuera de rango), `AWS-U13.1.1` (fuera de rango), `X2.3.1`, `aws-U2.3.1`, `U2`, cadena vacía.
+- [x] Verificación común en verde.
+
+**Revisión (2026-11-08): ✅ aprobada.** El diff sólo añade líneas: la función con el JSDoc literal y 12 casos de `it.each`. El número de etapa se extrae igual que en `unitCodePrefix`; no hace falta límite inferior porque el patrón sólo admite dígitos. Verificación repetida: build, `typecheck` y `lint` en 0; api 887 · web 410 · shared 341.
 
 ---
 
@@ -724,7 +726,7 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 | **Depende de** | S13-T13 |
 | **Archivos** | `apps/web/src/app/(learning)/learn/courses/page.tsx` (crear) · `apps/web/src/features/learning/components/CourseCatalog.tsx` (crear) · `apps/web/src/features/learning/components/CourseCatalog.spec.tsx` (crear) |
 
-**Contrato visual:** una tarjeta por ruta publicada con título, objetivo, número de etapas («13 etapas») y, si `notice` no es `null`, el aviso en texto secundario. Cada tarjeta enlaza a `/learn/stages?course=<slug>`. Estados de carga (`role="status"`, esqueleto si `Skeleton` existe), error (`role="alert"` con reintento) y vacío. Mismos patrones y tokens de tema que `StageCatalog`.
+**Contrato visual:** una tarjeta por ruta publicada con título, objetivo, número de etapas («13 etapas») y, si `notice` no es `null`, el aviso en texto secundario. Cada tarjeta enlaza a `/learn/stages?course=<slug>`. Estados de carga, error y vacío con el **mismo patrón que `StageCatalog`** (revisado el 2026-11-08): `useContentLoader(load)` con un `load` que recibe `signal`; carga con `role="status"` y tarjetas de esqueleto `animate-pulse` (no existe un componente `Skeleton`); error con `role="alert"` y botón «Reintentar» que llama a `reload`. El componente recibe `loadCourses?` inyectable, por defecto `contentApi.listCourses`, igual que `loadStages` en `StageCatalog`. Mismos tokens de tema y clases de tarjeta.
 
 **Criterios de aceptación**
 - [ ] Prueba con dos rutas (una con aviso) y enlaces correctos.

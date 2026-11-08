@@ -10,6 +10,7 @@ import {
   isKnownStageId,
   moduleCodePrefix,
   stageLabel,
+  stageIdOfCode,
   stageNumberInCourse,
   stageSlugMatchesCourse,
   unitCodePrefix,
@@ -89,6 +90,26 @@ describe("courseForCode", () => {
     expect(courseForCode("aws-m2.3")).toBeNull();
     expect(courseForCode("")).toBeNull();
   });
+});
+
+describe("stageIdOfCode", () => {
+  it.each([
+    ["U0.1.1", 0],
+    ["U11.2.3", 11],
+    ["AWS-U2.3.1", 102],
+    ["AWS-U12.3.2", 112],
+    ["M2.3", 2],
+    ["AWS-M0.1", 100],
+  ])("deduce la etapa de %s como %i", (code, expected) => {
+    expect(stageIdOfCode(code)).toBe(expected);
+  });
+
+  it.each(["U12.1.1", "AWS-U13.1.1", "X2.3.1", "aws-U2.3.1", "U2", ""])(
+    "devuelve null para el código %j",
+    (code) => {
+      expect(stageIdOfCode(code)).toBeNull();
+    },
+  );
 });
 
 describe("moduleCodePrefix", () => {

@@ -86,6 +86,20 @@ export function courseForCode(code: string): CourseDefinition | null {
   return null;
 }
 
+/** Id de etapa de un código de unidad o de módulo de cualquier ruta: "U2.3.1" → 2, "AWS-U2.3.1" → 102, "AWS-M0.1" → 100. Código mal formado, o número fuera del rango de su ruta → null. */
+export function stageIdOfCode(code: string): number | null {
+  if (!UNIT_CODE_PATTERN.test(code) && !MODULE_CODE_PATTERN.test(code)) {
+    return null;
+  }
+  const course = courseForCode(code);
+  if (!course) {
+    return null;
+  }
+  const stageNumber = Number(code.slice(course.codePrefix.length + 1).split(".")[0]);
+  const stageId = course.stageIdMin + stageNumber;
+  return stageId <= course.stageIdMax ? stageId : null;
+}
+
 export function moduleCodePrefix(stageId: number): string | null {
   const course = courseForStageId(stageId);
   if (!course) {
