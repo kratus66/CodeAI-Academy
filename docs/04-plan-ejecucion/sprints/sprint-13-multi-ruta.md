@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (12/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (13/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13 ✅, T14 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -729,9 +729,11 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 **Contrato visual:** una tarjeta por ruta publicada con título, objetivo, número de etapas («13 etapas») y, si `notice` no es `null`, el aviso en texto secundario. Cada tarjeta enlaza a `/learn/stages?course=<slug>`. Estados de carga, error y vacío con el **mismo patrón que `StageCatalog`** (revisado el 2026-11-08): `useContentLoader(load)` con un `load` que recibe `signal`; carga con `role="status"` y tarjetas de esqueleto `animate-pulse` (no existe un componente `Skeleton`); error con `role="alert"` y botón «Reintentar» que llama a `reload`. El componente recibe `loadCourses?` inyectable, por defecto `contentApi.listCourses`, igual que `loadStages` en `StageCatalog`. Mismos tokens de tema y clases de tarjeta.
 
 **Criterios de aceptación**
-- [ ] Prueba con dos rutas (una con aviso) y enlaces correctos.
-- [ ] Prueba de error con reintento y de lista vacía.
-- [ ] `npm run build -w apps/web` compila la ruta nueva.
+- [x] Prueba con dos rutas (una con aviso) y enlaces correctos.
+- [x] Prueba de error con reintento y de lista vacía.
+- [x] `npm run build -w apps/web` compila la ruta nueva.
+
+**Revisión (2026-11-08): ✅ aprobada.** Tres archivos nuevos que calcan el patrón de `StageCatalog`, incluidos sus `<h3>` de tarjeta y el `aria-label` del enlace. 4 pruebas: carga, dos rutas con aviso y singular «1 etapa», vacío, y error con reintento. Verificación repetida: build, `typecheck` y `lint` en 0; api 887 · web 414 · shared 341; `next build` lista `○ /learn/courses`. `next build` reescribe `apps/web/next-env.d.ts` (rutas de `.next/dev/types` a `.next/types`); se restauró a la versión del commit para no colarlo.
 
 ---
 
@@ -742,14 +744,18 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 | **Depende de** | S13-T14 |
 | **Archivos** | `apps/web/src/app/(learning)/learn/stages/page.tsx` (modificar) · `apps/web/src/features/learning/components/StageCatalog.tsx` (modificar) · `apps/web/src/features/learning/components/StageCatalog.spec.tsx` (modificar) |
 
-**Contrato:**
-- La página lee `searchParams.course`; si no cumple `courseSlugSchema`, usa `DEFAULT_COURSE_SLUG`. Pasa `course` a `StageCatalog`.
-- `StageCatalog` recibe `course?: CourseSlug` (por defecto `DEFAULT_COURSE_SLUG`), llama `contentApi.listStages(signal, { course })` **sólo** si `course` no es el de por defecto (para no cambiar la llamada actual), muestra la etiqueta con `stageLabel(stage.id)` donde hoy muestra el número de etapa, muestra `COURSE_NOTICES[course]` cuando no es `null` y enlaza «Cambiar de ruta» a `/learn/courses`.
+**Contrato** (revisado contra el código el 2026-11-08):
+- **Página.** En Next 16, `searchParams` llega como promesa: `export default async function LearnStagesPage({ searchParams }: { searchParams: Promise<{ course?: string | string[] }> })`. Si `course` no es una cadena que cumpla `courseSlugSchema`, se usa `DEFAULT_COURSE_SLUG`. Pasa `course` a `StageCatalog`. `metadata` y cabecera no cambian.
+- **Loader.** El tipo `LoadStages` pasa a `(signal?: AbortSignal, options?: { readonly course?: CourseSlug }) => Promise<StageCatalogPage>`, compatible con `contentApi.listStages`. `StageCatalog` llama `loadStages(signal)` si `course` es el de por defecto (la llamada actual no cambia) y `loadStages(signal, { course })` si no; `course` entra en las dependencias del `useCallback`.
+- **Etiqueta.** Hoy la tarjeta y su `aria-label` muestran `Etapa {stage.order}`. Como E0 tiene `order: 1`, la web dice «Etapa 1» para la que el currículo llama E0. Pasan a `Etapa {stageLabel(stage.id) ?? stage.order} · Nivel {stage.level}` y `` `Etapa ${stageLabel(stage.id) ?? stage.order}: ${stage.title}` `` («Etapa E0», «Etapa A2»), en la tarjeta abierta y en la bloqueada (`StageHeading`).
+- **Aviso y navegación.** `COURSE_NOTICES[course]` se muestra en texto secundario cuando no es `null`, y un enlace «Cambiar de ruta» lleva a `/learn/courses`.
 - La función local `stageIndexOf` (regex `/^U(\d+)…/`) se elimina; la agrupación del avance por etapa usa `stageIdOfCode` de `@codeai/shared` (S13-T12b), para que las unidades `AWS-U…` cuenten en su etapa 100–112.
 
 **Criterios de aceptación**
-- [ ] Las pruebas existentes de la ruta por defecto pasan sin cambios de comportamiento (sólo se ajusta texto si mostraba «Etapa N» y ahora «E N»/«EN»: reportarlo).
-- [ ] Prueba nueva: con `course="aws-cloud"` pide la URL con `?course=aws-cloud`, muestra «A2» para el id 102 y el aviso.
+- [ ] Las pruebas existentes de la ruta por defecto pasan sin cambios de comportamiento; sólo se ajustan los textos «Etapa N» a «Etapa EN», y el reporte lista cada uno.
+- [ ] Prueba nueva: con `course="aws-cloud"`, el loader inyectado recibe `{ course: "aws-cloud" }`, la tarjeta del id 102 dice «Etapa A2», se ve el aviso y el enlace «Cambiar de ruta».
+- [ ] Prueba nueva: unidades `AWS-U2.3.1` en el progreso cuentan en la etapa 102 (agrupación con `stageIdOfCode`).
+- [ ] Prueba nueva: sin `course`, el loader se llama sólo con `signal` (sin segundo argumento).
 - [ ] `npm run build -w apps/web` en verde.
 
 ---
