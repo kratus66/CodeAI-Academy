@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (13/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13 ✅, T14 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (14/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13–T15 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -749,13 +749,16 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 - **Loader.** El tipo `LoadStages` pasa a `(signal?: AbortSignal, options?: { readonly course?: CourseSlug }) => Promise<StageCatalogPage>`, compatible con `contentApi.listStages`. `StageCatalog` llama `loadStages(signal)` si `course` es el de por defecto (la llamada actual no cambia) y `loadStages(signal, { course })` si no; `course` entra en las dependencias del `useCallback`.
 - **Etiqueta.** Hoy la tarjeta y su `aria-label` muestran `Etapa {stage.order}`. Como E0 tiene `order: 1`, la web dice «Etapa 1» para la que el currículo llama E0. Pasan a `Etapa {stageLabel(stage.id) ?? stage.order} · Nivel {stage.level}` y `` `Etapa ${stageLabel(stage.id) ?? stage.order}: ${stage.title}` `` («Etapa E0», «Etapa A2»), en la tarjeta abierta y en la bloqueada (`StageHeading`).
 - **Aviso y navegación.** `COURSE_NOTICES[course]` se muestra en texto secundario cuando no es `null`, y un enlace «Cambiar de ruta» lleva a `/learn/courses`.
+- **Coherencia de la etiqueta** (añadido tras la primera entrega). Los otros dos textos del componente que nombran una etapa por su `order` (la etiqueta del anillo «Avance de la etapa N» y el aviso de bloqueo «Domina antes la etapa N: …») usan también `stageLabel(id) ?? order`. Si no, una tarjeta diría a la vez «Etapa E1» y «Domina antes la etapa 1».
 - La función local `stageIndexOf` (regex `/^U(\d+)…/`) se elimina; la agrupación del avance por etapa usa `stageIdOfCode` de `@codeai/shared` (S13-T12b), para que las unidades `AWS-U…` cuenten en su etapa 100–112.
 
 **Criterios de aceptación**
-- [ ] Las pruebas existentes de la ruta por defecto pasan sin cambios de comportamiento; sólo se ajustan los textos «Etapa N» a «Etapa EN», y el reporte lista cada uno.
-- [ ] Prueba nueva: con `course="aws-cloud"`, el loader inyectado recibe `{ course: "aws-cloud" }`, la tarjeta del id 102 dice «Etapa A2», se ve el aviso y el enlace «Cambiar de ruta».
-- [ ] Prueba nueva: unidades `AWS-U2.3.1` en el progreso cuentan en la etapa 102 (agrupación con `stageIdOfCode`).
-- [ ] Prueba nueva: sin `course`, el loader se llama sólo con `signal` (sin segundo argumento).
+- [x] Las pruebas existentes de la ruta por defecto pasan sin cambios de comportamiento; sólo se ajustan los textos «Etapa N» a «Etapa EN», y el reporte lista cada uno.
+- [x] Prueba nueva: con `course="aws-cloud"`, el loader inyectado recibe `{ course: "aws-cloud" }`, la tarjeta del id 102 dice «Etapa A2», se ve el aviso y el enlace «Cambiar de ruta».
+- [x] Prueba nueva: unidades `AWS-U2.3.1` en el progreso cuentan en la etapa 102 (agrupación con `stageIdOfCode`).
+- [x] Prueba nueva: sin `course`, el loader se llama sólo con `signal` (sin segundo argumento).
+
+**Revisión (2026-11-08): ✅ aprobada tras una ampliación.** La primera entrega cumplía el contrato; el Orquestador amplió la ficha con la «Coherencia de la etiqueta» (anillo de avance y aviso de bloqueo) y el Constructor la aplicó en sus mismos archivos. Textos de prueba ajustados: «Etapa 1 · Nivel 1» → «Etapa E0 · Nivel 1»; «Avance de la etapa 1/2/3» → «E0/E1/E2»; «Domina antes la etapa 2: …» → «Domina antes la etapa E1: …». La búsqueda de la etapa anterior sigue usando `order`, que es correcto dentro de una ruta. Verificación repetida: build, `typecheck` y `lint` en 0; api 887 · web 417 · shared 341; `next build` en 0 y `next-env.d.ts` restaurado.
 - [ ] `npm run build -w apps/web` en verde.
 
 ---

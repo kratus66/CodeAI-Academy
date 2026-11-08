@@ -1,3 +1,4 @@
+import { DEFAULT_COURSE_SLUG, courseSlugSchema } from "@codeai/shared";
 import type { Metadata } from "next";
 
 import { StageCatalog } from "@/features/learning/components/StageCatalog";
@@ -8,7 +9,17 @@ export const metadata: Metadata = {
     "Etapas publicadas de la ruta de CodeAI Academy, con sus objetivos.",
 };
 
-export default function LearnStagesPage() {
+interface LearnStagesPageProps {
+  readonly searchParams: Promise<{ course?: string | string[] }>;
+}
+
+export default async function LearnStagesPage({
+  searchParams,
+}: LearnStagesPageProps) {
+  const { course: requested } = await searchParams;
+  const parsed = courseSlugSchema.safeParse(requested);
+  const course = parsed.success ? parsed.data : DEFAULT_COURSE_SLUG;
+
   return (
     <div className="space-y-8">
       <header className="max-w-2xl">
@@ -24,7 +35,7 @@ export default function LearnStagesPage() {
         </p>
       </header>
 
-      <StageCatalog />
+      <StageCatalog course={course} />
     </div>
   );
 }

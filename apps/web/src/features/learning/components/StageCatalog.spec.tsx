@@ -1,4 +1,4 @@
-import type { UnitProgressSummary } from "@codeai/shared";
+import type { CourseSlug, UnitProgressSummary } from "@codeai/shared";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -38,6 +38,17 @@ const STAGES = [
     moduleCount: 2,
   },
 ] as const;
+
+const AWS_STAGE = {
+  id: 102,
+  slug: "aws2-computo",
+  title: "Cómputo en AWS",
+  objective: "Elegir y operar servicios de cómputo.",
+  level: 2,
+  estimatedMin: 600,
+  order: 3,
+  moduleCount: 2,
+} as const;
 
 function page(stages: readonly unknown[]): StageCatalogPage {
   return {
@@ -93,6 +104,18 @@ describe("summarizeStageProgress", () => {
     expect(summary.size).toBe(2);
   });
 
+  it("cuenta las unidades de la ruta AWS en su etapa 100–112", () => {
+    const summary = summarizeStageProgress([
+      unit("AWS-U2.3.1", "MASTERED", 100),
+      unit("AWS-U2.3.2", "IN_PROGRESS", 50),
+      unit("U2.1.1", "LOCKED", 0),
+    ]);
+
+    expect(summary.get(102)).toEqual({ status: "inProgress", pct: 75, units: 2 });
+    expect(summary.get(2)).toEqual({ status: "locked", pct: 0, units: 1 });
+    expect(summary.size).toBe(2);
+  });
+
   it("marca dominada solo cuando todas las unidades lo están", () => {
     expect(summarizeStageProgress([unit("U4.1.1", "MASTERED", 100)]).get(4)).toEqual(
       { status: "mastered", pct: 100, units: 1 },
@@ -125,7 +148,7 @@ describe("StageCatalog", () => {
     });
 
     expect(fundamentos).toHaveAttribute("href", "/learn/stages/0");
-    expect(fundamentos).toHaveTextContent("Etapa 1 · Nivel 1");
+    expect(fundamentos).toHaveTextContent("Etapa E0 · Nivel 1");
     expect(fundamentos).toHaveTextContent("3 módulos");
     expect(
       screen.getByRole("link", { name: /Programación asistida/ }),
@@ -150,27 +173,75 @@ describe("StageCatalog", () => {
     expect(within(dominada).getByText("Dominada")).toBeInTheDocument();
     expect(within(enCurso).getByText("En curso")).toBeInTheDocument();
     expect(
-      screen.getByRole("progressbar", { name: "Avance de la etapa 1" }),
+      screen.getByRole("progressbar", { name: "Avance de la etapa E0" }),
     ).toHaveAttribute("aria-valuenow", "100");
     expect(
-      screen.getByRole("progressbar", { name: "Avance de la etapa 2" }),
+      screen.getByRole("progressbar", { name: "Avance de la etapa E1" }),
     ).toHaveAttribute("aria-valuenow", "40");
 
     const bloqueada = screen.getByRole("article");
     const avanceBloqueada = screen.getByRole("progressbar", {
-      name: "Avance de la etapa 3",
+      name: "Avance de la etapa E2",
     });
 
     expect(within(bloqueada).getByText("Bloqueada")).toBeInTheDocument();
     expect(avanceBloqueada).toHaveAttribute("aria-valuenow", "0");
     expect(avanceBloqueada).toHaveAttribute("aria-valuemin", "0");
     expect(avanceBloqueada).toHaveAttribute("aria-valuemax", "100");
-    expect(bloqueada).toHaveTextContent("Domina antes la etapa 2: Programación asistida.");
+    expect(bloqueada).toHaveTextContent("Domina antes la etapa E1: Programación asistida.");
     expect(
       screen.queryByRole("link", { name: /Agentes autónomos/ }),
     ).toBeNull();
   });
 
+
+  it("llama al loader solo con la señal en la ruta por defecto", async () => {
+    const loadStages = vi.fn(async () => page(STAGES));
+
+    render(<StageCatalog loadStages={loadStages} loadProgress={noProgress} />);
+
+    await screen.findByRole("link", { name: /Fundamentos de la IA/ });
+
+    expect(loadStages).toHaveBeenCalledTimes(1);
+    expect(loadStages).toHaveBeenCalledWith(expect.any(AbortSignal));
+    expect(screen.queryByText(/No está afiliada/)).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Cambiar de ruta" }),
+    ).toHaveAttribute("href", "/learn/courses");
+  });
+
+  it("filtra por ruta, etiqueta la etapa con su letra y muestra el aviso", async () => {
+    const loadStages = vi.fn(
+      async (_signal?: AbortSignal, _options?: { readonly course?: CourseSlug }) =>
+        page([AWS_STAGE]),
+    );
+    const loadProgress = async (): Promise<readonly UnitProgressSummary[]> => [
+      unit("AWS-U2.3.1", "IN_PROGRESS", 40),
+    ];
+
+    render(
+      <StageCatalog
+        course="aws-cloud"
+        loadStages={loadStages}
+        loadProgress={loadProgress}
+      />,
+    );
+
+    const tarjeta = await screen.findByRole("link", {
+      name: "Etapa A2: Cómputo en AWS",
+    });
+
+    expect(loadStages).toHaveBeenCalledWith(expect.any(AbortSignal), {
+      course: "aws-cloud",
+    });
+    expect(tarjeta).toHaveAttribute("href", "/learn/stages/102");
+    expect(tarjeta).toHaveTextContent("Etapa A2 · Nivel 2");
+    expect(within(tarjeta).getByText("En curso")).toBeInTheDocument();
+    expect(screen.getByText(/No está afiliada ni avalada/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Cambiar de ruta" }),
+    ).toHaveAttribute("href", "/learn/courses");
+  });
 
   it("declara el vacío cuando no hay etapas publicadas", async () => {
     const loadStages = vi.fn(async () => page([]));

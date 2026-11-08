@@ -1,6 +1,16 @@
 "use client";
 
-import type { StageSummary, UnitProgressSummary } from "@codeai/shared";
+import {
+  COURSE_NOTICES,
+  DEFAULT_COURSE_SLUG,
+  stageIdOfCode,
+  stageLabel,
+} from "@codeai/shared";
+import type {
+  CourseSlug,
+  StageSummary,
+  UnitProgressSummary,
+} from "@codeai/shared";
 import Link from "next/link";
 import { useCallback } from "react";
 
@@ -50,7 +60,10 @@ export interface StageProgress {
   readonly units: number;
 }
 
-type LoadStages = (signal?: AbortSignal) => Promise<StageCatalogPage>;
+type LoadStages = (
+  signal?: AbortSignal,
+  options?: { readonly course?: CourseSlug },
+) => Promise<StageCatalogPage>;
 type LoadProgress = (
   signal?: AbortSignal,
 ) => Promise<readonly UnitProgressSummary[]>;
@@ -60,21 +73,12 @@ interface StageCatalogProps {
   readonly loadStages?: LoadStages;
   /** Inyectable en pruebas; por defecto llama a `GET /api/progress/units`. */
   readonly loadProgress?: LoadProgress;
+  /** Ruta cuyo catálogo se muestra; por defecto, la ruta principal. */
+  readonly course?: CourseSlug;
 }
 
 function moduleCountLabel(count: number): string {
   return count === 1 ? "1 módulo" : `${count} módulos`;
-}
-
-/**
- * El `unitCode` codifica la etapa (`U0.1.1` → 0), la misma regla que ya usa
- * `summarizeStages` en métricas: el contrato de progreso no publica `stageId`
- * por unidad y `stage.id` coincide con esa primera cifra.
- */
-function stageIndexOf(unitCode: string): number | null {
-  const match = /^U(\d+)(?:\.|$)/.exec(unitCode);
-
-  return match === null ? null : Number(match[1]);
 }
 
 function round1(value: number): number {
@@ -92,7 +96,7 @@ export function summarizeStageProgress(
   const buckets = new Map<number, UnitProgressSummary[]>();
 
   for (const unit of units) {
-    const stage = stageIndexOf(unit.unitCode);
+    const stage = stageIdOfCode(unit.unitCode);
 
     if (stage === null) continue;
 
@@ -166,7 +170,7 @@ function StageHeading({ stage }: { readonly stage: StageSummary }) {
   return (
     <>
       <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
-        Etapa {stage.order} · Nivel {stage.level}
+        Etapa {stageLabel(stage.id) ?? stage.order} · Nivel {stage.level}
       </p>
       <h3 className="mt-3 text-lg font-semibold tracking-tight text-white">
         {stage.title}
@@ -183,7 +187,7 @@ function StageCard({ stage, progress, prerequisite }: StageCardProps) {
     progress === undefined ? null : (
       <ProgressRing
         value={progress.pct}
-        label={`Avance de la etapa ${stage.order}`}
+        label={`Avance de la etapa ${stageLabel(stage.id) ?? stage.order}`}
       />
     );
 
@@ -191,7 +195,7 @@ function StageCard({ stage, progress, prerequisite }: StageCardProps) {
     const reason =
       prerequisite === null
         ? "Avanza en las etapas anteriores de tu ruta para abrirla."
-        : `Domina antes la etapa ${prerequisite.order}: ${prerequisite.title}.`;
+        : `Domina antes la etapa ${stageLabel(prerequisite.id) ?? prerequisite.order}: ${prerequisite.title}.`;
 
     return (
       <article className={LOCKED_CARD_CLASSES}>
@@ -213,7 +217,7 @@ function StageCard({ stage, progress, prerequisite }: StageCardProps) {
   return (
     <Link
       href={`/learn/stages/${stage.id}`}
-      aria-label={`Etapa ${stage.order}: ${stage.title}`}
+      aria-label={`Etapa ${stageLabel(stage.id) ?? stage.order}: ${stage.title}`}
       className={CARD_CLASSES}
     >
       {progress === undefined ? null : (
@@ -223,7 +227,7 @@ function StageCard({ stage, progress, prerequisite }: StageCardProps) {
         </div>
       )}
       <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
-        Etapa {stage.order} · Nivel {stage.level}
+        Etapa {stageLabel(stage.id) ?? stage.order} · Nivel {stage.level}
       </p>
       <h3 className="mt-3 text-lg font-semibold tracking-tight text-white transition group-hover:text-accent">
         {stage.title}
@@ -243,19 +247,35 @@ function StageCard({ stage, progress, prerequisite }: StageCardProps) {
 export function StageCatalog({
   loadStages = contentApi.listStages,
   loadProgress = progressApi.listUnits,
+  course = DEFAULT_COURSE_SLUG,
 }: StageCatalogProps) {
   const load = useCallback(
     async (signal: AbortSignal) => {
       const [catalog, units] = await Promise.all([
-        loadStages(signal),
+        course === DEFAULT_COURSE_SLUG
+          ? loadStages(signal)
+          : loadStages(signal, { course }),
         loadProgress(signal),
       ]);
 
       return { catalog, units };
     },
-    [loadStages, loadProgress],
+    [loadStages, loadProgress, course],
   );
   const { state, reload } = useContentLoader(load);
+
+  const notice = COURSE_NOTICES[course];
+  const header = (
+    <div className="space-y-2 text-sm text-slate-400">
+      {notice === null ? null : <p>{notice}</p>}
+      <Link
+        href="/learn/courses"
+        className="inline-block text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        Cambiar de ruta
+      </Link>
+    </div>
+  );
 
   if (state.status === "loading") {
     return (
@@ -311,16 +331,19 @@ export function StageCatalog({
   const progressByStage = summarizeStageProgress(units);
 
   return (
-    <ol className="grid list-none gap-4 p-0 sm:grid-cols-2">
-      {catalog.stages.map((stage) => (
-        <li key={stage.id}>
-          <StageCard
-            stage={stage}
-            progress={progressByStage.get(stage.id)}
-            prerequisite={previousStage(stage, catalog.stages)}
-          />
-        </li>
-      ))}
-    </ol>
+    <div className="space-y-6">
+      {header}
+      <ol className="grid list-none gap-4 p-0 sm:grid-cols-2">
+        {catalog.stages.map((stage) => (
+          <li key={stage.id}>
+            <StageCard
+              stage={stage}
+              progress={progressByStage.get(stage.id)}
+              prerequisite={previousStage(stage, catalog.stages)}
+            />
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
