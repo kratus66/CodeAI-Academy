@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (17/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13–T17 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (18/23: T1–T7 ✅ con T3b y T3c, T10 ✅, T12b ✅, T13–T17 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -38,7 +38,7 @@ Al cerrar el sprint:
 
 ## 4. Tareas
 
-> Fichas atómicas según [`../../05-orquestacion/plantilla-tarea.md`](../../05-orquestacion/plantilla-tarea.md). **Orden obligatorio:** T1 → T2 → T3 → T3b → T3c → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11 → T12 → T13 → T14 → T15 → T16 → T17. T18 es del Orquestador. **Ajuste del 2026-11-08:** la cadena web (T13 → T17) sólo depende de T6, así que avanza mientras T8–T11 esperan a que la base de datos vuelva a estar disponible. Se añaden **T12b** (etapa de una unidad a partir de su código, antes de T15) y **T16b** (analítica del estudiante), tras descubrir que la web deducía la etapa con una expresión que sólo entiende `U<n>`. Orden web: T13 → T19 → T12b → T14 → T15 → T16 → T16b → T17. **T19** arregla la prueba intermitente de `InterviewRoom`, que ya entorpecía cada verificación.
+> Fichas atómicas según [`../../05-orquestacion/plantilla-tarea.md`](../../05-orquestacion/plantilla-tarea.md). **Orden obligatorio:** T1 → T2 → T3 → T3b → T3c → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11 → T12 → T13 → T14 → T15 → T16 → T17. T18 es del Orquestador. **Ajuste del 2026-11-08:** la cadena web (T13 → T17) sólo depende de T6, así que avanza mientras T8–T11 esperan a que la base de datos vuelva a estar disponible. Se añaden **T12b** (etapa de una unidad a partir de su código, antes de T15) y **T16b** (analítica del estudiante), tras descubrir que la web deducía la etapa con una expresión que sólo entiende `U<n>`. Orden web: T13 → T19 → T12b → T14 → T15 → T16 → T16b → T17. **T19** arregla la prueba intermitente de `InterviewRoom`, que ya entorpecía cada verificación. **Esqueleto sin base de datos:** T10 → T10b → T11 → T12 se validan con `courseSeedSchema`. La siembra real (T8 → T9) se verifica cuando la base vuelva a estar disponible.
 >
 > **Verificación común** (salvo que la ficha diga otra cosa), desde la raíz:
 > ```bash
@@ -589,17 +589,21 @@ export async function countCourse(
 
 ---
 
-### S13-T10 — Esqueleto de la ruta AWS (A0–A6)
+### S13-T10 — Esqueleto de la ruta AWS (A0–A2)
 
 | Campo | Valor |
 |-------|-------|
-| **Depende de** | S13-T9 |
+| **Depende de** | S13-T7 (esquema). **No** depende de T8/T9 ni de la base de datos: ver «Ajuste del 2026-11-08» |
 | **Archivos** | `apps/api/prisma/seed/aws/course.seed.json` (crear) |
 
-**Contexto mínimo.** Primera mitad del esqueleto. La fuente de verdad es [`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md): títulos de etapa, módulos y unidades se copian **literalmente**.
+**Ajuste del 2026-11-08.** La ficha original pedía sembrar con `npm run db:seed:aws` (T9), pero la base estaba apagada. El esqueleto se escribe y se valida ahora **sin base de datos**, con `courseSeedSchema` (S13-T7), y la siembra pasa a la verificación de T9. Para que cada sesión sea manejable, el antiguo «A0–A6» se divide en **T10 (A0–A2, 80 unidades)** y **T10b (A3–A6, 101 unidades)**.
+
+**Contexto mínimo.** Primer tercio del esqueleto. La fuente de verdad es [`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md): títulos de etapa, módulos y unidades se copian **literalmente**.
 
 **Contrato:**
-- `course`: `{ "slug": "aws-cloud", "title": "Ruta AWS Cloud: arquitectura y desarrollo", "objective": "<objetivo de §1 del currículo en una frase>", "notice": "<texto exacto de COURSE_NOTICES['aws-cloud']>", "order": 1, "isPublished": false }`.
+- `course`: `{ "slug": "aws-cloud", "title": "Ruta AWS Cloud: arquitectura y desarrollo", "objective": "Preparar para los exámenes de certificación de AWS de arquitectura y desarrollo, y para hacer el trabajo que esos exámenes describen.", "notice": "<texto exacto de COURSE_NOTICES['aws-cloud'] en packages/shared/src/schemas/course.ts>", "order": 1, "isPublished": false }`.
+- `estimatedMin` de cada etapa (límite inferior de horas × 60): 100 → 1200 · 101 → 1800 · 102 → 7200 · 103 → 4800 · 104 → 3600 · 105 → 5400 · 106 → 6600 · 107 → 1500 · 108 → 4200 · 109 → 3600 · 110 → 3000 · 111 → 3000 · 112 → 1800.
+- Esta tarea escribe las etapas **A0, A1 y A2** (ids 100–102). T10b añade A3–A6 y T11, A7–A12.
 - `resources`: `[]`.
 - Etapas A0–A6 (ids 100–106): `slug` exacto de esta tabla (también vale para T11);
 
@@ -615,14 +619,44 @@ export async function countCourse(
 
   `title` = título de la etapa; `objective` = campo **Objetivo** de su tabla; `level` = nivel del currículo (A0–A1 → 1, A2–A4 → 2, A5–A6 → 3); `estimatedMin` = límite inferior de horas × 60; `order` = n + 1; `isPublished: false`.
 - Módulos y unidades: `code`, `title` y `order` del currículo; `isPublished: false`; unidades con `lessons: []`, `exercises: []`, `estimatedMin: null` y `objective` = **una capacidad observable que empieza por un verbo en infinitivo** derivada del título (p. ej., AWS-U2.2.3 → «Decidir si un flujo de red se permite combinando security groups y network ACL»).
-- `prerequisiteIds`: cada unidad depende de la anterior de su módulo; la primera de un módulo, de la última del módulo anterior; la primera de una etapa, de la última unidad de cada etapa prerrequisito según el grafo del currículo §5, **sólo con Y** (A3 y A4 ← AWS-U2.10.2; A5 ← AWS-U3.8.1 y AWS-U4.7.1; A6 ← AWS-U2.10.2). La primera unidad de A0 no tiene prerrequisitos.
+- `prerequisiteIds`, **siempre declarados de forma explícita** y sólo con Y:
+  - Cada unidad depende de la anterior de su módulo.
+  - La primera unidad de un módulo depende de la última del módulo anterior de su etapa.
+  - La primera unidad de una etapa depende de la última unidad de cada etapa prerrequisito (grafo del currículo §5): A1 ← AWS-U0.3.5; A2 ← AWS-U1.5.1; A3 y A4 ← AWS-U2.10.2; A5 ← AWS-U3.8.1 y AWS-U4.7.1; A6 ← AWS-U2.10.2.
+  - La primera unidad de A0 (AWS-U0.1.1) no tiene prerrequisitos.
+
+**Validación sin base de datos.** Con un script temporal **fuera del repositorio** (en el directorio temporal del sistema), que importe `packages/shared/dist/index.js` tras `npm run build -w packages/shared`:
+1. `courseSeedSchema.safeParse` del archivo sin issues;
+2. recuento de etapas, módulos y unidades;
+3. comparación automática de cada título de etapa, módulo y unidad con los de `curriculo-aws.md` (extraídos del Markdown).
 
 **Criterios de aceptación**
-- [ ] `npm run db:seed:aws` valida y siembra 7 etapas, 47 módulos y 181 unidades sin lecciones.
-- [ ] Ningún título difiere del currículo (comparación manual descrita en el reporte).
-- [ ] Ningún elemento con `isPublished: true`.
+- [x] `courseSeedSchema` valida el archivo sin issues: 3 etapas (100–102), 18 módulos, 80 unidades, todo sin lecciones ni ejercicios.
+- [x] La comparación automática de títulos con el currículo da 0 diferencias.
+- [x] Todos los `objective` de unidad empiezan por un verbo en infinitivo (`/^[A-ZÁÉÍÓÚ][a-záéíóúñ]+(?:ar|er|ir)\b/`).
+- [x] Ningún elemento con `isPublished: true`.
+- [x] Verificación común en verde (la guarda `seed-course-quality` llega en T12).
 
-**Qué NO hacer:** no escribir lecciones ni ejercicios; no inventar unidades; no añadir recursos.
+**Revisión (2026-11-08): ✅ aprobada tras corregir tres objetivos.** Validación independiente del Orquestador con un script propio fuera del repositorio. 0 problemas en esquema, totales (3/18/80), títulos de etapa, módulo y unidad, objetivo de etapa, slugs, `level`, `estimatedMin`, `order` y publicados. Sólo AWS-U0.1.1 queda sin prerrequisitos, no hay autorreferencias ni ciclos, y A1 empieza en AWS-U0.3.5 y A2 en AWS-U1.5.1. En la lectura de los 80 objetivos se corrigieron tres: AWS-U2.3.4 (presentaba ECR y Fargate como alternativas a ECS/EKS), AWS-U2.6.2 (metía Pipes y Scheduler en un fan-out) y AWS-U1.2.2 (redacción forzada). Tras la corrección se comprobó que los otros 77 objetivos no cambiaron. Verificación: `typecheck` y `lint` en 0; api 887 · web 422 · shared 341. **La siembra en la base queda para la verificación de T9.**
+
+**Qué NO hacer:** no escribir lecciones ni ejercicios; no inventar unidades; no añadir recursos; no dejar el script de validación dentro del repositorio.
+
+---
+
+### S13-T10b — Esqueleto de la ruta AWS (A3–A6)
+
+| Campo | Valor |
+|-------|-------|
+| **Depende de** | S13-T10 |
+| **Archivos** | `apps/api/prisma/seed/aws/course.seed.json` (modificar: añadir etapas al final del arreglo `stages`) |
+
+**Contrato:** mismas reglas que T10 para las etapas **A3, A4, A5 y A6** (ids 103–106; `level` A3–A4 → 2, A5–A6 → 3), con sus slugs, `estimatedMin` y prerrequisitos de la ficha de T10. Lo ya escrito (curso y A0–A2) no cambia.
+
+**Criterios de aceptación**
+- [ ] `courseSeedSchema` valida el archivo completo: 7 etapas (100–106), 47 módulos, 181 unidades.
+- [ ] La comparación automática de títulos con el currículo da 0 diferencias para A0–A6.
+- [ ] Objetivos en infinitivo y nada publicado, como en T10.
+- [ ] El diff no modifica el curso ni las etapas A0–A2.
 
 ---
 
@@ -630,14 +664,16 @@ export async function countCourse(
 
 | Campo | Valor |
 |-------|-------|
-| **Depende de** | S13-T10 |
-| **Archivos** | `apps/api/prisma/seed/aws/course.seed.json` (modificar) |
+| **Depende de** | S13-T10b |
+| **Archivos** | `apps/api/prisma/seed/aws/course.seed.json` (modificar: añadir etapas al final del arreglo `stages`) |
 
-**Contrato:** mismas reglas que T10 para las etapas A7–A12 (ids 107–112; `level` 4). Prerrequisitos (sólo Y): A7 ← AWS-U1.5.1; A8 ← AWS-U7.4.1 y AWS-U3.8.1; A9 ← AWS-U2.10.2 y AWS-U4.7.1; A10 ← AWS-U2.10.2; A11 ← AWS-U7.4.1 y AWS-U10.5.1; A12 ← AWS-U6.7.2.
+**Contrato:** mismas reglas que T10 para las etapas A7–A12 (ids 107–112; `level` 4). Prerrequisitos (sólo Y): A7 ← AWS-U1.5.1; A8 ← AWS-U7.4.1 y AWS-U3.8.1; A9 ← AWS-U2.10.2 y AWS-U4.7.1; A10 ← AWS-U2.10.2; A11 ← AWS-U7.4.1 y AWS-U10.5.1; A12 ← AWS-U6.7.2. Lo ya escrito no cambia.
 
-**Criterios de aceptación**
-- [ ] `npm run db:seed:aws` dos veces: 13 etapas, 77 módulos, 262 unidades, mismas cifras en la segunda ejecución.
-- [ ] Ningún elemento con `isPublished: true`.
+**Criterios de aceptación** (sin base de datos, como T10)
+- [ ] `courseSeedSchema` valida el archivo completo: 13 etapas, 77 módulos, 262 unidades.
+- [ ] La comparación automática de títulos con el currículo da 0 diferencias para A0–A12.
+- [ ] Objetivos en infinitivo y nada publicado.
+- [ ] La siembra (`npm run db:seed:aws` dos veces con las mismas cifras: 13 / 77 / 262) se comprueba en la verificación de T9, cuando haya base de datos.
 
 ---
 
@@ -862,7 +898,7 @@ No es tarea del Constructor. Al aprobar T1–T17, el Orquestador actualiza en el
 
 ## 5. Criterios de cierre del sprint
 
-- [ ] T1–T17, T3b, T3c, T12b, T16b y T19 aprobadas; T18 hecha.
+- [ ] T1–T17, T3b, T3c, T10b, T12b, T16b y T19 aprobadas; T18 hecha.
 - [ ] `npm run typecheck`, `npm run lint`, `npm run test` y `npm run build` en verde en todos los workspaces.
 - [ ] `npm run db:migrate`, `npm run db:seed` (12/48/207) y `npm run db:seed:aws` (13/77/262) desde una base vacía, dos veces cada semilla, con las mismas cifras.
 - [ ] Sin `course`, `GET /api/content/stages` devuelve exactamente lo mismo que antes del sprint (comparación de la respuesta).
