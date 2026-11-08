@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (18/23: T1–T7 ✅ con T3b y T3c, T10 ✅, T12b ✅, T13–T17 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (19/23: T1–T7 ✅ con T3b y T3c, T10 y T10b ✅, T12b ✅, T13–T17 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -653,10 +653,12 @@ export async function countCourse(
 **Contrato:** mismas reglas que T10 para las etapas **A3, A4, A5 y A6** (ids 103–106; `level` A3–A4 → 2, A5–A6 → 3), con sus slugs, `estimatedMin` y prerrequisitos de la ficha de T10. Lo ya escrito (curso y A0–A2) no cambia.
 
 **Criterios de aceptación**
-- [ ] `courseSeedSchema` valida el archivo completo: 7 etapas (100–106), 47 módulos, 181 unidades.
-- [ ] La comparación automática de títulos con el currículo da 0 diferencias para A0–A6.
-- [ ] Objetivos en infinitivo y nada publicado, como en T10.
-- [ ] El diff no modifica el curso ni las etapas A0–A2.
+- [x] `courseSeedSchema` valida el archivo completo: 7 etapas (100–106), 47 módulos, 181 unidades.
+- [x] La comparación automática de títulos con el currículo da 0 diferencias para A0–A6.
+- [x] Objetivos en infinitivo y nada publicado, como en T10.
+- [x] El diff no modifica el curso ni las etapas A0–A2.
+
+**Revisión (2026-11-08): ✅ aprobada tras corregir tres objetivos.** La validación independiente del Orquestador da 0 problemas, con prerrequisitos entre etapas según el grafo (A3, A4 y A6 ← AWS-U2.10.2; A5 ← AWS-U3.8.1 y AWS-U4.7.1) y sin ciclos. Diff +1594/−0 respecto al commit de T10. El Constructor señaló seis objetivos dudosos y los seis estaban bien resueltos. El Orquestador corrigió otros tres: AWS-U3.2.3 (la concurrencia reservada no evita arranques en frío), AWS-U4.4.1 (la detección de deriva no despliega) y AWS-U6.2.4 (redacción repetida). Verificación: `typecheck` y `lint` en 0; api 887 · web 422 · shared 341.
 
 ---
 
