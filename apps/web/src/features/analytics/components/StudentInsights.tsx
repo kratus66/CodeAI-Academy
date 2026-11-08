@@ -7,7 +7,7 @@ import type {
   StudentSummary,
   UnitProgressSummary,
 } from "@codeai/shared";
-import { DEFAULT_ANALYTICS_RANGE } from "@codeai/shared";
+import { DEFAULT_ANALYTICS_RANGE, stageIdOfCode, stageLabel } from "@codeai/shared";
 import { useCallback, useState } from "react";
 
 import { useContentLoader } from "@/features/learning/lib/use-content-loader";
@@ -54,16 +54,17 @@ const defaultLoadInsights: LoadStudentInsights = async (range, signal) => {
 };
 
 export interface StageProgress {
-  /** Índice de etapa que codifica el `unitCode` (`U0.1.1` → `0`). */
+  /** Id de etapa de cualquier ruta que codifica el `unitCode` (`U0.1.1` → `0`, `AWS-U2.3.1` → `102`). */
   readonly stage: number;
   readonly units: number;
   readonly avgPct: number;
 }
 
 /**
- * El resumen del estudiante no trae etapas; el `unitCode` sí las codifica
- * (`U<etapa>.<módulo>.<unidad>`). Se agrupa por esa primera cifra y se promedia
- * el avance de cada unidad, sin inventar etapas que el plan no tenga.
+ * El resumen del estudiante no trae etapas; el `unitCode` sí las codifica en
+ * cualquier ruta (`U<etapa>.<módulo>.<unidad>` o `AWS-U<etapa>.<módulo>.<unidad>`).
+ * El id de etapa sale de `stageIdOfCode` (`U0.1.1` → 0, `AWS-U2.3.1` → 102) y se
+ * promedia el avance de cada unidad, sin inventar etapas que el plan no tenga.
  */
 export function summarizeStages(
   units: readonly UnitProgressSummary[],
@@ -71,11 +72,10 @@ export function summarizeStages(
   const buckets = new Map<number, { total: number; count: number }>();
 
   for (const unit of units) {
-    const match = /^U(\d+)(?:\.|$)/.exec(unit.unitCode);
+    const stage = stageIdOfCode(unit.unitCode);
 
-    if (!match) continue;
+    if (stage === null) continue;
 
-    const stage = Number(match[1]);
     const bucket = buckets.get(stage) ?? { total: 0, count: 0 };
     buckets.set(stage, {
       total: bucket.total + unit.progressPct,
@@ -170,7 +170,7 @@ export function StudentInsights({
                 {
                   label: "Avance global",
                   value: percentLabel(summary.overallPct),
-                  note: `Etapa en curso: ${overview.currentStage}`,
+                  note: `Etapa en curso: ${stageLabel(overview.currentStage) ?? overview.currentStage}`,
                 },
                 {
                   label: "Días activos",
@@ -224,7 +224,7 @@ export function StudentInsights({
                   <li key={stage.stage} className={CARD_CLASSES}>
                     <div className="flex items-center justify-between gap-3 text-sm">
                       <span className="font-medium text-white">
-                        Etapa E{stage.stage}
+                        Etapa {stageLabel(stage.stage) ?? String(stage.stage)}
                       </span>
                       <span className="text-slate-400">
                         {percentLabel(stage.avgPct)} · {countLabel(stage.units, "unidad", "unidades")}
@@ -232,7 +232,7 @@ export function StudentInsights({
                     </div>
                     <div
                       role="progressbar"
-                      aria-label={`Avance de la etapa E${stage.stage}`}
+                      aria-label={`Avance de la etapa ${stageLabel(stage.stage) ?? String(stage.stage)}`}
                       aria-valuenow={stage.avgPct}
                       aria-valuemin={0}
                       aria-valuemax={100}

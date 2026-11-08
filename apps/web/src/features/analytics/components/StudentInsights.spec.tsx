@@ -94,6 +94,19 @@ describe("summarizeStages", () => {
   it("ignora códigos que no codifican una etapa", () => {
     expect(summarizeStages([unit("LEGACY", 80)])).toEqual([]);
   });
+
+  it("agrupa las etapas de cualquier ruta por su id", () => {
+    expect(
+      summarizeStages([
+        unit("U0.1.1", 40),
+        unit("U0.1.2", 60),
+        unit("AWS-U2.3.1", 30),
+      ]),
+    ).toEqual([
+      { stage: 0, units: 2, avgPct: 50 },
+      { stage: 102, units: 1, avgPct: 30 },
+    ]);
+  });
 });
 
 
@@ -118,7 +131,7 @@ describe("StudentInsights", () => {
     });
 
     expect(resumen).toHaveTextContent("34,5 %");
-    expect(resumen).toHaveTextContent("Etapa en curso: 2");
+    expect(resumen).toHaveTextContent("Etapa en curso: E2");
     expect(resumen).toHaveTextContent("9");
     expect(resumen).toHaveTextContent("3/4");
     expect(resumen).toHaveTextContent("Nota media: 75 %");
@@ -151,6 +164,21 @@ describe("StudentInsights", () => {
 
     expect(competencias).toHaveTextContent("Nivel 3 · 14 evidencias");
     expect(competencias).not.toHaveTextContent("Nivel 0");
+  });
+
+  it("nombra con su letra las etapas de la ruta AWS", async () => {
+    const loadInsights = vi.fn(async () =>
+      data({ units: [unit("AWS-U2.3.1", 30)] }),
+    );
+
+    render(<StudentInsights loadInsights={loadInsights} />);
+
+    const barra = await screen.findByRole("progressbar", {
+      name: "Avance de la etapa A2",
+    });
+
+    expect(barra).toHaveAttribute("aria-valuenow", "30");
+    expect(screen.getByText("Etapa A2")).toBeInTheDocument();
   });
 
   it("desglosa los errores por categoría y concepto", async () => {

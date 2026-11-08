@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (15/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13–T16 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (16/22: T1–T7 ✅ con T3b y T3c, T12b ✅, T13–T16 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -796,12 +796,19 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 
 **Contexto mínimo.** `summarizeStages` agrupa el avance por etapa con `/^U(\d+)(?:\.|$)/`, así que descarta las unidades `AWS-U…` (ver S13-T12b).
 
-**Contrato:** `summarizeStages` usa `stageIdOfCode(unit.unitCode)` y descarta sólo los códigos para los que devuelve `null`. Donde la vista muestre el número de etapa, usa `stageLabel(stage) ?? String(stage)`. El resto no cambia.
+**Contrato** (revisado contra el código el 2026-11-08):
+- `summarizeStages` usa `stageIdOfCode(unit.unitCode)` y descarta sólo los códigos para los que devuelve `null`. El comentario del campo `stage` («Índice de etapa que codifica el `unitCode`…») pasa a decir que es el id de etapa de cualquier ruta.
+- Hoy la vista escribe la letra a mano en dos sitios: `Etapa E{stage.stage}` y `` aria-label={`Avance de la etapa E${stage.stage}`} ``. Con AWS diría «Etapa E102». Ambos pasan a `stageLabel(stage.stage) ?? String(stage.stage)` («Etapa E1», «Etapa A2»).
+- La nota `` `Etapa en curso: ${overview.currentStage}` `` pasa a `` `Etapa en curso: ${stageLabel(overview.currentStage) ?? overview.currentStage}` `` («Etapa en curso: E2»).
+- El resto no cambia.
 
 **Criterios de aceptación**
-- [ ] Prueba: con unidades `U0.1.1`, `U0.1.2` y `AWS-U2.3.1`, `summarizeStages` devuelve las etapas 0 y 102, cada una con su media.
-- [ ] Las pruebas existentes de la vista siguen pasando (si fijaban el texto «Etapa N», se ajustan sólo en ese texto).
-- [ ] Verificación de `apps/web` en verde.
+- [x] Prueba: con unidades `U0.1.1`, `U0.1.2` y `AWS-U2.3.1`, `summarizeStages` devuelve las etapas 0 y 102, cada una con su media.
+- [x] Prueba: una barra de la etapa 102 se nombra «Avance de la etapa A2» y su texto dice «Etapa A2».
+- [x] La prueba existente que espera «Etapa en curso: 2» pasa a esperar «Etapa en curso: E2» (único texto ajustado esperado; el reporte lista cualquier otro).
+- [x] Verificación de `apps/web` en verde.
+
+**Revisión (2026-11-08): ✅ aprobada tras una corrección menor.** Diff exacto al contrato; sólo se ajustó «Etapa en curso: 2» → «E2». El Constructor avisó de que el JSDoc de `summarizeStages` seguía describiendo la regla antigua, y lo reescribió a petición del Orquestador sin tocar código. Verificación repetida: build, `typecheck` y `lint` en 0; api 887 · web 421 · shared 341.
 
 ---
 
