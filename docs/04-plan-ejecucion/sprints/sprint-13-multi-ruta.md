@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (20/23: T1–T7 ✅ con T3b y T3c, T10–T11 ✅ con T10b, T12b ✅, T13–T17 ✅ con T16b, y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (21/23: T1–T7 ✅ con T3b y T3c, T10–T12 ✅ con T10b y T12b, T13–T17 ✅ con T16b, y T19 ✅; faltan T8 y T9, que necesitan la base de datos, y T18, la documentación) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -698,8 +698,10 @@ export async function countCourse(
 6. Ninguna unidad es su propio prerrequisito y el grafo de prerrequisitos no tiene ciclos. `courseSeedSchema` (S13-T7) sólo comprueba que el prerrequisito exista, y una autorreferencia o un ciclo dejarían unidades bloqueadas para siempre.
 
 **Criterios de aceptación**
-- [ ] La guarda pasa con el esqueleto actual y falla (prueba de mutación manual descrita en el reporte) si se cambia un objetivo a «Entender…» por «Comprensión de…».
-- [ ] Verificación común en verde.
+- [x] La guarda pasa con el esqueleto actual y falla (prueba de mutación manual descrita en el reporte) si se cambia un objetivo a «Entender…» por «Comprensión de…».
+- [x] Verificación común en verde.
+
+**Revisión (2026-11-08): ✅ aprobada.** 9 pruebas, una por regla, con mensajes que nombran la unidad, la URL o el ciclo que incumple. Las reglas 4 y 6 se prueban además con datos de ejemplo, para que no pasen sólo en vacío. El dominio se compara con el `hostname` (rechaza `aws.amazon.com.evil.com` y `notskillbuilder.aws`) y los ciclos se buscan en profundidad con pila de camino. Si falta `aws/units/`, hay cero archivos. Mutaciones del Constructor: objetivo «Comprensión de…» y autorreferencia; cada una falla sólo su regla. Mutación del Orquestador: ciclo AWS-U0.1.1 ↔ AWS-U0.1.2, que falla sólo la regla 6b. Todas restauradas con `git checkout`. Verificación repetida: build, `typecheck` y `lint` en 0; api 896 (+9) · web 422 · shared 341.
 
 ---
 
