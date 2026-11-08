@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (10/22: T1–T7 ✅ con T3b y T3c, y T13 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en curso (11/22: T1–T7 ✅ con T3b y T3c, T13 ✅ y T19 ✅; T8 pendiente de la base de datos) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -812,10 +812,12 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 **Contrato:** sólo esa prueba. Las expectativas que dependen de la sesión (la llamada a `startSession`, «1 de 6 · Presentación», «40» y el `timer`) se esperan con `await waitFor(…)` o con consultas `findBy…`, con el mismo estilo que el resto del archivo. Lo que se comprueba no cambia: ni se quita ni se relaja ninguna expectativa. El componente no se toca.
 
 **Criterios de aceptación**
-- [ ] `git diff` sólo toca esa prueba.
-- [ ] `npx vitest run src/features/interviews/components/InterviewRoom.spec.tsx` (desde `apps/web`) pasa 10 veces seguidas.
-- [ ] `npm run test -w apps/web` pasa 3 veces seguidas sin fallos.
-- [ ] Verificación común en verde.
+- [x] `git diff` sólo toca esa prueba.
+- [x] `npx vitest run src/features/interviews/components/InterviewRoom.spec.tsx` (desde `apps/web`) pasa 10 veces seguidas.
+- [x] `npm run test -w apps/web` pasa 3 veces seguidas sin fallos.
+- [x] Verificación común en verde.
+
+**Revisión (2026-11-08): ✅ aprobada.** El Constructor confirmó la causa en el componente: `startSession` se llama desde un `useEffect` posterior al render que pinta el título, y su resultado llega por `.then(setSession)`. Es la misma aserción que había fallado (`toHaveBeenCalledWith({ scenarioSlug: "backend-junior" })`), y ahora espera con `waitFor`. No se quitó ninguna expectativa y no hay otras pruebas con la misma carrera. Repeticiones: Constructor 10/10 del archivo y 3/3 de la suite web; Orquestador 5/5 del archivo y 2 suites completas en verde (api 887 · web 410 · shared 329).
 
 ---
 
@@ -842,7 +844,7 @@ No es tarea del Constructor. Al aprobar T1–T17, el Orquestador actualiza en el
 - **Panel «Continuar» y analítica** mezclan rutas: se separan por ruta en S15 (preparación por certificación) y S26.
 - `contentSeedSchema` y `courseSeedSchema` duplican reglas de árbol; unificarlas es refactor posterior, no bloquea.
 - **Finales de línea de las migraciones (descubierto en S13-T4):** el repositorio tiene `core.autocrlf=true` y no tiene `.gitattributes`. Prisma guarda el checksum de cada `migration.sql` tal como estaba en disco al aplicarlo. En la base local, `20261028170000_interviews` y `20261106160012_courses` se aplicaron con CRLF y el resto con LF (`git ls-files --eol`). Si una operación de Git reescribe uno de esos archivos con otros finales de línea, `migrate dev` podría volver a decir «modified after it was applied». **Antes de la primera migración de S14** se comprueba si la versión de Prisma del proyecto compara checksums sin importar el final de línea; si no lo hace, se añade un `.gitattributes` para `apps/api/prisma/migrations/**` y se documenta en `modelo-datos.md`.
-- **Prueba intermitente descubierta durante S13-T3b (no planificada):** `apps/web/src/features/interviews/components/InterviewRoom.spec.tsx`, prueba «inicia la sesión y muestra fase, turnos restantes y cronómetro», línea ~89. Comprueba `startSession` en cuanto aparece el título, pero el título depende de `loadScenario` y el arranque de sesión puede resolverse después; con carga en paralelo falla una vez de cada varias. Corrección probable: envolver esa expectativa en `await waitFor(…)`. Es código de S10; por la regla 4 del roadmap pasa al sprint siguiente salvo que bloquee el cierre de este, en cuyo caso se convierte en una microtarea de un archivo.
+- ✅ **Resuelta en S13-T19 (2026-11-08).** **Prueba intermitente descubierta durante S13-T3b (no planificada):** `apps/web/src/features/interviews/components/InterviewRoom.spec.tsx`, prueba «inicia la sesión y muestra fase, turnos restantes y cronómetro», línea ~89. Comprueba `startSession` en cuanto aparece el título, pero el título depende de `loadScenario` y el arranque de sesión puede resolverse después; con carga en paralelo falla una vez de cada varias. Corrección probable: envolver esa expectativa en `await waitFor(…)`. Es código de S10; por la regla 4 del roadmap pasa al sprint siguiente salvo que bloquee el cierre de este, en cuyo caso se convierte en una microtarea de un archivo.
 
 ## 7. Documentos relacionados
 

@@ -86,12 +86,18 @@ describe("InterviewRoom", () => {
         name: "Backend junior: API de tareas",
       }),
     ).toBeInTheDocument();
-    expect(startSession).toHaveBeenCalledWith({
-      scenarioSlug: "backend-junior",
+    await waitFor(() => {
+      expect(startSession).toHaveBeenCalledWith({
+        scenarioSlug: "backend-junior",
+      });
     });
-    expect(screen.getByText("1 de 6 · Presentación")).toBeInTheDocument();
-    expect(screen.getByText("40")).toBeInTheDocument();
-    expect(screen.getByRole("timer")).toHaveTextContent(/^\d{2}:\d{2}$/);
+    expect(
+      await screen.findByText("1 de 6 · Presentación"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("40")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("timer")).toHaveTextContent(/^\d{2}:\d{2}$/);
+    });
     expect(
       await screen.findByText("Cuéntame un problema técnico."),
     ).toBeInTheDocument();
