@@ -228,6 +228,12 @@ enum Ladder {
   AUTONOMOUS
 }
 
+/// Banco al que pertenece una pregunta de examen. `RESERVED` sólo lo lee el motor de simulacros (S15).
+enum ExamPool {
+  UNIT
+  RESERVED
+}
+
 model Exercise {
   id              String       @id @default(cuid())
   unitId          String
@@ -248,6 +254,13 @@ model Exercise {
   isPublished     Boolean      @default(false)
   /// Un revisor humano validó el ejercicio. Con `ACCREDIT_ONLY_REVIEWED=true` sólo estos acreditan competencia.
   reviewedByHuman Boolean      @default(false)
+  /// Código de la certificación ("SAA-C03"). Sólo en preguntas de examen de la ruta AWS.
+  certification   String?
+  /// Dominio de la guía oficial (1…6).
+  examDomain      Int?
+  /// Tarea de la guía ("1.2"), si la guía la define.
+  examTask        String?
+  examPool        ExamPool     @default(UNIT)
   order           Int
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -262,6 +275,7 @@ model Exercise {
 
   @@index([unitId, type])
   @@index([isPublished])
+  @@index([certification, examDomain, examPool])
 }
 
 // ─────────────────────── EJERCICIOS Y ENVÍOS ───────────────────────
