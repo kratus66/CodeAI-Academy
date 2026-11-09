@@ -26,6 +26,7 @@ import {
   paginatedSchema,
   portfolioResponseSchema,
   quizAnswerResponseSchema,
+  quizGradeResponseSchema,
   reflectionResponseSchema,
   progressOverviewSchema,
   projectDetailSchema,
@@ -82,6 +83,8 @@ import type {
   ProjectSubmission,
   ProjectSummary,
   QuizAnswerResult,
+  QuizGradeResult,
+  QuizSubmissionInput,
   ReflectionResponse,
   RegisterInput,
   ReviewAnswerInput,
@@ -515,6 +518,23 @@ export const exercisesApi = {
       await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/quiz-answers`, {
         method: "POST",
         body: { optionId },
+      }),
+    );
+
+    return response.result;
+  },
+
+  /**
+   * Corrección de cualquier variante de quiz (`optionId`, `optionIds`, `order` o
+   * `pairs`). La respuesta correcta, igual que en `answerQuiz`, solo llega
+   * después del intento; el `kind` del resultado dice qué se corrigió.
+   */
+  async submitQuiz(id: string, body: QuizSubmissionInput): Promise<QuizGradeResult> {
+    const response = parseContract(
+      quizGradeResponseSchema,
+      await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/quiz-answers`, {
+        method: "POST",
+        body,
       }),
     );
 

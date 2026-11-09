@@ -757,6 +757,90 @@ describe("exercisesApi", () => {
   });
 });
 
+const QUIZ_GRADE_RESULTS = [
+  {
+    kind: "single",
+    correct: true,
+    correctOptionId: "b",
+    explanation: "Aciertas: la opción marca el servicio que lista los registros.",
+    correctExplanation: "«b» es la opción que lista los registros.",
+  },
+  {
+    kind: "multiple",
+    correct: true,
+    correctOptionIds: ["b", "e"],
+    selectedOptionIds: ["b", "e"],
+    explanations: {
+      b: "Correcta: usa el cliente HTTP compartido.",
+      e: "Correcta: espera el resultado antes de navegar.",
+    },
+  },
+  {
+    kind: "ordering",
+    correct: false,
+    correctOrder: ["c", "a", "b"],
+    explanations: {
+      c: "Primero se valida la entrada.",
+      a: "Después se consulta la base de datos.",
+    },
+  },
+  {
+    kind: "matching",
+    correct: true,
+    correctPairs: { a: "2", b: "1" },
+    explanations: {
+      a: "`useEffect` sincroniza con el ciclo de vida.",
+      b: "`useMemo` memoriza un cálculo.",
+    },
+  },
+] as const;
+
+describe("exercisesApi.submitQuiz", () => {
+  it("envía cualquier cuerpo de quiz a la ruta del ejercicio", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ result: QUIZ_GRADE_RESULTS[1] }));
+
+    const result = await exercisesApi.submitQuiz("ex 1", { optionIds: ["b", "e"] });
+
+    expect(result).toEqual(QUIZ_GRADE_RESULTS[1]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exercises/ex%201/quiz-answers",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ optionIds: ["b", "e"] }),
+    });
+  });
+
+  for (const expected of QUIZ_GRADE_RESULTS) {
+    it(`desenvuelve el resultado de la variante ${expected.kind}`, async () => {
+      fetchMock.mockResolvedValue(jsonResponse({ result: expected }));
+
+      const result = await exercisesApi.submitQuiz("ex_1", { optionId: "a" });
+
+      expect(result).toEqual(expected);
+    });
+  }
+
+  it("rechaza una respuesta que no dice qué variante se corrigió", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        result: {
+          correct: true,
+          correctOrder: ["c", "a", "b"],
+          explanations: { c: "Primero se valida la entrada." },
+        },
+      }),
+    );
+
+    const error = await captureApiError(
+      exercisesApi.submitQuiz("ex_1", { order: ["c", "a", "b"] }),
+    );
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe("INTERNAL_ERROR");
+  });
+});
+
 const SANDBOX_RUN = {
   outcome: "PASSED",
   score: 100,
