@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en curso (21/23: T1–T7 ✅ con T3b y T3c, T10–T12 ✅ con T10b y T12b, T13–T17 ✅ con T16b, y T19 ✅; faltan T8 y T9, que necesitan la base de datos, y T18, la documentación) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** 🔄 en cierre (23/23 tareas del Constructor ✅; falta cerrar T18, la documentación) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -556,14 +556,21 @@ export async function countCourse(
 `seed.mts` queda así: `prepareDatabaseEnv()` → leer y validar con `contentSeedSchema` (su `readSeed` y su mensaje de error no cambian) → `upsertResources` → `previousUnitCodes(seed.stages)` → `upsertStageTree(…, { courseSlug: "fullstack-ia", … })` por etapa → `countCourse(prisma, "fullstack-ia")` → **los mismos dos `console.log` y el mismo aviso** que hoy.
 
 **Criterios de aceptación**
-- [ ] `npm run db:seed` (desde la raíz) dos veces seguidas imprime exactamente: «Semilla aplicada: 12 etapas (12 publicadas), 48 módulos, 207 unidades, 3203 ejercicios.» y «Declarado en content.seed.json: 12 etapas, 48 módulos, 207 unidades.», sin el aviso de filas no declaradas.
-- [ ] Tras sembrar, una consulta de solo lectura confirma que los prerrequisitos no cambiaron. Antes de tocar el código se guarda la salida de `SELECT code, "prerequisiteIds" FROM "Unit" ORDER BY code;` en un archivo del directorio temporal del sistema (fuera del repositorio), y al terminar la salida es idéntica.
-- [ ] `npm run typecheck:seed -w apps/api` en verde.
-- [ ] Verificación común en verde.
+- [x] `npm run db:seed` (desde la raíz) dos veces seguidas imprime exactamente: «Semilla aplicada: 12 etapas (12 publicadas), 48 módulos, 207 unidades, 3203 ejercicios.» y «Declarado en content.seed.json: 12 etapas, 48 módulos, 207 unidades.», sin el aviso de filas no declaradas.
+- [x] Tras sembrar, una consulta de solo lectura confirma que los prerrequisitos no cambiaron. Antes de tocar el código se guarda la salida de `SELECT code, "prerequisiteIds" FROM "Unit" ORDER BY code;` en un archivo del directorio temporal del sistema (fuera del repositorio), y al terminar la salida es idéntica.
+- [x] `npm run typecheck:seed -w apps/api` en verde.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no cambiar el orden de escritura, las claves de `upsert` ni los mensajes; no añadir la semilla de AWS (T9); en `tsconfig.seed.json`, nada más que la opción indicada.
 
 **Estado (2026-11-08): 🟡 verificación estática ✅, pendiente de la base.** Docker Desktop estaba apagado. El Constructor se detuvo antes de tocar nada; después se le autorizó a hacer el refactor sin la base, porque la foto previa de prerrequisitos describe lo que dejó la semilla antigua (última siembra: 2026-11-06; `content.seed.json` sin cambios desde el 2026-11-04) y sigue siendo válida mientras nadie siembre con el código nuevo. El Orquestador comparó el código movido con el original línea a línea: es idéntico salvo `courseSlug` en la etapa y el conteo por ruta. `typecheck:seed`, build, `typecheck` y `lint` en 0; api 887 · web 407 · shared 329. **Falta**, en este orden: foto previa (207 líneas), `npm run db:seed` dos veces, foto posterior y `diff` idéntico. Hasta entonces T8 no se da por aprobada ni se hace su commit.
+
+**Revisión (2026-11-09): ✅ aprobada (verificada contra la base junto con T9).** Con Docker de nuevo en marcha, el Orquestador hizo:
+- foto previa de prerrequisitos: 207 líneas;
+- `npm run db:generate`, pendiente desde el `EPERM` de T4;
+- `npm run db:seed` dos veces, con «12 etapas (12 publicadas), 48 módulos, 207 unidades, 3203 ejercicios» en ambas y sin aviso;
+- foto posterior: `diff` **idéntico**;
+- tras sembrar AWS, otra corrida de `db:seed` con las mismas cifras, porque el conteo filtra por ruta.
 
 ---
 
@@ -590,11 +597,19 @@ T8 y T9 se aprueban y se commitean juntas tras esa verificación.
 **Criterios de aceptación**
 - [x] *(estático)* `npm run typecheck:seed -w apps/api` incluye el archivo nuevo y está en verde; verificación común en verde.
 - [x] *(estático)* `node prisma/seed/seed-course.mts` sin argumento o con `fullstack-ia` termina con un mensaje claro y código 1 **antes** de conectarse a la base.
-- [ ] *(base de datos)* `npm run db:seed:aws` dos veces seguidas: «13 etapas, 77 módulos, 262 unidades» (0 publicadas) y las mismas cifras en la segunda ejecución.
-- [ ] *(base de datos)* Un archivo de unidad con nombre equivocado en `aws/units/` (temporal, se borra después) detiene la carga sin escribir nada: las cifras no cambian.
-- [ ] *(base de datos)* `npm run db:seed` (ruta por defecto) sigue dando sus cifras (12/48/207/3203).
+- [x] *(base de datos)* `npm run db:seed:aws` dos veces seguidas: «13 etapas, 77 módulos, 262 unidades» (0 publicadas) y las mismas cifras en la segunda ejecución.
+- [x] *(base de datos)* Un archivo de unidad con nombre equivocado en `aws/units/` (temporal, se borra después) detiene la carga sin escribir nada: las cifras no cambian.
+- [x] *(base de datos)* `npm run db:seed` (ruta por defecto) sigue dando sus cifras (12/48/207/3203).
 
 **Estado (2026-11-08): 🟡 parte estática ✅, pendiente de la base.** El Orquestador revisó el código. Valida el argumento, lee y fusiona la semilla, y sólo entonces carga el entorno y crea el `PrismaClient`; un argumento, un archivo o una fusión inválidos terminan antes de conectarse. Comprobado: sin argumento, `fullstack-ia` y `gcp` salen con código 1 y un mensaje claro. `typecheck:seed`, `typecheck` y `lint` de la api en 0; suite del Constructor en verde (api 896 · web 422 · shared 341). **T8 y T9 se verifican juntas contra la base, y se aprueban y commitean juntas.**
+
+**Revisión (2026-11-09): ✅ aprobada.** Resultados en la base:
+- `npm run db:seed:aws` dos veces: «13 etapas (0 publicadas), 77 módulos, 262 unidades, 0 ejercicios».
+- La base queda con `aws-cloud` 13/0 publicadas y `fullstack-ia` 12/12, y la fila `aws-cloud` en `Course` sin publicar y con su aviso.
+- Los prerrequisitos de las 262 unidades AWS en la base son idénticos a los del esqueleto.
+- Un archivo `AWS-U0.1.1-copia.json`, válido y armado con una lección real, detuvo la carga en la fusión con «El archivo AWS-U0.1.1-copia.json no corresponde a la unidad AWS-U0.1.1…», con código 1 y 0 lecciones AWS en la base. La carpeta temporal se eliminó.
+
+Verificación completa: `typecheck:seed`, build de todos los workspaces, `typecheck` y `lint` en 0; api 896 · web 422 · shared 341.
 
 ---
 

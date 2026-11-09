@@ -103,8 +103,22 @@ model RefreshToken {
 
 // ─────────────────────────── CONTENIDO ───────────────────────────
 
+/// Ruta formativa (S13). Rangos de id, prefijos de código y competencias viven en COURSE_REGISTRY (@codeai/shared).
+model Course {
+  slug        String   @id            // "fullstack-ia" | "aws-cloud"
+  title       String
+  objective   String
+  notice      String?                 // aviso legal que muestra la web (p. ej., no afiliación a AWS)
+  order       Int
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stages Stage[]
+}
+
 model Stage {
-  id          Int      @id            // 0..11
+  id          Int      @id            // 0..11 en fullstack-ia · 100..112 en aws-cloud
   slug        String   @unique
   title       String
   objective   String
@@ -114,8 +128,12 @@ model Stage {
   isPublished Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  courseSlug  String   @default("fullstack-ia")
 
+  course  Course   @relation(fields: [courseSlug], references: [slug], onDelete: Restrict)
   modules Module[]
+
+  @@index([courseSlug])
 }
 
 model Module {
@@ -629,6 +647,8 @@ model AiInteraction {
 | Regla | Implementación |
 |-------|----------------|
 | Idempotencia del seed de contenido | `upsert` por `slug` y `code` |
+| Varias rutas (S13) | La ruta de una etapa sale de su id (`COURSE_REGISTRY`: 0–11 `fullstack-ia`, 100–112 `aws-cloud`) y se guarda en `Stage.courseSlug` para filtrar en SQL. La migración `courses` crea la ruta por defecto **antes** de la clave foránea. `onDelete: Restrict` impide borrar una ruta con etapas. Los códigos de otras rutas llevan prefijo (`AWS-M2.3`, `AWS-U2.3.1`, `AWS-C4`) |
+| Semilla por ruta (S13) | `content.seed.json` siembra `fullstack-ia` (`npm run db:seed`, valida con `contentSeedSchema`). Cada ruta secundaria tiene un esqueleto (`prisma/seed/<dir>/course.seed.json`: ruta, etapas, módulos y unidades) y **un archivo por unidad** (`<dir>/units/<código>.json`: lecciones y ejercicios), que `mergeCourseSeed` fusiona y `courseSeedSchema` valida antes de escribir. La escritura la comparten las dos semillas (`prisma/seed/seed-lib.mts`) y el conteo final se filtra por ruta. La guarda `seed-course-quality.spec.ts` valida el esqueleto AWS en cada corrida |
 | Borrado de contenido | `onDelete: Cascade` en jerarquía Stage→Module→Unit→Exercise |
 | Protección de usuarios | `onDelete: Cascade` solo en datos propios; nunca borrar `User` desde la app |
 | Auditoría IA | `AiInteraction` es *append-only*; sin updates ni deletes |
@@ -673,6 +693,8 @@ npx prisma migrate deploy
 - Cada migración va en su propio commit.
 - Nunca se edita una migración ya aplicada.
 - Los cambios destructivos (borrar columna) se hacen en dos pasos: primero dejar de usar, luego eliminar.
+- **Si `migrate dev` dice «The migration … was modified after it was applied» y propone un reset, nunca se acepta.** Primero se ejecuta `prisma migrate status`: si dice «up to date», no hay deriva de esquema. Después se revisa `_prisma_migrations`, porque `migrate dev` compara también el checksum de las filas revertidas (`rolled_back_at` no nulo). En S13-T4 la causa fue una fila revertida de S10 con el checksum de una versión vieja del archivo. Se resolvió con respaldo previo (`npm run db:backup`) y borrando sólo esa fila (`DELETE 1`, identificada por checksum).
+- Prisma guarda el checksum del `migration.sql` tal como estaba en disco al aplicarlo. Con `core.autocrlf=true` y sin `.gitattributes`, una reescritura de Git que cambie los finales de línea podría provocar el mismo aviso. Está pendiente de resolver antes de la primera migración de S14 (ver [`sprint-13-multi-ruta.md`](../04-plan-ejecucion/sprints/sprint-13-multi-ruta.md) §6).
 
 ---
 
