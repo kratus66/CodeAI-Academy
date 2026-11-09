@@ -6,6 +6,7 @@ export * from "./enums/role";
 export * from "./schemas/ai";
 export * from "./schemas/analytics";
 export * from "./schemas/auth";
+export * from "./schemas/certification";
 export * from "./schemas/common";
 export * from "./schemas/content";
 export * from "./schemas/course";
