@@ -1,4 +1,6 @@
 import type {
+  AuditAnswerInput,
+  AuditAnswerResponse,
   CreateSubmissionInput,
   ExerciseDetailResponse,
   ExerciseListQuery,
@@ -19,6 +21,7 @@ import type {
   UnitCodeParams,
 } from "@codeai/shared";
 import {
+  auditAnswerSchema,
   createSubmissionSchema,
   exerciseListQuerySchema,
   flashcardRatingSchema,
@@ -134,6 +137,20 @@ export class ExercisesController {
     @Body(new ZodValidationPipe(quizSubmissionSchema)) body: QuizSubmissionInput,
   ): Promise<QuizGradeResponse> {
     return this.exercises.answerQuiz(user.sub, params.id, body);
+  }
+
+  /**
+   * Auditoría de código: el cuerpo se valida con `auditAnswerSchema` y las
+   * guardas de clase (`JwtAuthGuard`, `UnitOpenGuard`) son las mismas que las
+   * del quiz. La respuesta nunca incluye la solución del ejercicio.
+   */
+  @Post(":id/audit-answers")
+  async answerAudit(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,
+    @Body(new ZodValidationPipe(auditAnswerSchema)) body: AuditAnswerInput,
+  ): Promise<AuditAnswerResponse> {
+    return this.exercises.answerAudit(user.sub, params.id, body);
   }
 
   @Post(":id/reflections")

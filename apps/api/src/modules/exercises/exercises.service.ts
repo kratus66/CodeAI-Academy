@@ -1,4 +1,6 @@
 import type {
+  AuditAnswerInput,
+  AuditAnswerResponse,
   CreateSubmissionInput,
   ExerciseDetailResponse,
   FlashcardRatingInput,
@@ -36,6 +38,7 @@ import {
 import type { Page, PageWindow } from "../content/content.repository";
 import type { SandboxService } from "../sandbox/sandbox.service";
 import { SANDBOX_SERVICE } from "../sandbox/sandbox.service";
+import { gradeAudit } from "./audit-grading";
 import { gradeSubmission } from "./grading";
 import { gradeQuizAnswer } from "./quiz-grading";
 import {
@@ -112,6 +115,7 @@ const FILE_NAME_BY_LANGUAGE: Record<SandboxRunRequest["language"], string> = {
 type ExerciseTestRow = ExerciseRow["tests"][number];
 
 const NOT_A_QUIZ = "Este ejercicio no es un quiz";
+const NOT_AN_AUDIT = "Este ejercicio no es una auditoría";
 const NOT_A_FLASHCARD = "Este ejercicio no es una tarjeta";
 const NOT_A_REFLECTION = "Este ejercicio no es una reflexión";
 const REVEAL_FIRST = "Primero intenta recordar y revela la respuesta";
@@ -288,6 +292,57 @@ export class ExercisesService {
       outcome,
       score,
       achievedLevel: this.accreditedLevel(exercise, correct ? 1 : null),
+      hintsUsed: 0,
+      durationMs: 0,
+      results: [],
+    } satisfies CreateSubmissionRow);
+
+    await this.reviews.scheduleFromSubmission({ userId, exerciseId, outcome, score, hintsUsed: 0 });
+    await this.recordProgress(userId, exercise.unitCode);
+
+    return { result: graded.result };
+  }
+
+  /**
+   * Corrige una auditoría de código (`contratos-api.md` §4.3, S14): el corrector
+   * puro decide la nota y aquí se traduce a HTTP con el mismo orden que el quiz.
+   * Una marca de un hallazgo inexistente es un `400` **antes** del tope de
+   * intentos (no gasta intento) y un contenido mal sembrado es un `500`; ningún
+   * error devuelve hallazgos ni explicaciones de la solución. Un `AUDIT`
+   * aprobado acredita el nivel 3 (T11c).
+   */
+  async answerAudit(
+    userId: string,
+    exerciseId: string,
+    body: AuditAnswerInput,
+  ): Promise<AuditAnswerResponse> {
+    const exercise = await this.requireExercise(exerciseId);
+
+    if (exercise.type !== "AUDIT") {
+      throw new BadRequestException(NOT_AN_AUDIT);
+    }
+
+    const graded = gradeAudit(exercise.solution, body);
+
+    if (graded.status === "invalid-answer") {
+      throw new BadRequestException(graded.message);
+    }
+
+    if (graded.status === "broken-content") {
+      throw new InternalServerErrorException(CONTENT_BROKEN);
+    }
+
+    await this.assertAttemptsLeft(userId, exercise);
+
+    const { outcome, score } = graded.result;
+
+    await this.repository.createSubmission({
+      userId,
+      exerciseId,
+      code: graded.submissionCode,
+      outcome,
+      score,
+      achievedLevel: this.accreditedLevel(exercise, outcome === "PASSED" ? 3 : null),
       hintsUsed: 0,
       durationMs: 0,
       results: [],
