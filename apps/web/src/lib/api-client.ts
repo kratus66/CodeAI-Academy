@@ -6,6 +6,7 @@ import {
   aiTutorResponseSchema,
   aiTutorStreamEventSchema,
   aiUsageResponseSchema,
+  auditAnswerResponseSchema,
   cohortAnalyticsSchema,
   competencyProgressSchema,
   courseListResponseSchema,
@@ -50,6 +51,8 @@ import type {
   AiTutorResponse,
   AiUsageResponse,
   AnalyticsRange,
+  AuditAnswerInput,
+  AuditAnswerResult,
   CohortAnalytics,
   CompetencyProgress,
   CourseSlug,
@@ -533,6 +536,23 @@ export const exercisesApi = {
     const response = parseContract(
       quizGradeResponseSchema,
       await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/quiz-answers`, {
+        method: "POST",
+        body,
+      }),
+    );
+
+    return response.result;
+  },
+
+  /**
+   * Corrección de una auditoría de código (S14). El estudiante marca qué
+   * hallazgos son defectos con su severidad y decide qué hacer con el artefacto;
+   * la explicación de cada hallazgo solo llega después del intento.
+   */
+  async submitAudit(id: string, body: AuditAnswerInput): Promise<AuditAnswerResult> {
+    const response = parseContract(
+      auditAnswerResponseSchema,
+      await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/audit-answers`, {
         method: "POST",
         body,
       }),

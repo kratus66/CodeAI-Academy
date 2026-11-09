@@ -841,6 +841,108 @@ describe("exercisesApi.submitQuiz", () => {
   });
 });
 
+const AUDIT_RESULT = {
+  score: 85,
+  outcome: "PARTIAL",
+  detectedDefects: 2,
+  totalDefects: 2,
+  falsePositives: 1,
+  decisionCorrect: true,
+  verdict: "fix",
+  findings: [
+    {
+      id: "f1",
+      isDefect: true,
+      severity: "critical",
+      marked: true,
+      chosenSeverity: "critical",
+      severityCorrect: true,
+      explanation: "El borrado alcanza a todas las cuentas, no solo a la pedida.",
+    },
+    {
+      id: "f2",
+      isDefect: true,
+      severity: "medium",
+      marked: true,
+      chosenSeverity: "low",
+      severityCorrect: false,
+      explanation: "La conexión no se cierra si la consulta falla.",
+    },
+    {
+      id: "f3",
+      isDefect: false,
+      severity: null,
+      marked: true,
+      chosenSeverity: "low",
+      severityCorrect: null,
+      explanation: "El registro del error es correcto.",
+    },
+  ],
+} as const;
+
+describe("exercisesApi.submitAudit", () => {
+  it("envía los hallazgos y la decisión a la ruta del ejercicio", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ result: AUDIT_RESULT }));
+
+    await exercisesApi.submitAudit("ex 1", {
+      marks: [
+        { findingId: "f1", severity: "critical" },
+        { findingId: "f2", severity: "low" },
+      ],
+      decision: "fix",
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exercises/ex%201/audit-answers",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        marks: [
+          { findingId: "f1", severity: "critical" },
+          { findingId: "f2", severity: "low" },
+        ],
+        decision: "fix",
+      }),
+    });
+  });
+
+  it("desenvuelve el resultado de la auditoría", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ result: AUDIT_RESULT }));
+
+    const result = await exercisesApi.submitAudit("ex_1", {
+      marks: [],
+      decision: "accept",
+    });
+
+    expect(result).toEqual(AUDIT_RESULT);
+  });
+
+  it("rechaza una respuesta que no trae la corrección de los hallazgos", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        result: {
+          score: 100,
+          outcome: "PASSED",
+          detectedDefects: 2,
+          totalDefects: 2,
+          falsePositives: 0,
+          decisionCorrect: true,
+          verdict: "fix",
+        },
+      }),
+    );
+
+    const error = await captureApiError(
+      exercisesApi.submitAudit("ex_1", { marks: [], decision: "fix" }),
+    );
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe("INTERNAL_ERROR");
+    expect(error.message).toBe("La respuesta de la API no cumple el contrato esperado");
+  });
+});
+
 const SANDBOX_RUN = {
   outcome: "PASSED",
   score: 100,
