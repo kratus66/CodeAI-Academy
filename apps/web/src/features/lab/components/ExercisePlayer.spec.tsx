@@ -135,3 +135,43 @@ describe("ExercisePlayer: MEMORY en modo unir", () => {
     expect(screen.getByText(/Unir conceptos/)).toBeInTheDocument();
   });
 });
+
+const AUDIT = exercise({
+  id: "ex-audit",
+  type: "AUDIT",
+  title: "La respuesta que nadie comprueba",
+  statement: "Audita la función y marca los defectos que encuentres.",
+  config: {
+    artifact: {
+      language: "typescript",
+      content:
+        "async function cargar(id: string) {\n  const res = await fetch(`/api/usuarios/${id}`);\n  return res.json();\n}",
+    },
+    candidates: [
+      { id: "f1", lines: [2, 2], label: "No comprueba si la respuesta trae error" },
+      { id: "f2", lines: [3, 3], label: "Devuelve el cuerpo sin validar su forma" },
+    ],
+  },
+});
+
+describe("ExercisePlayer: AUDIT", () => {
+  it("abre la auditoría en su reproductor, no en el editor de código", async () => {
+    render(<ExercisePlayer unitCode="U0.1.1" slug="audit-1" loadLab={loaderFor(AUDIT)} />);
+
+    expect(await screen.findByRole("region", { name: "Artefacto a auditar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enviar auditoría" })).toBeInTheDocument();
+    expect(screen.getByText(/Auditoría/)).toBeInTheDocument();
+    expect(screen.queryByText(/Modo de práctica/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enviar" })).not.toBeInTheDocument();
+  });
+
+  it("no confunde la auditoría con una reflexión ni con un quiz", async () => {
+    render(<ExercisePlayer unitCode="U0.1.1" slug="audit-1" loadLab={loaderFor(AUDIT)} />);
+
+    await screen.findByRole("region", { name: "Artefacto a auditar" });
+
+    expect(screen.queryByLabelText("Tu reflexión")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Comprobar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Tablero de memoria" })).not.toBeInTheDocument();
+  });
+});
