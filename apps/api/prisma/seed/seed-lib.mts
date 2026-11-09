@@ -3,11 +3,12 @@
  * etapa (módulos, unidades, ejercicios y lecciones), compartida por la semilla
  * de la ruta por defecto y por las de las demás rutas.
  */
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
   ContentSeedExercise,
   ContentSeedResource,
   ContentSeedStage,
+  CourseSeedExercise,
   CourseSeedStage,
   CourseSlug,
 } from "@codeai/shared";
@@ -44,10 +45,37 @@ export function describeIssues(issues: readonly { path: (string | number)[]; mes
     .join("\n");
 }
 
+/** Un ejercicio tal como lo declara la semilla: ruta por defecto o ruta con certificación. */
+type SeedExercise = ContentSeedExercise | CourseSeedExercise;
+
 /** Lo que el cliente puede ver del ejercicio: nunca la respuesta ni las explicaciones. */
-function exerciseConfig(exercise: ContentSeedExercise) {
-  if (exercise.quiz !== null) {
-    return { options: exercise.quiz.options.map(({ id, text }) => ({ id, text })) };
+export function exerciseConfig(exercise: SeedExercise): Record<string, unknown> {
+  const quiz = exercise.quiz;
+
+  if (quiz !== null) {
+    // `single` se escribe como antes de S14: sin `kind`, para no reescribir los
+    // 1.662 quizzes de `fullstack-ia` (sprint 14, regla 1).
+    if (quiz.kind === "single") {
+      return { options: quiz.options.map(({ id, text }) => ({ id, text })) };
+    }
+
+    if (quiz.kind === "multiple") {
+      return {
+        kind: "multiple",
+        selectCount: quiz.selectCount,
+        options: quiz.options.map(({ id, text }) => ({ id, text })),
+      };
+    }
+
+    if (quiz.kind === "ordering") {
+      return { kind: "ordering", items: quiz.items.map(({ id, text }) => ({ id, text })) };
+    }
+
+    return {
+      kind: "matching",
+      left: quiz.left.map(({ id, text }) => ({ id, text })),
+      right: quiz.right.map(({ id, text }) => ({ id, text })),
+    };
   }
 
   if (exercise.memory !== null) {
@@ -62,20 +90,73 @@ function exerciseConfig(exercise: ContentSeedExercise) {
 }
 
 /** Lo que solo conoce el servidor: solución, respuesta correcta y explicaciones. */
-function exerciseSolution(exercise: ContentSeedExercise) {
-  if (exercise.quiz !== null) {
+export function exerciseSolution(exercise: SeedExercise): Record<string, unknown> | undefined {
+  const quiz = exercise.quiz;
+
+  if (quiz !== null) {
+    if (quiz.kind === "single") {
+      return {
+        correctOptionId: quiz.correctOptionId,
+        explanations: Object.fromEntries(
+          quiz.options.map((option) => [option.id, option.explanation]),
+        ),
+      };
+    }
+
+    if (quiz.kind === "multiple") {
+      return {
+        kind: "multiple",
+        correctOptionIds: quiz.correctOptionIds,
+        explanations: Object.fromEntries(
+          quiz.options.map((option) => [option.id, option.explanation]),
+        ),
+      };
+    }
+
+    if (quiz.kind === "ordering") {
+      return {
+        kind: "ordering",
+        correctOrder: quiz.correctOrder,
+        explanations: Object.fromEntries(quiz.items.map((item) => [item.id, item.explanation])),
+      };
+    }
+
     return {
-      correctOptionId: exercise.quiz.correctOptionId,
-      explanations: Object.fromEntries(
-        exercise.quiz.options.map((option) => [option.id, option.explanation]),
-      ),
+      kind: "matching",
+      correctPairs: quiz.correctPairs,
+      explanations: Object.fromEntries(quiz.left.map((item) => [item.id, item.explanation])),
     };
   }
+
   if (exercise.flashcard !== null) {
     return { back: exercise.flashcard.back };
   }
 
   return exercise.solution ?? undefined;
+}
+
+/**
+ * Columnas de examen de `Exercise` (S14-T4). Sólo las rutas con certificación
+ * declaran `exam`; el resto queda en el banco de unidad y con las demás en `NULL`.
+ */
+export function examColumns(exercise: SeedExercise): {
+  certification: string | null;
+  examDomain: number | null;
+  examTask: string | null;
+  examPool: "UNIT" | "RESERVED";
+} {
+  const exam = "exam" in exercise ? exercise.exam : null;
+
+  if (exam === null) {
+    return { certification: null, examDomain: null, examTask: null, examPool: "UNIT" };
+  }
+
+  return {
+    certification: exam.certification,
+    examDomain: exam.domain,
+    examTask: exam.task,
+    examPool: exam.pool === "reserved" ? "RESERVED" : "UNIT",
+  };
 }
 
 /** Prerrequisitos declarados; si no hay ninguno, la unidad anterior del currículo. */
@@ -216,8 +297,10 @@ export async function upsertStageTree(
           type: exercise.type,
           title: exercise.title,
           statement: exercise.statement,
-          config: exerciseConfig(exercise),
-          solution: exerciseSolution(exercise),
+          // Los objetos vienen validados por el esquema de `@codeai/shared`: son
+          // JSON serializable y Prisma los acepta como tal.
+          config: exerciseConfig(exercise) as Prisma.InputJsonValue,
+          solution: exerciseSolution(exercise) as Prisma.InputJsonValue | undefined,
           ladder: exercise.ladder,
           difficulty: exercise.difficulty,
           concepts: exercise.concepts,
@@ -228,6 +311,7 @@ export async function upsertStageTree(
           maxAttempts: exercise.maxAttempts,
           isPublished: exercise.isPublished,
           order: exercise.order,
+          ...examColumns(exercise),
         };
 
         const storedExercise = await prisma.exercise.upsert({
