@@ -35,7 +35,7 @@ const UNIT_SELECT = {
   objective: true,
   module: { select: { stage: { select: { title: true } } } },
   exercises: {
-    where: { isPublished: true },
+    where: { isPublished: true, examPool: "UNIT" },
     orderBy: { order: "asc" },
     select: EXERCISE_SELECT,
   },

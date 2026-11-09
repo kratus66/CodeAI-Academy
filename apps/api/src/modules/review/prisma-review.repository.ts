@@ -41,7 +41,7 @@ export class PrismaReviewRepository implements ReviewRepository {
 
   async listDue(userId: string, now: Date, limit: number): Promise<ReviewItemRow[]> {
     const rows = await this.prisma.reviewItem.findMany({
-      where: { userId, dueAt: { lte: now } },
+      where: { userId, dueAt: { lte: now }, exercise: { examPool: "UNIT" } },
       orderBy: [{ priority: "desc" }, { dueAt: "asc" }, { createdAt: "asc" }],
       take: limit,
       select: REVIEW_ITEM_SELECT,
@@ -52,7 +52,7 @@ export class PrismaReviewRepository implements ReviewRepository {
 
   async countDue(userId: string, now: Date): Promise<number> {
     return this.prisma.reviewItem.count({
-      where: { userId, dueAt: { lte: now } },
+      where: { userId, dueAt: { lte: now }, exercise: { examPool: "UNIT" } },
     });
   }
 
