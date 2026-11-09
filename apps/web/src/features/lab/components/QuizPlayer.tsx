@@ -12,6 +12,7 @@ import type { FormEvent } from "react";
 import { ApiError, exercisesApi } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
 
+import { QuizMatchingPlayer } from "./QuizMatchingPlayer";
 import { QuizMultiplePlayer } from "./QuizMultiplePlayer";
 import { QuizOrderingPlayer } from "./QuizOrderingPlayer";
 
@@ -207,6 +208,10 @@ export function QuizPlayer({
 
   if (kind === "ordering") {
     return <QuizOrderingPlayer exercise={exercise} submitQuiz={submitQuiz} />;
+  }
+
+  if (kind === "matching") {
+    return <QuizMatchingPlayer exercise={exercise} submitQuiz={submitQuiz} />;
   }
 
   if (kind === undefined || kind === "single") {
