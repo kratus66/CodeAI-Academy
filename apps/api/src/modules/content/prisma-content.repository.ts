@@ -162,7 +162,7 @@ export class PrismaContentRepository implements ContentRepository {
           select: { id: true, slug: true, title: true, estimatedMin: true, order: true },
         },
         exercises: {
-          where: { isPublished: true },
+          where: { isPublished: true, examPool: "UNIT" },
           orderBy: [{ order: "asc" }, { slug: "asc" }],
           select: EXERCISE_SELECT,
         },

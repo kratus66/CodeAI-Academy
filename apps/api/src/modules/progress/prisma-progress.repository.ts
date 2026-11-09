@@ -116,14 +116,16 @@ export class PrismaProgressRepository implements ProgressRepository {
   }
 
   async countPublishedExercises(unitId: string): Promise<number> {
-    return this.prisma.exercise.count({ where: { unitId, isPublished: true } });
+    return this.prisma.exercise.count({
+      where: { unitId, isPublished: true, examPool: "UNIT" },
+    });
   }
 
   async countCompletedExercises(userId: string, unitId: string): Promise<number> {
     const rows = await this.prisma.submission.findMany({
       where: {
         userId,
-        exercise: { unitId, isPublished: true },
+        exercise: { unitId, isPublished: true, examPool: "UNIT" },
         OR: [{ outcome: "PASSED" }, { exercise: { type: "REFLECT" } }],
       },
       distinct: ["exerciseId"],
