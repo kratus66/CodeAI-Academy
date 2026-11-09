@@ -75,25 +75,34 @@ rubric: default
 
 ### 3.2 `QUIZ` — Cuestionario
 
-**Estructura:**
+**Estructura** (campo `quiz` del ejercicio sembrado; esquema `contentSeedQuizSchema` en `shared/schemas/content.ts`, S14):
 
-```yaml
-type: QUIZ
-slug: http-status-001
-concept: [http-status-codes]
-questions:
-  - prompt: "¿Qué código indica que el recurso se creó correctamente?"
-    options: ["200", "201", "204", "301"]
-    correct: "201"
-    explanation: "201 Created indica creación exitosa y suele incluir cabecera Location."
-    distractor_explanations:
-      "200": "Es éxito genérico, pero no específico de creación."
-      "204": "Indica éxito sin contenido."
+```jsonc
+// single: respuesta única. Es la variante por defecto: un quiz sin `kind` es `single`
+// (así siguen los 1.662 quizzes de fullstack-ia).
+{ "kind": "single", "correctOptionId": "b",
+  "options": [{ "id": "a", "text": "200", "explanation": "Es éxito genérico, no específico de creación." },
+              { "id": "b", "text": "201", "explanation": "201 Created indica creación y suele traer Location." },
+              { "id": "c", "text": "204", "explanation": "Indica éxito sin contenido." }] }   // 3–4 opciones, ids a–d
+
+// multiple: «selecciona DOS/TRES». 5–6 opciones (ids a–f), 2–3 correctas; selectCount = número de correctas
+{ "kind": "multiple", "selectCount": 2, "correctOptionIds": ["b", "e"], "options": [ /* id, text, explanation */ ] }
+
+// ordering: 3–6 elementos (ids a–f) con explicación; `items` nunca viene ya en el orden correcto
+{ "kind": "ordering", "items": [ /* id, text, explanation */ ], "correctOrder": ["c", "a", "b"] }
+
+// matching: izquierda 3–6 (ids a–f, con explicación); derecha del mismo tamaño (ids 1–6); uno a uno
+{ "kind": "matching", "left": [ /* id, text, explanation */ ], "right": [ /* id, text */ ],
+  "correctPairs": { "a": "2", "b": "1", "c": "3" } }   // nunca alineadas de entrada (a→1, b→2…)
 ```
 
+La semilla escribe en `config` solo lo que ve el estudiante: los textos, `selectCount` y `kind`. Los quizzes `single` se escriben sin `kind`, como antes de S14. La respuesta correcta y las explicaciones van en `solution`.
+
+**Corrección:** la hace siempre el servidor (`POST /exercises/:id/quiz-answers`, [`contratos-api.md`](../03-arquitectura/contratos-api.md) §4.3) y es **todo o nada** en las cuatro variantes. Elegir una correcta de dos, o dejar un elemento fuera de su sitio, cuenta como fallo.
+
 **Reglas:**
-- Cada distractor tiene explicación propia (el error también enseña).
-- Los quizzes pueden ser: de opción única, de opción múltiple, de ordenar pasos, de emparejar, de predecir salida de código.
+- Cada distractor tiene explicación propia, porque el error también enseña. En `ordering` y `matching`, cada elemento explica por qué va en su posición o con su pareja.
+- Variantes disponibles: única, múltiple, ordenar y emparejar. «Predecir la salida» se escribe como `single`.
 - Se prohíbe el "verdadero/falso" sin justificación.
 - Cada pregunta declara el `concept` para el motor de repaso.
 - La opción correcta no puede duplicar en longitud a sus distractores: ni frente a la media ni frente al más largo (ratio ≤ 2, verificado en `seed-exercise-quality.spec.ts`). Un distractor telegráfico delata la respuesta sin medir comprensión.
@@ -223,30 +232,34 @@ grading:
 
 ### 3.6 `AUDIT` — Auditoría de código generado por IA
 
-**Estructura:**
+**Estructura** (campo `audit` del ejercicio sembrado; esquema `contentSeedAuditSchema` en `shared/schemas/content.ts`, S14):
 
-```yaml
-type: AUDIT
-slug: audit-auth-001
-concept: [auth, jwt, security]
-ai_code: ./fixtures/audit-auth-001.ts
-known_defects:
-  - id: D1
-    severity: critical
-    description: "El JWT no valida expiración"
-  - id: D2
-    severity: medium
-    description: "El error revela si el email existe (enumeración de usuarios)"
-plausible_but_fine:
-  - "Usa bcrypt con coste 10 (aceptable)"
-student_task: |
-  Revisa el código. Enumera los defectos reales con gravedad y justifica.
-  Indica si aceptarías, corregirías o descartarías el código.
+```jsonc
+{
+  "type": "AUDIT",
+  "audit": {
+    "artifact": { "language": "typescript", "content": "…código generado por IA…" },  // ≤ 8000 caracteres; se numera por líneas
+    "findings": [                                       // 3–10, ordenados por línea de inicio
+      { "id": "f1", "lines": [4, 6],  "label": "Líneas 4–6: verificación del token",
+        "isDefect": true,  "severity": "critical", "explanation": "No valida la expiración del JWT." },
+      { "id": "f2", "lines": [9, 9],  "label": "Línea 9: coste de bcrypt",
+        "isDefect": false, "severity": null,       "explanation": "Coste 10 es aceptable." },
+      { "id": "f3", "lines": [14, 15], "label": "Líneas 14–15: mensaje de error",
+        "isDefect": true,  "severity": "medium",   "explanation": "Revela si el email existe." }
+    ],
+    "verdict": "fix"                                   // accept | fix | discard
+  }
+}
 ```
 
-**Reglas:**
-- Debe contener **defectos reales** y al menos un aspecto **correcto que parezca sospechoso** (para castigar el exceso de desconfianza).
-- Se penalizan los falsos positivos.
+El estudiante ve el artefacto y los **candidatos** neutros (`id`, `lines`, `label`). `isDefect`, `severity` y `explanation` van en `solution` y solo se revelan después del intento. Por cada candidato que considere defecto, elige una severidad (`critical`, `high`, `medium` o `low`), y además decide si acepta, corrige o descarta el artefacto. Juega con `AuditPlayer`.
+
+**Reglas** (las comprueba `exerciseRuleViolations`):
+- Debe contener **defectos reales** y al menos un aspecto **correcto que parezca sospechoso**, para castigar el exceso de desconfianza.
+- Cada defecto declara su severidad, y solo los defectos la declaran.
+- Los hallazgos van ordenados por línea, para que el orden no delate cuáles son defectos.
+- Un artefacto con defectos `critical` o `high` no puede tener `verdict: "accept"`.
+- Se penalizan los falsos positivos. La nota y la fórmula están en [`contratos-api.md`](../03-arquitectura/contratos-api.md) §4.3. Aprobar (nota ≥ 70) acredita el nivel 3.
 
 ### 3.7 `CHALLENGE` — Reto cronometrado
 

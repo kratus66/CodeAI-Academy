@@ -266,6 +266,13 @@ enum Ladder {
   AUTONOMOUS
 }
 
+/// Banco de una pregunta de examen (S14). `RESERVED` no sale en unidad,
+/// laboratorio, repaso, progreso ni tutor de IA; sólo lo lee el simulador (S15).
+enum ExamPool {
+  UNIT
+  RESERVED
+}
+
 model Exercise {
   id            String       @id @default(cuid())
   unitId        String
@@ -286,6 +293,11 @@ model Exercise {
   sources       String[]
   maxAttempts   Int?
   isPublished   Boolean      @default(false)
+  // Metadatos de examen (S14). Sólo las preguntas de la ruta AWS los llevan.
+  certification String?      // "SAA-C03": código del registro de `shared/schemas/certification.ts`
+  examDomain    Int?         // dominio de la guía oficial (1…6)
+  examTask      String?      // tarea de la guía ("1.2"), si la guía la define
+  examPool      ExamPool     @default(UNIT)
   order         Int
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -298,6 +310,7 @@ model Exercise {
 
   @@index([unitId, type])
   @@index([isPublished])
+  @@index([certification, examDomain, examPool]) // el simulador (S15) arma formas por dominio
 }
 
 model ExerciseHint {
@@ -670,6 +683,7 @@ model AiInteraction {
 - Historial: `@@index([userId, createdAt])` en `Submission`.
 - Pistas: `@@index([userId, exerciseId])` en `HintRequest` — calcular `hintsUsed` desde el envío anterior sin recorrer la tabla.
 - Catálogo: `@@index([unitId, type])` para listar ejercicios por unidad.
+- Preguntas de examen: `@@index([certification, examDomain, examPool])` (S14, migración `20261109145212_exam_metadata`). Las preguntas se guardan en columnas y no dentro de `config` para que el simulador de S15 pueda armar formas por dominio con una consulta.
 - Proyectos: `@@index([stageId, isPublished])` para el catálogo y `@@index([projectId, status])` para la bandeja de revisión.
 - Portafolio: `@@index([userId, isPublic, publishedAt])` resuelve la vista pública y la propia sin recorrer entregas ajenas.
 - Coste IA: `@@index([module, createdAt])` para reportes mensuales.
@@ -694,7 +708,14 @@ npx prisma migrate deploy
 - Nunca se edita una migración ya aplicada.
 - Los cambios destructivos (borrar columna) se hacen en dos pasos: primero dejar de usar, luego eliminar.
 - **Si `migrate dev` dice «The migration … was modified after it was applied» y propone un reset, nunca se acepta.** Primero se ejecuta `prisma migrate status`: si dice «up to date», no hay deriva de esquema. Después se revisa `_prisma_migrations`, porque `migrate dev` compara también el checksum de las filas revertidas (`rolled_back_at` no nulo). En S13-T4 la causa fue una fila revertida de S10 con el checksum de una versión vieja del archivo. Se resolvió con respaldo previo (`npm run db:backup`) y borrando sólo esa fila (`DELETE 1`, identificada por checksum).
-- Prisma guarda el checksum del `migration.sql` tal como estaba en disco al aplicarlo. Con `core.autocrlf=true` y sin `.gitattributes`, una reescritura de Git que cambie los finales de línea podría provocar el mismo aviso. Está pendiente de resolver antes de la primera migración de S14 (ver [`sprint-13-multi-ruta.md`](../04-plan-ejecucion/sprints/sprint-13-multi-ruta.md) §6).
+- **Finales de línea (resuelto en S14-T0b).**
+  - Prisma guarda en `_prisma_migrations.checksum` el sha256 de los bytes del `migration.sql` tal como estaban en disco al aplicarlo.
+  - En la base local, `20261028170000_interviews` se aplicó con CRLF y el resto con LF.
+  - Prisma 6.19.3 **tolera** un cambio que solo afecte a los finales de línea: con `courses` pasado a CRLF e `interviews` a LF, `migrate status` y `migrate dev --create-only` no avisan de nada.
+  - Un cambio de contenido real sí se detecta («was modified after it was applied»).
+  - Comprobado el 2026-11-09 en una base desechable (puerto 5441), con una prueba de control.
+  - Aun así, `.gitattributes` fija los bytes en disco para que coincidan con lo que guarda la base: `eol=lf` para las migraciones y `migration_lock.toml`, con una excepción `eol=crlf` para `interviews`.
+  - No se depende de esa tolerancia de Prisma, que podría cambiar en otra versión.
 
 ---
 

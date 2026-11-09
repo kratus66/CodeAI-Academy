@@ -40,7 +40,12 @@ CodeAI Academy es a la vez:
 
 **Trabajo posterior a S12 (2026-11-03):** adaptador `docker` del sandbox (con arnés ESM corregido y pruebas contra Docker real: `SANDBOX_DOCKER_TESTS=1`), reproductores `MEMORY` y `DEBUG`, diagramas Mermaid en las lecciones, proveedor de IA Anthropic, streaming del tutor con guarda de soluciones sobre el flujo, política `ACCREDIT_ONLY_REVIEWED` (apagada por defecto) y los servicios de autoría asistida `ExerciseGeneratorService` y `LabDraftVerifierService` (sin endpoint todavía). Detalle en [`capa-ia.md`](docs/03-arquitectura/capa-ia.md) §10, [`sandbox-ejecucion.md`](docs/03-arquitectura/sandbox-ejecucion.md) §10 y [`banco-ejercicios.md`](docs/02-contenido/banco-ejercicios.md) §5b.
 
-**Ruta AWS Cloud (planificada 2026-11-06):** segunda ruta de la plataforma, con 13 etapas (A0–A12), 262 unidades y preparación para once certificaciones de AWS (arquitectura, desarrollo, operación, DevOps, seguridad, datos e IA). Currículo en [`curriculo-aws.md`](docs/01-curriculo/curriculo-aws.md), método en [`metodo-aws.md`](docs/02-contenido/metodo-aws.md) y sprints S13–S26 en el [roadmap](docs/04-plan-ejecucion/roadmap-sprints.md) §3.1. S13 está cerrado: la plataforma ya sirve varias rutas (`GET /api/content/courses`, `/learn/courses`) y el esqueleto de la ruta AWS (13 etapas, 77 módulos, 262 unidades, sin publicar) se carga con `npm run db:seed:aws`. El siguiente sprint es S14.
+**Ruta AWS Cloud (planificada 2026-11-06):** segunda ruta de la plataforma, con 13 etapas (A0–A12), 262 unidades y preparación para once certificaciones de AWS (arquitectura, desarrollo, operación, DevOps, seguridad, datos e IA). Currículo en [`curriculo-aws.md`](docs/01-curriculo/curriculo-aws.md), método en [`metodo-aws.md`](docs/02-contenido/metodo-aws.md) y sprints S13–S26 en el [roadmap](docs/04-plan-ejecucion/roadmap-sprints.md) §3.1. S13 está cerrado: la plataforma ya sirve varias rutas (`GET /api/content/courses`, `/learn/courses`) y el esqueleto de la ruta AWS (13 etapas, 77 módulos, 262 unidades, sin publicar) se carga con `npm run db:seed:aws`. S14 tiene la construcción terminada:
+- un `QUIZ` puede ser de respuesta única, múltiple, de ordenar o de emparejar, y se corrige en el servidor;
+- cada pregunta de la ruta AWS declara certificación, dominio, tarea y banco (el banco reservado no sale en unidades, laboratorio ni repaso);
+- `AUDIT` ya se juega y se corrige.
+
+Para cerrar S14 faltan dos revisiones humanas ([ficha](docs/04-plan-ejecucion/sprints/sprint-14-preguntas-examen.md) §5). El siguiente sprint es S15 (simulador de examen).
 
 Operación (respaldos, restauración, despliegue y checklist de producción): [`docs/05-orquestacion/runbook-operacion.md`](docs/05-orquestacion/runbook-operacion.md).
 

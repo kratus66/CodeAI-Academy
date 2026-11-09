@@ -216,11 +216,61 @@ GET /api/content/courses
 | POST | `/:id/hints` | ✅ | Solicita pista. Body: `{ level }` |
 | POST | `/:id/submissions` | ✅ | Envía solución |
 | GET | `/:id/submissions` | ✅ | Historial propio |
-| POST | `/:id/quiz-answers` | ✅ | Corrige un `QUIZ` en el servidor. Body: `{ optionId }` (`a`–`d`). Responde `{ result: { correct, correctOptionId, explanation, correctExplanation } }`; la respuesta correcta y las explicaciones salen **solo después** del intento. `400` si no es un quiz o la opción no existe; `409` si agotó `maxAttempts` |
+| POST | `/:id/quiz-answers` | ✅ | Corrige un `QUIZ` de cualquier variante en el servidor (S14). El cuerpo lleva **una** de estas claves: `optionId`, `optionIds`, `order` o `pairs`. Responde `{ result }` con `kind`; detalle debajo. La respuesta correcta y las explicaciones salen **solo después** del intento. `400` si no es un quiz o la respuesta no encaja con la pregunta; `409` si agotó `maxAttempts` |
+| POST | `/:id/audit-answers` | ✅ | Corrige un `AUDIT` (S14). Body: `{ marks: [{ findingId, severity }], decision }`. Responde `{ result }`; detalle debajo |
 | POST | `/:id/flashcard-reveal` | ✅ | Registra el intento de recuerdo y devuelve el reverso. Body: `{ attempt }` (no vacío). Responde `{ back }` |
 | POST | `/:id/flashcard-ratings` | ✅ | Autocalificación SM-2. Body: `{ quality }` (0–5). Solo válida justo después de revelar (`409` si no); responde `{ scheduled }` y reprograma el ítem de repaso |
 
-QUIZ y FLASHCARD no usan el sandbox. Sus envíos se guardan como `Submission` (opción elegida, intento o `quality:N`), por lo que cuentan para `maxAttempts` y para el repaso.
+QUIZ, AUDIT y FLASHCARD no usan el sandbox. Sus envíos se guardan como `Submission` (la respuesta elegida, el intento o `quality:N`), así que cuentan para `maxAttempts` y para el repaso.
+
+El banco reservado (`examPool = RESERVED`, S14) no aparece en ninguna ruta de esta sección. `GET /units/:unitCode` no lo lista y el resto responde `404`, igual que con un ejercicio no publicado. Tampoco cuenta en el progreso de la unidad, el repaso ni el contexto del tutor de IA. Solo lo leerá el motor de simulacros de S15, con un método propio.
+
+**POST `/api/exercises/:id/quiz-answers`** (contratos: `quizSubmissionSchema` y `quizGradeResponseSchema` en `shared/schemas/exercise.ts`)
+
+El cuerpo es `.strict()` y lleva exactamente una clave. La variante la decide el ejercicio, no el cuerpo: si la clave no corresponde a la variante, la respuesta es `400` «La respuesta no corresponde al tipo de pregunta». Las cuatro variantes se corrigen todo o nada, sin crédito parcial.
+
+| Variante (`config.kind`) | Cuerpo | `result` | `400` específicos |
+|---|---|---|---|
+| `single` (o sin `kind`) | `{ "optionId": "b" }` | `{ kind: "single", correct, correctOptionId, explanation, correctExplanation }` | «La opción no existe en este quiz» |
+| `multiple` | `{ "optionIds": ["b", "e"] }` | `{ kind: "multiple", correct, correctOptionIds, selectedOptionIds, explanations }` | «Selecciona exactamente N opciones» · «La opción no existe en este quiz» |
+| `ordering` | `{ "order": ["c", "a", "b"] }` | `{ kind: "ordering", correct, correctOrder, explanations }` | «Ordena todos los elementos, sin repetir ninguno» · «El elemento no existe en esta pregunta» |
+| `matching` | `{ "pairs": { "a": "2", "b": "1", "c": "3" } }` | `{ kind: "matching", correct, correctPairs, explanations }` | «Empareja cada elemento con una opción distinta» · «El elemento no existe en esta pregunta» |
+
+`explanations` va indexado por id: de las opciones en `multiple`, de los elementos en `ordering` y de los elementos de la izquierda en `matching`. Un cliente anterior a S14 que envía `{ optionId }` y lee `correct`, `correctOptionId` y las explicaciones sigue funcionando. Un contenido sembrado mal formado responde `500` «El ejercicio está mal configurado».
+
+**POST `/api/exercises/:id/audit-answers`** (contratos: `auditAnswerSchema` y `auditAnswerResponseSchema`)
+
+```json
+// Request: los hallazgos que el estudiante cree defectos, con la severidad elegida, y su decisión
+{ "marks": [{ "findingId": "f1", "severity": "critical" }], "decision": "fix" }
+
+// 200 Response: la solución completa se revela después del intento
+{
+  "result": {
+    "score": 85, "outcome": "PASSED",
+    "detectedDefects": 2, "totalDefects": 2, "falsePositives": 1,
+    "decisionCorrect": true, "verdict": "fix",
+    "findings": [
+      { "id": "f1", "isDefect": true, "severity": "critical", "marked": true,
+        "chosenSeverity": "critical", "severityCorrect": true, "explanation": "…" }
+    ]
+  }
+}
+```
+
+- `decision`: `accept` (aceptar), `fix` (corregir) o `discard` (descartar). `severity`: `critical`, `high`, `medium` o `low`.
+- **Nota.** D es el número de defectos reales. Cada defecto marcado suma 1 si la severidad elegida coincide y 0,5 si no. `findingsRatio` es esa suma dividida entre D.
+- La decisión vale 1 solo si coincide con `verdict` y hay al menos un defecto marcado. Cada falso positivo resta 0,15.
+- `score = round(100 · clamp(0,8 · findingsRatio + 0,2 · decisión − 0,15 · fp, 0, 1))`.
+- `PASSED` si `score ≥ 70`, `PARTIAL` si es mayor que 0 y `FAILED` si es 0. Un `AUDIT` aprobado acredita el **nivel 3**.
+- Errores:
+  - `400 VALIDATION_ERROR` si el cuerpo no es válido;
+  - `400` «Este ejercicio no es una auditoría»;
+  - `400` «El hallazgo f9 no existe en esta auditoría» (no gasta intento);
+  - `404` si el ejercicio no existe, no está publicado o es `RESERVED`;
+  - `409` si se agotaron los intentos;
+  - `500` «El ejercicio está mal configurado».
+- El `config` que devuelve `GET /:id` para un `AUDIT` solo lleva `artifact` y `candidates` (`id`, `lines` y una `label` neutra). Nunca incluye `isDefect`, `severity` ni `explanation`.
 
 **POST `/api/exercises/:id/submissions`**
 

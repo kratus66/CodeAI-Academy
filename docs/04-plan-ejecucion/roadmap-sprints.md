@@ -35,7 +35,7 @@
 | **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | 🔄 14/16 tareas; lanzamiento bloqueado por el adaptador de sandbox `docker` |
 | **S12** | Experiencia de aprendizaje (UX / frontend) | E1–E11 | — | ✅ 10/10 tareas; T9 (streaming del tutor) como deuda documentada |
 | **S13** | Multi-ruta: la plataforma sirve más de un curso | A0–A12 | `content` (rutas), semilla por unidad | ✅ 23/23 tareas (2026-11-09) |
-| **S14** | Preguntas tipo examen y metadatos de certificación | A1–A11 | `exercises` | ⬜ |
+| **S14** | Preguntas tipo examen y metadatos de certificación | A1–A11 | `exercises` | 🔄 27/27 tareas (2026-11-09); el cierre espera la firma humana de `aws-guias-examen.md` y el recorrido del punto de control 3 |
 | **S15** | Simulador de examen y preparación por certificación | A1–A11 | `exams` (nuevo) | ⬜ |
 | **S16** | Laboratorios AWS: arnés en el sandbox y laboratorio en tu cuenta | A0–A11 | `sandbox`, `exercises` | ⬜ (requiere sandbox `docker`, S11-T16) |
 | **S17** | Contenido A0–A1 (CLF-C02) | A0–A1 | — | ⬜ |

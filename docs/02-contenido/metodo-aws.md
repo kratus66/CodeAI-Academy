@@ -63,14 +63,14 @@ Se reutiliza la taxonomía de [`banco-ejercicios.md`](banco-ejercicios.md). Lo n
 
 | Tipo | Uso en AWS | Nivel típico | Estado en la plataforma |
 |------|------------|--------------|-------------------------|
-| `QUIZ` de escenario, respuesta única | Pregunta tipo examen con cuatro opciones | 1–2 | Existe (S5–S6); se añaden metadatos de examen en S14 |
-| `QUIZ` de respuesta múltiple | «Selecciona DOS/TRES» con cinco o seis opciones | 2 | Nuevo en S14 |
-| `QUIZ` de ordenar y de emparejar | Ordenar pasos (p. ej., migración) o emparejar servicio ↔ caso | 1–2 | Aparecen en AIF-C01 y SCS-C03 (aws-guias-examen.md); AIP-C01 pendiente de confirmar |
+| `QUIZ` de escenario, respuesta única | Pregunta tipo examen con cuatro opciones | 1–2 | Existe (S5–S6). Desde S14 lleva metadatos `exam` (certificación, dominio, tarea y banco), obligatorios en los `QUIZ` de las etapas 101–111 |
+| `QUIZ` de respuesta múltiple | «Selecciona DOS/TRES» con cinco o seis opciones | 2 | Existe (S14): `kind: "multiple"`, todo o nada |
+| `QUIZ` de ordenar y de emparejar | Ordenar pasos (p. ej., migración) o emparejar servicio ↔ caso | 1–2 | Existe (S14): `kind: "ordering"` y `kind: "matching"`, con explicación por elemento. Aparecen en AIF-C01 y SCS-C03 ([aws-guias-examen.md](aws-guias-examen.md)); en AIP-C01, pendiente de confirmar |
 | `FLASHCARD` | Límites conceptuales, diferencias entre servicios, definiciones | 1–3 | Existe |
 | `MEMORY` modo `match` | Servicio ↔ problema que resuelve; estrategia ↔ RPO/RTO | 1–2 | Existe |
 | `LAB` con arnés | La persona escribe una política, una plantilla, un patrón de eventos o un manejador; pruebas ocultas lo evalúan con el arnés AWS | 2–3 | Nuevo en S16 |
 | `DEBUG` de configuración | Una política, plantilla o código con **un** defecto real y frecuente | 3 | Existe; con arnés en S16 |
-| `AUDIT` | Configuración generada por IA con defectos reales y un elemento correcto que parece sospechoso | 3–4 | Reproductor nuevo en S14 |
+| `AUDIT` | Configuración generada por IA con defectos reales y un elemento correcto que parece sospechoso | 3–4 | Existe (S14): esquema en la semilla, corrección en servidor con penalización de falsos positivos y `AuditPlayer`. Aprobar acredita el nivel 3 |
 | `CHALLENGE` por dominio | Bloque cronometrado de 15–20 preguntas de un dominio | 3 | Motor de simulacro en S15 |
 | Simulacro completo | Examen completo cronometrado con las preguntas y el tiempo oficiales | 3 | Nuevo en S15 |
 | `CLOUD_LAB` (laboratorio en tu cuenta) | Práctica guiada en la cuenta propia con evidencia de solo lectura | 2 (nunca certifica 3) | Nuevo en S16 |

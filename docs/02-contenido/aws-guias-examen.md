@@ -3,6 +3,7 @@
 **Verificado por:** agente con fuente oficial (2026-11-09).
 **Fecha de lectura de todas las fuentes:** 2026-11-09.
 Una persona puede revisar este documento y confirmarlo contra las guías, pero el documento **no** afirma que esa revisión humana ya se haya hecho.
+**Registro en código:** `packages/shared/src/schemas/certification.ts` (S14-T1) copia de este documento la versión, el formato, los dominios y los pesos de cada examen, y `certification.spec.ts` comprueba que coinciden. Si aquí cambia un dato, se cambia también allí, en el mismo commit.
 
 ## 0. Método
 

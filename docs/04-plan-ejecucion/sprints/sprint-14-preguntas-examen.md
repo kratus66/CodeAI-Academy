@@ -1,6 +1,6 @@
 # Sprint 14 — Preguntas tipo examen y metadatos de certificación
 
-> **Estado:** 🔄 fichas redactadas (2026-11-09); T0 hecha, el resto pendiente · **Duración prevista:** 12–14 sesiones · **Depende de:** S13 (multi-ruta), S6 (corrección de quizzes).
+> **Estado:** 🔄 construcción terminada (2026-11-09): las 27 tareas, de T0 a T14, están hechas y revisadas (registro en §8). El cierre espera dos revisiones humanas de §5: la firma de `aws-guias-examen.md` y el recorrido del punto de control 3 · **Duración prevista:** 12–14 sesiones · **Depende de:** S13 (multi-ruta), S6 (corrección de quizzes).
 > **Ámbito:** `packages/shared`, `apps/api` (`exercises`, semilla) y `apps/web` (reproductores). Las fichas detalladas (§4) siguen la [plantilla](../../05-orquestacion/plantilla-tarea.md) y se revisaron contra el código el 2026-11-09; el orden de ejecución está en §7.
 > **Por qué existe:** un examen de AWS tiene preguntas de respuesta múltiple («selecciona DOS»), cada pregunta pertenece a un dominio con peso, y su banco debe separarse en «para aprender» y «para simular». Hoy `QUIZ` sólo admite una respuesta entre 3–4 opciones y no sabe de certificaciones; `AUDIT` no tiene reproductor.
 
@@ -166,10 +166,10 @@ Experimentos mínimos (se registran la orden y la salida de cada uno):
 4. Limpieza hecha: `docker rm -f codeai-t0b-pg`, copia temporal borrada.
 
 **Criterios de aceptación**
-- [ ] Ningún comando de Prisma se ejecutó con `DATABASE_URL` distinto del puerto 5441; el reporte lo evidencia (salida de `migrate status` con `localhost:5441`).
-- [ ] `git status` al terminar muestra exactamente los mismos tres archivos modificados de antes y nada más (no queda `.gitattributes` ni cambios en migraciones).
-- [ ] El veredicto se apoya en los experimentos A y B (o C), con la salida pegada.
-- [ ] El contenedor `codeai-t0b-pg` ya no existe (`docker ps -a`).
+- [x] Ningún comando de Prisma se ejecutó con `DATABASE_URL` distinto del puerto 5441; el reporte lo evidencia (salida de `migrate status` con `localhost:5441`).
+- [x] `git status` al terminar muestra exactamente los mismos tres archivos modificados de antes y nada más (no queda `.gitattributes` ni cambios en migraciones).
+- [x] El veredicto se apoya en los experimentos A y B (o C), con la salida pegada.
+- [x] El contenedor `codeai-t0b-pg` ya no existe (`docker ps -a`).
 
 **Qué NO hacer:** no crear ni editar `.gitattributes` (lo hace otro paso, sólo con aprobación del Orquestador); no tocar `apps/api/prisma/migrations`; no conectar con `localhost:5433` ni `5432`; no ejecutar `migrate reset`; no modificar `core.autocrlf`; no ejecutar `git add --renormalize`.
 
@@ -256,13 +256,13 @@ export function examTaskBelongsToDomain(task: string, domainId: number): boolean
 Los nombres de código, de examen y de dominio se copian **literalmente** de las secciones 2.1–2.11 del documento. `status` es `"beta"` sólo en MLA-C02. `retiresOn` es `null` en las 11 (ninguna fuente da retiro para estas versiones). `verifiedAt` es `"2026-11-09"` en las 11.
 
 **Criterios de aceptación**
-- [ ] `CERTIFICATION_REGISTRY` tiene exactamente las 11 claves de `CERTIFICATION_CODES`, y cada `stageId` es único y vale 100 + la posición del código (101…111).
-- [ ] Cada examen suma 100 en sus `weightPct` (prueba por examen) y su número de dominios coincide con la columna «Dominios» de la tabla resumen del documento (4, 4, 4, 5, 6, 5, 5, 5, 6, 4, 4).
-- [ ] Una prueba lee `docs/02-contenido/aws-guias-examen.md` con `node:fs` (ruta relativa a `__dirname`: `../../../../docs/02-contenido/aws-guias-examen.md`), extrae por sección `### 2.N CÓDIGO` las filas de la tabla de dominios y comprueba que **número de dominios y pesos** coinciden con el registro. Si `node:fs` no resuelve tipos en `packages/shared` (`npm run typecheck -w packages/shared`), **detenerse y reportar** (no se instala `@types/node`).
-- [ ] `certificationForStageId(101)?.code === "CLF-C02"`, `certificationForStageId(100) === null`, `certificationForStageId(112) === null`, `certificationForStageId(2.5) === null`.
-- [ ] `isExamDomainOf("CLF-C02", 4) === true`, `isExamDomainOf("CLF-C02", 5) === false`; `examTaskBelongsToDomain("2.3", 2) === true`, `("2.3", 3) === false`, `("x.y", 2) === false`, `("2", 2) === false`.
-- [ ] MLA-C02: `status "beta"`, `questionCount 85`, `durationMin 170`, `scoredQuestionCount null`; AIP-C01: `unconfirmedItemTypes` contiene `ordering` y `matching`.
-- [ ] Verificación común en verde.
+- [x] `CERTIFICATION_REGISTRY` tiene exactamente las 11 claves de `CERTIFICATION_CODES`, y cada `stageId` es único y vale 100 + la posición del código (101…111).
+- [x] Cada examen suma 100 en sus `weightPct` (prueba por examen) y su número de dominios coincide con la columna «Dominios» de la tabla resumen del documento (4, 4, 4, 5, 6, 5, 5, 5, 6, 4, 4).
+- [x] Una prueba lee `docs/02-contenido/aws-guias-examen.md` con `node:fs` (ruta relativa a `__dirname`: `../../../../docs/02-contenido/aws-guias-examen.md`), extrae por sección `### 2.N CÓDIGO` las filas de la tabla de dominios y comprueba que **número de dominios y pesos** coinciden con el registro. Si `node:fs` no resuelve tipos en `packages/shared` (`npm run typecheck -w packages/shared`), **detenerse y reportar** (no se instala `@types/node`).
+- [x] `certificationForStageId(101)?.code === "CLF-C02"`, `certificationForStageId(100) === null`, `certificationForStageId(112) === null`, `certificationForStageId(2.5) === null`.
+- [x] `isExamDomainOf("CLF-C02", 4) === true`, `isExamDomainOf("CLF-C02", 5) === false`; `examTaskBelongsToDomain("2.3", 2) === true`, `("2.3", 3) === false`, `("x.y", 2) === false`, `("2", 2) === false`.
+- [x] MLA-C02: `status "beta"`, `questionCount 85`, `durationMin 170`, `scoredQuestionCount null`; AIP-C01: `unconfirmedItemTypes` contiene `ordering` y `matching`.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no traducir nombres de dominio; no inventar la fecha de retiro ni el reparto de MLA-C02 (queda `null`); no añadir campos de tareas por dominio (el documento no las registra); no tocar `docs/`.
 
@@ -297,7 +297,7 @@ export type ContentSeedQuiz = z.infer<typeof contentSeedQuizSchema>;
 | `ordering` | `items: {id, text, explanation}[]`, `correctOrder: string[]` | ids `/^[a-f]$/`, 3–6 elementos |
 | `matching` | `left: {id, text, explanation}[]`, `right: {id, text}[]`, `correctPairs: Record<leftId, rightId>` | `left` ids `/^[a-f]$/` 3–6; `right` ids `/^[1-6]$/` 3–6 |
 
-(Decisión de diseño sobre el resumen de §3: `ordering` y `matching` llevan `explanation` por elemento, para cumplir «explicación por opción» de `metodo-aws.md` §5.3; en `matching` la explicación va en el elemento de la izquierda y explica por qué su pareja es esa.)
+(Decisión de diseño sobre el resumen de §3: `ordering` y `matching` llevan `explanation` por elemento, para cumplir «explicación por opción» de `metodo-aws.md` §5.3; en `matching` la explicación va en el elemento de la izquierda y explica por qué su pareja es esa.) **Ratificada por el Orquestador (2026-11-09), decisión (b).**
 
 **Reglas nuevas de `exerciseRuleViolations`** (cada una con su mensaje exacto; las de `single` no cambian):
 
@@ -314,14 +314,14 @@ Se mantiene «un QUIZ requiere quiz (opciones y respuesta)» y «solo un QUIZ de
 - `seed-exercise-quality.spec.ts`: en cada bucle que lee `exercise.quiz`, estrechar con `if (quiz === null || quiz.kind !== "single") continue;` (o el equivalente en el `filter`/`map` de «reparte la respuesta correcta»). Y una prueba nueva: «los quizzes de `fullstack-ia` son todos de respuesta única» (`kind === "single"` en todos y, como mínimo, 1.662 quizzes). El archivo **lee** `content.seed.json` (ajeno, modificado): no se edita.
 
 **Criterios de aceptación**
-- [ ] Un quiz sin `kind` (como los del seed) se parsea y su salida tiene `kind: "single"`; el mismo quiz con `kind: "single"` explícito también.
-- [ ] Un ejemplo válido por variante pasa `contentSeedExerciseSchema` y `exerciseRuleViolations` devuelve `[]`.
-- [ ] Una prueba por cada mensaje de la tabla de reglas.
-- [ ] Un `multiple` con 4 opciones, uno con `selectCount: 4` y un `matching` con 7 elementos fallan en el esquema.
-- [ ] Las pruebas existentes de `content-exercise.spec.ts` pasan **sin modificarlas** (si alguna necesita cambio, detenerse y reportar).
-- [ ] `npm run test -w apps/api` pasa, incluida la prueba de que todo el seed sigue siendo `single`.
-- [ ] `git diff --stat` no incluye `content.seed.json`, `FlashcardPlayer.tsx` ni `ReflectionPlayer.tsx`.
-- [ ] Verificación común en verde, salvo `npm run typecheck:seed -w apps/api`, que queda **rojo hasta T5** (esperado, H1); el reporte lo dice.
+- [x] Un quiz sin `kind` (como los del seed) se parsea y su salida tiene `kind: "single"`; el mismo quiz con `kind: "single"` explícito también.
+- [x] Un ejemplo válido por variante pasa `contentSeedExerciseSchema` y `exerciseRuleViolations` devuelve `[]`.
+- [x] Una prueba por cada mensaje de la tabla de reglas.
+- [x] Un `multiple` con 4 opciones, uno con `selectCount: 4` y un `matching` con 7 elementos fallan en el esquema.
+- [x] Las pruebas existentes de `content-exercise.spec.ts` pasan **sin modificarlas** (si alguna necesita cambio, detenerse y reportar).
+- [x] `npm run test -w apps/api` pasa, incluida la prueba de que todo el seed sigue siendo `single`.
+- [x] `git diff --stat` no incluye `content.seed.json`, `FlashcardPlayer.tsx` ni `ReflectionPlayer.tsx`.
+- [x] Verificación común en verde, salvo `npm run typecheck:seed -w apps/api`, que queda **rojo hasta T5** (esperado, H1); el reporte lo dice.
 
 **Qué NO hacer:** no tocar `seed-lib.mts` (es T5); no renombrar `correctOptionId`; no cambiar los mensajes actuales de `single`; no añadir `exam` ni `audit`.
 
@@ -367,16 +367,16 @@ export type CourseSeedExercise = z.infer<typeof courseSeedExerciseSchema>;
 | 4 | Un `QUIZ` en una etapa con certificación (101–111) declara `exam` | `Ejercicio X: un QUIZ de la etapa ${stage.id} requiere exam` |
 | 5 | Sólo un `QUIZ` declara `exam` | `Ejercicio X: solo un QUIZ declara exam` |
 
-(Decisión: obligatorio para los `QUIZ` de las etapas 101–111; A0 y A12 no tienen certificación y sus ejercicios no declaran `exam`. Las tarjetas, memorias, etc. no son preguntas de examen. Si el Orquestador quiere ampliarlo, cambia la regla 4/5, no el contrato.)
+(Decisión: obligatorio para los `QUIZ` de las etapas 101–111; A0 y A12 no tienen certificación y sus ejercicios no declaran `exam`. Las tarjetas, memorias, etc. no son preguntas de examen. Si el Orquestador quiere ampliarlo, cambia la regla 4/5, no el contrato.) **Ratificada por el Orquestador (2026-11-09), decisión (a).**
 
 **Criterios de aceptación**
-- [ ] Un `QUIZ` de la etapa 102 con `exam: { certification: "SAA-C03", domain: 1, task: "1.2", pool: "unit" }` pasa; sin `exam`, falla con el mensaje de la regla 4.
-- [ ] Una prueba por regla 1, 2, 3 y 5 con su mensaje exacto.
-- [ ] `exam` sin `pool` queda en `"unit"`; sin `task`, en `null`.
-- [ ] `mergeCourseSeed` conserva `exam` al fusionar un archivo de unidad (prueba con un archivo que lo trae).
-- [ ] Un `QUIZ` de la etapa 100 sin `exam` pasa; con `exam`, falla por la regla 1.
-- [ ] Las pruebas existentes de `course-seed.spec.ts` pasan sin modificarlas. Los quizzes de ejemplo que ya tengan en etapas 101–111 y rompan la regla 4 se actualizan **añadiendo `exam`** (lo reporta).
-- [ ] Verificación común en verde, salvo `typecheck:seed` (rojo hasta T5).
+- [x] Un `QUIZ` de la etapa 102 con `exam: { certification: "SAA-C03", domain: 1, task: "1.2", pool: "unit" }` pasa; sin `exam`, falla con el mensaje de la regla 4.
+- [x] Una prueba por regla 1, 2, 3 y 5 con su mensaje exacto.
+- [x] `exam` sin `pool` queda en `"unit"`; sin `task`, en `null`.
+- [x] `mergeCourseSeed` conserva `exam` al fusionar un archivo de unidad (prueba con un archivo que lo trae).
+- [x] Un `QUIZ` de la etapa 100 sin `exam` pasa; con `exam`, falla por la regla 1.
+- [x] Las pruebas existentes de `course-seed.spec.ts` pasan sin modificarlas. Los quizzes de ejemplo que ya tengan en etapas 101–111 y rompan la regla 4 se actualizan **añadiendo `exam`** (lo reporta).
+- [x] Verificación común en verde, salvo `typecheck:seed` (rojo hasta T5).
 
 **Qué NO hacer:** no tocar `content.ts`; no validar `task` contra una lista (H8); no exigir `exam` fuera de `QUIZ`; no duplicar la validación de competencias.
 
@@ -439,14 +439,14 @@ CREATE INDEX "Exercise_certification_examDomain_examPool_idx" ON "Exercise"("cer
 ```
 
 **Criterios de aceptación**
-- [ ] `npx prisma validate` y `npx prisma format` (sin diferencias) en `apps/api`.
-- [ ] El SQL generado coincide con el esperado: no contiene `DROP`, `DELETE`, `UPDATE`, `TRUNCATE` ni cambios en otras tablas.
-- [ ] `npm run db:migrate` aplica la migración sobre la base con datos; `npx prisma migrate status` dice «Database schema is up to date!» y lista una migración más que antes (13 aplicadas).
-- [ ] Consulta de sólo lectura: `select "examPool", count(*) from "Exercise" group by 1;` devuelve una sola fila `UNIT` con el total anterior (`3203` en `fullstack-ia` más los de AWS si existen); `select count(*) from "Exercise" where certification is not null` devuelve 0.
-- [ ] `npm run db:generate` regenera el cliente (si falla con `EPERM` porque el servidor de desarrollo tiene abierto el motor, se reporta; los tipos sí se regeneran).
-- [ ] `npm run db:seed` sigue diciendo «12 etapas (12 publicadas), 48 módulos, 207 unidades, 3203 ejercicios» (si T2 ya está hecha y `typecheck:seed` está rojo, esta comprobación se hace en T5).
-- [ ] Verificación común en verde (salvo `typecheck:seed`).
-- [ ] Un solo commit para la migración (`modelo-datos.md` §9: «cada migración va en su propio commit»).
+- [x] `npx prisma validate` y `npx prisma format` (sin diferencias) en `apps/api`.
+- [x] El SQL generado coincide con el esperado: no contiene `DROP`, `DELETE`, `UPDATE`, `TRUNCATE` ni cambios en otras tablas.
+- [x] `npm run db:migrate` aplica la migración sobre la base con datos; `npx prisma migrate status` dice «Database schema is up to date!» y lista una migración más que antes (13 aplicadas).
+- [x] Consulta de sólo lectura: `select "examPool", count(*) from "Exercise" group by 1;` devuelve una sola fila `UNIT` con el total anterior (`3203` en `fullstack-ia` más los de AWS si existen); `select count(*) from "Exercise" where certification is not null` devuelve 0.
+- [x] `npm run db:generate` regenera el cliente (si falla con `EPERM` porque el servidor de desarrollo tiene abierto el motor, se reporta; los tipos sí se regeneran).
+- [x] `npm run db:seed` sigue diciendo «12 etapas (12 publicadas), 48 módulos, 207 unidades, 3203 ejercicios» (si T2 ya está hecha y `typecheck:seed` está rojo, esta comprobación se hace en T5).
+- [x] Verificación común en verde (salvo `typecheck:seed`).
+- [x] Un solo commit para la migración (`modelo-datos.md` §9: «cada migración va en su propio commit»).
 
 **Qué NO hacer:** no editar la migración generada salvo que el SQL difiera del esperado (entonces se detiene y se pregunta); no tocar otros modelos; no añadir `CHECK`; no aplicar la migración contra ninguna base que no sea `localhost:5433`; no tocar `.gitattributes` (es de T0b).
 
@@ -483,12 +483,12 @@ export function examColumns(exercise: SeedExercise): {
 `examColumns`: sin `exam` (o sin la clave `exam`, en `fullstack-ia`) → `{ certification: null, examDomain: null, examTask: null, examPool: "UNIT" }`; con `exam` → `certification`, `examDomain: exam.domain`, `examTask: exam.task`, `examPool: exam.pool === "reserved" ? "RESERVED" : "UNIT"`. Se lee `exam` con `"exam" in exercise`. `exerciseFields` añade `...examColumns(exercise)`.
 
 **Criterios de aceptación**
-- [ ] `npm run typecheck:seed -w apps/api` en 0 (vuelve a compilar tras T2).
-- [ ] Un script temporal **fuera del repositorio** (carpeta temporal de la sesión) importa `seed-lib.mts`, llama a `exerciseConfig`, `exerciseSolution` y `examColumns` con un ejemplo de cada variante y de un `single` sin `kind`, e imprime los resultados; el reporte los pega y coinciden con la tabla. El script se borra.
-- [ ] **Compatibilidad con la base real** (`localhost:5433`, ver regla 4): antes de tocar el código se guarda `select md5(string_agg(slug || config::text || coalesce(solution::text, ''), '' order by slug)) from "Exercise" where type = 'QUIZ' and certification is null;` y, tras `npm run db:seed` (dos veces), el valor es **idéntico**.
-- [ ] `npm run db:seed` imprime «12 etapas (12 publicadas), 48 módulos, 207 unidades, 3203 ejercicios» y «Declarado en content.seed.json: 12 etapas, 48 módulos, 207 unidades.», sin el aviso de filas no declaradas.
-- [ ] `npm run db:seed:aws` sigue en 13 etapas / 77 módulos / 262 unidades (sin cambios; la ruta no tiene ejercicios todavía).
-- [ ] Verificación común en verde.
+- [x] `npm run typecheck:seed -w apps/api` en 0 (vuelve a compilar tras T2).
+- [x] Un script temporal **fuera del repositorio** (carpeta temporal de la sesión) importa `seed-lib.mts`, llama a `exerciseConfig`, `exerciseSolution` y `examColumns` con un ejemplo de cada variante y de un `single` sin `kind`, e imprime los resultados; el reporte los pega y coinciden con la tabla. El script se borra.
+- [x] **Compatibilidad con la base real** (`localhost:5433`, ver regla 4): antes de tocar el código se guarda `select md5(string_agg(slug || config::text || coalesce(solution::text, ''), '' order by slug)) from "Exercise" where type = 'QUIZ' and certification is null;` y, tras `npm run db:seed` (dos veces), el valor es **idéntico**.
+- [x] `npm run db:seed` imprime «12 etapas (12 publicadas), 48 módulos, 207 unidades, 3203 ejercicios» y «Declarado en content.seed.json: 12 etapas, 48 módulos, 207 unidades.», sin el aviso de filas no declaradas.
+- [x] `npm run db:seed:aws` sigue en 13 etapas / 77 módulos / 262 unidades (sin cambios; la ruta no tiene ejercicios todavía).
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no escribir `kind` en el `config` de los `single`; no añadir la rama de `AUDIT` (es T10b); no cambiar el orden de escritura, las claves de `upsert` ni los mensajes; no modificar `seed.mts`, `seed-course.mts` ni `content.seed.json`.
 
@@ -537,11 +537,11 @@ export type QuizGradeResponse = z.infer<typeof quizGradeResponseSchema>;
 Cuerpos válidos: `{"optionId":"b"}` · `{"optionIds":["b","e"]}` · `{"order":["c","a","b"]}` · `{"pairs":{"a":"2","b":"1","c":"3"}}`. Mensaje de la regla de «una sola clave»: «Envía exactamente una respuesta: optionId, optionIds, order o pairs».
 
 **Criterios de aceptación**
-- [ ] `quizAnswerSchema`, `quizAnswerResultSchema` y `quizAnswerResponseSchema` no cambian y sus pruebas actuales pasan sin modificarlas.
-- [ ] `quizSubmissionSchema` acepta los cuatro cuerpos de arriba y `{ optionId: "b" }` produce el mismo objeto que `quizAnswerSchema`.
-- [ ] Rechaza (cada uno con una prueba): cuerpo vacío, dos claves a la vez, `optionId: "e"`, `optionIds: ["a","a"]`, `order` con 2 elementos, `pairs` con valor `"7"`, una clave desconocida (`strict`).
-- [ ] `quizGradeResultSchema` parsea un resultado de cada `kind` y rechaza uno sin `kind`.
-- [ ] Verificación común en verde.
+- [x] `quizAnswerSchema`, `quizAnswerResultSchema` y `quizAnswerResponseSchema` no cambian y sus pruebas actuales pasan sin modificarlas.
+- [x] `quizSubmissionSchema` acepta los cuatro cuerpos de arriba y `{ optionId: "b" }` produce el mismo objeto que `quizAnswerSchema`.
+- [x] Rechaza (cada uno con una prueba): cuerpo vacío, dos claves a la vez, `optionId: "e"`, `optionIds: ["a","a"]`, `order` con 2 elementos, `pairs` con valor `"7"`, una clave desconocida (`strict`).
+- [x] `quizGradeResultSchema` parsea un resultado de cada `kind` y rechaza uno sin `kind`.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no modificar el esquema actual de `optionId`; no tocar `apps/api` ni `apps/web`; no exigir `kind` en el cuerpo.
 
@@ -591,12 +591,12 @@ Reglas:
 - No se revela nada antes de corregir: la función sólo se llama con una respuesta ya recibida.
 
 **Criterios de aceptación**
-- [ ] Pruebas por variante: acierto, fallo, y **respuesta incompleta** (múltiple con una de dos, ordenar sin un elemento, emparejar sin una pareja) → `invalid-answer` con el mensaje exacto.
-- [ ] Múltiple: elegir las 2 correctas ⇒ `correct: true`; elegir 1 correcta y 1 incorrecta ⇒ `correct: false` (todo o nada); elegir 3 cuando `selectCount` es 2 ⇒ `invalid-answer`.
-- [ ] Un `single` con `config` sin `kind` se corrige igual que antes (mismas explicaciones, mismos campos).
-- [ ] Una prueba por cada `broken-content` y por `WRONG_ANSWER_SHAPE`.
-- [ ] La función no lanza excepciones ni importa Nest.
-- [ ] Verificación común en verde.
+- [x] Pruebas por variante: acierto, fallo, y **respuesta incompleta** (múltiple con una de dos, ordenar sin un elemento, emparejar sin una pareja) → `invalid-answer` con el mensaje exacto.
+- [x] Múltiple: elegir las 2 correctas ⇒ `correct: true`; elegir 1 correcta y 1 incorrecta ⇒ `correct: false` (todo o nada); elegir 3 cuando `selectCount` es 2 ⇒ `invalid-answer`.
+- [x] Un `single` con `config` sin `kind` se corrige igual que antes (mismas explicaciones, mismos campos).
+- [x] Una prueba por cada `broken-content` y por `WRONG_ANSWER_SHAPE`.
+- [x] La función no lanza excepciones ni importa Nest.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no tocar el servicio ni el controlador; no persistir nada; no importar `@nestjs/common`.
 
@@ -629,12 +629,12 @@ POST /api/exercises/:id/quiz-answers
 Cambios: el controlador valida con `quizSubmissionSchema` y su tipo de retorno es `QuizGradeResponse`; el servicio llama a `gradeQuizAnswer(exercise, body)` **antes** de `assertAttemptsLeft` (una respuesta inválida no gasta un intento) y mapea `invalid-answer` → `BadRequestException(message)` y `broken-content` → `InternalServerErrorException("El ejercicio está mal configurado")`. Se persiste `code: graded.submissionCode`, `outcome` `PASSED`/`FAILED`, `score` 100/0 y `achievedLevel: this.accreditedLevel(exercise, correct ? 1 : null)`, igual que hoy. Se eliminan `readQuiz`, `QuizSolution` y las constantes `UNKNOWN_OPTION` del servicio (ahora importadas de `quiz-grading`); `asRecord` se queda porque lo usa `readFlashcardBack`.
 
 **Criterios de aceptación**
-- [ ] Las pruebas actuales de `answerQuiz` (single) pasan **sin modificar sus expectativas**, salvo que el resultado ahora incluye `kind: "single"` (si alguna usa `toEqual` exacto, se añade `kind` y se reporta).
-- [ ] Pruebas nuevas de servicio por variante: acierto y fallo registran `Submission` con `outcome`, `score` y `code` esperados (`"b,e"`, `"c>a>b"`, `"a=2,b=1,c=3"`), llaman a `scheduleFromSubmission` y a `recordProgress`.
-- [ ] Una respuesta inválida (múltiple con una opción de dos) responde 400 y **no crea** envío ni consume un intento (`countSubmissions` sin cambios).
-- [ ] Un cuerpo de `single` enviado a un ejercicio `multiple` responde 400 `La respuesta no corresponde al tipo de pregunta`.
-- [ ] `maxAttempts` sigue aplicando (409) a las tres variantes nuevas.
-- [ ] Verificación común en verde.
+- [x] Las pruebas actuales de `answerQuiz` (single) pasan **sin modificar sus expectativas**, salvo que el resultado ahora incluye `kind: "single"` (si alguna usa `toEqual` exacto, se añade `kind` y se reporta).
+- [x] Pruebas nuevas de servicio por variante: acierto y fallo registran `Submission` con `outcome`, `score` y `code` esperados (`"b,e"`, `"c>a>b"`, `"a=2,b=1,c=3"`), llaman a `scheduleFromSubmission` y a `recordProgress`.
+- [x] Una respuesta inválida (múltiple con una opción de dos) responde 400 y **no crea** envío ni consume un intento (`countSubmissions` sin cambios).
+- [x] Un cuerpo de `single` enviado a un ejercicio `multiple` responde 400 `La respuesta no corresponde al tipo de pregunta`.
+- [x] `maxAttempts` sigue aplicando (409) a las tres variantes nuevas.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no cambiar la ruta ni el prefijo; no devolver la solución en ninguna respuesta de error; no tocar el repositorio ni el mapper; no borrar `quizAnswerSchema` de `shared`.
 
@@ -662,11 +662,11 @@ examPool?: "UNIT" | "RESERVED";
 - Documentar en el comentario de `findPublished`: «S15 añadirá `findReserved` para el motor de simulacros».
 
 **Criterios de aceptación** (`exercises.exam-pool.spec.ts`)
-- [ ] `InMemoryExercisesRepository` con tres ejercicios, uno `RESERVED`: `listByUnit` devuelve 2 y `total` 2; `findPublished` del reservado devuelve `null`.
-- [ ] `ExercisesService.listByUnit` no incluye el reservado; `getDetail(idReservado)` lanza `NotFoundException`; `answerQuiz(userId, idReservado, …)` lanza `NotFoundException`.
-- [ ] `getUnitProgress` no cuenta envíos de ejercicios reservados.
-- [ ] Prueba del adaptador Prisma con un `PrismaService` falso (`{ exercise: { findMany, count, findFirst } }` con `vi.fn()` y conversión `as unknown as PrismaService`): los tres reciben `where` con `examPool: "UNIT"` (`expect(...).toMatchObject`).
-- [ ] Verificación común en verde.
+- [x] `InMemoryExercisesRepository` con tres ejercicios, uno `RESERVED`: `listByUnit` devuelve 2 y `total` 2; `findPublished` del reservado devuelve `null`.
+- [x] `ExercisesService.listByUnit` no incluye el reservado; `getDetail(idReservado)` lanza `NotFoundException`; `answerQuiz(userId, idReservado, …)` lanza `NotFoundException`.
+- [x] `getUnitProgress` no cuenta envíos de ejercicios reservados.
+- [x] Prueba del adaptador Prisma con un `PrismaService` falso (`{ exercise: { findMany, count, findFirst } }` con `vi.fn()` y conversión `as unknown as PrismaService`): los tres reciben `where` con `examPool: "UNIT"` (`expect(...).toMatchObject`).
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no devolver `RESERVED` bajo ninguna bandera; no añadir endpoints; no tocar el servicio ni el mapper; no leer `examPool` desde `config`.
 
@@ -687,11 +687,11 @@ examPool?: "UNIT" | "RESERVED";
 - `countCompletedExercises`: `exercise: { unitId, isPublished: true, examPool: "UNIT" }`.
 
 **Criterios de aceptación** (`prisma-exam-pool.spec.ts`, con `PrismaService` falso como en T8a)
-- [ ] `findUnit` pasa a `unit.findFirst` un `include.exercises.where` que contiene `examPool: "UNIT"` y `isPublished: true`.
-- [ ] `countPublishedExercises` llama a `exercise.count` con `where` que contiene `examPool: "UNIT"`.
-- [ ] `countCompletedExercises` llama a `submission.findMany` con `where.exercise` que contiene `examPool: "UNIT"`.
-- [ ] Las pruebas existentes de contenido y progreso pasan sin modificar.
-- [ ] Verificación común en verde.
+- [x] `findUnit` pasa a `unit.findFirst` un `include.exercises.where` que contiene `examPool: "UNIT"` y `isPublished: true`.
+- [x] `countPublishedExercises` llama a `exercise.count` con `where` que contiene `examPool: "UNIT"`.
+- [x] `countCompletedExercises` llama a `submission.findMany` con `where.exercise` que contiene `examPool: "UNIT"`.
+- [x] Las pruebas existentes de contenido y progreso pasan sin modificar.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no tocar los adaptadores en memoria ni los mappers; no cambiar el contrato público de `UnitDetail`.
 
@@ -711,11 +711,11 @@ examPool?: "UNIT" | "RESERVED";
 - `UNIT_SELECT.exercises.where` pasa a `{ isPublished: true, examPool: "UNIT" }`.
 
 **Criterios de aceptación** (`prisma-exam-pool.spec.ts`, con `PrismaService` falso)
-- [ ] `listDue` pasa a `reviewItem.findMany` un `where` con `exercise: { examPool: "UNIT" }`, `userId` y `dueAt`.
-- [ ] `countDue` pasa el mismo filtro a `reviewItem.count`.
-- [ ] `findLessonContext` pasa `select.unit.select.exercises.where` con `examPool: "UNIT"`.
-- [ ] Las pruebas existentes de repaso y de IA pasan sin modificar.
-- [ ] Verificación común en verde.
+- [x] `listDue` pasa a `reviewItem.findMany` un `where` con `exercise: { examPool: "UNIT" }`, `userId` y `dueAt`.
+- [x] `countDue` pasa el mismo filtro a `reviewItem.count`.
+- [x] `findLessonContext` pasa `select.unit.select.exercises.where` con `examPool: "UNIT"`.
+- [x] Las pruebas existentes de repaso y de IA pasan sin modificar.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no tocar `findByExercise` ni `findOwned` (son de un ítem ya existente del usuario); no tocar el servicio de repaso.
 
@@ -739,10 +739,10 @@ exercisesApi.submitQuiz(id: string, body: QuizSubmissionInput): Promise<QuizGrad
 ```
 
 **Criterios de aceptación**
-- [ ] Prueba: `submitQuiz("ex 1", { optionIds: ["b","e"] })` llama a `POST /exercises/ex%201/quiz-answers` con cuerpo `{ "optionIds": ["b","e"] }`.
-- [ ] Prueba: devuelve el resultado de cada `kind` (cuatro casos) y falla con una respuesta sin `kind`.
-- [ ] Las pruebas de `answerQuiz` pasan sin modificar.
-- [ ] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
+- [x] Prueba: `submitQuiz("ex 1", { optionIds: ["b","e"] })` llama a `POST /exercises/ex%201/quiz-answers` con cuerpo `{ "optionIds": ["b","e"] }`.
+- [x] Prueba: devuelve el resultado de cada `kind` (cuatro casos) y falla con una respuesta sin `kind`.
+- [x] Las pruebas de `answerQuiz` pasan sin modificar.
+- [x] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
 
 **Qué NO hacer:** no cambiar `answerQuiz`; no tocar componentes.
 
@@ -767,13 +767,13 @@ exercisesApi.submitQuiz(id: string, body: QuizSubmissionInput): Promise<QuizGrad
   - «Intentar de nuevo» reinicia. Errores de red: mismo patrón que `SingleQuizPlayer` (`role="alert"`).
 
 **Criterios de aceptación** (`QuizMultiplePlayer.spec.tsx` más una prueba del despachador)
-- [ ] «Comprobar» está deshabilitado con 0 y con 1 marcada (de 2), y habilitado con 2.
-- [ ] Con 2 marcadas, las otras casillas están deshabilitadas.
-- [ ] Envía `submitQuiz("ex-1", { optionIds: ["b","e"] })` y muestra «¡Correcto!» con las explicaciones.
-- [ ] En fallo parcial muestra «Todavía no.» y marca la opción que faltó con el texto «te faltó».
-- [ ] Antes de comprobar no aparece ninguna explicación.
-- [ ] `QuizPlayer` con `config.kind` ausente se comporta como antes: `QuizAndFlashcardPlayers.spec.tsx` pasa **sin modificarlo**.
-- [ ] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
+- [x] «Comprobar» está deshabilitado con 0 y con 1 marcada (de 2), y habilitado con 2.
+- [x] Con 2 marcadas, las otras casillas están deshabilitadas.
+- [x] Envía `submitQuiz("ex-1", { optionIds: ["b","e"] })` y muestra «¡Correcto!» con las explicaciones.
+- [x] En fallo parcial muestra «Todavía no.» y marca la opción que faltó con el texto «te faltó».
+- [x] Antes de comprobar no aparece ninguna explicación.
+- [x] `QuizPlayer` con `config.kind` ausente se comporta como antes: `QuizAndFlashcardPlayers.spec.tsx` pasa **sin modificarlo**.
+- [x] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
 
 **Qué NO hacer:** no editar `QuizAndFlashcardPlayers.spec.tsx`, `FlashcardPlayer.tsx` ni `ReflectionPlayer.tsx`; no cambiar el comportamiento del quiz de respuesta única; no instalar librerías.
 
@@ -797,12 +797,12 @@ exercisesApi.submitQuiz(id: string, body: QuizSubmissionInput): Promise<QuizGrad
   - Tras corregir: se muestra el orden correcto (`result.correctOrder`) con la explicación de cada elemento; si fallaste, también tu orden; «¡Correcto!» / «Todavía no. Hay que ordenarlos todos bien.»; «Intentar de nuevo» reinicia al orden inicial.
 
 **Criterios de aceptación** (`QuizOrderingPlayer.spec.tsx`)
-- [ ] «Subir» del primero y «Bajar» del último están deshabilitados.
-- [ ] Pulsar «Bajar: A» cambia el orden mostrado y lo que envía `submitQuiz` (`{ order: ["b","a","c"] }`).
-- [ ] Un evento `dragStart` + `drop` entre dos elementos los reordena (con `dataTransfer` simulado).
-- [ ] Muestra explicaciones sólo después de corregir.
-- [ ] Las pruebas de T9b y `QuizAndFlashcardPlayers.spec.tsx` siguen pasando.
-- [ ] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
+- [x] «Subir» del primero y «Bajar» del último están deshabilitados.
+- [x] Pulsar «Bajar: A» cambia el orden mostrado y lo que envía `submitQuiz` (`{ order: ["b","a","c"] }`).
+- [x] Un evento `dragStart` + `drop` entre dos elementos los reordena (con `dataTransfer` simulado).
+- [x] Muestra explicaciones sólo después de corregir.
+- [x] Las pruebas de T9b y `QuizAndFlashcardPlayers.spec.tsx` siguen pasando.
+- [x] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
 
 **Qué NO hacer:** no instalar librerías de arrastre; no tocar `MatchPlayer.tsx`; no revelar `correctOrder` antes de corregir.
 
@@ -824,12 +824,12 @@ exercisesApi.submitQuiz(id: string, body: QuizSubmissionInput): Promise<QuizGrad
   - Se usan `<select>` (accesibles por teclado y lector de pantalla) y no arrastre.
 
 **Criterios de aceptación** (`QuizMatchingPlayer.spec.tsx`)
-- [ ] «Comprobar» deshabilitado hasta elegir todas las parejas.
-- [ ] Elegir una opción de la derecha la deshabilita en las demás filas.
-- [ ] Envía `submitQuiz("ex-1", { pairs: { a: "2", b: "1", c: "3" } })`.
-- [ ] Tras un fallo muestra la pareja correcta y su explicación; antes no.
-- [ ] Las pruebas de T9b, T9c y `QuizAndFlashcardPlayers.spec.tsx` siguen pasando.
-- [ ] `npm run typecheck -w apps/web`, `lint` y `test` en verde; `npm run build -w apps/web` en verde (restaurar `apps/web/next-env.d.ts` si `next build` lo reescribe).
+- [x] «Comprobar» deshabilitado hasta elegir todas las parejas.
+- [x] Elegir una opción de la derecha la deshabilita en las demás filas.
+- [x] Envía `submitQuiz("ex-1", { pairs: { a: "2", b: "1", c: "3" } })`.
+- [x] Tras un fallo muestra la pareja correcta y su explicación; antes no.
+- [x] Las pruebas de T9b, T9c y `QuizAndFlashcardPlayers.spec.tsx` siguen pasando.
+- [x] `npm run typecheck -w apps/web`, `lint` y `test` en verde; `npm run build -w apps/web` en verde (restaurar `apps/web/next-env.d.ts` si `next build` lo reescribe).
 
 **Qué NO hacer:** no usar arrastre; no tocar `MatchPlayer.tsx`.
 
@@ -878,11 +878,11 @@ export type ContentSeedAudit = z.infer<typeof contentSeedAuditSchema>;
 - «un artefacto con defectos críticos o altos no se acepta» (si algún defecto es `critical` o `high`, `verdict` no puede ser `accept`)
 
 **Criterios de aceptación**
-- [ ] Un `AUDIT` válido (3 hallazgos: 2 defectos con severidad y 1 correcto-sospechoso; `verdict: "fix"`) pasa con `[]`.
-- [ ] Una prueba por cada mensaje.
-- [ ] Un ejercicio que no es `AUDIT` con `audit` informa «solo un AUDIT declara audit»; uno `AUDIT` sin `audit` informa «un AUDIT requiere audit (artefacto y hallazgos)».
-- [ ] Las pruebas existentes pasan sin modificar; los quizzes y las tarjetas no cambian.
-- [ ] Verificación común en verde, salvo `typecheck:seed` si T5 aún no se hizo.
+- [x] Un `AUDIT` válido (3 hallazgos: 2 defectos con severidad y 1 correcto-sospechoso; `verdict: "fix"`) pasa con `[]`.
+- [x] Una prueba por cada mensaje.
+- [x] Un ejercicio que no es `AUDIT` con `audit` informa «solo un AUDIT declara audit»; uno `AUDIT` sin `audit` informa «un AUDIT requiere audit (artefacto y hallazgos)».
+- [x] Las pruebas existentes pasan sin modificar; los quizzes y las tarjetas no cambian.
+- [x] Verificación común en verde, salvo `typecheck:seed` si T5 aún no se hizo.
 
 **Qué NO hacer:** no tocar `seed-lib.mts` (T10b); no añadir campos de pistas ni de sandbox; no usar `audit` para otros tipos.
 
@@ -902,10 +902,10 @@ export type ContentSeedAudit = z.infer<typeof contentSeedAuditSchema>;
 - `exerciseSolution`: `{ findings: [{ id, isDefect, severity, explanation }], verdict }`.
 
 **Criterios de aceptación**
-- [ ] `npm run typecheck:seed -w apps/api` en 0.
-- [ ] Script temporal fuera del repositorio: con un `AUDIT` de ejemplo imprime `config` (sin ninguna clave `isDefect`/`severity`/`explanation`) y `solution`; el reporte los pega.
-- [ ] `npm run db:seed` dos veces: mismas cifras y mismo `md5` de los quizzes que en T5.
-- [ ] Verificación común en verde.
+- [x] `npm run typecheck:seed -w apps/api` en 0.
+- [x] Script temporal fuera del repositorio: con un `AUDIT` de ejemplo imprime `config` (sin ninguna clave `isDefect`/`severity`/`explanation`) y `solution`; el reporte los pega.
+- [x] `npm run db:seed` dos veces: mismas cifras y mismo `md5` de los quizzes que en T5.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no cambiar las ramas de quiz, memoria ni tarjeta; no exponer `isDefect` en `config`.
 
@@ -959,10 +959,10 @@ export type AuditAnswerResponse = z.infer<typeof auditAnswerResponseSchema>;
 Cuerpo de ejemplo: `{"marks":[{"findingId":"f1","severity":"critical"},{"findingId":"f3","severity":"low"}],"decision":"fix"}` (marks vacío es válido: «no encontré nada»).
 
 **Criterios de aceptación**
-- [ ] Acepta el ejemplo y `marks: []`; rechaza `findingId` repetido, `severity: "urgent"`, `decision: "approve"`, `marks` con 11 elementos, y claves desconocidas (cuerpo y cada marca).
-- [ ] `auditAnswerResultSchema` parsea un resultado completo y rechaza `score: 101`.
-- [ ] Los esquemas de quiz de T6 siguen pasando sin modificar.
-- [ ] Verificación común en verde.
+- [x] Acepta el ejemplo y `marks: []`; rechaza `findingId` repetido, `severity: "urgent"`, `decision: "approve"`, `marks` con 11 elementos, y claves desconocidas (cuerpo y cada marca).
+- [x] `auditAnswerResultSchema` parsea un resultado completo y rechaza `score: 101`.
+- [x] Los esquemas de quiz de T6 siguen pasando sin modificar.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no tocar `apps/api` ni `apps/web`; no reutilizar `quizSubmissionSchema`.
 
@@ -992,7 +992,7 @@ export type AuditGrading =
 export function gradeAudit(solution: unknown, answer: AuditAnswerInput): AuditGrading;
 ```
 
-Fórmula (D = defectos reales; `detected` = marcados que son defectos; `fp` = marcados que no lo son):
+Fórmula (D = defectos reales; `detected` = marcados que son defectos; `fp` = marcados que no lo son). **Ratificada por el Orquestador (2026-11-09), decisión (d): la fijan los casos numéricos de los criterios.**
 
 ```
 severityPoints = Σ sobre detected de (severidad elegida == real ? 1 : 0.5)
@@ -1006,14 +1006,14 @@ outcome        = score ≥ 70 ? "PASSED" : score > 0 ? "PARTIAL" : "FAILED"
 `submissionCode`: `JSON.stringify({ marks: marks ordenadas por findingId, decision })`. `findings` del resultado incluye **todos** los hallazgos de la solución (se revelan tras el intento).
 
 **Criterios de aceptación**
-- [ ] Todos los defectos con su severidad, sin falsos positivos y decisión correcta ⇒ `score 100`, `PASSED`.
-- [ ] Un falso positivo baja la nota: el mismo caso con un hallazgo correcto-sospechoso marcado ⇒ `score 85`, `PASSED`; con dos ⇒ `70`, `PASSED`; con tres ⇒ `55`, `PARTIAL`.
-- [ ] Severidad equivocada en un defecto de dos, resto perfecto ⇒ `round(100 * (0.8 * 0.75 + 0.2))` = `80`.
-- [ ] Sin marcas ⇒ `score 0`, `FAILED`, `decisionCorrect` informado pero sin crédito.
-- [ ] Un `findingId` inexistente ⇒ `invalid-answer` con `UNKNOWN_FINDING("f9")`.
-- [ ] `solution` malformada o sin defectos ⇒ `broken-content`.
-- [ ] No lanza excepciones ni importa Nest.
-- [ ] Verificación común en verde.
+- [x] Todos los defectos con su severidad, sin falsos positivos y decisión correcta ⇒ `score 100`, `PASSED`.
+- [x] Un falso positivo baja la nota: el mismo caso con un hallazgo correcto-sospechoso marcado ⇒ `score 85`, `PASSED`; con dos ⇒ `70`, `PASSED`; con tres ⇒ `55`, `PARTIAL`.
+- [x] Severidad equivocada en un defecto de dos, resto perfecto ⇒ `round(100 * (0.8 * 0.75 + 0.2))` = `80`.
+- [x] Sin marcas ⇒ `score 0`, `FAILED`, `decisionCorrect` informado pero sin crédito.
+- [x] Un `findingId` inexistente ⇒ `invalid-answer` con `UNKNOWN_FINDING("f9")`.
+- [x] `solution` malformada o sin defectos ⇒ `broken-content`.
+- [x] No lanza excepciones ni importa Nest.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no persistir; no cambiar la fórmula (si parece mal, preguntar); no usar los `hints`.
 
@@ -1040,15 +1040,15 @@ POST /api/exercises/:id/audit-answers
 500 «El ejercicio está mal configurado»
 ```
 
-Servicio `answerAudit(userId, exerciseId, body: AuditAnswerInput): Promise<AuditAnswerResponse>`: mismo orden que `answerQuiz` (`requireExercise` → tipo `AUDIT` → `gradeAudit` → `assertAttemptsLeft` → `createSubmission` → `reviews.scheduleFromSubmission` → `recordProgress`). Se persiste `code: submissionCode`, `outcome` y `score` del resultado, `achievedLevel: this.accreditedLevel(exercise, outcome === "PASSED" ? 3 : null)`, `hintsUsed: 0`, `results: []`. (Decisión pendiente de ratificar por el Orquestador: `banco-ejercicios.md` sitúa las auditorías en el nivel 3–4; se acredita 3 al aprobar.)
+Servicio `answerAudit(userId, exerciseId, body: AuditAnswerInput): Promise<AuditAnswerResponse>`: mismo orden que `answerQuiz` (`requireExercise` → tipo `AUDIT` → `gradeAudit` → `assertAttemptsLeft` → `createSubmission` → `reviews.scheduleFromSubmission` → `recordProgress`). Se persiste `code: submissionCode`, `outcome` y `score` del resultado, `achievedLevel: this.accreditedLevel(exercise, outcome === "PASSED" ? 3 : null)`, `hintsUsed: 0`, `results: []`. (Decisión **ratificada por el Orquestador (2026-11-09), decisión (c)**: `banco-ejercicios.md` sitúa las auditorías en el nivel 3–4; se acredita 3 al aprobar.)
 
 **Criterios de aceptación** (`exercises.audit.spec.ts`, con repositorio en memoria)
-- [ ] Acierto total registra un `Submission` `PASSED`, `score 100`, y llama a `scheduleFromSubmission` y `recordProgress`.
-- [ ] Un falso positivo baja la nota por debajo de la del caso sin él (misma prueba en servicio).
-- [ ] Un ejercicio que no es `AUDIT` ⇒ 400; hallazgo inexistente ⇒ 400 sin crear envío ni consumir intento.
-- [ ] `maxAttempts` aplica (409).
-- [ ] El `config` que devuelve `getDetail` de un `AUDIT` no contiene `isDefect`, `severity` ni `explanation`.
-- [ ] Verificación común en verde.
+- [x] Acierto total registra un `Submission` `PASSED`, `score 100`, y llama a `scheduleFromSubmission` y `recordProgress`.
+- [x] Un falso positivo baja la nota por debajo de la del caso sin él (misma prueba en servicio).
+- [x] Un ejercicio que no es `AUDIT` ⇒ 400; hallazgo inexistente ⇒ 400 sin crear envío ni consumir intento.
+- [x] `maxAttempts` aplica (409).
+- [x] El `config` que devuelve `getDetail` de un `AUDIT` no contiene `isDefect`, `severity` ni `explanation`.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no tocar `quiz-answers`; no modificar repositorios ni mapper; no devolver la solución en errores.
 
@@ -1064,10 +1064,10 @@ Servicio `answerAudit(userId, exerciseId, body: AuditAnswerInput): Promise<Audit
 **Contrato:** `exercisesApi.submitAudit(id: string, body: AuditAnswerInput): Promise<AuditAnswerResult>` → `POST /exercises/${encodeURIComponent(id)}/audit-answers`, validado con `auditAnswerResponseSchema`, devuelve `.result`.
 
 **Criterios de aceptación**
-- [ ] Prueba: URL y cuerpo exactos.
-- [ ] Prueba: respuesta válida devuelta; forma inválida rechazada.
-- [ ] Las pruebas existentes de `api-client.spec.ts` (incluidas las de T9a) pasan sin modificar.
-- [ ] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
+- [x] Prueba: URL y cuerpo exactos.
+- [x] Prueba: respuesta válida devuelta; forma inválida rechazada.
+- [x] Las pruebas existentes de `api-client.spec.ts` (incluidas las de T9a) pasan sin modificar.
+- [x] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
 
 **Qué NO hacer:** no tocar componentes ni `answerQuiz`/`submitQuiz`.
 
@@ -1089,12 +1089,12 @@ Servicio `answerAudit(userId, exerciseId, body: AuditAnswerInput): Promise<Audit
 - Antes de enviar no aparece ninguna explicación ni indicio de cuáles son defectos.
 
 **Criterios de aceptación** (`AuditPlayer.spec.tsx`)
-- [ ] El botón está deshabilitado sin decisión y con un candidato marcado sin severidad.
-- [ ] Envía el cuerpo esperado (`marks` sólo de los marcados).
-- [ ] Muestra «Falsos positivos: 1» y la nota tras una corrección con un falso positivo.
-- [ ] No hay explicaciones antes de enviar; sí después, de todos los hallazgos.
-- [ ] Configuración inválida muestra el `alert`.
-- [ ] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
+- [x] El botón está deshabilitado sin decisión y con un candidato marcado sin severidad.
+- [x] Envía el cuerpo esperado (`marks` sólo de los marcados).
+- [x] Muestra «Falsos positivos: 1» y la nota tras una corrección con un falso positivo.
+- [x] No hay explicaciones antes de enviar; sí después, de todos los hallazgos.
+- [x] Configuración inválida muestra el `alert`.
+- [x] `npm run typecheck -w apps/web`, `lint` y `test` en verde.
 
 **Qué NO hacer:** no tocar `ExercisePlayer.tsx` (T12c); no incluir resaltado de sintaxis ni librerías nuevas.
 
@@ -1112,9 +1112,9 @@ Servicio `answerAudit(userId, exerciseId, body: AuditAnswerInput): Promise<Audit
 **Contrato:** `AUDIT` entra en `CLIENT_TYPES`; `TYPE_LABEL.AUDIT = "Auditoría"`; la cadena de condicionales renderiza `<AuditPlayer exercise={exercise} />` para `AUDIT` antes de la rama final de `REFLECT`.
 
 **Criterios de aceptación**
-- [ ] Prueba: un ejercicio `AUDIT` renderiza el `AuditPlayer` (no el editor de código ni el aviso «Modo de práctica»).
-- [ ] Las pruebas existentes de `ExercisePlayer.spec.tsx` pasan sin modificar (si fallan por los cambios ajenos en `FlashcardPlayer`/`ReflectionPlayer`, se compara con la línea base y se reporta).
-- [ ] `npm run typecheck -w apps/web`, `lint`, `test` y `build -w apps/web` en verde (restaurar `apps/web/next-env.d.ts` si `next build` lo reescribe).
+- [x] Prueba: un ejercicio `AUDIT` renderiza el `AuditPlayer` (no el editor de código ni el aviso «Modo de práctica»).
+- [x] Las pruebas existentes de `ExercisePlayer.spec.tsx` pasan sin modificar (si fallan por los cambios ajenos en `FlashcardPlayer`/`ReflectionPlayer`, se compara con la línea base y se reporta).
+- [x] `npm run typecheck -w apps/web`, `lint`, `test` y `build -w apps/web` en verde (restaurar `apps/web/next-env.d.ts` si `next build` lo reescribe).
 
 **Qué NO hacer:** no cambiar el despacho de los demás tipos; no tocar `LabHub.tsx`.
 
@@ -1142,11 +1142,11 @@ Servicio `answerAudit(userId, exerciseId, body: AuditAnswerInput): Promise<Audit
 | 7 | Reparto de tipos (§6) | Sólo en unidades con `isPublished: true`: ≥ 8 `QUIZ` con `exam` y, de A2 en adelante (etapa ≥ 102), ≥ 2 de `kind: "multiple"` |
 
 **Criterios de aceptación**
-- [ ] Cada una de las reglas 1–7 tiene una prueba con un ejemplo **malo** que la dispara y uno bueno que no.
-- [ ] Con `aws/units` vacío o inexistente, el spec pasa (cero ejercicios reales).
-- [ ] Si se añade una unidad AWS que incumple una regla, el spec falla nombrando el `slug` (comprobación manual con un archivo temporal fuera del repositorio, reportada).
-- [ ] No duplica reglas ya cubiertas por el esquema salvo las listadas.
-- [ ] Verificación común en verde.
+- [x] Cada una de las reglas 1–7 tiene una prueba con un ejemplo **malo** que la dispara y uno bueno que no.
+- [x] Con `aws/units` vacío o inexistente, el spec pasa (cero ejercicios reales).
+- [x] Si se añade una unidad AWS que incumple una regla, el spec falla nombrando el `slug` (comprobación manual con un archivo temporal fuera del repositorio, reportada).
+- [x] No duplica reglas ya cubiertas por el esquema salvo las listadas.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no crear archivos de unidad AWS; no tocar `seed-exercise-quality.spec.ts` (guarda de `fullstack-ia`); no añadir heurísticas para la plausibilidad de distractores ni para «datos volátiles».
 
@@ -1168,12 +1168,12 @@ No es del Constructor. Al cerrar el sprint:
 
 ## 5. Criterios de cierre
 
-- [ ] `aws-guias-examen.md` firmado por una persona con fecha; el registro de `shared` coincide con él (prueba que compara pesos y número de dominios).
-- [ ] Las cuatro variantes de quiz se corrigen en servidor con pruebas de acierto, fallo y respuesta incompleta; la respuesta múltiple es todo o nada.
-- [ ] Ningún endpoint de unidad, laboratorio o repaso devuelve un ejercicio `RESERVED` (prueba por endpoint).
-- [ ] `AUDIT` jugable de punta a punta con un ejercicio de prueba; un falso positivo baja la nota.
-- [ ] Los quizzes existentes de `fullstack-ia` (1.662) siguen funcionando sin migrar datos.
-- [ ] Suite completa, typecheck, lint y build en verde.
+- [ ] `aws-guias-examen.md` firmado por una persona con fecha. **Pendiente de una persona.** La otra mitad ya se cumple: el registro de `shared` coincide con el documento (`certification.spec.ts` lee el documento y compara pesos y número de dominios).
+- [x] Las cuatro variantes de quiz se corrigen en servidor con pruebas de acierto, fallo y respuesta incompleta; la respuesta múltiple es todo o nada.
+- [x] Ningún endpoint de unidad, laboratorio o repaso devuelve un ejercicio `RESERVED` (prueba por endpoint).
+- [ ] `AUDIT` jugable de punta a punta con un ejercicio de prueba; un falso positivo baja la nota. **Las pruebas automáticas lo cubren** (`audit-grading.spec.ts`, `exercises.audit.spec.ts` y `AuditPlayer.spec.tsx`). **Falta el recorrido manual** del punto de control 3, que hace una persona.
+- [x] Los quizzes existentes de `fullstack-ia` (1.662) siguen funcionando sin migrar datos.
+- [x] Suite completa, typecheck, lint y build en verde.
 
 ## 6. Documentos relacionados
 
@@ -1211,3 +1211,30 @@ El orden respeta las dependencias de cada ficha y los hallazgos de §4.1. Una ta
 1. Tras T5: `npm run db:seed` dos veces con las mismas cifras (12/48/207/3203) y el `md5` de los quizzes de `fullstack-ia` idéntico al de antes de T2 (regla 1 de §4.0).
 2. Tras T8c: ninguna consulta de unidad, laboratorio, repaso ni tutor devuelve un ejercicio reservado (pruebas de T8a–T8c).
 3. Tras T12c: un recorrido de punta a punta con un `QUIZ` múltiple y un `AUDIT` de prueba en una base de desarrollo (por una persona), y `npm run build` en verde.
+
+## 8. Registro de revisión (Orquestador, 2026-11-09)
+
+Construyó DeepSeek y orquestó Claude, una tarea por sesión. El Orquestador revisó cada commit con `git show --stat` y el código, y pasó la suite completa por su cuenta. Los reportes de T0b–T3 y T5–T13 no llegaron al Orquestador; su aprobación se basa en la revisión del código y en la suite.
+
+| Tarea | Commit | Nota de la revisión |
+|---|---|---|
+| T0b | `08c5ca4` | `.gitattributes`, con una excepción `eol=crlf` para `interviews` aprobada por el Orquestador. Veredicto en `modelo-datos.md` §9 |
+| T1 | `c5d61cf` | |
+| T2 | `8369f56` | Excepción de 4 archivos (H1) |
+| T3 | `41067eb` | |
+| T4 | `70fbf45` | La primera sesión se detuvo, correctamente, porque los servidores de desarrollo ocupaban 3000/3001. La migración es aditiva y su SQL se revisó |
+| T5 | `9226f70` | Punto de control 1: huella LB = huella T5 = `1662\|8ca67124…` |
+| T6 | `6532b57` | |
+| T7a / T7b | `0536ab7` / `cf5c7b6` | |
+| T8a / T8b / T8c | `f8b92ab` / `8d9956d` / `e78d86c` | Punto de control 2 cubierto por sus pruebas |
+| T9a / T9b | `3c847a8` / `102fe17` | |
+| T9c | `59a8916` | La primera sesión no hizo commit. Excepción aprobada: un 4.º archivo, `QuizMultiplePlayer.spec.tsx`, porque su prueba usaba `ordering` como variante no disponible y ahora usa `desconocido` |
+| T9d | `cca9486` | |
+| T10 | `5ce7914` + `665c805` | **Regresión:** `audit` pasó a ser obligatorio en `ExerciseDraft` y `lab-draft-verifier.service.spec.ts` dejó de compilar. T10b–T13 dieron la verificación por verde sin serlo. La corrigió `665c805` |
+| T10b | `6295321` | |
+| T11a / T11b / T11c | `05df658` / `d54840a` / `8d24fd3` | Decisiones (c) y (d) |
+| T12a / T12b / T12c | `d3ae7d7` / `86a1898` / `4aa06ed` | |
+| T13 | `b597e8a` | El archivo temporal de `aws/units` se borró |
+| T14 | este commit | Documentación (Orquestador) |
+
+**Lección para S15:** el reporte del Constructor debe dar el typecheck **por workspace**, y la revisión del Orquestador vuelve a pasar la suite completa antes de aprobar cada tarea.
