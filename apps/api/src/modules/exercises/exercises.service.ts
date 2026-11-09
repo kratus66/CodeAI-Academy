@@ -5,8 +5,8 @@ import type {
   FlashcardRatingResponse,
   FlashcardRevealInput,
   FlashcardRevealResponse,
-  QuizAnswerInput,
-  QuizAnswerResponse,
+  QuizGradeResponse,
+  QuizSubmissionInput,
   ReflectionInput,
   ReflectionResponse,
   ExerciseListQuery,
@@ -37,6 +37,7 @@ import type { Page, PageWindow } from "../content/content.repository";
 import type { SandboxService } from "../sandbox/sandbox.service";
 import { SANDBOX_SERVICE } from "../sandbox/sandbox.service";
 import { gradeSubmission } from "./grading";
+import { gradeQuizAnswer } from "./quiz-grading";
 import {
   toExerciseDetail,
   toExerciseListItem,
@@ -113,45 +114,13 @@ type ExerciseTestRow = ExerciseRow["tests"][number];
 const NOT_A_QUIZ = "Este ejercicio no es un quiz";
 const NOT_A_FLASHCARD = "Este ejercicio no es una tarjeta";
 const NOT_A_REFLECTION = "Este ejercicio no es una reflexión";
-const UNKNOWN_OPTION = "La opción no existe en este quiz";
 const REVEAL_FIRST = "Primero intenta recordar y revela la respuesta";
 const CONTENT_BROKEN = "El ejercicio está mal configurado";
-
-interface QuizSolution {
-  correctOptionId: string;
-  explanations: Record<string, string>;
-}
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
-}
-
-function readQuiz(exercise: ExerciseRow): { optionIds: string[]; solution: QuizSolution } {
-  const options = asRecord(exercise.config).options;
-  const solution = asRecord(exercise.solution);
-  const explanations = asRecord(solution.explanations);
-  const optionIds = Array.isArray(options)
-    ? options.map((option) => asRecord(option).id).filter((id): id is string => typeof id === "string")
-    : [];
-
-  if (
-    optionIds.length === 0 ||
-    typeof solution.correctOptionId !== "string" ||
-    !optionIds.includes(solution.correctOptionId) ||
-    optionIds.some((id) => typeof explanations[id] !== "string")
-  ) {
-    throw new InternalServerErrorException(CONTENT_BROKEN);
-  }
-
-  return {
-    optionIds,
-    solution: {
-      correctOptionId: solution.correctOptionId,
-      explanations: explanations as Record<string, string>,
-    },
-  };
 }
 
 function readFlashcardBack(exercise: ExerciseRow): string {
@@ -280,36 +249,42 @@ export class ExercisesService {
 
   /**
    * Corrige un quiz en el servidor: la respuesta y las explicaciones solo se
-   * devuelven con el intento ya persistido. No usa sandbox; el repaso se
-   * programa como en cualquier otro envío.
+   * devuelven con el intento ya persistido. El corrector puro (`quiz-grading`)
+   * decide el resultado de las cuatro variantes y aquí se traduce a HTTP: una
+   * respuesta inválida es un `400` **antes** del tope de intentos, porque no
+   * gasta un intento; un contenido mal sembrado es un `500`.
    */
   async answerQuiz(
     userId: string,
     exerciseId: string,
-    body: QuizAnswerInput,
-  ): Promise<QuizAnswerResponse> {
+    body: QuizSubmissionInput,
+  ): Promise<QuizGradeResponse> {
     const exercise = await this.requireExercise(exerciseId);
 
     if (exercise.type !== "QUIZ") {
       throw new BadRequestException(NOT_A_QUIZ);
     }
 
-    const { optionIds, solution } = readQuiz(exercise);
+    const graded = gradeQuizAnswer(exercise, body);
 
-    if (!optionIds.includes(body.optionId)) {
-      throw new BadRequestException(UNKNOWN_OPTION);
+    if (graded.status === "invalid-answer") {
+      throw new BadRequestException(graded.message);
+    }
+
+    if (graded.status === "broken-content") {
+      throw new InternalServerErrorException(CONTENT_BROKEN);
     }
 
     await this.assertAttemptsLeft(userId, exercise);
 
-    const correct = body.optionId === solution.correctOptionId;
+    const correct = graded.result.correct;
     const outcome: SubmissionOutcome = correct ? "PASSED" : "FAILED";
     const score = correct ? 100 : 0;
 
     await this.repository.createSubmission({
       userId,
       exerciseId,
-      code: body.optionId,
+      code: graded.submissionCode,
       outcome,
       score,
       achievedLevel: this.accreditedLevel(exercise, correct ? 1 : null),
@@ -321,14 +296,7 @@ export class ExercisesService {
     await this.reviews.scheduleFromSubmission({ userId, exerciseId, outcome, score, hintsUsed: 0 });
     await this.recordProgress(userId, exercise.unitCode);
 
-    return {
-      result: {
-        correct,
-        correctOptionId: solution.correctOptionId,
-        explanation: solution.explanations[body.optionId] ?? "",
-        correctExplanation: solution.explanations[solution.correctOptionId] ?? "",
-      },
-    };
+    return { result: graded.result };
   }
 
   /** Revela el reverso solo tras registrar un intento (recuperación activa). */

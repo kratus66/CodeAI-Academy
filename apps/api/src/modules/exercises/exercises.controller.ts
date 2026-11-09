@@ -10,8 +10,8 @@ import type {
   FlashcardRevealResponse,
   HintRequestInput,
   HintResponseEnvelope,
-  QuizAnswerInput,
-  QuizAnswerResponse,
+  QuizGradeResponse,
+  QuizSubmissionInput,
   ReflectionInput,
   ReflectionResponse,
   SubmissionListResponse,
@@ -24,7 +24,7 @@ import {
   flashcardRatingSchema,
   flashcardRevealSchema,
   hintRequestSchema,
-  quizAnswerSchema,
+  quizSubmissionSchema,
   reflectionSchema,
   unitCodeParamsSchema,
 } from "@codeai/shared";
@@ -131,8 +131,8 @@ export class ExercisesController {
   async answerQuiz(
     @CurrentUser() user: AccessTokenPayload,
     @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,
-    @Body(new ZodValidationPipe(quizAnswerSchema)) body: QuizAnswerInput,
-  ): Promise<QuizAnswerResponse> {
+    @Body(new ZodValidationPipe(quizSubmissionSchema)) body: QuizSubmissionInput,
+  ): Promise<QuizGradeResponse> {
     return this.exercises.answerQuiz(user.sub, params.id, body);
   }
 
