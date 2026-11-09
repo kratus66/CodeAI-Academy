@@ -34,12 +34,13 @@ CodeAI Academy es a la vez:
 | **S10** | Simulaciones de entrevista | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
 | **S11** | Analítica, rendimiento y lanzamiento | 🔄 14/16 tareas (T1–T14 ✅; T15 despliegue construido pero sin imágenes compiladas; T16: el adaptador `docker` del sandbox ya existe y está probado contra Docker real, pero `SANDBOX_MODE` sigue en `mock` por defecto y faltan pruebas automáticas del checklist de [`sandbox-ejecucion.md`](docs/03-arquitectura/sandbox-ejecucion.md) §9). Ver [`sprint-11`](docs/04-plan-ejecucion/sprints/sprint-11-analitica-lanzamiento.md) |
 | **S12** | Experiencia de aprendizaje (UX / Frontend) | ✅ completado (10/10 tareas; T9, el streaming del tutor, se cerró después: `POST /api/ai/tutor/stream`). 366 pruebas web verdes. Ver [`sprint-12`](docs/04-plan-ejecucion/sprints/sprint-12-experiencia-aprendizaje.md) |
+| **S13** | Multi-ruta: la plataforma sirve más de un curso | ✅ cerrado (23/23 tareas, 2026-11-09; recorrido visual en navegador pendiente). Ver [`sprint-13`](docs/04-plan-ejecucion/sprints/sprint-13-multi-ruta.md) |
 
 **Contenido sembrado (2026-10-28; +14 juegos de memoria en E0 el 2026-11-03):** 12 etapas, 48 módulos, 207 unidades con 207 lecciones publicadas y 34 recursos. El seed ya trae 3.203 ejercicios publicados (E0–E11, sin revisión humana; el sandbox actual es `mock`, así que los laboratorios de E0–E2 no certifican; E3–E11 solo tienen quizzes, tarjetas y reflexiones), deuda pedagógica declarada en [`banco-ejercicios.md`](docs/02-contenido/banco-ejercicios.md) §5. La revisión pedagógica de las lecciones (qué se corrigió y qué sigue abierto) está en [`revision-pedagogica.md`](docs/02-contenido/revision-pedagogica.md).
 
 **Trabajo posterior a S12 (2026-11-03):** adaptador `docker` del sandbox (con arnés ESM corregido y pruebas contra Docker real: `SANDBOX_DOCKER_TESTS=1`), reproductores `MEMORY` y `DEBUG`, diagramas Mermaid en las lecciones, proveedor de IA Anthropic, streaming del tutor con guarda de soluciones sobre el flujo, política `ACCREDIT_ONLY_REVIEWED` (apagada por defecto) y los servicios de autoría asistida `ExerciseGeneratorService` y `LabDraftVerifierService` (sin endpoint todavía). Detalle en [`capa-ia.md`](docs/03-arquitectura/capa-ia.md) §10, [`sandbox-ejecucion.md`](docs/03-arquitectura/sandbox-ejecucion.md) §10 y [`banco-ejercicios.md`](docs/02-contenido/banco-ejercicios.md) §5b.
 
-**Ruta AWS Cloud (planificada 2026-11-06):** segunda ruta de la plataforma, con 13 etapas (A0–A12), 262 unidades y preparación para once certificaciones de AWS (arquitectura, desarrollo, operación, DevOps, seguridad, datos e IA). Currículo en [`curriculo-aws.md`](docs/01-curriculo/curriculo-aws.md), método en [`metodo-aws.md`](docs/02-contenido/metodo-aws.md) y sprints S13–S26 en el [roadmap](docs/04-plan-ejecucion/roadmap-sprints.md) §3.1. Nada construido todavía; S13 tiene sus fichas listas.
+**Ruta AWS Cloud (planificada 2026-11-06):** segunda ruta de la plataforma, con 13 etapas (A0–A12), 262 unidades y preparación para once certificaciones de AWS (arquitectura, desarrollo, operación, DevOps, seguridad, datos e IA). Currículo en [`curriculo-aws.md`](docs/01-curriculo/curriculo-aws.md), método en [`metodo-aws.md`](docs/02-contenido/metodo-aws.md) y sprints S13–S26 en el [roadmap](docs/04-plan-ejecucion/roadmap-sprints.md) §3.1. Nada construido todavía; S13 tiene sus fichas listas. S13 está cerrado: la plataforma ya sirve varias rutas (`GET /api/content/courses`, `/learn/courses`) y el esqueleto de la ruta AWS (13 etapas, 77 módulos, 262 unidades, sin publicar) se carga con `npm run db:seed:aws`. El siguiente sprint es S14.
 
 Operación (respaldos, restauración, despliegue y checklist de producción): [`docs/05-orquestacion/runbook-operacion.md`](docs/05-orquestacion/runbook-operacion.md).
 
@@ -139,6 +140,7 @@ npm run dev:api        # solo NestJS
 npm run db:up          # PostgreSQL vía docker-compose (localhost:5433)
 npm run db:migrate     # aplicar migraciones Prisma (desde S1)
 npm run db:seed        # cargar el currículo de forma idempotente (desde S2)
+npm run db:seed:aws    # cargar el esqueleto de la ruta AWS, sin publicar (desde S13)
 npm run test           # pruebas de todos los workspaces
 npm run lint           # análisis estático
 npm run typecheck      # verificación de tipos

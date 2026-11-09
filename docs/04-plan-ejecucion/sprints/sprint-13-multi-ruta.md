@@ -1,6 +1,6 @@
 # Sprint 13 — Multi-ruta: la plataforma sirve más de un curso
 
-> **Estado:** 🔄 en cierre (23/23 tareas del Constructor ✅; falta cerrar T18, la documentación) · Desde T7 el Constructor es un agente Sonnet 5.5 lanzado por el Orquestador. · **Duración prevista:** 19 sesiones de Constructor (T3 se dividió en T3, T3b y T3c el 2026-11-06) · **Depende de:** S2 (contenido), S3 (catálogo), S4 (progreso).
+> **Estado:** ✅ cerrado (2026-11-09; 23/23 tareas y T18). Recorrido visual en navegador pendiente de una persona.
 > **Ámbito:** `packages/shared`, `apps/api` (contenido y semilla) y `apps/web` (catálogo). No toca ejercicios, repaso, IA, proyectos ni entrevistas.
 > **Por qué este sprint existe:** la ruta AWS ([`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md)) no cabe en el modelo actual: las etapas van de 0 a 11 (`CURRICULUM_STAGE_COUNT = 12`), los códigos son `M0.1`/`U0.1.1` sin espacio de nombres, las competencias son `C1`–`C14` y la semilla exige exactamente 12 etapas en un único JSON de 8 MB. Este sprint introduce la **ruta** (`Course`) como contenedor de etapas sin romper nada de lo que existe.
 
@@ -924,16 +924,18 @@ contentApi.listStages(signal?: AbortSignal, options?: { course?: CourseSlug }): 
 
 No es tarea del Constructor. Al aprobar T1–T17, el Orquestador actualiza en el mismo commit de cierre: [`../../03-arquitectura/contratos-api.md`](../../03-arquitectura/contratos-api.md) §3 (rutas `courses` y `?course=`), [`../../03-arquitectura/modelo-datos.md`](../../03-arquitectura/modelo-datos.md) (`Course`, `Stage.courseSlug`, semilla por unidad), `README.md` (estado y comando `db:seed:aws`) y [`../roadmap-sprints.md`](../roadmap-sprints.md).
 
+**Revisión (2026-11-09): ✅ hecha.** Documentos actualizados: `contratos-api.md` §3, `modelo-datos.md`, `README.md` (estado y comando `db:seed:aws`), `roadmap-sprints.md` y esta ficha.
+
 ---
 
 ## 5. Criterios de cierre del sprint
 
-- [ ] T1–T17, T3b, T3c, T10b, T12b, T16b y T19 aprobadas; T18 hecha.
-- [ ] `npm run typecheck`, `npm run lint`, `npm run test` y `npm run build` en verde en todos los workspaces.
-- [ ] `npm run db:migrate`, `npm run db:seed` (12/48/207) y `npm run db:seed:aws` (13/77/262) desde una base vacía, dos veces cada semilla, con las mismas cifras.
-- [ ] Sin `course`, `GET /api/content/stages` devuelve exactamente lo mismo que antes del sprint (comparación de la respuesta).
-- [ ] Con `aws-cloud` marcada como publicada **en una base local de prueba**, `/learn/courses` muestra las dos rutas y `/learn/stages?course=aws-cloud` las etapas A0–A12 publicadas.
-- [ ] Ninguna unidad, lección ni ejercicio de AWS publicado.
+- [x] T1–T17, T3b, T3c, T10b, T12b, T16b y T19 aprobadas; T18 hecha.
+- [x] `npm run typecheck`, `npm run lint`, `npm run test` y `npm run build` en verde en todos los workspaces.
+- [x] `npm run db:migrate`, `npm run db:seed` (12/48/207) y `npm run db:seed:aws` (13/77/262) desde una base vacía, dos veces cada semilla, con las mismas cifras. Cumplido en una base desechable `postgres:16-alpine` (puerto 5440), borrada después.
+- [x] Sin `course`, `GET /api/content/stages` devuelve exactamente lo mismo que antes del sprint (comparación de la respuesta).
+- [x] Con `aws-cloud` marcada como publicada **en una base local de prueba**, `/learn/courses` muestra las dos rutas y `/learn/stages?course=aws-cloud` las etapas A0–A12 publicadas. Cumplido por API y pruebas de componentes; recorrido visual en navegador: pendiente de una persona.
+- [x] Ninguna unidad, lección ni ejercicio de AWS publicado.
 
 ## 6. Deuda declarada al abrir el sprint
 

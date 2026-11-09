@@ -34,7 +34,7 @@
 | **S10** | Simulaciones de entrevista | E11 | `interviews` | ✅ completado (17/17 tareas; 16/16 criterios; HTTP 16/16) |
 | **S11** | Analítica, rendimiento y lanzamiento | E11 | `analytics` | 🔄 14/16 tareas; lanzamiento bloqueado por el adaptador de sandbox `docker` |
 | **S12** | Experiencia de aprendizaje (UX / frontend) | E1–E11 | — | ✅ 10/10 tareas; T9 (streaming del tutor) como deuda documentada |
-| **S13** | Multi-ruta: la plataforma sirve más de un curso | A0–A12 | `content` (rutas), semilla por unidad | 🔄 21/23 tareas (sólo faltan T8 y T9, que esperan la base de datos, y T18, la documentación) |
+| **S13** | Multi-ruta: la plataforma sirve más de un curso | A0–A12 | `content` (rutas), semilla por unidad | ✅ 23/23 tareas (2026-11-09) |
 | **S14** | Preguntas tipo examen y metadatos de certificación | A1–A11 | `exercises` | ⬜ |
 | **S15** | Simulador de examen y preparación por certificación | A1–A11 | `exams` (nuevo) | ⬜ |
 | **S16** | Laboratorios AWS: arnés en el sandbox y laboratorio en tu cuenta | A0–A11 | `sandbox`, `exercises` | ⬜ (requiere sandbox `docker`, S11-T16) |
@@ -179,7 +179,7 @@ Misma pedagogía (7 pasos, 4 niveles, escalera de dificultad, SM-2, revisión hu
 
 | Sprint | Objetivo | Ficha |
 |--------|----------|-------|
-| **S13** | Rutas en la base de datos y la API (`Course`, etapas 100–112, códigos `AWS-…`), semilla por unidad y catálogo de rutas en la web | [`sprint-13-multi-ruta.md`](sprints/sprint-13-multi-ruta.md) — **19 fichas listas para el Constructor** |
+| **S13** | Rutas en la base de datos y la API (`Course`, etapas 100–112, códigos `AWS-…`), semilla por unidad y catálogo de rutas en la web | [`sprint-13-multi-ruta.md`](sprints/sprint-13-multi-ruta.md) — ✅ cerrado: 23 tareas, ver ficha |
 | **S14** | Respuesta múltiple, ordenar y emparejar; metadatos de certificación y dominio; banco reservado; reproductor `AUDIT` | [`sprint-14-preguntas-examen.md`](sprints/sprint-14-preguntas-examen.md) |
 | **S15** | Simulacros cronometrados por forma y por dominio, informe por dominio y criterio «listo para presentar» | [`sprint-15-simulador-examen.md`](sprints/sprint-15-simulador-examen.md) |
 | **S16** | Arnés de evaluadores AWS en el sandbox y `CLOUD_LAB` con evidencia de solo lectura | [`sprint-16-laboratorios-aws.md`](sprints/sprint-16-laboratorios-aws.md) |
