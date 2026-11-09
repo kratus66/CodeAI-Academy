@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   contentSeedExerciseSchema,
+  contentSeedQuizSchema,
   exerciseRuleViolations,
   type ContentSeedExercise,
 } from "./content";
@@ -197,6 +198,263 @@ describe("exerciseRuleViolations", () => {
 
       expect(exerciseRuleViolations(flashcard({}))).toContain("una FLASHCARD requiere flashcard.back");
       expect(exerciseRuleViolations(flashcard({ flashcard: { back: "Reverso" } }))).toEqual([]);
+    });
+  });
+});
+
+describe("variantes de quiz de la semilla", () => {
+  const quizExercise = (quiz: unknown): ContentSeedExercise =>
+    exercise({
+      type: "QUIZ",
+      ladder: "SEMI",
+      hints: [],
+      tests: [],
+      language: null,
+      starterCode: null,
+      solution: null,
+      quiz,
+    });
+
+  const letterAt = (index: number): string => String.fromCharCode("a".charCodeAt(0) + index);
+
+  const quizOptions = (...texts: string[]) =>
+    texts.map((text, index) => ({
+      id: letterAt(index),
+      text,
+      explanation: `Explicación de «${text}».`,
+    }));
+
+  const single = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    options: quizOptions(
+      "Es el estado inicial de la promesa",
+      "Es un estado intermedio inventado",
+      "Es el nombre de la reacción registrada",
+    ),
+    correctOptionId: "a",
+    ...overrides,
+  });
+
+  const multiple = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    kind: "multiple",
+    options: quizOptions(
+      "Es el estado inicial de la promesa",
+      "Es un estado intermedio inventado",
+      "Es el nombre de la reacción registrada",
+      "Es el motivo del rechazo",
+      "Es la cola de microtareas del motor",
+    ),
+    selectCount: 2,
+    correctOptionIds: ["a", "c"],
+    ...overrides,
+  });
+
+  const ordering = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    kind: "ordering",
+    items: [
+      { id: "a", text: "Crear la promesa", explanation: "El constructor devuelve la promesa pendiente." },
+      { id: "b", text: "Resolverla con un valor", explanation: "Resolver fija el valor de éxito." },
+      { id: "c", text: "Leer el valor con then", explanation: "then recibe el valor ya resuelto." },
+    ],
+    correctOrder: ["c", "a", "b"],
+    ...overrides,
+  });
+
+  const matching = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    kind: "matching",
+    left: [
+      { id: "a", text: "pending", explanation: "Su pareja dice que aún no hay resultado." },
+      { id: "b", text: "fulfilled", explanation: "Su pareja dice que terminó con éxito." },
+      { id: "c", text: "rejected", explanation: "Su pareja dice que terminó con un error." },
+    ],
+    right: [
+      { id: "1", text: "Terminada con éxito" },
+      { id: "2", text: "Terminada con un error" },
+      { id: "3", text: "Sin resultado todavía" },
+    ],
+    correctPairs: { a: "3", b: "1", c: "2" },
+    ...overrides,
+  });
+
+  it("un quiz sin kind se completa como respuesta única", () => {
+    expect(contentSeedQuizSchema.parse(single()).kind).toBe("single");
+  });
+
+  it("el mismo quiz con kind explícito sigue siendo de respuesta única", () => {
+    expect(contentSeedQuizSchema.parse(single({ kind: "single" })).kind).toBe("single");
+  });
+
+  it("acepta un quiz de respuesta múltiple válido", () => {
+    const built = quizExercise(multiple());
+
+    expect(built.quiz?.kind).toBe("multiple");
+    expect(exerciseRuleViolations(built)).toEqual([]);
+  });
+
+  it("acepta un quiz de ordenar válido", () => {
+    const built = quizExercise(ordering());
+
+    expect(built.quiz?.kind).toBe("ordering");
+    expect(exerciseRuleViolations(built)).toEqual([]);
+  });
+
+  it("acepta un quiz de emparejar válido", () => {
+    const built = quizExercise(matching());
+
+    expect(built.quiz?.kind).toBe("matching");
+    expect(exerciseRuleViolations(built)).toEqual([]);
+  });
+
+  it("rechaza un quiz de respuesta múltiple con cuatro opciones", () => {
+    expect(() =>
+      contentSeedQuizSchema.parse(multiple({ options: quizOptions("Uno", "Dos", "Tres", "Cuatro") })),
+    ).toThrow("Un quiz de respuesta múltiple ofrece de 5 a 6 opciones");
+  });
+
+  it("rechaza un selectCount de cuatro", () => {
+    expect(() => contentSeedQuizSchema.parse(multiple({ selectCount: 4 }))).toThrow();
+  });
+
+  it("rechaza un emparejamiento con siete elementos", () => {
+    const sevenLeft = ["a", "b", "c", "d", "e", "f", "a"].map((id) => ({
+      id,
+      text: `Elemento ${id}`,
+      explanation: `Justifica la pareja del elemento ${id}.`,
+    }));
+    const sevenRight = ["1", "2", "3", "4", "5", "6", "1"].map((id) => ({ id, text: `Pareja ${id}` }));
+
+    expect(() => contentSeedQuizSchema.parse(matching({ left: sevenLeft, right: sevenRight }))).toThrow(
+      "La columna izquierda ofrece de 3 a 6 elementos",
+    );
+  });
+
+  describe("reglas de la respuesta múltiple", () => {
+    it("las opciones repiten id", () => {
+      const options = [
+        ...quizOptions("Uno", "Dos", "Tres", "Cuatro"),
+        { id: "a", text: "Cinco", explanation: "Explicación de «Cinco»." },
+      ];
+      const problems = exerciseRuleViolations(quizExercise(multiple({ options })));
+
+      expect(problems).toContain("las opciones repiten id");
+    });
+
+    it("las opciones correctas deben existir", () => {
+      const problems = exerciseRuleViolations(quizExercise(multiple({ correctOptionIds: ["a", "f"] })));
+
+      expect(problems).toContain("las opciones correctas deben existir");
+    });
+
+    it("correctOptionIds repite opciones", () => {
+      const problems = exerciseRuleViolations(quizExercise(multiple({ correctOptionIds: ["a", "a"] })));
+
+      expect(problems).toContain("correctOptionIds repite opciones");
+    });
+
+    it("selectCount debe coincidir con el número de opciones correctas", () => {
+      const problems = exerciseRuleViolations(quizExercise(multiple({ selectCount: 3 })));
+
+      expect(problems).toContain("selectCount debe coincidir con el número de opciones correctas");
+    });
+
+    it("prohibido verdadero/falso", () => {
+      const options = quizOptions("Verdadero", "Dos", "Tres", "Cuatro", "Cinco");
+
+      expect(exerciseRuleViolations(quizExercise(multiple({ options })))).toContain("prohibido verdadero/falso");
+    });
+
+    it("prohibido «todas/ninguna de las anteriores»", () => {
+      const options = quizOptions("Todas las anteriores", "Dos", "Tres", "Cuatro", "Cinco");
+
+      expect(exerciseRuleViolations(quizExercise(multiple({ options })))).toContain(
+        "prohibido «todas/ninguna de las anteriores»",
+      );
+    });
+  });
+
+  describe("reglas de ordenar", () => {
+    it("los elementos repiten id", () => {
+      const items = [
+        { id: "a", text: "Uno", explanation: "Explicación del uno." },
+        { id: "a", text: "Dos", explanation: "Explicación del dos." },
+        { id: "b", text: "Tres", explanation: "Explicación del tres." },
+      ];
+      const problems = exerciseRuleViolations(quizExercise(ordering({ items, correctOrder: ["a", "b", "c"] })));
+
+      expect(problems).toContain("los elementos repiten id");
+    });
+
+    it("correctOrder debe contener cada elemento exactamente una vez", () => {
+      const problems = exerciseRuleViolations(quizExercise(ordering({ correctOrder: ["a", "b"] })));
+
+      expect(problems).toContain("correctOrder debe contener cada elemento exactamente una vez");
+    });
+
+    it("los elementos no pueden venir ya en el orden correcto", () => {
+      const problems = exerciseRuleViolations(quizExercise(ordering({ correctOrder: ["a", "b", "c"] })));
+
+      expect(problems).toContain("los elementos no pueden venir ya en el orden correcto");
+    });
+  });
+
+  describe("reglas de emparejar", () => {
+    it("los elementos de la izquierda repiten id", () => {
+      const left = [
+        { id: "a", text: "pending", explanation: "Su pareja dice que aún no hay resultado." },
+        { id: "a", text: "fulfilled", explanation: "Su pareja dice que terminó con éxito." },
+        { id: "b", text: "rejected", explanation: "Su pareja dice que terminó con un error." },
+      ];
+      const problems = exerciseRuleViolations(quizExercise(matching({ left, correctPairs: { a: "2", b: "1" } })));
+
+      expect(problems).toContain("los elementos de la izquierda repiten id");
+    });
+
+    it("los elementos de la derecha repiten id", () => {
+      const right = [
+        { id: "1", text: "Terminada con éxito" },
+        { id: "1", text: "Terminada con un error" },
+        { id: "2", text: "Sin resultado todavía" },
+      ];
+      const problems = exerciseRuleViolations(
+        quizExercise(matching({ right, correctPairs: { a: "1", b: "1", c: "2" } })),
+      );
+
+      expect(problems).toContain("los elementos de la derecha repiten id");
+    });
+
+    it("debe haber tantos elementos a la derecha como a la izquierda", () => {
+      const right = [
+        { id: "1", text: "Terminada con éxito" },
+        { id: "2", text: "Terminada con un error" },
+        { id: "3", text: "Sin resultado todavía" },
+        { id: "4", text: "Sin estado asignado" },
+      ];
+      const problems = exerciseRuleViolations(
+        quizExercise(matching({ right, correctPairs: { a: "2", b: "3", c: "4" } })),
+      );
+
+      expect(problems).toContain("debe haber tantos elementos a la derecha como a la izquierda");
+    });
+
+    it("correctPairs debe emparejar cada elemento de la izquierda", () => {
+      const problems = exerciseRuleViolations(quizExercise(matching({ correctPairs: { a: "2", b: "3" } })));
+
+      expect(problems).toContain("correctPairs debe emparejar cada elemento de la izquierda");
+    });
+
+    it("las parejas deben apuntar a elementos de la derecha, sin repetir", () => {
+      const problems = exerciseRuleViolations(
+        quizExercise(matching({ correctPairs: { a: "2", b: "2", c: "3" } })),
+      );
+
+      expect(problems).toContain("las parejas deben apuntar a elementos de la derecha, sin repetir");
+    });
+
+    it("las parejas no pueden venir ya alineadas", () => {
+      const problems = exerciseRuleViolations(
+        quizExercise(matching({ correctPairs: { a: "1", b: "2", c: "3" } })),
+      );
+
+      expect(problems).toContain("las parejas no pueden venir ya alineadas");
     });
   });
 });

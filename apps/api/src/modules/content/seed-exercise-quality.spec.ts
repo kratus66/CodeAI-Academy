@@ -54,9 +54,9 @@ describe("calidad de los ejercicios sembrados", () => {
     for (const stage of seed.stages) {
       for (const module of stage.modules) {
         for (const unit of module.units) {
-          const positions = unit.exercises
-            .filter((exercise) => exercise.quiz !== null)
-            .map((exercise) => exercise.quiz?.correctOptionId ?? "");
+          const positions = unit.exercises.flatMap((exercise) =>
+            exercise.quiz?.kind === "single" ? [exercise.quiz.correctOptionId] : [],
+          );
 
           if (positions.length >= 6) byUnit.set(unit.code, positions);
         }
@@ -75,6 +75,16 @@ describe("calidad de los ejercicios sembrados", () => {
     expect(skewed).toEqual([]);
   });
 
+  it("los quizzes de fullstack-ia son todos de respuesta única", () => {
+    // Las variantes nuevas existen en el esquema, pero la ruta `fullstack-ia` sigue
+    // midiendo con respuesta única: migrar un quiz es una tarea propia y esta
+    // prueba lo delata antes de sembrar.
+    const quizzes = exercises.filter((exercise) => exercise.quiz !== null);
+
+    expect(quizzes.length).toBeGreaterThanOrEqual(1662);
+    expect(quizzes.every((exercise) => exercise.quiz?.kind === "single")).toBe(true);
+  });
+
   it("no delata la respuesta correcta por su longitud", () => {
     // Un distractor telegráfico frente a una correcta explicada convierte el quiz
     // en «elige la más larga» (`banco-ejercicios.md` §3.2, regla de paridad). Se
@@ -88,7 +98,7 @@ describe("calidad de los ejercicios sembrados", () => {
         for (const unit of module.units) {
           for (const exercise of unit.exercises) {
             const quiz = exercise.quiz;
-            if (quiz === null) continue;
+            if (quiz === null || quiz.kind !== "single") continue;
 
             const correct = quiz.options.find((option) => option.id === quiz.correctOptionId);
             const distractors = quiz.options.filter((option) => option.id !== quiz.correctOptionId);
@@ -126,7 +136,7 @@ describe("calidad de los ejercicios sembrados", () => {
 
           for (const exercise of unit.exercises) {
             const quiz = exercise.quiz;
-            if (quiz === null) continue;
+            if (quiz === null || quiz.kind !== "single") continue;
 
             const pregunta = exercise.statement.trim().toLowerCase();
             if (preguntas.has(pregunta)) repetidos.push(`${exercise.slug}: pregunta repetida`);
@@ -212,7 +222,7 @@ describe("metadatos y escalera de los ejercicios sembrados (banco-ejercicios.md 
     ),
   );
   const codeExercises = withUnit.filter(({ exercise }) => ["LAB", "DEBUG"].includes(exercise.type));
-  const quizzes = withUnit.filter(({ exercise }) => exercise.quiz !== null);
+  const quizzes = withUnit.filter(({ exercise }) => exercise.quiz?.kind === "single");
 
   it("declara el tiempo estimado de cada ejercicio", () => {
     const sinTiempo = withUnit
@@ -227,7 +237,10 @@ describe("metadatos y escalera de los ejercicios sembrados (banco-ejercicios.md 
     const problemas: string[] = [];
 
     for (const { exercise } of quizzes) {
-      const options = exercise.quiz?.options ?? [];
+      const quiz = exercise.quiz;
+      if (quiz === null || quiz.kind !== "single") continue;
+
+      const options = quiz.options;
       const explanations = options.map((option) => option.explanation.trim());
       const texts = options.map((option) => option.text.trim().toLowerCase());
 

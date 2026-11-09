@@ -172,6 +172,7 @@ function quizLengthProblems(draft: ExerciseDraft): string[] {
   const quiz = draft.quiz;
 
   if (quiz === null) return [];
+  if (quiz.kind !== "single") return ["el generador sólo produce quizzes de respuesta única"];
 
   const correct = quiz.options.find((option) => option.id === quiz.correctOptionId);
   const lengths = quiz.options

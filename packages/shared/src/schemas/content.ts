@@ -376,12 +376,18 @@ export const contentSeedExerciseTestSchema = z.object({
   spec: z.object({ code: z.string().min(1) }),
 });
 
+/** Variantes de quiz que la semilla puede declarar. */
+export const QUIZ_KINDS = ["single", "multiple", "ordering", "matching"] as const;
+
+export type QuizKind = (typeof QUIZ_KINDS)[number];
+
 /**
  * Pregunta de opción múltiple. `plantilla-ejercicio.md`: «cada distractor tiene
  * explicación propia; prohibido verdadero/falso sin justificación». La correcta
  * y las explicaciones no salen del servidor hasta que hay un intento.
  */
-export const contentSeedQuizSchema = z.object({
+const singleQuiz = z.object({
+  kind: z.literal("single"),
   options: z
     .array(
       z.object({
@@ -394,6 +400,95 @@ export const contentSeedQuizSchema = z.object({
     .max(4, "Un quiz ofrece de 3 a 4 opciones"),
   correctOptionId: z.string().regex(/^[a-d]$/),
 });
+
+/**
+ * Pregunta de respuesta múltiple: cinco o seis opciones con explicación propia y
+ * de dos a tres correctas. `selectCount` declara cuántas espera el estudiante.
+ */
+const multipleQuiz = z.object({
+  kind: z.literal("multiple"),
+  options: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[a-f]$/, "El id de opción es una letra a–f"),
+        text: z.string().min(1),
+        explanation: z.string().min(1),
+      }),
+    )
+    .min(5, "Un quiz de respuesta múltiple ofrece de 5 a 6 opciones")
+    .max(6, "Un quiz de respuesta múltiple ofrece de 5 a 6 opciones"),
+  selectCount: z.union([z.literal(2), z.literal(3)]),
+  correctOptionIds: z
+    .array(z.string().regex(/^[a-f]$/, "El id de opción correcta es una letra a–f"))
+    .min(2, "Un quiz de respuesta múltiple declara de 2 a 3 opciones correctas")
+    .max(3, "Un quiz de respuesta múltiple declara de 2 a 3 opciones correctas"),
+});
+
+/**
+ * Pregunta de ordenar: el orden de `items` nunca puede ser ya el correcto, o el
+ * ejercicio se serviría resuelto.
+ */
+const orderingQuiz = z.object({
+  kind: z.literal("ordering"),
+  items: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[a-f]$/, "El id del elemento es una letra a–f"),
+        text: z.string().min(1),
+        explanation: z.string().min(1),
+      }),
+    )
+    .min(3, "Un quiz de ordenar ofrece de 3 a 6 elementos")
+    .max(6, "Un quiz de ordenar ofrece de 3 a 6 elementos"),
+  correctOrder: z.array(z.string().regex(/^[a-f]$/, "El id del elemento es una letra a–f")),
+});
+
+/**
+ * Pregunta de emparejar: la explicación va en el elemento de la izquierda y
+ * justifica por qué su pareja es la de la derecha.
+ */
+const matchingQuiz = z.object({
+  kind: z.literal("matching"),
+  left: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[a-f]$/, "El id de la columna izquierda es una letra a–f"),
+        text: z.string().min(1),
+        explanation: z.string().min(1),
+      }),
+    )
+    .min(3, "La columna izquierda ofrece de 3 a 6 elementos")
+    .max(6, "La columna izquierda ofrece de 3 a 6 elementos"),
+  right: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[1-6]$/, "El id de la columna derecha es un número del 1 al 6"),
+        text: z.string().min(1),
+      }),
+    )
+    .min(3, "La columna derecha ofrece de 3 a 6 elementos")
+    .max(6, "La columna derecha ofrece de 3 a 6 elementos"),
+  correctPairs: z.record(z.string(), z.string()),
+});
+
+/** Los quizzes ya sembrados no declaran `kind`: se completan como respuesta única. */
+function addDefaultQuizKind(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+  if ("kind" in value) return value;
+
+  return { ...value, kind: "single" };
+}
+
+/**
+ * Quiz de la semilla. La entrada nunca exige `kind`; la salida siempre lo lleva,
+ * así el resto del código discrimina la variante sin comprobaciones opcionales.
+ */
+export const contentSeedQuizSchema = z.preprocess(
+  addDefaultQuizKind,
+  z.discriminatedUnion("kind", [singleQuiz, multipleQuiz, orderingQuiz, matchingQuiz]),
+);
+
+export type ContentSeedQuiz = z.infer<typeof contentSeedQuizSchema>;
 
 /**
  * Juego de memoria (`banco-ejercicios.md` §3.3): 6–10 pares término ↔ definición
@@ -536,6 +631,107 @@ export type ContentSeedResource = z.infer<typeof contentSeedResourceSchema>;
 /** Tipos que se resuelven escribiendo código y necesitan sandbox, solución y pruebas. */
 const CODE_EXERCISE_TYPES: readonly string[] = ["LAB", "DEBUG"];
 
+/** Enunciados prohibidos por `plantilla-ejercicio.md`, sea cual sea la variante. */
+const TRUE_FALSE_TEXT = /^(verdadero|falso)\.?$/;
+const NONE_OF_ABOVE_TEXT = /(todas|ninguna) (de )?las anteriores/;
+
+type SingleQuiz = Extract<ContentSeedQuiz, { kind: "single" }>;
+type MultipleQuiz = Extract<ContentSeedQuiz, { kind: "multiple" }>;
+type OrderingQuiz = Extract<ContentSeedQuiz, { kind: "ordering" }>;
+type MatchingQuiz = Extract<ContentSeedQuiz, { kind: "matching" }>;
+
+function repeats(values: readonly string[]): boolean {
+  return new Set(values).size !== values.length;
+}
+
+/** Los mensajes de la respuesta única no han cambiado desde el piloto. */
+function singleQuizViolations(quiz: SingleQuiz): string[] {
+  const problems: string[] = [];
+  const ids = quiz.options.map((option) => option.id);
+  const texts = quiz.options.map((option) => option.text.trim().toLowerCase());
+
+  if (repeats(ids)) problems.push("las opciones repiten id");
+  if (!ids.includes(quiz.correctOptionId)) problems.push("la opción correcta no existe");
+  if (texts.some((text) => TRUE_FALSE_TEXT.test(text))) {
+    problems.push("prohibido verdadero/falso");
+  }
+  if (texts.some((text) => NONE_OF_ABOVE_TEXT.test(text))) {
+    problems.push("prohibido «todas/ninguna de las anteriores»");
+  }
+
+  return problems;
+}
+
+function multipleQuizViolations(quiz: MultipleQuiz): string[] {
+  const problems: string[] = [];
+  const ids = quiz.options.map((option) => option.id);
+  const texts = quiz.options.map((option) => option.text.trim().toLowerCase());
+  const correct = quiz.correctOptionIds;
+
+  if (repeats(ids)) problems.push("las opciones repiten id");
+  if (correct.some((id) => !ids.includes(id))) problems.push("las opciones correctas deben existir");
+  if (repeats(correct)) problems.push("correctOptionIds repite opciones");
+  if (quiz.selectCount !== correct.length) {
+    problems.push("selectCount debe coincidir con el número de opciones correctas");
+  }
+  if (texts.some((text) => TRUE_FALSE_TEXT.test(text))) {
+    problems.push("prohibido verdadero/falso");
+  }
+  if (texts.some((text) => NONE_OF_ABOVE_TEXT.test(text))) {
+    problems.push("prohibido «todas/ninguna de las anteriores»");
+  }
+
+  return problems;
+}
+
+function orderingQuizViolations(quiz: OrderingQuiz): string[] {
+  const problems: string[] = [];
+  const ids = quiz.items.map((item) => item.id);
+  const order = quiz.correctOrder;
+  const sameLength = ids.length === order.length;
+
+  if (repeats(ids)) problems.push("los elementos repiten id");
+  if (!sameLength || repeats(order) || !ids.every((id) => order.includes(id))) {
+    problems.push("correctOrder debe contener cada elemento exactamente una vez");
+  }
+  if (sameLength && ids.every((id, index) => order[index] === id)) {
+    problems.push("los elementos no pueden venir ya en el orden correcto");
+  }
+
+  return problems;
+}
+
+function matchingQuizViolations(quiz: MatchingQuiz): string[] {
+  const problems: string[] = [];
+  const leftIds = quiz.left.map((item) => item.id);
+  const rightIds = quiz.right.map((item) => item.id);
+  const targets = Object.values(quiz.correctPairs);
+  const sameLength = leftIds.length === rightIds.length;
+
+  if (repeats(leftIds)) problems.push("los elementos de la izquierda repiten id");
+  if (repeats(rightIds)) problems.push("los elementos de la derecha repiten id");
+  if (!sameLength) problems.push("debe haber tantos elementos a la derecha como a la izquierda");
+  if (leftIds.some((id) => quiz.correctPairs[id] === undefined)) {
+    problems.push("correctPairs debe emparejar cada elemento de la izquierda");
+  }
+  if (repeats(targets) || targets.some((target) => !rightIds.includes(target))) {
+    problems.push("las parejas deben apuntar a elementos de la derecha, sin repetir");
+  }
+  if (sameLength && leftIds.every((id, index) => quiz.correctPairs[id] === rightIds[index])) {
+    problems.push("las parejas no pueden venir ya alineadas");
+  }
+
+  return problems;
+}
+
+function quizRuleViolations(quiz: ContentSeedQuiz): string[] {
+  if (quiz.kind === "multiple") return multipleQuizViolations(quiz);
+  if (quiz.kind === "ordering") return orderingQuizViolations(quiz);
+  if (quiz.kind === "matching") return matchingQuizViolations(quiz);
+
+  return singleQuizViolations(quiz);
+}
+
 /**
  * Reglas duras de `plantilla-ejercicio.md` que un esquema por campo no puede
  * expresar: pistas por escalón, pruebas visibles y ocultas, solución oculta.
@@ -565,17 +761,7 @@ export function exerciseRuleViolations(exercise: ContentSeedExercise): string[] 
     if (quiz === null) {
       problems.push("un QUIZ requiere quiz (opciones y respuesta)");
     } else {
-      const ids = quiz.options.map((option) => option.id);
-      const texts = quiz.options.map((option) => option.text.trim().toLowerCase());
-
-      if (new Set(ids).size !== ids.length) problems.push("las opciones repiten id");
-      if (!ids.includes(quiz.correctOptionId)) problems.push("la opción correcta no existe");
-      if (texts.some((text) => /^(verdadero|falso)\.?$/.test(text))) {
-        problems.push("prohibido verdadero/falso");
-      }
-      if (texts.some((text) => /(todas|ninguna) (de )?las anteriores/.test(text))) {
-        problems.push("prohibido «todas/ninguna de las anteriores»");
-      }
+      problems.push(...quizRuleViolations(quiz));
     }
   } else if (exercise.quiz !== null) {
     problems.push("solo un QUIZ declara quiz");
