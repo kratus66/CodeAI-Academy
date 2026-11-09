@@ -1,11 +1,18 @@
 "use client";
 
-import type { ExerciseDetail, QuizAnswerResult } from "@codeai/shared";
+import type {
+  ExerciseDetail,
+  QuizAnswerResult,
+  QuizSubmissionInput,
+  QuizGradeResult,
+} from "@codeai/shared";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApiError, exercisesApi } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
+
+import { QuizMultiplePlayer } from "./QuizMultiplePlayer";
 
 /**
  * Quiz de opción múltiple. La respuesta correcta y las explicaciones no viajan
@@ -21,9 +28,12 @@ const SECONDARY_BUTTON =
 
 export type AnswerQuiz = (exerciseId: string, optionId: string) => Promise<QuizAnswerResult>;
 
+export type SubmitQuiz = (id: string, body: QuizSubmissionInput) => Promise<QuizGradeResult>;
+
 export interface QuizPlayerProps {
   readonly exercise: ExerciseDetail;
   readonly answerQuiz?: AnswerQuiz;
+  readonly submitQuiz?: SubmitQuiz;
 }
 
 interface QuizOption {
@@ -57,7 +67,7 @@ function describeError(error: unknown): string {
   return "No pudimos corregir tu respuesta. Inténtalo de nuevo.";
 }
 
-export function QuizPlayer({
+function SingleQuizPlayer({
   exercise,
   answerQuiz = (id, optionId) => exercisesApi.answerQuiz(id, optionId),
 }: QuizPlayerProps) {
@@ -167,3 +177,41 @@ export function QuizPlayer({
     </form>
   );
 }
+
+/**
+ * `config.kind` lo escribe el contenido. Un valor que no es texto se trata como
+ * ausente, igual que `readOptions` tolera una configuración mal formada.
+ */
+function readQuizKind(config: Record<string, unknown>): string | undefined {
+  const kind = config.kind;
+
+  return typeof kind === "string" ? kind : undefined;
+}
+
+/**
+ * Reparto por variante de quiz: cada tipo tiene su reproductor porque cambia la
+ * forma de responder, no solo el texto. Las variantes que aún no tienen
+ * reproductor se anuncian en lugar de pintar un quiz equivocado.
+ */
+export function QuizPlayer({
+  exercise,
+  answerQuiz,
+  submitQuiz = (id, body) => exercisesApi.submitQuiz(id, body),
+}: QuizPlayerProps) {
+  const kind = readQuizKind(exercise.config);
+
+  if (kind === "multiple") {
+    return <QuizMultiplePlayer exercise={exercise} submitQuiz={submitQuiz} />;
+  }
+
+  if (kind === undefined || kind === "single") {
+    return <SingleQuizPlayer exercise={exercise} answerQuiz={answerQuiz} />;
+  }
+
+  return (
+    <p role="alert" className="text-sm text-rose-200">
+      Este tipo de pregunta todavía no está disponible.
+    </p>
+  );
+}
+
