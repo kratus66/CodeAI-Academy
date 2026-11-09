@@ -11,6 +11,7 @@ export * from "./schemas/common";
 export * from "./schemas/content";
 export * from "./schemas/course";
 export * from "./schemas/course-seed";
+export * from "./schemas/exam";
 export * from "./schemas/exercise";
 export * from "./schemas/exercise-draft";
 export * from "./schemas/hint";
