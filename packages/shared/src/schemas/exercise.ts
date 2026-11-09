@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from "../constants/pagination";
 import { EXERCISE_TYPES, LADDERS, SUBMISSION_OUTCOMES } from "../enums/exercise";
 import { paginatedSchema } from "./common";
+import { QUIZ_KINDS } from "./content";
 import { competencyCodeSchema } from "./progress";
 import { reviewQualitySchema } from "./review";
 import { sandboxLanguageSchema } from "./sandbox";
@@ -183,6 +184,107 @@ export type QuizAnswerResult = z.infer<typeof quizAnswerResultSchema>;
 export const quizAnswerResponseSchema = z.object({ result: quizAnswerResultSchema });
 
 export type QuizAnswerResponse = z.infer<typeof quizAnswerResponseSchema>;
+
+/** Variante de quiz que declara el `config` del ejercicio (`S14-T2`). */
+export const quizKindSchema = z.enum(QUIZ_KINDS);
+
+/** Ni `optionIds` ni `order` admiten el mismo id dos veces: la respuesta es todo o nada. */
+function hasRepeatedIds(ids: readonly string[]): boolean {
+  return new Set(ids).size !== ids.length;
+}
+
+/**
+ * Cuerpo de `POST /api/exercises/:id/quiz-answers` para las cuatro variantes de
+ * quiz. Exige exactamente una clave y `{ optionId: "b" }` es idéntico al
+ * contrato anterior. Se declara `.strict()` por dentro porque `ZodValidationPipe`
+ * no puede aplicarlo a un esquema envuelto por `superRefine` (H3, S14).
+ */
+export const quizSubmissionSchema = z
+  .object({
+    optionId: z
+      .string({ invalid_type_error: "La opción debe ser texto" })
+      .regex(/^[a-d]$/, "La opción debe ser una letra de la a a la d")
+      .optional(),
+    optionIds: z
+      .array(z.string().regex(/^[a-f]$/, "La opción debe ser una letra de la a a la f"))
+      .min(1, "Envía al menos una opción")
+      .max(6, "No puedes elegir más de 6 opciones")
+      .optional(),
+    order: z
+      .array(z.string().regex(/^[a-f]$/, "El elemento debe ser una letra de la a a la f"))
+      .min(3, "Ordena al menos 3 elementos")
+      .max(6, "No puedes ordenar más de 6 elementos")
+      .optional(),
+    pairs: z.record(z.string().regex(/^[a-f]$/), z.string().regex(/^[1-6]$/)).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const presentKeys = (["optionId", "optionIds", "order", "pairs"] as const).filter(
+      (key) => value[key] !== undefined,
+    );
+
+    if (presentKeys.length !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Envía exactamente una respuesta: optionId, optionIds, order o pairs",
+      });
+      return;
+    }
+
+    if (value.optionIds !== undefined && hasRepeatedIds(value.optionIds)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["optionIds"],
+        message: "No repitas la misma opción en optionIds",
+      });
+    }
+
+    if (value.order !== undefined && hasRepeatedIds(value.order)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["order"],
+        message: "No repitas el mismo elemento en order",
+      });
+    }
+  });
+
+export type QuizSubmissionInput = z.infer<typeof quizSubmissionSchema>;
+
+const explanationsSchema = z.record(z.string(), z.string().min(1));
+
+/**
+ * Resultado de corregir un quiz, una variante por `kind`. Todas las ramas son
+ * «todo o nada»: el acierto parcial no existe (S14, regla 2). Las explicaciones
+ * van por id: de cada opción, de cada elemento o de la columna izquierda.
+ */
+export const quizGradeResultSchema = z.discriminatedUnion("kind", [
+  quizAnswerResultSchema.extend({ kind: z.literal("single") }),
+  z.object({
+    kind: z.literal("multiple"),
+    correct: z.boolean(),
+    correctOptionIds: z.array(z.string()).min(2).max(3),
+    selectedOptionIds: z.array(z.string()).min(1).max(6),
+    explanations: explanationsSchema,
+  }),
+  z.object({
+    kind: z.literal("ordering"),
+    correct: z.boolean(),
+    correctOrder: z.array(z.string()).min(3).max(6),
+    explanations: explanationsSchema,
+  }),
+  z.object({
+    kind: z.literal("matching"),
+    correct: z.boolean(),
+    correctPairs: z.record(z.string(), z.string()),
+    explanations: explanationsSchema,
+  }),
+]);
+
+export type QuizGradeResult = z.infer<typeof quizGradeResultSchema>;
+
+export const quizGradeResponseSchema = z.object({ result: quizGradeResultSchema });
+
+export type QuizGradeResponse = z.infer<typeof quizGradeResponseSchema>;
 
 /** `POST /api/exercises/:id/flashcard-reveal`: sin un intento no hay reverso. */
 export const flashcardRevealSchema = z.object({

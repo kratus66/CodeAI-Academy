@@ -5,6 +5,9 @@ import {
   exerciseDetailSchema,
   exerciseListItemSchema,
   exerciseListQuerySchema,
+  quizAnswerSchema,
+  quizGradeResultSchema,
+  quizSubmissionSchema,
   submissionSummarySchema,
 } from "./exercise";
 
@@ -156,5 +159,122 @@ describe("exerciseListQuerySchema", () => {
     expect(exerciseListQuerySchema.safeParse({ pageSize: "101" }).success).toBe(false);
     expect(exerciseListQuerySchema.safeParse({ page: "0" }).success).toBe(false);
     expect(exerciseListQuerySchema.safeParse({ unitCode: "U1.1.1" }).success).toBe(false);
+  });
+});
+
+describe("quizSubmissionSchema", () => {
+  it("acepta los cuatro cuerpos y `optionId` coincide con quizAnswerSchema", () => {
+    expect(quizSubmissionSchema.parse({ optionId: "b" })).toEqual(
+      quizAnswerSchema.parse({ optionId: "b" }),
+    );
+    expect(quizSubmissionSchema.parse({ optionIds: ["b", "e"] })).toEqual({
+      optionIds: ["b", "e"],
+    });
+    expect(quizSubmissionSchema.parse({ order: ["c", "a", "b"] })).toEqual({
+      order: ["c", "a", "b"],
+    });
+    expect(quizSubmissionSchema.parse({ pairs: { a: "2", b: "1", c: "3" } })).toEqual({
+      pairs: { a: "2", b: "1", c: "3" },
+    });
+  });
+
+  it("exige exactamente una respuesta", () => {
+    const empty = quizSubmissionSchema.safeParse({});
+    expect(empty.success).toBe(false);
+    if (!empty.success) {
+      expect(empty.error.issues[0]?.message).toBe(
+        "Envía exactamente una respuesta: optionId, optionIds, order o pairs",
+      );
+    }
+
+    const twice = quizSubmissionSchema.safeParse({ optionId: "b", optionIds: ["b", "e"] });
+    expect(twice.success).toBe(false);
+    if (!twice.success) {
+      expect(twice.error.issues[0]?.message).toBe(
+        "Envía exactamente una respuesta: optionId, optionIds, order o pairs",
+      );
+    }
+  });
+
+  it("rechaza ids fuera de rango y menos elementos de los exigidos", () => {
+    expect(quizSubmissionSchema.safeParse({ optionId: "e" }).success).toBe(false);
+    expect(quizSubmissionSchema.safeParse({ order: ["a", "b"] }).success).toBe(false);
+    expect(quizSubmissionSchema.safeParse({ pairs: { a: "7" } }).success).toBe(false);
+  });
+
+  it("rechaza ids repetidos en optionIds y en order", () => {
+    const repeatedOptions = quizSubmissionSchema.safeParse({ optionIds: ["a", "a"] });
+    expect(repeatedOptions.success).toBe(false);
+    if (!repeatedOptions.success) {
+      expect(repeatedOptions.error.issues[0]?.message).toBe(
+        "No repitas la misma opción en optionIds",
+      );
+    }
+
+    const repeatedOrder = quizSubmissionSchema.safeParse({ order: ["a", "b", "a"] });
+    expect(repeatedOrder.success).toBe(false);
+    if (!repeatedOrder.success) {
+      expect(repeatedOrder.error.issues[0]?.message).toBe("No repitas el mismo elemento en order");
+    }
+  });
+
+  it("rechaza claves desconocidas (strict) y no exige `kind`", () => {
+    expect(quizSubmissionSchema.safeParse({ optionId: "b", kind: "single" }).success).toBe(false);
+    expect(quizSubmissionSchema.safeParse({ optionId: "b", extra: true }).success).toBe(false);
+  });
+});
+
+describe("quizGradeResultSchema", () => {
+  const EXPLANATIONS = {
+    a: "Correcta: el enunciado pide una lista.",
+    b: "Incorrecta: no usa el servicio adecuado.",
+  };
+
+  it("parsea un resultado de cada variante", () => {
+    const single = {
+      kind: "single",
+      correct: true,
+      correctOptionId: "a",
+      explanation: EXPLANATIONS.a,
+      correctExplanation: EXPLANATIONS.a,
+    } as const;
+    expect(quizGradeResultSchema.parse(single)).toEqual(single);
+
+    const multiple = {
+      kind: "multiple",
+      correct: false,
+      correctOptionIds: ["a", "b"],
+      selectedOptionIds: ["a"],
+      explanations: EXPLANATIONS,
+    } as const;
+    expect(quizGradeResultSchema.parse(multiple)).toEqual(multiple);
+
+    const ordering = {
+      kind: "ordering",
+      correct: true,
+      correctOrder: ["c", "a", "b"],
+      explanations: EXPLANATIONS,
+    } as const;
+    expect(quizGradeResultSchema.parse(ordering)).toEqual(ordering);
+
+    const matching = {
+      kind: "matching",
+      correct: true,
+      correctPairs: { a: "2", b: "1" },
+      explanations: EXPLANATIONS,
+    } as const;
+    expect(quizGradeResultSchema.parse(matching)).toEqual(matching);
+  });
+
+  it("rechaza un resultado sin kind y una variante desconocida", () => {
+    expect(
+      quizGradeResultSchema.safeParse({
+        correct: true,
+        correctOptionId: "a",
+        explanation: EXPLANATIONS.a,
+        correctExplanation: EXPLANATIONS.a,
+      }).success,
+    ).toBe(false);
+    expect(quizGradeResultSchema.safeParse({ kind: "audit", correct: true }).success).toBe(false);
   });
 });
