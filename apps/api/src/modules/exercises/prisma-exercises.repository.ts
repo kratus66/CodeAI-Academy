@@ -14,9 +14,13 @@ import type {
   UnitSubmissionRow,
 } from "./exercises.repository";
 
-/** Ejercicio publicado con toda su ascendencia publicada. */
+/**
+ * Ejercicio publicado con toda su ascendencia publicada. El banco reservado
+ * queda fuera: sólo lo lee el motor de simulacros (S15).
+ */
 const PUBLISHED_EXERCISE = {
   isPublished: true,
+  examPool: "UNIT",
   unit: {
     isPublished: true,
     module: { isPublished: true, stage: { isPublished: true } },
@@ -78,6 +82,9 @@ export class PrismaExercisesRepository implements ExercisesRepository {
   async listByUnit(unitCode: string, window: PageWindow): Promise<Page<ExerciseRow>> {
     const where: Prisma.ExerciseWhereInput = {
       ...PUBLISHED_EXERCISE,
+      // La constante redefine `unit` para añadir el código; el banco se repite
+      // aquí para que el listado y su `total` no puedan divergir.
+      examPool: "UNIT",
       unit: {
         isPublished: true,
         module: { isPublished: true, stage: { isPublished: true } },
@@ -99,6 +106,11 @@ export class PrismaExercisesRepository implements ExercisesRepository {
     return { items: rows.map(toExerciseRow), total };
   }
 
+  /**
+   * Ejercicio publicado y visible para el estudiante: `PUBLISHED_EXERCISE` deja
+   * fuera el banco reservado. S15 añadirá `findReserved` para el motor de
+   * simulacros.
+   */
   async findPublished(id: string): Promise<ExerciseRow | null> {
     const row = await this.prisma.exercise.findFirst({
       where: { id, ...PUBLISHED_EXERCISE },

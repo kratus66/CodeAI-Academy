@@ -38,6 +38,11 @@ export interface ExerciseRow {
    * anteriores; ausente cuenta como sin revisar.
    */
   reviewedByHuman?: boolean;
+  /**
+   * Banco de la pregunta. Ausente = "UNIT". Los adaptadores no devuelven filas
+   * "RESERVED" (sólo el motor de S15 las lee, con su propio método).
+   */
+  examPool?: "UNIT" | "RESERVED";
   tests: readonly {
     id: string;
     name: string;

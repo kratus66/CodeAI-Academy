@@ -53,7 +53,9 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
   }
 
   async listByUnit(unitCode: string, window: PageWindow): Promise<Page<ExerciseRow>> {
-    const items = this.dataset.exercises.filter((exercise) => exercise.unitCode === unitCode);
+    const items = this.dataset.exercises.filter(
+      (exercise) => exercise.unitCode === unitCode && isVisibleToStudent(exercise),
+    );
 
     return paginate(items, window);
   }
@@ -66,8 +68,16 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
     return this.dataset.exercises.some((exercise) => exercise.unitCode === unitCode);
   }
 
+  /**
+   * Publicado y visible para el estudiante: el banco reservado no sale del
+   * laboratorio. S15 añadirá `findReserved` para el motor de simulacros.
+   */
   async findPublished(id: string): Promise<ExerciseRow | null> {
-    return this.dataset.exercises.find((exercise) => exercise.id === id) ?? null;
+    return (
+      this.dataset.exercises.find(
+        (exercise) => exercise.id === id && isVisibleToStudent(exercise),
+      ) ?? null
+    );
   }
 
   async listSubmissions(
@@ -88,7 +98,7 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
   async listUnitSubmissions(userId: string, unitCode: string): Promise<UnitSubmissionRow[]> {
     const inUnit = new Set(
       this.dataset.exercises
-        .filter((exercise) => exercise.unitCode === unitCode)
+        .filter((exercise) => exercise.unitCode === unitCode && isVisibleToStudent(exercise))
         .map((exercise) => exercise.id),
     );
 
@@ -130,6 +140,14 @@ export class InMemoryExercisesRepository implements ExercisesRepository {
 
     return hint ? { level: hint.level, text: hint.text } : null;
   }
+}
+
+/**
+ * El banco reservado no sale del laboratorio: sólo lo lee el motor de simulacros
+ * (S15). Ausente cuenta como "UNIT".
+ */
+function isVisibleToStudent(exercise: ExerciseRow): boolean {
+  return exercise.examPool !== "RESERVED";
 }
 
 function paginate<TItem>(items: readonly TItem[], window: PageWindow): Page<TItem> {
