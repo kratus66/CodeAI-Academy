@@ -4,11 +4,17 @@ import { describe, expect, it } from "vitest";
 import { contentSeedExerciseSchema, contentSeedLessonSchema } from "./content";
 import type { ContentSeedExercise, ContentSeedLesson } from "./content";
 import {
+  courseSeedExerciseSchema,
   courseSeedSchema,
   courseUnitFileSchema,
   mergeCourseSeed,
 } from "./course-seed";
-import type { CourseSeed, CourseUnitFile, CourseUnitFileEntry } from "./course-seed";
+import type {
+  CourseSeed,
+  CourseSeedExercise,
+  CourseUnitFile,
+  CourseUnitFileEntry,
+} from "./course-seed";
 
 type SeedInput = z.input<typeof courseSeedSchema>;
 type StageInput = SeedInput["stages"][number];
@@ -147,8 +153,68 @@ function quizWithoutOptions(): ContentSeedExercise {
   });
 }
 
+/** Semilla mínima válida con la etapa 102 (SAA-C03) en lugar de la 100. */
+function examSeed(): SeedInput {
+  const seed = validSeed();
+  const stage = stageOf(seed);
+  stage.id = 102;
+  stage.slug = "aws2-arquitecto";
+  stage.title = "Arquitecto de soluciones";
+  moduleOf(seed).code = "AWS-M2.1";
+  unitOf(seed).code = "AWS-U2.1.1";
+
+  return seed;
+}
+
+/** Metadatos de examen válidos para la etapa 102: SAA-C03, dominio 1, tarea 1.2. */
+function examFixture(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return { certification: "SAA-C03", domain: 1, task: "1.2", pool: "unit", ...overrides };
+}
+
+/** QUIZ válido de la etapa 102; declara `exam` solo si el caso lo pide. */
+function quizExercise(overrides: Record<string, unknown> = {}): CourseSeedExercise {
+  return courseSeedExerciseSchema.parse({
+    slug: "quiz-diseno-seguro",
+    type: "QUIZ",
+    title: "Quiz de diseño seguro",
+    statement: "¿Qué servicio aplica el principio de menor privilegio?",
+    ladder: "SEMI",
+    difficulty: 1,
+    concepts: ["iam"],
+    competencies: ["AWS-C1"],
+    sources: ["https://docs.aws.amazon.com/"],
+    quiz: {
+      options: [
+        {
+          id: "a",
+          text: "AWS Identity and Access Management",
+          explanation: "Gestiona identidades y permisos.",
+        },
+        {
+          id: "b",
+          text: "Amazon CloudFront",
+          explanation: "Distribuye contenido desde el borde.",
+        },
+        { id: "c", text: "Amazon S3", explanation: "Almacena objetos en cubos." },
+      ],
+      correctOptionId: "a",
+    },
+    isPublished: false,
+    order: 1,
+    ...overrides,
+  });
+}
+
 function unitFile(code: string, lessons: readonly ContentSeedLesson[]): CourseUnitFile {
   return courseUnitFileSchema.parse({ code, lessons });
+}
+
+function unitFileWithExercises(
+  code: string,
+  lessons: readonly ContentSeedLesson[],
+  exercises: readonly CourseSeedExercise[],
+): CourseUnitFile {
+  return courseUnitFileSchema.parse({ code, lessons, exercises });
 }
 
 function entry(fileName: string, unit: CourseUnitFile): CourseUnitFileEntry {
@@ -172,6 +238,17 @@ function invalidSeed(mutate: (seed: SeedInput) => void): ParseFailure {
   const seed = validSeed();
   mutate(seed);
 
+  const result = courseSeedSchema.safeParse(seed);
+
+  if (result.success) {
+    throw new Error("Se esperaba que la semilla fuese inválida");
+  }
+
+  return result;
+}
+
+/** Exige que la validación de la semilla indicada falle y devuelve el error. */
+function invalidSeedOf(seed: SeedInput): ParseFailure {
   const result = courseSeedSchema.safeParse(seed);
 
   if (result.success) {
@@ -382,6 +459,123 @@ function parsedSeedWithLesson(): CourseSeed {
   return courseSeedSchema.parse(seed);
 }
 
+function parsedExamSeed(): CourseSeed {
+  return courseSeedSchema.parse(examSeed());
+}
+
+describe("exam de los ejercicios", () => {
+  it("acepta un QUIZ de la etapa 102 que declara exam", () => {
+    const seed = examSeed();
+    unitOf(seed).exercises = [quizExercise({ exam: examFixture() })];
+
+    const result = courseSeedSchema.safeParse(seed);
+
+    expect(result.success).toBe(true);
+    expect(result.success ? result.data.stages[0]?.modules[0]?.units[0]?.exercises[0]?.exam : null)
+      .toEqual({ certification: "SAA-C03", domain: 1, task: "1.2", pool: "unit" });
+  });
+
+  it("exige exam a un QUIZ de una etapa con certificación", () => {
+    const seed = examSeed();
+    unitOf(seed).exercises = [quizExercise()];
+
+    const result = invalidSeedOf(seed);
+
+    expect(messagesOf(result)).toContain(
+      "Ejercicio quiz-diseno-seguro: un QUIZ de la etapa 102 requiere exam",
+    );
+    expect(pathsOf(result)).toContainEqual([
+      "stages",
+      0,
+      "modules",
+      0,
+      "units",
+      0,
+      "exercises",
+      0,
+    ]);
+  });
+
+  it("rechaza una certificación que no corresponde a la etapa", () => {
+    const seed = examSeed();
+    unitOf(seed).exercises = [quizExercise({ exam: examFixture({ certification: "CLF-C02" }) })];
+
+    const result = invalidSeedOf(seed);
+
+    expect(messagesOf(result)).toContain(
+      "Ejercicio quiz-diseno-seguro: la certificación CLF-C02 no corresponde a la etapa 102",
+    );
+  });
+
+  it("rechaza un dominio que no existe en la certificación", () => {
+    const seed = examSeed();
+    unitOf(seed).exercises = [quizExercise({ exam: examFixture({ domain: 5, task: null }) })];
+
+    const result = invalidSeedOf(seed);
+
+    expect(messagesOf(result)).toContain(
+      "Ejercicio quiz-diseno-seguro: el dominio 5 no existe en SAA-C03",
+    );
+  });
+
+  it("rechaza una tarea que no pertenece al dominio", () => {
+    const seed = examSeed();
+    unitOf(seed).exercises = [quizExercise({ exam: examFixture({ task: "2.3" }) })];
+
+    const result = invalidSeedOf(seed);
+
+    expect(messagesOf(result)).toContain(
+      "Ejercicio quiz-diseno-seguro: la tarea 2.3 no pertenece al dominio 1",
+    );
+  });
+
+  it("solo un QUIZ declara exam", () => {
+    const seed = examSeed();
+    const reading = courseSeedExerciseSchema.parse({
+      ...readingExercise(["AWS-C1"]),
+      exam: examFixture(),
+    });
+
+    unitOf(seed).exercises = [reading];
+
+    const result = invalidSeedOf(seed);
+
+    expect(messagesOf(result)).toContain("Ejercicio leer-servicios-aws: solo un QUIZ declara exam");
+  });
+
+  it("deja pool en unit y task en null cuando el examen no los declara", () => {
+    const seed = examSeed();
+    unitOf(seed).exercises = [quizExercise({ exam: { certification: "SAA-C03", domain: 2 } })];
+
+    const parsed = courseSeedSchema.parse(seed);
+
+    expect(parsed.stages[0]?.modules[0]?.units[0]?.exercises[0]?.exam).toEqual({
+      certification: "SAA-C03",
+      domain: 2,
+      task: null,
+      pool: "unit",
+    });
+  });
+
+  it("acepta un QUIZ de la etapa 100 sin exam", () => {
+    const seed = validSeed();
+    unitOf(seed).exercises = [quizExercise()];
+
+    expect(courseSeedSchema.safeParse(seed).success).toBe(true);
+  });
+
+  it("rechaza exam en un QUIZ de la etapa 100", () => {
+    const seed = validSeed();
+    unitOf(seed).exercises = [quizExercise({ exam: examFixture() })];
+
+    const result = invalidSeedOf(seed);
+
+    expect(messagesOf(result)).toContain(
+      "Ejercicio quiz-diseno-seguro: la certificación SAA-C03 no corresponde a la etapa 100",
+    );
+  });
+});
+
 describe("mergeCourseSeed", () => {
   it("fusiona las unidades y conserva el orden del esqueleto", () => {
     const skeleton = parsedSeedWithTwoUnits();
@@ -453,5 +647,28 @@ describe("mergeCourseSeed", () => {
     expect(seed.stages[0]?.modules[0]?.units[0]?.lessons.map((lesson) => lesson.slug)).toEqual([
       "leccion-propia",
     ]);
+  });
+
+  it("conserva exam al fusionar un archivo de unidad", () => {
+    const files = [
+      entry(
+        "AWS-U2.1.1.json",
+        unitFileWithExercises("AWS-U2.1.1", [lessonFixture("leccion-uno")], [
+          quizExercise({ exam: examFixture() }),
+        ]),
+      ),
+    ];
+
+    const { seed, problems } = mergeCourseSeed(parsedExamSeed(), files);
+    const exercises = seed.stages[0]?.modules[0]?.units[0]?.exercises ?? [];
+
+    expect(problems).toEqual([]);
+    expect(exercises[0]?.exam).toEqual({
+      certification: "SAA-C03",
+      domain: 1,
+      task: "1.2",
+      pool: "unit",
+    });
+    expect(courseSeedSchema.safeParse(seed).success).toBe(true);
   });
 });

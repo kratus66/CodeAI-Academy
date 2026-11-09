@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import {
+  certificationCodeSchema,
+  certificationForStageId,
+  examTaskBelongsToDomain,
+  isExamDomainOf,
+} from "./certification";
+import {
   contentSeedExerciseSchema,
   contentSeedLessonSchema,
   contentSeedModuleSchema,
@@ -34,10 +40,40 @@ export const courseSeedCourseSchema = z.object({
   isPublished: z.boolean(),
 });
 
+/** Bancos de un ejercicio de examen: el de la unidad o el reservado al simulacro. */
+export const EXAM_POOLS = ["unit", "reserved"] as const;
+
+/**
+ * Metadatos de examen de un ejercicio de las rutas con certificación. `task` se
+ * comprueba por formato y por su número de dominio, no contra una lista: las
+ * guías no publican todas las tareas (`aws-guias-examen.md`).
+ */
+export const courseSeedExamSchema = z
+  .object({
+    certification: certificationCodeSchema,
+    domain: z.number().int().min(1).max(6),
+    task: z
+      .string()
+      .regex(/^\d{1,2}\.\d{1,2}$/, "La tarea es «dominio.tarea», por ejemplo 1.2")
+      .nullable()
+      .default(null),
+    pool: z.enum(EXAM_POOLS).default("unit"),
+  })
+  .strict();
+
+export type CourseSeedExam = z.infer<typeof courseSeedExamSchema>;
+
+export const courseSeedExerciseSchema = contentSeedExerciseSchema.extend({
+  exam: courseSeedExamSchema.nullable().default(null),
+});
+
+export type CourseSeedExercise = z.infer<typeof courseSeedExerciseSchema>;
+
 /** Reutiliza los esquemas de content.ts cambiando sólo códigos, ids y slugs. */
 export const courseSeedUnitSchema = contentSeedUnitSchema.extend({
   code: z.string().regex(UNIT_CODE_PATTERN),
   prerequisiteIds: z.array(z.string().regex(UNIT_CODE_PATTERN)).default([]),
+  exercises: z.array(courseSeedExerciseSchema).default([]),
 });
 
 export const courseSeedModuleSchema = contentSeedModuleSchema.extend({
@@ -208,6 +244,37 @@ export const courseSeedSchema = z
               fail(`Ejercicio ${exercise.slug}: ${message}`, exercisePath);
             }
 
+            const exam = exercise.exam;
+
+            if (exam !== null) {
+              if (certificationForStageId(stage.id)?.code !== exam.certification) {
+                fail(
+                  `Ejercicio ${exercise.slug}: la certificación ${exam.certification} no corresponde a la etapa ${stage.id}`,
+                  exercisePath,
+                );
+              }
+              if (!isExamDomainOf(exam.certification, exam.domain)) {
+                fail(
+                  `Ejercicio ${exercise.slug}: el dominio ${exam.domain} no existe en ${exam.certification}`,
+                  exercisePath,
+                );
+              }
+              if (exam.task !== null && !examTaskBelongsToDomain(exam.task, exam.domain)) {
+                fail(
+                  `Ejercicio ${exercise.slug}: la tarea ${exam.task} no pertenece al dominio ${exam.domain}`,
+                  exercisePath,
+                );
+              }
+              if (exercise.type !== "QUIZ") {
+                fail(`Ejercicio ${exercise.slug}: solo un QUIZ declara exam`, exercisePath);
+              }
+            } else if (exercise.type === "QUIZ" && certificationForStageId(stage.id) !== null) {
+              fail(
+                `Ejercicio ${exercise.slug}: un QUIZ de la etapa ${stage.id} requiere exam`,
+                exercisePath,
+              );
+            }
+
             for (const [competencyIndex, code] of exercise.competencies.entries()) {
               if (!isCompetencyOfCourse(code, seed.course.slug)) {
                 fail(
@@ -253,7 +320,7 @@ export const courseUnitFileSchema = z
   .object({
     code: z.string().regex(UNIT_CODE_PATTERN),
     lessons: z.array(contentSeedLessonSchema).min(1),
-    exercises: z.array(contentSeedExerciseSchema).default([]),
+    exercises: z.array(courseSeedExerciseSchema).default([]),
   })
   .strict();
 
