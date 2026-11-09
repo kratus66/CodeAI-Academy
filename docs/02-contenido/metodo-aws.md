@@ -65,7 +65,7 @@ Se reutiliza la taxonomía de [`banco-ejercicios.md`](banco-ejercicios.md). Lo n
 |------|------------|--------------|-------------------------|
 | `QUIZ` de escenario, respuesta única | Pregunta tipo examen con cuatro opciones | 1–2 | Existe (S5–S6); se añaden metadatos de examen en S14 |
 | `QUIZ` de respuesta múltiple | «Selecciona DOS/TRES» con cinco o seis opciones | 2 | Nuevo en S14 |
-| `QUIZ` de ordenar y de emparejar | Ordenar pasos (p. ej., migración) o emparejar servicio ↔ caso | 1–2 | Nuevo en S14 (🔎 confirmar en qué exámenes aparecen) |
+| `QUIZ` de ordenar y de emparejar | Ordenar pasos (p. ej., migración) o emparejar servicio ↔ caso | 1–2 | Aparecen en AIF-C01 y SCS-C03 (aws-guias-examen.md); AIP-C01 pendiente de confirmar |
 | `FLASHCARD` | Límites conceptuales, diferencias entre servicios, definiciones | 1–3 | Existe |
 | `MEMORY` modo `match` | Servicio ↔ problema que resuelve; estrategia ↔ RPO/RTO | 1–2 | Existe |
 | `LAB` con arnés | La persona escribe una política, una plantilla, un patrón de eventos o un manejador; pruebas ocultas lo evalúan con el arnés AWS | 2–3 | Nuevo en S16 |

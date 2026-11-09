@@ -21,21 +21,23 @@ La ruta prepara a una persona para **aprobar los exámenes de certificación de 
 
 ## 2. Certificaciones objetivo
 
-Datos comprobados el **2026-11-06** contra las páginas oficiales de AWS ([anuncio de septiembre de 2026](https://aws.amazon.com/blogs/training-and-certification/september-2026-new-offerings/), [catálogo de exámenes](https://aws.amazon.com/certification/exams/) y las páginas de cada certificación). La columna «Verificado» distingue lo leído en una fuente oficial (✅) de lo que viene de memoria o de fuentes de terceros y **debe confirmarse en la guía oficial antes de escribir preguntas** (🔎, tarea S14-T0).
+Datos comprobados el **2026-11-06** contra las páginas oficiales de AWS ([anuncio de septiembre de 2026](https://aws.amazon.com/blogs/training-and-certification/september-2026-new-offerings/), [catálogo de exámenes](https://aws.amazon.com/certification/exams/) y las páginas de cada certificación). La columna «Verificado» distingue lo leído en una fuente oficial (✅, guías de examen verificadas el 2026-11-09 en S14-T0) de lo que sigue pendiente (🔎).
 
 | Etapa | Certificación | Código objetivo | Nivel AWS | Preguntas / minutos | Estado al 2026-11-06 | Verificado |
 |-------|---------------|-----------------|-----------|---------------------|----------------------|------------|
-| A1 | Cloud Practitioner | CLF-C02 | Fundamental | 65 / 90 | Vigente | 🔎 |
-| A2 | Solutions Architect – Associate | SAA-C03 | Asociado | 65 / 130 | Vigente | ✅ formato · 🔎 dominios |
+| A1 | Cloud Practitioner | CLF-C02 | Fundamental | 65 (50 puntuadas) / 90; aprobado 700 | Vigente | ✅ |
+| A2 | Solutions Architect – Associate | SAA-C03 | Asociado | 65 (50 puntuadas) / 130; aprobado 720 | Vigente | ✅ |
 | A3 | Developer – Associate | **DVA-C03** | Asociado | 65 (50 puntuadas) / 130; aprobado 720/1000 | DVA-C03 en GA desde **2026-12-01**; DVA-C02 hasta 2026-11-30 | ✅ |
-| A4 | CloudOps Engineer – Associate (antes SysOps Administrator) | SOA-C03 | Asociado | 65 / 130 | Vigente | ✅ formato · 🔎 dominios |
-| A5 | DevOps Engineer – Professional | DOP-C02 | Profesional | 75 / 180 | Vigente | ✅ formato · 🔎 dominios |
-| A6 | Solutions Architect – Professional | **SAP-C03** | Profesional | 75 / 180 | SAP-C03 en GA desde **2026-11-17**; SAP-C02 hasta 2026-11-16 | ✅ formato y nombres de dominio · 🔎 pesos |
-| A7 | AI Practitioner | AIF-C01 | Fundamental | 65 / 90 | Vigente | 🔎 |
-| A8 | Generative AI Developer – Professional | AIP-C01 | Profesional | por confirmar | Vigente según la guía; formato por confirmar | 🔎 |
-| A9 | Security – Specialty | SCS-C03 | Especialidad | por confirmar | Vigente (sustituyó a SCS-C02) | 🔎 |
-| A10 | Data Engineer – Associate | DEA-C01 | Asociado | 65 / 130 | Vigente | 🔎 |
-| A11 | Machine Learning Engineer – Associate | **MLA-C02** | Asociado | Beta: 85 / 170 | Beta desde 2026-09-29; GA **2027-01-14** (ese día se retira MLA-C01) | ✅ |
+| A4 | CloudOps Engineer – Associate (antes SysOps Administrator) | SOA-C03 | Asociado | 65 (50 puntuadas) / 130; aprobado 720 | SOA-C03 en uso desde 2025-09-30 | ✅ |
+| A5 | DevOps Engineer – Professional | DOP-C02 | Profesional | 75 (65 puntuadas) / 180; aprobado 750 | Vigente | ✅ |
+| A6 | Solutions Architect – Professional | **SAP-C03** | Profesional | 75 (65 puntuadas) / 180; aprobado 720 | SAP-C03 en GA desde **2026-11-17**; SAP-C02 hasta 2026-11-16 | ✅ |
+| A7 | AI Practitioner | AIF-C01 | Fundamental | 65 (50 puntuadas) / 90; aprobado 700; incluye ordenar y emparejar | Vigente | ✅ |
+| A8 | Generative AI Developer – Professional | AIP-C01 | Profesional | 75 (65 puntuadas) / 180; aprobado 750 | Vigente | ✅ |
+| A9 | Security – Specialty | SCS-C03 | Especialidad | 65 (50 puntuadas) / 170; aprobado 750; incluye ordenar y emparejar | En uso desde 2025-12-02 (sustituyó a SCS-C02) | ✅ |
+| A10 | Data Engineer – Associate | DEA-C01 | Asociado | 65 (50 puntuadas) / 130; aprobado 720 | Vigente | ✅ |
+| A11 | Machine Learning Engineer – Associate | **MLA-C02** | Asociado | Beta: 85 / 170; aprobado 720 | Beta desde 2026-09-29; GA **2027-01-14** (ese día se retira MLA-C01) | ✅ beta · 🔎 GA y reparto de puntuadas de la beta |
+
+Detalle, fuentes y URL de cada guía: [`../02-contenido/aws-guias-examen.md`](../02-contenido/aws-guias-examen.md).
 
 **Excluidas a propósito**
 
@@ -192,7 +194,7 @@ Una persona está lista para presentar el examen de una etapa cuando cumple **to
 3. **Repaso al día:** ningún ítem de la etapa con más de 7 días de retraso en la cola SM-2.
 4. **Evidencia profesional:** proyecto de la etapa aprobado (≥ 70 en la rúbrica) y defensa técnica (SIM) realizada.
 
-El 80 % es una **regla inicial con margen** sobre el corte de AWS (720/1000 en asociado, 750/1000 en profesional y especialidad, puntuación escalada y compensatoria). La plataforma **no imita la puntuación escalada**: muestra porcentaje de aciertos por dominio. La regla se recalibra con los resultados reales que las personas registren voluntariamente (S15-T10).
+El 80 % es una **regla inicial con margen** sobre el corte de AWS, que es el aprobado de cada examen (puntuación escalada y compensatoria; ver [`../02-contenido/aws-guias-examen.md`](../02-contenido/aws-guias-examen.md)). La plataforma **no imita la puntuación escalada**: muestra porcentaje de aciertos por dominio. La regla se recalibra con los resultados reales que las personas registren voluntariamente (S15-T10).
 
 Mientras las formas de un simulacro no tengan revisión humana (`reviewedByHuman`), su resultado se muestra como **orientativo** y no cuenta para el criterio 2.
 
@@ -265,7 +267,7 @@ Igual que el currículo maestro: cada etapa declara objetivo, certificación, co
 | **Horas** | 30–45 |
 | **Prerrequisitos** | A0 |
 
-### Dominios del examen (🔎 confirmar pesos en la guía oficial)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -332,7 +334,7 @@ Igual que el currículo maestro: cada etapa declara objetivo, certificación, co
 | **Horas** | 120–160 |
 | **Prerrequisitos** | A1 |
 
-### Dominios del examen (🔎 confirmar pesos en la guía oficial)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -434,7 +436,7 @@ Igual que el currículo maestro: cada etapa declara objetivo, certificación, co
 | **Horas** | 80–110 |
 | **Prerrequisitos** | A2 (recomendado: E2 del currículo maestro) |
 
-### Dominios del examen (✅ anuncio oficial de septiembre de 2026)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -443,7 +445,7 @@ Igual que el currículo maestro: cada etapa declara objetivo, certificación, co
 | D3 | Pruebas y despliegue | 22 % |
 | D4 | Resolución de problemas y optimización | 22 % |
 
-DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de IA**; su alcance exacto se confirma en la guía oficial (S14-T0).
+DVA-C03 conserva los cuatro dominios y añade la **tarea 2.3** ✅: «Identify and mitigate security risks associated with using and integrating AI services». Tiene cinco habilidades: solicitar y gestionar el acceso a servicios de IA, controles de privacidad al enviar datos, filtrar y controlar entradas y salidas de modelos, asegurar las interacciones de agentes y proteger contenido sensible en los registros de monitoreo.
 
 ### Módulos
 
@@ -477,7 +479,7 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 - AWS-U3.5.2 Roles de ejecución y mínimo privilegio para funciones y contenedores
 - AWS-U3.5.3 Cifrado desde código: KMS (`GenerateDataKey`) y cifrado del lado del cliente
 - AWS-U3.5.4 Secretos y configuración: Secrets Manager, Parameter Store y AppConfig
-- AWS-U3.5.5 Seguridad de aplicaciones que llaman a modelos de IA (tarea 2.3 de DVA-C03; 🔎 alcance por confirmar)
+- AWS-U3.5.5 Seguridad al integrar servicios de IA en aplicaciones (tarea 2.3 de DVA-C03)
 
 **AWS-M3.6 — Pruebas y despliegue [D3]**
 - AWS-U3.6.1 Infraestructura como código para desarrolladores: SAM y CDK
@@ -520,7 +522,7 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 | **Horas** | 60–90 |
 | **Prerrequisitos** | A2 |
 
-### Dominios del examen (🔎 confirmar pesos en la guía oficial)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -594,7 +596,7 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 | **Horas** | 90–130 |
 | **Prerrequisitos** | A3 y A4 |
 
-### Dominios del examen (🔎 confirmar pesos en la guía oficial)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -668,15 +670,15 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 | **Horas** | 110–150 |
 | **Prerrequisitos** | A2 y uno de A3/A4 |
 
-### Dominios del examen (✅ nombres del anuncio oficial · 🔎 pesos no publicados en el anuncio)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
-| D1 | Diseño e implementación de arquitecturas nativas de la nube | 🔎 |
-| D2 | Seguridad, cumplimiento y gobierno | 🔎 |
-| D3 | Diseño de arquitecturas optimizadas en costo | 🔎 |
-| D4 | Resiliencia, migración y continuidad del negocio | 🔎 |
-| D5 | Excelencia operativa y automatización | 🔎 |
+| D1 | Diseño e implementación de arquitecturas nativas de la nube | 25 % |
+| D2 | Seguridad, cumplimiento y gobierno | 25 % |
+| D3 | Diseño de arquitecturas optimizadas en costo | 15 % |
+| D4 | Resiliencia, migración y continuidad del negocio | 15 % |
+| D5 | Excelencia operativa y automatización | 20 % |
 
 ### Módulos
 
@@ -744,7 +746,7 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 | **Horas** | 25–40 |
 | **Prerrequisitos** | A1 |
 
-### Dominios del examen (🔎 confirmar pesos en la guía oficial)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -794,7 +796,7 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 | **Horas** | 70–100 |
 | **Prerrequisitos** | A7 y A3 (enlaza con E9–E10 del currículo maestro) |
 
-### Dominios del examen (🔎 confirmar nombres y pesos en la guía oficial)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -853,7 +855,7 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 | **Horas** | 60–90 |
 | **Prerrequisitos** | A2 y A4 |
 
-### Dominios del examen (🔎 confirmar nombres y pesos en la guía oficial; fuentes de terceros)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -916,7 +918,7 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 | **Horas** | 50–80 |
 | **Prerrequisitos** | A2 (recomendado: E6 del currículo maestro) |
 
-### Dominios del examen (🔎 confirmar pesos en la guía oficial)
+### Dominios del examen (✅ guía oficial, ver aws-guias-examen.md)
 
 | Dominio | Nombre | Peso |
 |---------|--------|------|
@@ -971,14 +973,14 @@ DVA-C03 conserva los cuatro dominios y añade una **tarea 2.3 sobre seguridad de
 
 ### Dominios del examen
 
-El anuncio oficial dice que MLA-C02 **mantiene la estructura de dominios** de MLA-C01 ✅. Los pesos de MLA-C01 son 🔎 y deben confirmarse para C02:
+La guía oficial de MLA-C02 ✅ mantiene cuatro dominios, pero cambia sus nombres (ahora incluyen «y IA») y dos pesos respecto a MLA-C01. La guía es de la versión **beta**; se revisa cuando llegue la GA (2027-01-14):
 
-| Dominio | Nombre | Peso (MLA-C01) |
+| Dominio | Nombre | Peso |
 |---------|--------|----------------|
-| D1 | Preparación de datos para ML | 28 % |
-| D2 | Desarrollo de modelos de ML | 26 % |
-| D3 | Despliegue y orquestación de flujos de ML | 22 % |
-| D4 | Monitoreo, mantenimiento y seguridad de soluciones de ML | 24 % |
+| D1 | Preparación de datos para ML e IA | 28 % |
+| D2 | Desarrollo de modelos de ML y de modelos fundacionales (FM) | 24 % |
+| D3 | Despliegue y orquestación de flujos de trabajo de ML e IA | 24 % |
+| D4 | Operación, monitoreo y seguridad de soluciones de ML e IA | 24 % |
 
 ### Módulos
 

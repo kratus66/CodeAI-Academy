@@ -58,7 +58,7 @@ exam: { certification: CertificationCode; domain: number; task: string | null; p
 
 | ID | Tarea | Archivos (máx. 3) | Responsable |
 |----|-------|-------------------|-------------|
-| T0 | Verificar las 11 guías oficiales y registrar versión, formato, dominios, pesos y tareas, con fecha y URL | `docs/02-contenido/aws-guias-examen.md` (crear) | Persona + Orquestador |
+| T0 | Verificar las 11 guías oficiales y registrar versión, formato, dominios, pesos y tareas, con fecha y URL | `docs/02-contenido/aws-guias-examen.md` (crear) | Persona + Orquestador · ✅ 2026-11-09 (commit 22da31e): 10/11 exámenes verificados; MLA-C02 sigue en beta |
 | T1 | Registro de certificaciones en `shared` a partir de T0 | `schemas/certification.ts`, `.spec.ts`, `index.ts` | Constructor |
 | T2 | Variantes de quiz en la semilla (`single`/`multiple`/`ordering`/`matching`) con compatibilidad hacia atrás | `schemas/content.ts`, `content-exercise.spec.ts` | Constructor |
 | T3 | Metadatos `exam` en el ejercicio sembrado; reglas: obligatorio en la ruta AWS, dominio existente en la certificación, competencias de la ruta | `schemas/course-seed.ts`, `course-seed.spec.ts` | Constructor |
