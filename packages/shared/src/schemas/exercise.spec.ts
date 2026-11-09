@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  auditAnswerResponseSchema,
+  auditAnswerResultSchema,
+  auditAnswerSchema,
   createSubmissionSchema,
   exerciseDetailSchema,
   exerciseListItemSchema,
@@ -276,5 +279,134 @@ describe("quizGradeResultSchema", () => {
       }).success,
     ).toBe(false);
     expect(quizGradeResultSchema.safeParse({ kind: "audit", correct: true }).success).toBe(false);
+  });
+});
+
+describe("auditAnswerSchema", () => {
+  const BODY = {
+    marks: [
+      { findingId: "f1", severity: "critical" },
+      { findingId: "f3", severity: "low" },
+    ],
+    decision: "fix",
+  } as const;
+
+  it("acepta el cuerpo de ejemplo del contrato", () => {
+    expect(auditAnswerSchema.parse(BODY)).toEqual(BODY);
+  });
+
+  it("acepta `marks: []`: no encontré nada", () => {
+    const empty = { marks: [], decision: "accept" } as const;
+    expect(auditAnswerSchema.parse(empty)).toEqual(empty);
+  });
+
+  it("rechaza el mismo hallazgo marcado dos veces", () => {
+    const repeated = auditAnswerSchema.safeParse({
+      marks: [
+        { findingId: "f2", severity: "high" },
+        { findingId: "f2", severity: "low" },
+      ],
+      decision: "fix",
+    });
+
+    expect(repeated.success).toBe(false);
+    if (!repeated.success) {
+      expect(repeated.error.issues[0]?.message).toBe("No marques dos veces el mismo hallazgo");
+    }
+  });
+
+  it("rechaza una severidad y una decisión desconocidas", () => {
+    expect(
+      auditAnswerSchema.safeParse({
+        marks: [{ findingId: "f1", severity: "urgent" }],
+        decision: "fix",
+      }).success,
+    ).toBe(false);
+    expect(auditAnswerSchema.safeParse({ marks: [], decision: "approve" }).success).toBe(false);
+  });
+
+  it("rechaza un id de hallazgo con formato inválido", () => {
+    const badId = auditAnswerSchema.safeParse({
+      marks: [{ findingId: "hallazgo-1", severity: "low" }],
+      decision: "fix",
+    });
+
+    expect(badId.success).toBe(false);
+    if (!badId.success) {
+      expect(badId.error.issues[0]?.message).toBe("El hallazgo debe ser f1, f2…");
+    }
+  });
+
+  it("rechaza más de 10 marcas", () => {
+    const eleven = ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11"].map(
+      (findingId) => ({ findingId, severity: "low" }),
+    );
+
+    expect(auditAnswerSchema.safeParse({ marks: eleven, decision: "fix" }).success).toBe(false);
+    expect(
+      auditAnswerSchema.safeParse({ marks: eleven.slice(0, 10), decision: "fix" }).success,
+    ).toBe(true);
+  });
+
+  it("rechaza claves desconocidas en el cuerpo y en cada marca (strict)", () => {
+    expect(auditAnswerSchema.safeParse({ ...BODY, extra: true }).success).toBe(false);
+    expect(
+      auditAnswerSchema.safeParse({
+        marks: [{ findingId: "f1", severity: "low", explanation: "Esto no viaja aquí" }],
+        decision: "fix",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("auditAnswerResultSchema", () => {
+  const RESULT = {
+    score: 80,
+    outcome: "PASSED",
+    detectedDefects: 2,
+    totalDefects: 2,
+    falsePositives: 1,
+    decisionCorrect: true,
+    verdict: "fix",
+    findings: [
+      {
+        id: "f1",
+        isDefect: true,
+        severity: "critical",
+        marked: true,
+        chosenSeverity: "critical",
+        severityCorrect: true,
+        explanation: "El mensaje revela si el correo existe.",
+      },
+      {
+        id: "f2",
+        isDefect: false,
+        severity: null,
+        marked: true,
+        chosenSeverity: "low",
+        severityCorrect: null,
+        explanation: "Comparar con bcrypt es lo correcto.",
+      },
+      {
+        id: "f3",
+        isDefect: true,
+        severity: "high",
+        marked: false,
+        chosenSeverity: null,
+        severityCorrect: null,
+        explanation: "La firma usa un secreto fijo en el código.",
+      },
+    ],
+  } as const;
+
+  it("parsea un resultado completo", () => {
+    expect(auditAnswerResultSchema.parse(RESULT)).toEqual(RESULT);
+    expect(auditAnswerResponseSchema.parse({ result: RESULT })).toEqual({ result: RESULT });
+  });
+
+  it("rechaza una nota fuera de 0–100 y un resultado desconocido", () => {
+    expect(auditAnswerResultSchema.safeParse({ ...RESULT, score: 101 }).success).toBe(false);
+    expect(auditAnswerResultSchema.safeParse({ ...RESULT, score: -1 }).success).toBe(false);
+    expect(auditAnswerResultSchema.safeParse({ ...RESULT, outcome: "OK" }).success).toBe(false);
   });
 });

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from "../constants/pagination";
 import { EXERCISE_TYPES, LADDERS, SUBMISSION_OUTCOMES } from "../enums/exercise";
 import { paginatedSchema } from "./common";
-import { QUIZ_KINDS } from "./content";
+import { AUDIT_DECISIONS, AUDIT_SEVERITIES, QUIZ_KINDS } from "./content";
 import { competencyCodeSchema } from "./progress";
 import { reviewQualitySchema } from "./review";
 import { sandboxLanguageSchema } from "./sandbox";
@@ -285,6 +285,69 @@ export type QuizGradeResult = z.infer<typeof quizGradeResultSchema>;
 export const quizGradeResponseSchema = z.object({ result: quizGradeResultSchema });
 
 export type QuizGradeResponse = z.infer<typeof quizGradeResponseSchema>;
+
+/**
+ * Cuerpo de `POST /api/exercises/:id/audit-answers`: los hallazgos que el
+ * estudiante marca como defecto con su severidad, y la decisión ante el
+ * artefacto completo. `marks: []` es válido («no encontré nada»). Se declara
+ * `.strict()` por dentro porque `ZodValidationPipe` no puede aplicarlo a un
+ * esquema envuelto por `superRefine` (H3, S14).
+ */
+export const auditAnswerSchema = z
+  .object({
+    marks: z
+      .array(
+        z
+          .object({
+            findingId: z.string().regex(/^f\d{1,2}$/, "El hallazgo debe ser f1, f2…"),
+            severity: z.enum(AUDIT_SEVERITIES),
+          })
+          .strict(),
+      )
+      .max(10),
+    decision: z.enum(AUDIT_DECISIONS),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (hasRepeatedIds(value.marks.map((mark) => mark.findingId))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["marks"],
+        message: "No marques dos veces el mismo hallazgo",
+      });
+    }
+  });
+
+export type AuditAnswerInput = z.infer<typeof auditAnswerSchema>;
+
+/** Resultado de corregir una auditoría: qué defectos se vieron y con qué decisión. */
+export const auditAnswerResultSchema = z.object({
+  score: z.number().int().min(0).max(100),
+  outcome: z.enum(["PASSED", "PARTIAL", "FAILED"]),
+  detectedDefects: z.number().int().nonnegative(),
+  totalDefects: z.number().int().positive(),
+  falsePositives: z.number().int().nonnegative(),
+  decisionCorrect: z.boolean(),
+  verdict: z.enum(AUDIT_DECISIONS),
+  findings: z.array(
+    z.object({
+      id: z.string(),
+      isDefect: z.boolean(),
+      severity: z.enum(AUDIT_SEVERITIES).nullable(),
+      marked: z.boolean(),
+      chosenSeverity: z.enum(AUDIT_SEVERITIES).nullable(),
+      /** `null` si no estaba marcado o no era defecto. */
+      severityCorrect: z.boolean().nullable(),
+      explanation: z.string().min(1),
+    }),
+  ),
+});
+
+export type AuditAnswerResult = z.infer<typeof auditAnswerResultSchema>;
+
+export const auditAnswerResponseSchema = z.object({ result: auditAnswerResultSchema });
+
+export type AuditAnswerResponse = z.infer<typeof auditAnswerResponseSchema>;
 
 /** `POST /api/exercises/:id/flashcard-reveal`: sin un intento no hay reverso. */
 export const flashcardRevealSchema = z.object({
