@@ -13,6 +13,7 @@ import { ApiError, exercisesApi } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
 
 import { QuizMultiplePlayer } from "./QuizMultiplePlayer";
+import { QuizOrderingPlayer } from "./QuizOrderingPlayer";
 
 /**
  * Quiz de opción múltiple. La respuesta correcta y las explicaciones no viajan
@@ -202,6 +203,10 @@ export function QuizPlayer({
 
   if (kind === "multiple") {
     return <QuizMultiplePlayer exercise={exercise} submitQuiz={submitQuiz} />;
+  }
+
+  if (kind === "ordering") {
+    return <QuizOrderingPlayer exercise={exercise} submitQuiz={submitQuiz} />;
   }
 
   if (kind === undefined || kind === "single") {

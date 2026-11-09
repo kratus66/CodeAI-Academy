@@ -193,7 +193,7 @@ describe("QuizPlayer — despacho por variante", () => {
   });
 
   it("avisa de que una variante todavía no está disponible", () => {
-    render(<QuizPlayer exercise={exercise({ config: { kind: "ordering", items: [] } })} />);
+    render(<QuizPlayer exercise={exercise({ config: { kind: "desconocido" } })} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Este tipo de pregunta todavía no está disponible.",
