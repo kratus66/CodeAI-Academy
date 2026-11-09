@@ -86,6 +86,16 @@ export function exerciseConfig(exercise: SeedExercise): Record<string, unknown> 
     };
   }
 
+  if (exercise.audit !== null) {
+    return {
+      artifact: {
+        language: exercise.audit.artifact.language,
+        content: exercise.audit.artifact.content,
+      },
+      candidates: exercise.audit.findings.map(({ id, lines, label }) => ({ id, lines, label })),
+    };
+  }
+
   return exercise.starterCode === null ? {} : { starterCode: exercise.starterCode };
 }
 
@@ -130,6 +140,18 @@ export function exerciseSolution(exercise: SeedExercise): Record<string, unknown
 
   if (exercise.flashcard !== null) {
     return { back: exercise.flashcard.back };
+  }
+
+  if (exercise.audit !== null) {
+    return {
+      findings: exercise.audit.findings.map(({ id, isDefect, severity, explanation }) => ({
+        id,
+        isDefect,
+        severity,
+        explanation,
+      })),
+      verdict: exercise.audit.verdict,
+    };
   }
 
   return exercise.solution ?? undefined;
