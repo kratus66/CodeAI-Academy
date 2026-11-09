@@ -119,3 +119,142 @@ export const examItemUpdateResponseSchema = z.object({
 });
 
 export type ExamItemUpdateResponse = z.infer<typeof examItemUpdateResponseSchema>;
+
+/** Aciertos de un dominio en el resultado entregado; `pct` es entero 0–100. */
+export const examDomainScoreSchema = z.object({
+  domain: z.number().int().min(1).max(6),
+  name: z.string().min(1),
+  correct: z.number().int().nonnegative(),
+  total: z.number().int().positive(),
+  pct: z.number().int().min(0).max(100),
+});
+
+export type ExamDomainScore = z.infer<typeof examDomainScoreSchema>;
+
+/**
+ * Pregunta corregida de un intento entregado. Añade el acierto, la respuesta
+ * correcta (con la misma forma que el cuerpo), las explicaciones de cada opción
+ * o elemento y la unidad del concepto, para enlazar `/learn/units/:code`.
+ */
+export const examResultItemSchema = examAttemptItemSchema.extend({
+  correct: z.boolean(),
+  correctAnswer: quizSubmissionSchema,
+  explanations: z.record(z.string(), z.string().min(1)),
+  unitCode: z.string().min(1),
+});
+
+export type ExamResultItem = z.infer<typeof examResultItemSchema>;
+
+/**
+ * Resultado de un intento entregado. No lleva puntuación escalada: AWS no
+ * publica cómo la obtiene (decisión 2.2), así que solo se publica `scorePct`,
+ * el porcentaje de aciertos, con su desglose por dominio.
+ */
+export const examResultSchema = z.object({
+  attemptId: z.string().min(1),
+  certification: certificationCodeSchema,
+  mode: z.enum(EXAM_MODES),
+  domain: z.number().int().nullable(),
+  status: z.enum(["submitted", "expired"]),
+  orientative: z.boolean(),
+  startedAt: z.string().datetime(),
+  submittedAt: z.string().datetime(),
+  correctCount: z.number().int().nonnegative(),
+  questionCount: z.number().int().positive(),
+  scorePct: z.number().int().min(0).max(100),
+  domains: z.array(examDomainScoreSchema).min(1),
+  items: z.array(examResultItemSchema),
+});
+
+export type ExamResult = z.infer<typeof examResultSchema>;
+
+export const examResultResponseSchema = z.object({ result: examResultSchema });
+
+export type ExamResultResponse = z.infer<typeof examResultResponseSchema>;
+
+/** Un intento del historial, el más reciente primero. `scorePct` es nulo en curso. */
+export const examHistoryItemSchema = z.object({
+  attemptId: z.string().min(1),
+  mode: z.enum(EXAM_MODES),
+  domain: z.number().int().min(1).max(6).nullable(),
+  status: z.enum(EXAM_ATTEMPT_STATUSES),
+  orientative: z.boolean(),
+  startedAt: z.string().datetime(),
+  submittedAt: z.string().datetime().nullable(),
+  scorePct: z.number().int().min(0).max(100).nullable(),
+  questionCount: z.number().int().positive(),
+});
+
+export type ExamHistoryItem = z.infer<typeof examHistoryItemSchema>;
+
+export const examHistoryResponseSchema = z.object({ attempts: z.array(examHistoryItemSchema) });
+
+export type ExamHistoryResponse = z.infer<typeof examHistoryResponseSchema>;
+
+/** Los cuatro criterios de «listo para presentar», en el orden en que se muestran. */
+export const READINESS_CRITERIA = ["mastery", "mock-exams", "review", "evidence"] as const;
+
+export type ReadinessCriterionId = (typeof READINESS_CRITERIA)[number];
+
+export const READINESS_STATUSES = ["met", "missing", "unavailable"] as const;
+
+export type ReadinessStatus = (typeof READINESS_STATUSES)[number];
+
+/**
+ * Un criterio del panel de preparación: `missing` dice qué falta (vacío si se
+ * cumple) y `unavailable` marca lo que la plataforma todavía no puede evaluar.
+ */
+export const readinessCriterionSchema = z.object({
+  id: z.enum(READINESS_CRITERIA),
+  status: z.enum(READINESS_STATUSES),
+  summary: z.string().min(1),
+  missing: z.array(z.string().min(1)),
+});
+
+export type ReadinessCriterion = z.infer<typeof readinessCriterionSchema>;
+
+/**
+ * Resultado real del examen oficial, registrado por la persona: la plataforma
+ * no lo calcula ni lo verifica. `scaledScore` es la puntuación de AWS (100–1000).
+ */
+export const realExamResultSchema = z.object({
+  id: z.string().min(1),
+  certification: certificationCodeSchema,
+  passed: z.boolean(),
+  scaledScore: z.number().int().min(100).max(1000).nullable(),
+  takenOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  readyAtRegistration: z.boolean(),
+  createdAt: z.string().datetime(),
+});
+
+export type RealExamResult = z.infer<typeof realExamResultSchema>;
+
+export const examReadinessSchema = z.object({
+  certification: certificationCodeSchema,
+  stageId: z.number().int(),
+  ready: z.boolean(),
+  criteria: z.array(readinessCriterionSchema).length(4),
+  evaluatedAt: z.string().datetime(),
+  lastRealResult: realExamResultSchema.nullable(),
+});
+
+export type ExamReadiness = z.infer<typeof examReadinessSchema>;
+
+export const examReadinessResponseSchema = z.object({ readiness: examReadinessSchema });
+
+export type ExamReadinessResponse = z.infer<typeof examReadinessResponseSchema>;
+
+/** Cuerpo de `POST /api/exams/:certification/real-results`. */
+export const registerRealResultSchema = z
+  .object({
+    passed: z.boolean(),
+    scaledScore: z.number().int().min(100).max(1000).optional(),
+    takenOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha va en formato AAAA-MM-DD"),
+  })
+  .strict();
+
+export type RegisterRealResultInput = z.infer<typeof registerRealResultSchema>;
+
+export const realResultResponseSchema = z.object({ realResult: realExamResultSchema });
+
+export type RealResultResponse = z.infer<typeof realResultResponseSchema>;
