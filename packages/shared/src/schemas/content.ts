@@ -538,6 +538,41 @@ export const contentSeedFlashcardSchema = z.object({
   back: z.string().min(1).max(400, "El reverso de una tarjeta es breve (máx. 400 caracteres)"),
 });
 
+/** Severidad de un defecto real, de más a menos grave (`banco-ejercicios.md` §3.6). */
+export const AUDIT_SEVERITIES = ["critical", "high", "medium", "low"] as const;
+
+/** Decisión ante el artefacto completo: aceptar, corregir o descartar. */
+export const AUDIT_DECISIONS = ["accept", "fix", "discard"] as const;
+
+/**
+ * Auditoría de código generado por IA (`banco-ejercicios.md` §3.6): el artefacto
+ * que se revisa, los hallazgos candidatos —con líneas 1-based, inclusive— y el
+ * veredicto correcto. La etiqueta de un hallazgo es neutra (la ve el estudiante
+ * antes de decidir) y la explicación solo se revela después del intento.
+ */
+export const contentSeedAuditSchema = z.object({
+  artifact: z.object({
+    language: z.enum(["json", "yaml", "typescript", "javascript", "python", "bash", "text"]),
+    content: z.string().min(1).max(8000),
+  }),
+  findings: z
+    .array(
+      z.object({
+        id: z.string().regex(/^f\d{1,2}$/),
+        lines: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+        label: z.string().min(1).max(120),
+        isDefect: z.boolean(),
+        severity: z.enum(AUDIT_SEVERITIES).nullable().default(null),
+        explanation: z.string().min(1),
+      }),
+    )
+    .min(3)
+    .max(10),
+  verdict: z.enum(AUDIT_DECISIONS),
+});
+
+export type ContentSeedAudit = z.infer<typeof contentSeedAuditSchema>;
+
 /**
  * Ejercicio sembrado (`plantilla-ejercicio.md`, `banco-ejercicios.md` §6). Las
  * reglas duras de la plantilla se validan en el esquema de la semilla completa.
@@ -562,6 +597,7 @@ export const contentSeedExerciseSchema = z.object({
   quiz: contentSeedQuizSchema.nullable().default(null),
   flashcard: contentSeedFlashcardSchema.nullable().default(null),
   memory: contentSeedMemorySchema.nullable().default(null),
+  audit: contentSeedAuditSchema.nullable().default(null),
   sources: z.array(z.string().url()).min(1, "La documentación oficial es obligatoria"),
   maxAttempts: z.number().int().positive().nullable().default(null),
   isPublished: z.boolean(),
@@ -733,6 +769,53 @@ function quizRuleViolations(quiz: ContentSeedQuiz): string[] {
 }
 
 /**
+ * Reglas de `banco-ejercicios.md` §3.6: defectos reales con severidad, al menos un
+ * elemento correcto que parece sospechoso, líneas dentro del artefacto y un
+ * veredicto compatible con la gravedad. Los hallazgos van ordenados por su línea
+ * inicial para que el orden no delate cuáles son defectos; dos hallazgos pueden
+ * empezar en la misma línea.
+ */
+function auditRuleViolations(audit: ContentSeedAudit): string[] {
+  const problems: string[] = [];
+  const ids = audit.findings.map((finding) => finding.id);
+  const defects = audit.findings.filter((finding) => finding.isDefect);
+  const lineCount = audit.artifact.content.split("\n").length;
+  const startsOutOfOrder = audit.findings.some((finding, index) => {
+    const previous = audit.findings[index - 1];
+
+    return previous !== undefined && finding.lines[0] < previous.lines[0];
+  });
+  const linesOutsideArtifact = audit.findings.some(
+    (finding) => finding.lines[0] > finding.lines[1] || finding.lines[1] > lineCount,
+  );
+  const severityOnNonDefect = audit.findings.some(
+    (finding) => !finding.isDefect && finding.severity !== null,
+  );
+  const graveDefect = defects.some(
+    (finding) => finding.severity === "critical" || finding.severity === "high",
+  );
+
+  if (repeats(ids)) problems.push("los hallazgos repiten id");
+  if (startsOutOfOrder) problems.push("los hallazgos van ordenados por línea");
+  if (defects.length === 0) problems.push("un AUDIT declara al menos un defecto real");
+  if (defects.length === audit.findings.length) {
+    problems.push("un AUDIT declara al menos un elemento correcto que parece sospechoso");
+  }
+  if (defects.some((finding) => finding.severity === null)) {
+    problems.push("cada defecto real declara severidad");
+  }
+  if (severityOnNonDefect) problems.push("la severidad solo se declara en defectos reales");
+  if (linesOutsideArtifact) {
+    problems.push("las líneas de un hallazgo salen del artefacto o están al revés");
+  }
+  if (audit.verdict === "accept" && graveDefect) {
+    problems.push("un artefacto con defectos críticos o altos no se acepta");
+  }
+
+  return problems;
+}
+
+/**
  * Reglas duras de `plantilla-ejercicio.md` que un esquema por campo no puede
  * expresar: pistas por escalón, pruebas visibles y ocultas, solución oculta.
  */
@@ -789,6 +872,18 @@ export function exerciseRuleViolations(exercise: ContentSeedExercise): string[] 
     }
   } else if (exercise.memory !== null) {
     problems.push("solo un MEMORY declara memory");
+  }
+
+  if (exercise.type === "AUDIT") {
+    const audit = exercise.audit;
+
+    if (audit === null) {
+      problems.push("un AUDIT requiere audit (artefacto y hallazgos)");
+    } else {
+      problems.push(...auditRuleViolations(audit));
+    }
+  } else if (exercise.audit !== null) {
+    problems.push("solo un AUDIT declara audit");
   }
 
   if (CODE_EXERCISE_TYPES.includes(exercise.type)) {

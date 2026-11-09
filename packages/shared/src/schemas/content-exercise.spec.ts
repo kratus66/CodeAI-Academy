@@ -458,3 +458,189 @@ describe("variantes de quiz de la semilla", () => {
     });
   });
 });
+
+describe("reglas de AUDIT", () => {
+  const artifact = [
+    "export function verificar(token: string) {",
+    "  const payload = jwt.decode(token);",
+    "  const usuario = usuarios.find((u) => u.correo === payload.correo);",
+    "  if (!usuario) throw new Error(`No existe ${payload.correo}`);",
+    "  return bcrypt.hashSync(payload.clave, 10);",
+    "}",
+  ].join("\n");
+
+  const finding = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: "f1",
+    lines: [2, 2],
+    label: "Línea 2: decodifica el token sin comprobar la firma",
+    isDefect: true,
+    severity: "critical",
+    explanation: "El token se acepta sin validar la firma ni la expiración.",
+    ...overrides,
+  });
+
+  /** Dos defectos reales (crítico y alto) y un acierto que parece sospechoso. */
+  const findings = (): Record<string, unknown>[] => [
+    finding(),
+    finding({
+      id: "f2",
+      lines: [4, 4],
+      label: "Línea 4: el error incluye el correo consultado",
+      severity: "high",
+      explanation: "El mensaje revela si el correo existe (enumeración de usuarios).",
+    }),
+    finding({
+      id: "f3",
+      lines: [5, 5],
+      label: "Línea 5: bcrypt con coste 10",
+      isDefect: false,
+      severity: null,
+      explanation: "El coste 10 sigue siendo aceptable: parece sospechoso y no lo es.",
+    }),
+  ];
+
+  const withFinding = (
+    index: number,
+    overrides: Record<string, unknown>,
+  ): Record<string, unknown>[] =>
+    findings().map((item, position) => (position === index ? { ...item, ...overrides } : item));
+
+  const audit = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    artifact: { language: "typescript", content: artifact },
+    findings: findings(),
+    verdict: "fix",
+    ...overrides,
+  });
+
+  const auditExercise = (overrides: Record<string, unknown> = {}): ContentSeedExercise =>
+    exercise({
+      type: "AUDIT",
+      ladder: "SEMI",
+      hints: [],
+      tests: [],
+      language: null,
+      starterCode: null,
+      solution: null,
+      ...overrides,
+    });
+
+  it("acepta una auditoría con dos defectos y un correcto sospechoso", () => {
+    const built = auditExercise({ audit: audit() });
+
+    expect(built.audit?.findings).toHaveLength(3);
+    expect(exerciseRuleViolations(built)).toEqual([]);
+  });
+
+  it("un ejercicio sin audit lo deja en null", () => {
+    expect(exercise().audit).toBeNull();
+  });
+
+  it("un AUDIT requiere audit (artefacto y hallazgos)", () => {
+    expect(exerciseRuleViolations(auditExercise())).toContain(
+      "un AUDIT requiere audit (artefacto y hallazgos)",
+    );
+  });
+
+  it("solo un AUDIT declara audit", () => {
+    expect(exerciseRuleViolations(exercise({ audit: audit() }))).toContain(
+      "solo un AUDIT declara audit",
+    );
+  });
+
+  it("un AUDIT declara al menos un defecto real", () => {
+    const noDefects = findings().map((item) => ({ ...item, isDefect: false, severity: null }));
+    const problems = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: noDefects }) }),
+    );
+
+    expect(problems).toContain("un AUDIT declara al menos un defecto real");
+  });
+
+  it("un AUDIT declara al menos un elemento correcto que parece sospechoso", () => {
+    const allDefects = findings().map((item) => ({ ...item, isDefect: true, severity: "medium" }));
+    const problems = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: allDefects }) }),
+    );
+
+    expect(problems).toContain(
+      "un AUDIT declara al menos un elemento correcto que parece sospechoso",
+    );
+  });
+
+  it("los hallazgos repiten id", () => {
+    const problems = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: withFinding(1, { id: "f1" }) }) }),
+    );
+
+    expect(problems).toContain("los hallazgos repiten id");
+  });
+
+  it("los hallazgos van ordenados por línea", () => {
+    const [first, second, third] = findings();
+    const problems = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: [second, first, third] }) }),
+    );
+
+    expect(problems).toContain("los hallazgos van ordenados por línea");
+  });
+
+  it("dos hallazgos pueden empezar en la misma línea", () => {
+    const problems = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: withFinding(1, { lines: [2, 4] }) }) }),
+    );
+
+    expect(problems).toEqual([]);
+  });
+
+  it("cada defecto real declara severidad", () => {
+    const problems = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: withFinding(0, { severity: null }) }) }),
+    );
+
+    expect(problems).toContain("cada defecto real declara severidad");
+  });
+
+  it("la severidad solo se declara en defectos reales", () => {
+    const problems = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: withFinding(2, { severity: "low" }) }) }),
+    );
+
+    expect(problems).toContain("la severidad solo se declara en defectos reales");
+  });
+
+  it("las líneas de un hallazgo salen del artefacto o están al revés", () => {
+    const reversed = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: withFinding(2, { lines: [5, 4] }) }) }),
+    );
+    const outside = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: withFinding(2, { lines: [6, 9] }) }) }),
+    );
+
+    expect(reversed).toContain("las líneas de un hallazgo salen del artefacto o están al revés");
+    expect(outside).toContain("las líneas de un hallazgo salen del artefacto o están al revés");
+  });
+
+  it("un artefacto con defectos críticos o altos no se acepta", () => {
+    const problems = exerciseRuleViolations(auditExercise({ audit: audit({ verdict: "accept" }) }));
+
+    expect(problems).toContain("un artefacto con defectos críticos o altos no se acepta");
+  });
+
+  it("acepta el veredicto accept si los defectos son medios o bajos", () => {
+    const mild = [
+      finding({ severity: "medium" }),
+      finding({ id: "f2", lines: [4, 4], severity: "low" }),
+      finding({ id: "f3", lines: [5, 5], isDefect: false, severity: null }),
+    ];
+    const problems = exerciseRuleViolations(
+      auditExercise({ audit: audit({ findings: mild, verdict: "accept" }) }),
+    );
+
+    expect(problems).toEqual([]);
+  });
+
+  it("rechaza una auditoría con menos de tres hallazgos", () => {
+    expect(() => auditExercise({ audit: audit({ findings: findings().slice(0, 2) }) })).toThrow();
+  });
+});
+
