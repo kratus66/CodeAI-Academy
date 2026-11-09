@@ -45,7 +45,7 @@ CodeAI Academy es a la vez:
 - cada pregunta de la ruta AWS declara certificación, dominio, tarea y banco (el banco reservado no sale en unidades, laboratorio ni repaso);
 - `AUDIT` ya se juega y se corrige.
 
-Para cerrar S14 faltan dos revisiones humanas ([ficha](docs/04-plan-ejecucion/sprints/sprint-14-preguntas-examen.md) §5). El siguiente sprint es S15 (simulador de examen).
+S14 está cerrado. Dos revisiones humanas quedan diferidas ([ficha](docs/04-plan-ejecucion/sprints/sprint-14-preguntas-examen.md) §5). El siguiente sprint es S15 (simulador de examen).
 
 Operación (respaldos, restauración, despliegue y checklist de producción): [`docs/05-orquestacion/runbook-operacion.md`](docs/05-orquestacion/runbook-operacion.md).
 

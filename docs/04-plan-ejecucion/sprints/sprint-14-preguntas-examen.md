@@ -1,6 +1,6 @@
 # Sprint 14 — Preguntas tipo examen y metadatos de certificación
 
-> **Estado:** 🔄 construcción terminada (2026-11-09): las 27 tareas, de T0 a T14, están hechas y revisadas (registro en §8). El cierre espera dos revisiones humanas de §5: la firma de `aws-guias-examen.md` y el recorrido del punto de control 3 · **Duración prevista:** 12–14 sesiones · **Depende de:** S13 (multi-ruta), S6 (corrección de quizzes).
+> **Estado:** ✅ cerrado (2026-11-09): las 27 tareas, de T0 a T14, están hechas y revisadas (registro en §8). Hay **dos revisiones humanas diferidas**, que el responsable hará más adelante: la firma de `aws-guias-examen.md` y el recorrido del punto de control 3 (§5) · **Duración prevista:** 12–14 sesiones · **Depende de:** S13 (multi-ruta), S6 (corrección de quizzes).
 > **Ámbito:** `packages/shared`, `apps/api` (`exercises`, semilla) y `apps/web` (reproductores). Las fichas detalladas (§4) siguen la [plantilla](../../05-orquestacion/plantilla-tarea.md) y se revisaron contra el código el 2026-11-09; el orden de ejecución está en §7.
 > **Por qué existe:** un examen de AWS tiene preguntas de respuesta múltiple («selecciona DOS»), cada pregunta pertenece a un dominio con peso, y su banco debe separarse en «para aprender» y «para simular». Hoy `QUIZ` sólo admite una respuesta entre 3–4 opciones y no sabe de certificaciones; `AUDIT` no tiene reproductor.
 
@@ -1168,10 +1168,10 @@ No es del Constructor. Al cerrar el sprint:
 
 ## 5. Criterios de cierre
 
-- [ ] `aws-guias-examen.md` firmado por una persona con fecha. **Pendiente de una persona.** La otra mitad ya se cumple: el registro de `shared` coincide con el documento (`certification.spec.ts` lee el documento y compara pesos y número de dominios).
+- [ ] `aws-guias-examen.md` firmado por una persona con fecha. **Diferida: la hace el responsable más adelante (acordado el 2026-11-09).** La otra mitad ya se cumple: el registro de `shared` coincide con el documento (`certification.spec.ts` lee el documento y compara pesos y número de dominios).
 - [x] Las cuatro variantes de quiz se corrigen en servidor con pruebas de acierto, fallo y respuesta incompleta; la respuesta múltiple es todo o nada.
 - [x] Ningún endpoint de unidad, laboratorio o repaso devuelve un ejercicio `RESERVED` (prueba por endpoint).
-- [ ] `AUDIT` jugable de punta a punta con un ejercicio de prueba; un falso positivo baja la nota. **Las pruebas automáticas lo cubren** (`audit-grading.spec.ts`, `exercises.audit.spec.ts` y `AuditPlayer.spec.tsx`). **Falta el recorrido manual** del punto de control 3, que hace una persona.
+- [ ] `AUDIT` jugable de punta a punta con un ejercicio de prueba; un falso positivo baja la nota. **Las pruebas automáticas lo cubren** (`audit-grading.spec.ts`, `exercises.audit.spec.ts` y `AuditPlayer.spec.tsx`). **El recorrido manual** del punto de control 3 **queda diferido**: lo hace el responsable más adelante (acordado el 2026-11-09).
 - [x] Los quizzes existentes de `fullstack-ia` (1.662) siguen funcionando sin migrar datos.
 - [x] Suite completa, typecheck, lint y build en verde.
 
