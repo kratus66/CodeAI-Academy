@@ -258,3 +258,37 @@ export type RegisterRealResultInput = z.infer<typeof registerRealResultSchema>;
 export const realResultResponseSchema = z.object({ realResult: realExamResultSchema });
 
 export type RealResultResponse = z.infer<typeof realResultResponseSchema>;
+
+/**
+ * Cohorte de una certificación (S15-T12a): agregado anónimo de los simulacros
+ * entregados y no orientativos. `domains` va vacío con menos de 5 personas, por
+ * privacidad; los contadores y la tabla de preparación frente al resultado real
+ * se devuelven siempre.
+ */
+export const examCohortSchema = z.object({
+  certification: certificationCodeSchema,
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  attempts: z.number().int().nonnegative(),
+  learners: z.number().int().nonnegative(),
+  domains: z.array(
+    z.object({
+      domain: z.number().int(),
+      name: z.string(),
+      avgPct: z.number().int().min(0).max(100),
+      attempts: z.number().int(),
+    }),
+  ),
+  readinessVsReal: z.object({
+    readyPassed: z.number().int(),
+    readyFailed: z.number().int(),
+    notReadyPassed: z.number().int(),
+    notReadyFailed: z.number().int(),
+  }),
+});
+
+export type ExamCohort = z.infer<typeof examCohortSchema>;
+
+export const examCohortResponseSchema = z.object({ cohort: examCohortSchema });
+
+export type ExamCohortResponse = z.infer<typeof examCohortResponseSchema>;

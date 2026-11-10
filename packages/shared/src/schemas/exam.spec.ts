@@ -13,6 +13,8 @@ import {
   READINESS_STATUSES,
   examAttemptResponseSchema,
   examAttemptSchema,
+  examCohortResponseSchema,
+  examCohortSchema,
   examHistoryResponseSchema,
   examItemUpdateResponseSchema,
   examReadinessResponseSchema,
@@ -499,5 +501,46 @@ describe("registerRealResultSchema", () => {
         score: 780,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("examCohortSchema", () => {
+  const COHORT = {
+    certification: "SAA-C03",
+    from: "2026-10-01T00:00:00.000Z",
+    to: "2026-11-01T00:00:00.000Z",
+    attempts: 12,
+    learners: 6,
+    domains: [
+      {
+        domain: 2,
+        name: "Design Resilient Architectures",
+        avgPct: 61,
+        attempts: 12,
+      },
+    ],
+    readinessVsReal: {
+      readyPassed: 3,
+      readyFailed: 1,
+      notReadyPassed: 0,
+      notReadyFailed: 2,
+    },
+  };
+
+  it("acepta una cohorte completa y una sin dominios", () => {
+    expect(examCohortSchema.safeParse(COHORT).success).toBe(true);
+    expect(examCohortSchema.safeParse({ ...COHORT, domains: [] }).success).toBe(true);
+    expect(examCohortResponseSchema.safeParse({ cohort: COHORT }).success).toBe(true);
+  });
+
+  it("rechaza una certificación desconocida, un avgPct fuera de rango y fechas no ISO", () => {
+    expect(examCohortSchema.safeParse({ ...COHORT, certification: "XXX-01" }).success).toBe(false);
+    expect(
+      examCohortSchema.safeParse({
+        ...COHORT,
+        domains: [{ domain: 2, name: "D", avgPct: 101, attempts: 1 }],
+      }).success,
+    ).toBe(false);
+    expect(examCohortSchema.safeParse({ ...COHORT, from: "ayer" }).success).toBe(false);
   });
 });
