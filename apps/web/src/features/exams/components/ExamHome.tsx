@@ -22,6 +22,8 @@ import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import type { ContentState } from "@/features/learning/lib/use-content-loader";
 import { ApiError, examsApi } from "@/lib/api-client";
 
+import { ReadinessPanel } from "./ReadinessPanel";
+
 /**
  * Página de una certificación (S15, T11a): el formato oficial, los modos de
  * simulacro y el historial de intentos.
@@ -339,6 +341,8 @@ export function ExamHome({ certification, api = examsApi }: ExamHomeProps) {
           )}
         </div>
       ) : null}
+
+      <ReadinessPanel certification={certification} />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-white">{HISTORY_TITLE}</h2>
