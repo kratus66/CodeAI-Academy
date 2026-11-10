@@ -99,6 +99,7 @@ describe("PrismaExamsRepository", () => {
       examPool: "RESERVED",
       isPublished: true,
       certification: "SAA-C03",
+      examDomain: { not: null },
     });
     expect(firstArgs(delegates.exercise?.findMany).select).toMatchObject({
       unit: { select: { code: true } },
@@ -116,6 +117,18 @@ describe("PrismaExamsRepository", () => {
         competencies: ["C1"],
       },
     ]);
+  });
+
+  it("listReservedPool descarta una fila sin dominio", async () => {
+    const { repository } = buildRepository({
+      exercise: delegate({
+        findMany: [QUESTION_RECORD, { ...QUESTION_RECORD, id: "ex_2", examDomain: null }],
+      }),
+    });
+
+    const rows = await repository.listReservedPool("SAA-C03");
+
+    expect(rows.map((row) => row.exerciseId)).toEqual(["ex_1"]);
   });
 
   it("findFormSlugs busca por certificación y código, y devuelve null si no existe", async () => {

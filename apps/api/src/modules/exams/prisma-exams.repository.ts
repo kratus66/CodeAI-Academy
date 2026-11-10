@@ -94,11 +94,11 @@ type ItemRecord = Prisma.ExamAttemptItemGetPayload<{ include: typeof ITEM_INCLUD
 type AttemptRecord = Prisma.ExamAttemptGetPayload<{ include: typeof ATTEMPT_INCLUDE }>;
 type AttemptHeaderRecord = Omit<AttemptRecord, "items">;
 
-function toQuestion(record: QuestionRecord): ReservedQuestionRow {
+function toQuestion(record: QuestionRecord, domain: number): ReservedQuestionRow {
   return {
     exerciseId: record.id,
     slug: record.slug,
-    domain: record.examDomain ?? 0,
+    domain,
     unitCode: record.unit.code,
     statement: record.statement,
     config: record.config,
@@ -116,7 +116,7 @@ function toItem(record: ItemRecord): AttemptItemRow {
     answer: record.answer,
     flagged: record.flagged,
     correct: record.correct,
-    question: toQuestion(record.exercise),
+    question: toQuestion(record.exercise, record.domain),
   };
 }
 
@@ -179,12 +179,20 @@ export class PrismaExamsRepository implements ExamsRepository {
 
   async listReservedPool(certification: CertificationCode): Promise<ReservedQuestionRow[]> {
     const rows = await this.prisma.exercise.findMany({
-      where: { type: "QUIZ", examPool: "RESERVED", isPublished: true, certification },
+      where: {
+        type: "QUIZ",
+        examPool: "RESERVED",
+        isPublished: true,
+        certification,
+        examDomain: { not: null },
+      },
       select: QUESTION_SELECT,
       orderBy: [{ examDomain: "asc" }, { slug: "asc" }],
     });
 
-    return rows.map(toQuestion);
+    return rows.flatMap((row) =>
+      row.examDomain === null ? [] : [toQuestion(row, row.examDomain)],
+    );
   }
 
   async findFormSlugs(
