@@ -12,6 +12,7 @@ import {
   ApiError,
   authApi,
   contentApi,
+  examsApi,
   exercisesApi,
   interviewsApi,
   portfolioApi,
@@ -1849,6 +1850,266 @@ describe("analyticsApi", () => {
 });
 
 
+
+const EXAM_ATTEMPT = {
+  id: "att_1",
+  certification: "SAA-C03",
+  mode: "form-a",
+  domain: null,
+  extraTime: false,
+  status: "in-progress",
+  orientative: false,
+  startedAt: "2026-11-09T14:00:00.000Z",
+  deadlineAt: "2026-11-09T16:10:00.000Z",
+  submittedAt: null,
+  remainingSeconds: 7_800,
+  questionCount: 65,
+  answeredCount: 1,
+  items: [
+    {
+      position: 1,
+      domain: 1,
+      statement: "¿Qué servicio almacena objetos de forma duradera?",
+      config: { kind: "single", options: [{ id: "a", text: "Amazon S3" }] },
+      answer: { optionId: "a" },
+      flagged: false,
+    },
+  ],
+} as const;
+
+const EXAM_RESULT = {
+  attemptId: "att_1",
+  certification: "SAA-C03",
+  mode: "form-a",
+  domain: null,
+  status: "submitted",
+  orientative: false,
+  startedAt: "2026-11-09T14:00:00.000Z",
+  submittedAt: "2026-11-09T15:40:00.000Z",
+  correctCount: 1,
+  questionCount: 1,
+  scorePct: 100,
+  domains: [
+    {
+      domain: 1,
+      name: "Design Secure Architectures",
+      correct: 1,
+      total: 1,
+      pct: 100,
+    },
+  ],
+  items: [
+    {
+      position: 1,
+      domain: 1,
+      statement: "¿Qué servicio almacena objetos de forma duradera?",
+      config: { kind: "single", options: [{ id: "a", text: "Amazon S3" }] },
+      answer: { optionId: "a" },
+      flagged: false,
+      correct: true,
+      correctAnswer: { optionId: "a" },
+      explanations: { a: "Amazon S3 guarda objetos con durabilidad de once nueves." },
+      unitCode: "U0.1.1",
+    },
+  ],
+} as const;
+
+const EXAM_HISTORY_ITEM = {
+  attemptId: "att_1",
+  mode: "form-a",
+  domain: null,
+  status: "submitted",
+  orientative: true,
+  startedAt: "2026-11-09T14:00:00.000Z",
+  submittedAt: "2026-11-09T15:40:00.000Z",
+  scorePct: 84,
+  questionCount: 65,
+} as const;
+
+const EXAM_READINESS = {
+  certification: "SAA-C03",
+  stageId: 102,
+  ready: false,
+  criteria: [
+    {
+      id: "mastery",
+      status: "missing",
+      summary: "Te faltan dos unidades por dominar",
+      missing: ["U0.1.2", "U0.2.1"],
+    },
+    {
+      id: "mock-exams",
+      status: "missing",
+      summary: "Necesitas dos formas distintas con 80 % o más",
+      missing: ["Te falta una forma aprobada en los últimos 14 días"],
+    },
+    { id: "review", status: "met", summary: "Tu repaso está al día", missing: [] },
+    {
+      id: "evidence",
+      status: "unavailable",
+      summary: "La defensa técnica llega en S26",
+      missing: [],
+    },
+  ],
+  evaluatedAt: "2026-11-09T18:00:00.000Z",
+  lastRealResult: null,
+} as const;
+
+const REAL_EXAM_RESULT = {
+  id: "rer_1",
+  certification: "SAA-C03",
+  passed: true,
+  scaledScore: 812,
+  takenOn: "2026-11-01",
+  readyAtRegistration: false,
+  createdAt: "2026-11-02T09:00:00.000Z",
+} as const;
+
+describe("examsApi", () => {
+  it("inicia el intento en la ruta de la certificación y desenvuelve el intento", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ attempt: EXAM_ATTEMPT }));
+
+    const attempt = await examsApi.start("SAA C03", {
+      mode: "form-a",
+      extraTime: false,
+    });
+
+    expect(attempt).toEqual(EXAM_ATTEMPT);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exams/SAA%20C03/attempts",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ mode: "form-a", extraTime: false }),
+    });
+  });
+
+  it("lee el intento por su id codificado", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ attempt: EXAM_ATTEMPT }));
+
+    const attempt = await examsApi.get("att 1");
+
+    expect(attempt).toEqual(EXAM_ATTEMPT);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exams/attempts/att%201",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "GET" });
+  });
+
+  it("responde una pregunta con PUT y devuelve el ítem con los segundos restantes", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ item: EXAM_ATTEMPT.items[0], remainingSeconds: 3_600 }),
+    );
+
+    const update = await examsApi.updateItem("att 1", 1, {
+      answer: { optionId: "a" },
+      flagged: true,
+    });
+
+    expect(update).toEqual({
+      item: EXAM_ATTEMPT.items[0],
+      remainingSeconds: 3_600,
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exams/attempts/att%201/items/1",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "PUT",
+      body: JSON.stringify({ answer: { optionId: "a" }, flagged: true }),
+    });
+  });
+
+  it("entrega el intento con POST sin cuerpo y desenvuelve el resultado", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ result: EXAM_RESULT }));
+
+    const result = await examsApi.submit("att_1");
+
+    expect(result).toEqual(EXAM_RESULT);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exams/attempts/att_1/submit",
+    );
+    const init = fetchMock.mock.calls[0]?.[1];
+
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBeUndefined();
+  });
+
+  it("pide el resultado de un intento entregado", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ result: EXAM_RESULT }));
+
+    const result = await examsApi.result("att_1");
+
+    expect(result).toEqual(EXAM_RESULT);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exams/attempts/att_1/result",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "GET" });
+  });
+
+  it("desenvuelve el historial de la certificación", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ attempts: [EXAM_HISTORY_ITEM] }));
+
+    const attempts = await examsApi.history("SAA C03");
+
+    expect(attempts).toEqual([EXAM_HISTORY_ITEM]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exams/SAA%20C03/history",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "GET" });
+  });
+
+  it("desenvuelve el panel de preparación", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ readiness: EXAM_READINESS }));
+
+    const readiness = await examsApi.readiness("SAA-C03");
+
+    expect(readiness).toEqual(EXAM_READINESS);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exams/SAA-C03/readiness",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "GET" });
+  });
+
+  it("registra el resultado real con POST y lo desenvuelve", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ realResult: REAL_EXAM_RESULT }));
+
+    const realResult = await examsApi.registerRealResult("SAA C03", {
+      passed: true,
+      scaledScore: 812,
+      takenOn: "2026-11-01",
+    });
+
+    expect(realResult).toEqual(REAL_EXAM_RESULT);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exams/SAA%20C03/real-results",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        passed: true,
+        scaledScore: 812,
+        takenOn: "2026-11-01",
+      }),
+    });
+  });
+
+  it("rechaza una preparación que no trae los cuatro criterios", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        readiness: {
+          ...EXAM_READINESS,
+          criteria: EXAM_READINESS.criteria.slice(0, 3),
+        },
+      }),
+    );
+
+    const error = await captureApiError(examsApi.readiness("SAA-C03"));
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe("INTERNAL_ERROR");
+    expect(error.message).toBe("La respuesta de la API no cumple el contrato esperado");
+  });
+});
 
 function sseResponse(events: readonly unknown[]): Response {
   const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("");

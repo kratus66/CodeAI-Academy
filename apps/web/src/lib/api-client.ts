@@ -12,6 +12,11 @@ import {
   courseListResponseSchema,
   errorBreakdownSchema,
   errorResponseSchema,
+  examAttemptResponseSchema,
+  examHistoryResponseSchema,
+  examItemUpdateResponseSchema,
+  examReadinessResponseSchema,
+  examResultResponseSchema,
   exerciseDetailResponseSchema,
   exerciseListResponseSchema,
   exerciseProgressResponseSchema,
@@ -28,6 +33,7 @@ import {
   portfolioResponseSchema,
   quizAnswerResponseSchema,
   quizGradeResponseSchema,
+  realResultResponseSchema,
   reflectionResponseSchema,
   progressOverviewSchema,
   projectDetailSchema,
@@ -62,6 +68,11 @@ import type {
   ErrorBreakdown,
   ErrorCode,
   ErrorDetail,
+  ExamAttempt,
+  ExamAttemptItem,
+  ExamHistoryItem,
+  ExamReadiness,
+  ExamResult,
   ExerciseDetail,
   ExerciseProgress,
   ExerciseListItem,
@@ -88,8 +99,10 @@ import type {
   QuizAnswerResult,
   QuizGradeResult,
   QuizSubmissionInput,
+  RealExamResult,
   ReflectionResponse,
   RegisterInput,
+  RegisterRealResultInput,
   ReviewAnswerInput,
   ReviewAnswerResult,
   ReviewInterviewInput,
@@ -101,11 +114,13 @@ import type {
   SendInterviewMessageInput,
   StageDetail,
   StageSummary,
+  StartExamAttemptInput,
   StartInterviewSessionInput,
   StudentSummary,
   SubmissionSummary,
   UnitDetail,
   UnitProgressSummary,
+  UpdateExamItemInput,
   UserPublic,
 } from "@codeai/shared";
 import { z } from "zod";
@@ -971,6 +986,115 @@ export const portfolioApi = {
     );
   },
 };
+
+/**
+ * Simulador de examen (`contratos-api.md` §4.7). Depende de la cookie de sesión,
+ * como el resto de rutas privadas: la API responde `401` sin ella.
+ *
+ * El intento en curso y cada ítem nunca llevan la solución; `result` solo se
+ * sirve tras entregar. `updateItem` devuelve además los segundos restantes que
+ * fija el servidor, que es el único que decide si el tiempo se acabó.
+ */
+export const examsApi = {
+  async start(
+    certification: string,
+    input: StartExamAttemptInput,
+  ): Promise<ExamAttempt> {
+    const response = parseContract(
+      examAttemptResponseSchema,
+      await apiRequest<unknown>(
+        `/exams/${encodeURIComponent(certification)}/attempts`,
+        { method: "POST", body: input },
+      ),
+    );
+
+    return response.attempt;
+  },
+
+  async get(attemptId: string): Promise<ExamAttempt> {
+    const response = parseContract(
+      examAttemptResponseSchema,
+      await apiRequest<unknown>(`/exams/attempts/${encodeURIComponent(attemptId)}`),
+    );
+
+    return response.attempt;
+  },
+
+  async updateItem(
+    attemptId: string,
+    position: number,
+    body: UpdateExamItemInput,
+  ): Promise<{ item: ExamAttemptItem; remainingSeconds: number }> {
+    return parseContract(
+      examItemUpdateResponseSchema,
+      await apiRequest<unknown>(
+        `/exams/attempts/${encodeURIComponent(attemptId)}/items/${position}`,
+        { method: "PUT", body },
+      ),
+    );
+  },
+
+  async submit(attemptId: string): Promise<ExamResult> {
+    const response = parseContract(
+      examResultResponseSchema,
+      await apiRequest<unknown>(
+        `/exams/attempts/${encodeURIComponent(attemptId)}/submit`,
+        { method: "POST" },
+      ),
+    );
+
+    return response.result;
+  },
+
+  async result(attemptId: string): Promise<ExamResult> {
+    const response = parseContract(
+      examResultResponseSchema,
+      await apiRequest<unknown>(
+        `/exams/attempts/${encodeURIComponent(attemptId)}/result`,
+      ),
+    );
+
+    return response.result;
+  },
+
+  async history(certification: string): Promise<ExamHistoryItem[]> {
+    const response = parseContract(
+      examHistoryResponseSchema,
+      await apiRequest<unknown>(
+        `/exams/${encodeURIComponent(certification)}/history`,
+      ),
+    );
+
+    return response.attempts;
+  },
+
+  async readiness(certification: string): Promise<ExamReadiness> {
+    const response = parseContract(
+      examReadinessResponseSchema,
+      await apiRequest<unknown>(
+        `/exams/${encodeURIComponent(certification)}/readiness`,
+      ),
+    );
+
+    return response.readiness;
+  },
+
+  async registerRealResult(
+    certification: string,
+    body: RegisterRealResultInput,
+  ): Promise<RealExamResult> {
+    const response = parseContract(
+      realResultResponseSchema,
+      await apiRequest<unknown>(
+        `/exams/${encodeURIComponent(certification)}/real-results`,
+        { method: "POST", body },
+      ),
+    );
+
+    return response.realResult;
+  },
+};
+
 
 /**
  * Sesión inicial de la aplicación: usa `/auth/me` y, si el access token caducó,
