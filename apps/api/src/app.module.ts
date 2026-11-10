@@ -9,6 +9,7 @@ import { AiModule } from "./modules/ai/ai.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { ContentModule } from "./modules/content/content.module";
+import { ExamsModule } from "./modules/exams/exams.module";
 import { ExercisesModule } from "./modules/exercises/exercises.module";
 import { HealthModule } from "./modules/health/health.module";
 import { InterviewsModule } from "./modules/interviews/interviews.module";
@@ -28,6 +29,7 @@ import { UsersModule } from "./modules/users/users.module";
     ProgressModule,
     SandboxModule,
     ExercisesModule,
+    ExamsModule,
     ReviewModule,
     ProjectsModule,
     AiModule,
