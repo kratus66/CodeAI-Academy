@@ -34,14 +34,14 @@ export type QuizGrading =
   | { readonly status: "invalid-answer"; readonly message: string }
   | { readonly status: "broken-content" };
 
-interface SingleQuiz {
+export interface SingleQuiz {
   readonly kind: "single";
   readonly optionIds: readonly string[];
   readonly correctOptionId: string;
   readonly explanations: Readonly<Record<string, string>>;
 }
 
-interface MultipleQuiz {
+export interface MultipleQuiz {
   readonly kind: "multiple";
   readonly optionIds: readonly string[];
   readonly selectCount: number;
@@ -49,14 +49,14 @@ interface MultipleQuiz {
   readonly explanations: Readonly<Record<string, string>>;
 }
 
-interface OrderingQuiz {
+export interface OrderingQuiz {
   readonly kind: "ordering";
   readonly itemIds: readonly string[];
   readonly correctOrder: readonly string[];
   readonly explanations: Readonly<Record<string, string>>;
 }
 
-interface MatchingQuiz {
+export interface MatchingQuiz {
   readonly kind: "matching";
   readonly leftIds: readonly string[];
   readonly rightIds: readonly string[];
@@ -64,7 +64,7 @@ interface MatchingQuiz {
   readonly explanations: Readonly<Record<string, string>>;
 }
 
-type QuizContent = SingleQuiz | MultipleQuiz | OrderingQuiz | MatchingQuiz;
+export type QuizContent = SingleQuiz | MultipleQuiz | OrderingQuiz | MatchingQuiz;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -283,8 +283,11 @@ function readMatching(
  * Lee `config` y `solution` sin confiar en su forma (`S14-T5`). `null` significa
  * contenido roto: falta una pieza, la solución apunta a un id que no existe, los
  * dos `kind` no coinciden o falta alguna explicación.
+ *
+ * Se exporta para que el simulador revele la respuesta correcta de las preguntas
+ * sin responder (`S15-T4b`); el corrector de unidades no cambia.
  */
-function readContent(config: unknown, solution: unknown): QuizContent | null {
+export function readQuizContent(config: unknown, solution: unknown): QuizContent | null {
   const configRecord = asRecord(config);
   const solutionRecord = asRecord(solution);
 
@@ -459,7 +462,7 @@ export function gradeQuizAnswer(
   exercise: { readonly config: unknown; readonly solution: unknown },
   answer: QuizSubmissionInput,
 ): QuizGrading {
-  const quiz = readContent(exercise.config, exercise.solution);
+  const quiz = readQuizContent(exercise.config, exercise.solution);
 
   if (quiz === null) {
     return { status: "broken-content" };
