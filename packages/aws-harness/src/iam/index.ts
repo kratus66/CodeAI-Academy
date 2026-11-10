@@ -1,4 +1,5 @@
 import type { EvaluatorCapabilities } from "../core.js";
+import { evaluateConditions } from "./conditions.js";
 import { evaluate, validatePolicy } from "./evaluate.js";
 import { matchesAction, matchesResource } from "./matching.js";
 import type { PolicyDocument } from "./types.js";
@@ -16,7 +17,7 @@ export type {
 
 export const capabilities: EvaluatorCapabilities = {
   name: "iam",
-  version: "0.1.0",
+  version: "0.2.0",
   modeled: [
     "Lógica de evaluación de la misma cuenta: una denegación explícita prevalece, y la denegación implícita es el valor por defecto",
     "Unión de políticas de identidad y de recurso en la misma cuenta",
@@ -29,9 +30,20 @@ export const capabilities: EvaluatorCapabilities = {
     "Elementos Action, NotAction, Resource y NotResource, con comodines * y ?",
     "Acciones insensibles a mayúsculas y recursos sensibles a mayúsculas",
     "Validación de la gramática de políticas de este subconjunto",
+    "Condition: la sentencia aplica si todas sus condiciones son verdaderas (varias claves y operadores: Y; varios valores de una clave: O; operador negado: NOR)",
+    "Operadores StringEquals, StringNotEquals, StringEqualsIgnoreCase, StringLike y StringNotLike",
+    "Operadores NumericEquals, NumericLessThan, NumericLessThanEquals, NumericGreaterThan y NumericGreaterThanEquals",
+    "Operadores Bool, IpAddress y NotIpAddress (IPv4 e IPv6; sin prefijo, /32 o /128), ArnLike y ArnNotLike (seis componentes con comodines)",
+    "Operadores DateLessThan y DateGreaterThan, con la fecha tomada del contexto de la solicitud (ISO 8601 o época), nunca del reloj",
+    "Clave ausente en el contexto: la condición es falsa, salvo con operadores negados (verdadera), …IfExists (verdadera) y Null",
+    "Operador Null, sufijo …IfExists y calificadores ForAnyValue y ForAllValues sobre operadores de cadena, Bool y ARN",
+    "Un operador fuera del subconjunto impide evaluar la sentencia: nunca se considera verdadero y, si decide, el resultado es ImplicitDeny con «Operador no modelado: X»",
   ],
   notModeled: [
-    "Condition (hasta S16-T3b): una sentencia con condiciones no se evalúa y, si decide, el resultado es ImplicitDeny",
+    "Condition: operadores y claves fuera del subconjunto modelado (NotEquals numéricos, DateEquals, ArnEquals, Binary, etc.); las claves se comparan por su nombre exacto y las variables de política como texto literal",
+    "Claves de contexto multivaluadas sin ForAnyValue ni ForAllValues: la guía no define el resultado y la condición se trata como falsa",
+    "ForAllValues con operador negado y clave ausente: el ejemplo de la guía (aws:ResourceOrgPaths) indica que no coincide, y así se modela",
+    "Claves de condición que el servicio no incluye en la solicitud: quien llama debe aportar en context todas las claves necesarias",
     "NotPrincipal: una sentencia que lo usa no se evalúa y, si decide, el resultado es ImplicitDeny",
     "Principales de tipo Service, Federated y CanonicalUser en las políticas de recurso",
     "Políticas de confianza de roles y claves de AWS KMS, que exigen un Allow explícito para el principal",
@@ -61,6 +73,9 @@ export const capabilities: EvaluatorCapabilities = {
     "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_resource.html",
     "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notresource.html",
     "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html",
+    "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html",
+    "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-single-vs-multi-valued-context-keys.html",
+    "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-logic-multiple-context-keys-or-values.html",
     "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
     "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps_evaluation.html",
     "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html",
@@ -119,6 +134,10 @@ export function canary(): boolean {
     matchesAction("IAM:listaccesskeys", "iam:ListAccessKeys") &&
     matchesAction("iam:*AccessKey*", "iam:DeleteAccessKey") &&
     !matchesResource("arn:aws:iam::123456789012:user/Bob", "arn:aws:iam::123456789012:user/bob") &&
-    validatePolicy(CANARY_ID_POLICY).length === 0
+    validatePolicy(CANARY_ID_POLICY).length === 0 &&
+    evaluateConditions({ Bool: { "aws:SecureTransport": "false" } }, { "aws:SecureTransport": false })
+      .result === "true" &&
+    evaluateConditions({ Bool: { "aws:SecureTransport": "false" } }, {}).result === "false" &&
+    evaluateConditions({ StringLikeIfExists: { "ec2:InstanceType": "t2.*" } }, {}).result === "true"
   );
 }

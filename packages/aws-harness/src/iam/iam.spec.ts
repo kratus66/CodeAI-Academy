@@ -371,7 +371,7 @@ describe("iam: evaluación", () => {
   });
 });
 
-describe("iam: condiciones y NotPrincipal (sin evaluar en T3a)", () => {
+describe("iam: condiciones y NotPrincipal", () => {
   const conditional = (effect: "Allow" | "Deny", action = "s3:*"): PolicyDocument => ({
     Statement: {
       Sid: "Cond",
@@ -382,13 +382,23 @@ describe("iam: condiciones y NotPrincipal (sin evaluar en T3a)", () => {
     },
   });
 
-  it("una Allow con condición que sería la única concesión da ImplicitDeny con el motivo exacto", () => {
+  it("una Allow con condición y la clave ausente no aplica: denegación implícita normal", () => {
     const result = evaluate(input({ identityPolicies: [conditional("Allow")] }));
     expect(result.decision).toBe("ImplicitDeny");
     expect(result.reason).toBe(
-      "La sentencia usa condiciones: requiere el evaluador de condiciones",
+      "Ninguna política de identidad ni de recurso permite la acción: denegación implícita.",
     );
+    expect(result.matched).toEqual([]);
+  });
+
+  it("la misma Allow con la clave en el contexto y verdadera concede el permiso", () => {
+    const withContext = input({ identityPolicies: [conditional("Allow")] });
+    withContext.request.context = { "aws:SecureTransport": true };
+    const result = evaluate(withContext);
+    expect(result.decision).toBe("Allow");
     expect(result.matched).toEqual([{ source: "identityPolicies[0]", sid: "Cond" }]);
+    withContext.request.context = { "aws:SecureTransport": false };
+    expect(evaluate(withContext).decision).toBe("ImplicitDeny");
   });
 
   it("una Allow con condición que no se aplica a la acción no cambia el motivo normal", () => {
@@ -397,10 +407,32 @@ describe("iam: condiciones y NotPrincipal (sin evaluar en T3a)", () => {
     expect(result.reason).not.toContain("condiciones");
   });
 
-  it("una Deny con condición sobre una acción permitida impide concluir Allow", () => {
+  it("una Deny con condición y la clave ausente no aplica: la acción sigue permitida", () => {
     const result = evaluate(input({ identityPolicies: [allowAll, conditional("Deny")] }));
+    expect(result.decision).toBe("Allow");
+  });
+
+  it("la misma Deny con la clave en el contexto y verdadera deniega explícitamente", () => {
+    const withContext = input({ identityPolicies: [allowAll, conditional("Deny")] });
+    withContext.request.context = { "aws:SecureTransport": "true" };
+    const result = evaluate(withContext);
+    expect(result.decision).toBe("ExplicitDeny");
+    expect(result.matched).toEqual([{ source: "identityPolicies[1]", sid: "Cond" }]);
+  });
+
+  it("un operador fuera del subconjunto impide evaluar la sentencia y nunca se considera verdadero", () => {
+    const unmodeled: PolicyDocument = {
+      Statement: {
+        Sid: "Raro",
+        Effect: "Allow",
+        Action: "s3:*",
+        Resource: "*",
+        Condition: { NumericNotEquals: { "s3:max-keys": "10" } },
+      },
+    };
+    const result = evaluate(input({ identityPolicies: [unmodeled] }));
     expect(result.decision).toBe("ImplicitDeny");
-    expect(result.reason).toContain("condiciones");
+    expect(result.reason).toBe("Operador no modelado: NumericNotEquals");
   });
 
   it("una Deny con condición no cambia una denegación implícita que ya existía", () => {

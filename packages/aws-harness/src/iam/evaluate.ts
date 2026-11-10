@@ -1,3 +1,4 @@
+import { evaluateConditions } from "./conditions.js";
 import { isRecord, matchesAction, matchesResource, stringList } from "./matching.js";
 import type {
   EvaluationInput,
@@ -7,8 +8,7 @@ import type {
   Statement,
 } from "./types.js";
 
-export const CONDITION_REASON =
-  "La sentencia usa condiciones: requiere el evaluador de condiciones";
+const UNDECIDED_REASON = "La evaluación depende de una sentencia que no se puede evaluar";
 export const NOT_PRINCIPAL_REASON = "La sentencia usa NotPrincipal: no está modelado";
 
 const VALID_VERSIONS: readonly string[] = ["2008-10-17", "2012-10-17"];
@@ -297,6 +297,7 @@ function hitsOf(
   resourceArn: string,
   principal: PrincipalInfo,
   withPrincipal: boolean,
+  context: unknown,
 ): Hit[] {
   const hits: Hit[] = [];
   for (const statement of asStatements(entry.doc)) {
@@ -318,7 +319,13 @@ function hitsOf(
       }
     }
     if (undecidable === null && statement.Condition !== undefined) {
-      undecidable = CONDITION_REASON;
+      const outcome = evaluateConditions(statement.Condition, context);
+      if (outcome.result === "false") {
+        continue;
+      }
+      if (outcome.result === "unmodeled") {
+        undecidable = `Operador no modelado: ${outcome.operator}`;
+      }
     }
     hits.push({
       source: entry.source,
@@ -523,7 +530,7 @@ function evaluateCollected(collected: Collected): EvaluationResult {
   const undecided = allHits(collected).filter((hit) => hit.undecidable !== null);
   return {
     decision: "ImplicitDeny",
-    reason: undecided[0]?.undecidable ?? CONDITION_REASON,
+    reason: undecided[0]?.undecidable ?? UNDECIDED_REASON,
     matched: toMatched(undecided),
   };
 }
@@ -584,7 +591,9 @@ function evaluateUnsafe(input: unknown): EvaluationResult {
   }
 
   const hits = (entries: Labeled[], withPrincipal: boolean): Hit[] =>
-    entries.flatMap((entry) => hitsOf(entry, action, resourceAccount.arn, principal, withPrincipal));
+    entries.flatMap((entry) =>
+      hitsOf(entry, action, resourceAccount.arn, principal, withPrincipal, request["context"]),
+    );
   const collected: Collected = {
     scps: scps.map((level) => hits(level, false)),
     rcps: rcps.map((level) => hits(level, true)),

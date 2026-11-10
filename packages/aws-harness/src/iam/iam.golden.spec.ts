@@ -647,9 +647,9 @@ describe("iam: RCP de Organizations", () => {
   });
 });
 
-describe("iam: sentencias con condiciones (T3a)", () => {
+describe("iam: sentencias con condiciones", () => {
   // Fuente: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic_policy-eval-reqcontext.html
-  it("la política de ejemplo con aws:PrincipalTag/dept no se evalúa todavía", () => {
+  it("la política de ejemplo con aws:PrincipalTag/dept: sin la clave en el contexto la sentencia no aplica", () => {
     const result = evaluate({
       request: request(CARLOS, "s3:CreateBucket", "arn:aws:s3:::amzn-s3-demo-bucket1"),
       identityPolicies: [
@@ -665,12 +665,30 @@ describe("iam: sentencias con condiciones (T3a)", () => {
     });
     expect(result.decision).toBe("ImplicitDeny");
     expect(result.reason).toBe(
-      "La sentencia usa condiciones: requiere el evaluador de condiciones",
+      "Ninguna política de identidad ni de recurso permite la acción: denegación implícita.",
     );
+    expect(result.matched).toEqual([]);
+    const withTag = evaluate({
+      request: {
+        ...request(CARLOS, "s3:CreateBucket", "arn:aws:s3:::amzn-s3-demo-bucket1"),
+        context: { "aws:PrincipalTag/dept": "123" },
+      },
+      identityPolicies: [
+        policy([
+          {
+            Effect: "Allow",
+            Action: "s3:CreateBucket",
+            Resource: "arn:aws:s3:::amzn-s3-demo-bucket1",
+            Condition: { StringEquals: { "aws:PrincipalTag/dept": "123" } },
+          },
+        ]),
+      ],
+    });
+    expect(withTag.decision).toBe("Allow");
   });
 
   // Fuente: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notaction.html
-  it("DenyAllUsersNotUsingMFA con NotAction iam:* no decide sobre iam:* y sí sobre el resto", () => {
+  it("DenyAllUsersNotUsingMFA con NotAction iam:*: sin la clave de MFA (IfExists) deniega el resto; con MFA no tiene efecto", () => {
     const mfa = policy([
       {
         Sid: "DenyAllUsersNotUsingMFA",
@@ -689,8 +707,16 @@ describe("iam: sentencias con condiciones (T3a)", () => {
       identityPolicies: [FULL_ACCESS, mfa],
     });
     expect(onIam.decision).toBe("Allow");
-    expect(onS3.decision).toBe("ImplicitDeny");
-    expect(onS3.reason).toContain("condiciones");
+    expect(onS3.decision).toBe("ExplicitDeny");
+    expect(onS3.matched).toEqual([{ source: "identityPolicies[1]", sid: "DenyAllUsersNotUsingMFA" }]);
+    const withMfa = evaluate({
+      request: {
+        ...request(CARLOS, "s3:GetObject", "arn:aws:s3:::bucket/key"),
+        context: { "aws:MultiFactorAuthPresent": true },
+      },
+      identityPolicies: [FULL_ACCESS, mfa],
+    });
+    expect(withMfa.decision).toBe("Allow");
   });
 });
 
