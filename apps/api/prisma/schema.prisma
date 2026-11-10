@@ -51,6 +51,8 @@ model User {
   aiInteractions     AiInteraction[]
   interviewSessions  InterviewSession[]   @relation("InterviewSessions")
   interviewReviews   InterviewSession[]   @relation("InterviewReviews")
+  examAttempts       ExamAttempt[]
+  realExamResults    RealExamResult[]
 
   @@index([role])
 }
@@ -267,11 +269,12 @@ model Exercise {
 
   unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
-  hints        ExerciseHint[]
-  tests        ExerciseTest[]
-  submissions  Submission[]
-  hintRequests HintRequest[]
-  reviewItems  ReviewItem[]
+  hints            ExerciseHint[]
+  tests            ExerciseTest[]
+  submissions      Submission[]
+  hintRequests     HintRequest[]
+  reviewItems      ReviewItem[]
+  examAttemptItems ExamAttemptItem[]
 
   @@index([unitId, type])
   @@index([isPublished])
@@ -647,4 +650,86 @@ model InterviewSession {
   @@index([scenarioId, status])
   /// Historial comparativo, más reciente primero.
   @@index([userId, startedAt])
+}
+
+enum ExamMode {
+  FORM_A
+  FORM_B
+  FORM_C
+  RANDOM
+  DOMAIN
+}
+
+enum ExamAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  EXPIRED
+}
+
+model ExamForm {
+  id            String   @id @default(cuid())
+  certification String
+  code          String
+  exerciseSlugs String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([certification, code])
+}
+
+model ExamAttempt {
+  id            String            @id @default(cuid())
+  userId        String
+  certification String
+  mode          ExamMode
+  domain        Int?
+  extraTime     Boolean           @default(false)
+  status        ExamAttemptStatus @default(IN_PROGRESS)
+  orientative   Boolean           @default(false)
+  startedAt     DateTime          @default(now())
+  deadlineAt    DateTime
+  submittedAt   DateTime?
+  correctCount  Int?
+  scorePct      Int?
+  domainScores  Json?
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ExamAttemptItem[]
+
+  @@index([userId, certification, startedAt])
+  @@index([certification, status])
+}
+
+model ExamAttemptItem {
+  id         String    @id @default(cuid())
+  attemptId  String
+  position   Int
+  exerciseId String
+  domain     Int
+  answer     Json?
+  flagged    Boolean   @default(false)
+  correct    Boolean?
+  answeredAt DateTime?
+
+  attempt  ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  exercise Exercise    @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, position])
+  @@index([exerciseId])
+}
+
+model RealExamResult {
+  id                  String   @id @default(cuid())
+  userId              String
+  certification       String
+  passed              Boolean
+  scaledScore         Int?
+  takenOn             DateTime @db.Date
+  readyAtRegistration Boolean
+  createdAt           DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, certification])
+  @@index([certification, createdAt])
 }
