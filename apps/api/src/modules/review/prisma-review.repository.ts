@@ -39,9 +39,18 @@ type ReviewItemDbRow = Prisma.ReviewItemGetPayload<{
 export class PrismaReviewRepository implements ReviewRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Cola completa, con el banco reservado incluido (S15-T7c, decisión a del
+   * sprint 15: una pregunta reservada fallada también se repasa).
+   *
+   * No filtrar por `examPool` es seguro por construcción: solo
+   * `ExamsService.submit` crea un `ReviewItem` de un ejercicio reservado, porque
+   * todas las rutas de `exercises` responden `404` a esos ejercicios. La cola
+   * muestra título y concepto, nunca la solución (`REVIEW_ITEM_SELECT`).
+   */
   async listDue(userId: string, now: Date, limit: number): Promise<ReviewItemRow[]> {
     const rows = await this.prisma.reviewItem.findMany({
-      where: { userId, dueAt: { lte: now }, exercise: { examPool: "UNIT" } },
+      where: { userId, dueAt: { lte: now } },
       orderBy: [{ priority: "desc" }, { dueAt: "asc" }, { createdAt: "asc" }],
       take: limit,
       select: REVIEW_ITEM_SELECT,
@@ -50,9 +59,10 @@ export class PrismaReviewRepository implements ReviewRepository {
     return rows.map(toReviewItemRow);
   }
 
+  /** Mismo criterio que `listDue`: el contador y la cola no pueden discrepar. */
   async countDue(userId: string, now: Date): Promise<number> {
     return this.prisma.reviewItem.count({
-      where: { userId, dueAt: { lte: now }, exercise: { examPool: "UNIT" } },
+      where: { userId, dueAt: { lte: now } },
     });
   }
 

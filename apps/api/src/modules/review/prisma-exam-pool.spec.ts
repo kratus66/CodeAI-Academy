@@ -7,23 +7,25 @@ import { PrismaReviewRepository } from "./prisma-review.repository";
 
 const NOW = new Date("2026-11-09T00:00:00Z");
 
-interface ReviewWhereArgs {
+interface ReviewQueryArgs {
   where: Prisma.ReviewItemWhereInput;
+  orderBy?: Prisma.ReviewItemOrderByWithRelationInput[];
+  take?: number;
 }
 
 interface LessonContextArgs {
   select: { unit: { select: { exercises: { where: Prisma.ExerciseWhereInput } } } };
 }
 
-/** `PrismaService` falso: cada consulta del banco reservado se comprueba por su `where`. */
+/** `PrismaService` falso: cada consulta se comprueba por su `where`. */
 function buildPrisma(): {
   prisma: PrismaService;
   itemFindMany: ReturnType<typeof vi.fn>;
   itemCount: ReturnType<typeof vi.fn>;
   lessonFindFirst: ReturnType<typeof vi.fn>;
 } {
-  const itemFindMany = vi.fn((_args: ReviewWhereArgs) => Promise.resolve([]));
-  const itemCount = vi.fn((_args: ReviewWhereArgs) => Promise.resolve(0));
+  const itemFindMany = vi.fn((_args: ReviewQueryArgs) => Promise.resolve([]));
+  const itemCount = vi.fn((_args: ReviewQueryArgs) => Promise.resolve(0));
   const lessonFindFirst = vi.fn((_args: LessonContextArgs) => Promise.resolve(null));
 
   const prisma = {
@@ -34,35 +36,35 @@ function buildPrisma(): {
   return { prisma, itemFindMany, itemCount, lessonFindFirst };
 }
 
-describe("El banco reservado fuera de la cola de repaso", () => {
-  it("listDue filtra el banco UNIT y conserva usuario y vencimiento", async () => {
+describe("El banco reservado entra en la cola de repaso (S15-T7c)", () => {
+  it("listDue no filtra por banco y conserva usuario, vencimiento, orden y límite", async () => {
     const { prisma, itemFindMany } = buildPrisma();
     const repository = new PrismaReviewRepository(prisma);
 
     await repository.listDue("user_a", NOW, 10);
 
-    expect(itemFindMany.mock.calls[0]?.[0]).toMatchObject({
-      where: {
-        userId: "user_a",
-        dueAt: { lte: NOW },
-        exercise: { examPool: "UNIT" },
-      },
-    });
+    const args = itemFindMany.mock.calls[0]?.[0];
+
+    expect(args?.where).toEqual({ userId: "user_a", dueAt: { lte: NOW } });
+    expect(args?.where).not.toHaveProperty("exercise");
+    expect(args?.orderBy).toEqual([
+      { priority: "desc" },
+      { dueAt: "asc" },
+      { createdAt: "asc" },
+    ]);
+    expect(args?.take).toBe(10);
   });
 
-  it("countDue aplica el mismo filtro del banco UNIT", async () => {
+  it("countDue cuenta con el mismo criterio, sin filtro del banco reservado", async () => {
     const { prisma, itemCount } = buildPrisma();
     const repository = new PrismaReviewRepository(prisma);
 
     await repository.countDue("user_a", NOW);
 
-    expect(itemCount.mock.calls[0]?.[0]).toMatchObject({
-      where: {
-        userId: "user_a",
-        dueAt: { lte: NOW },
-        exercise: { examPool: "UNIT" },
-      },
-    });
+    const args = itemCount.mock.calls[0]?.[0];
+
+    expect(args?.where).toEqual({ userId: "user_a", dueAt: { lte: NOW } });
+    expect(args?.where).not.toHaveProperty("exercise");
   });
 });
 
