@@ -207,6 +207,21 @@ describe("ExamsService.registerRealResult", () => {
     expect(saved.takenOn).toBe("2026-10-01");
   });
 
+  it("rechaza un día inexistente y acepta el 29 de febrero de un año bisiesto", async () => {
+    const { service } = harness();
+
+    await expect(
+      service.registerRealResult(USER, CLF, { passed: true, takenOn: "2026-02-30" }),
+    ).rejects.toThrow(new BadRequestException("La fecha del examen no es válida"));
+
+    const saved = await service.registerRealResult(USER, CLF, {
+      passed: true,
+      takenOn: "2024-02-29",
+    });
+
+    expect(saved.takenOn).toBe("2024-02-29");
+  });
+
   it("rechaza una fecha futura comparando días de calendario", async () => {
     const { service } = harness();
 

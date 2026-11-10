@@ -66,6 +66,20 @@ const TIME_UP_MESSAGE = "El tiempo terminó: tu simulacro se entregó automátic
 const BROKEN_CONTENT_MESSAGE = "El simulacro tiene una pregunta mal configurada";
 const STILL_OPEN_MESSAGE = "El simulacro sigue en curso";
 const FUTURE_DATE_MESSAGE = "La fecha del examen no puede ser futura";
+const INVALID_DATE_MESSAGE = "La fecha del examen no es válida";
+
+/** `AAAA-MM-DD` que existe en el calendario: reconstruida en UTC da el mismo texto. */
+function isRealCalendarDay(value: string): boolean {
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (year === undefined || month === undefined || day === undefined) {
+    return false;
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 
 const FORM_CODE_BY_MODE: Readonly<Record<string, ExamFormCode>> = {
   "form-a": "A",
@@ -348,6 +362,10 @@ export class ExamsService {
     certification: CertificationCode,
     body: RegisterRealResultInput,
   ): Promise<RealExamResult> {
+    if (!isRealCalendarDay(body.takenOn)) {
+      throw new BadRequestException(INVALID_DATE_MESSAGE);
+    }
+
     if (body.takenOn > this.now().toISOString().slice(0, 10)) {
       throw new BadRequestException(FUTURE_DATE_MESSAGE);
     }
