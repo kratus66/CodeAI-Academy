@@ -3,7 +3,15 @@
  * etapa (módulos, unidades, ejercicios y lecciones), compartida por la semilla
  * de la ruta por defecto y por las de las demás rutas.
  */
+import { readdir, readFile } from "node:fs/promises";
+
 import type { Prisma, PrismaClient } from "@prisma/client";
+import {
+  CERTIFICATION_REGISTRY,
+  EXAM_FORM_CODES,
+  examFormsFileSchema,
+  examFormViolations,
+} from "@codeai/shared";
 import type {
   ContentSeedExercise,
   ContentSeedResource,
@@ -11,6 +19,8 @@ import type {
   CourseSeedExercise,
   CourseSeedStage,
   CourseSlug,
+  ExamFormsFile,
+  FormExerciseFacts,
 } from "@codeai/shared";
 
 /** Mismo valor por defecto que `apps/api/src/config/env.ts`. */
@@ -450,4 +460,87 @@ export async function countCourse(
   ]);
 
   return { stages, publishedStages, modules, units, exercises };
+}
+
+/**
+ * Lee `<courseDir>/exam-forms/*.json` y valida cada archivo con
+ * `examFormsFileSchema`. Si la carpeta no existe, no hay formas: devuelve `[]`.
+ * `courseDir` es la URL de la carpeta de la ruta, terminada en `/`.
+ */
+export async function readExamFormFiles(courseDir: URL): Promise<ExamFormsFile[]> {
+  const formsDir = new URL("exam-forms/", courseDir);
+  let names: string[];
+
+  try {
+    names = (await readdir(formsDir)).filter((name) => name.endsWith(".json")).sort();
+  } catch (error: unknown) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return [];
+    }
+
+    throw error;
+  }
+
+  const files: ExamFormsFile[] = [];
+
+  for (const name of names) {
+    const raw: unknown = JSON.parse(await readFile(new URL(name, formsDir), "utf8"));
+    const result = examFormsFileSchema.safeParse(raw);
+
+    if (!result.success) {
+      throw new Error(
+        `Archivo de formas inválido: exam-forms/${name}\n${describeIssues(result.error.issues)}`,
+      );
+    }
+
+    files.push(result.data);
+  }
+
+  return files;
+}
+
+/**
+ * Escribe las formas fijas de simulacro. Valida TODAS antes de escribir nada y,
+ * si hay algún problema, lanza con todos los mensajes. Devuelve cuántas escribió.
+ */
+export async function upsertExamForms(
+  prisma: PrismaClient,
+  files: readonly ExamFormsFile[],
+  exercisesBySlug: ReadonlyMap<string, FormExerciseFacts>,
+): Promise<number> {
+  const problems: string[] = [];
+  const forms: { certification: string; code: string; slugs: readonly string[] }[] = [];
+
+  for (const file of files) {
+    const definition = CERTIFICATION_REGISTRY[file.certification];
+
+    for (const code of EXAM_FORM_CODES) {
+      const slugs = file.forms[code];
+
+      if (slugs === undefined) {
+        continue;
+      }
+
+      problems.push(
+        ...examFormViolations({ definition, code, slugs, exercises: exercisesBySlug }),
+      );
+      forms.push({ certification: file.certification, code, slugs });
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `Formas de simulacro con ${problems.length} problema(s):\n${problems.map((problem) => `  · ${problem}`).join("\n")}`,
+    );
+  }
+
+  for (const { certification, code, slugs } of forms) {
+    await prisma.examForm.upsert({
+      where: { certification_code: { certification, code } },
+      create: { certification, code, exerciseSlugs: [...slugs] },
+      update: { exerciseSlugs: [...slugs] },
+    });
+  }
+
+  return forms.length;
 }

@@ -18,13 +18,15 @@ import {
   DEFAULT_COURSE_SLUG,
   mergeCourseSeed,
 } from "@codeai/shared";
-import type { CourseSlug, CourseUnitFileEntry } from "@codeai/shared";
+import type { CourseSlug, CourseUnitFileEntry, FormExerciseFacts } from "@codeai/shared";
 
 import {
   countCourse,
   describeIssues,
   prepareDatabaseEnv,
   previousUnitCodes,
+  readExamFormFiles,
+  upsertExamForms,
   upsertResources,
   upsertStageTree,
 } from "./seed-lib.mts";
@@ -132,10 +134,36 @@ async function readCourseSeed(courseDir: string) {
   return result.data;
 }
 
+type CourseSeed = Awaited<ReturnType<typeof readCourseSeed>>;
+
+/** Datos de examen de cada ejercicio declarado en las unidades, por slug. */
+function exerciseFactsBySlug(seed: CourseSeed): ReadonlyMap<string, FormExerciseFacts> {
+  const facts = new Map<string, FormExerciseFacts>();
+
+  for (const stage of seed.stages) {
+    for (const module of stage.modules) {
+      for (const unit of module.units) {
+        for (const exercise of unit.exercises) {
+          facts.set(exercise.slug, {
+            type: exercise.type,
+            examPool: exercise.exam?.pool ?? "unit",
+            certification: exercise.exam?.certification ?? null,
+            domain: exercise.exam?.domain ?? null,
+            quizKind: exercise.quiz?.kind ?? null,
+          });
+        }
+      }
+    }
+  }
+
+  return facts;
+}
+
 async function main(): Promise<void> {
   const courseSlug = parseCourseArgument(process.argv[2]);
   const courseDir = COURSE_DIRS[courseSlug];
   const seed = await readCourseSeed(courseDir);
+  const examFormFiles = await readExamFormFiles(new URL(`./${courseDir}/`, import.meta.url));
 
   prepareDatabaseEnv();
 
@@ -168,6 +196,8 @@ async function main(): Promise<void> {
       });
     }
 
+    const examForms = await upsertExamForms(prisma, examFormFiles, exerciseFactsBySlug(seed));
+
     const { stages, publishedStages, modules, units, exercises } = await countCourse(
       prisma,
       course.slug,
@@ -186,6 +216,7 @@ async function main(): Promise<void> {
     console.log(
       `Semilla aplicada: ${stages} etapas (${publishedStages} publicadas), ${modules} módulos, ${units} unidades, ${exercises} ejercicios.`,
     );
+    console.log(`Formas de simulacro: ${examForms}`);
     console.log(
       `Declarado en ${courseDir}/course.seed.json: ${expected.stages} etapas, ${expected.modules} módulos, ${expected.units} unidades.`,
     );
