@@ -13,6 +13,7 @@ import {
   errorBreakdownSchema,
   errorResponseSchema,
   examAttemptResponseSchema,
+  examCohortResponseSchema,
   examHistoryResponseSchema,
   examItemUpdateResponseSchema,
   examReadinessResponseSchema,
@@ -70,6 +71,7 @@ import type {
   ErrorDetail,
   ExamAttempt,
   ExamAttemptItem,
+  ExamCohort,
   ExamHistoryItem,
   ExamReadiness,
   ExamResult,
@@ -1092,6 +1094,26 @@ export const examsApi = {
     );
 
     return response.realResult;
+  },
+
+  async cohort(
+    certification: string,
+    range: { readonly from?: string; readonly to?: string } = {},
+  ): Promise<ExamCohort> {
+    const params = new URLSearchParams();
+
+    if (range.from !== undefined) params.set("from", range.from);
+    if (range.to !== undefined) params.set("to", range.to);
+
+    const query = params.toString();
+    const response = parseContract(
+      examCohortResponseSchema,
+      await apiRequest<unknown>(
+        `/exams/${encodeURIComponent(certification)}/cohort${query === "" ? "" : `?${query}`}`,
+      ),
+    );
+
+    return response.cohort;
   },
 };
 
