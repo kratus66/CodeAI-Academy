@@ -230,3 +230,55 @@ describe("ExamsService.registerRealResult", () => {
     ).rejects.toThrow(new BadRequestException("La fecha del examen no puede ser futura"));
   });
 });
+
+describe("ExamsService.cohort", () => {
+  it("agrega con los hechos del adaptador en memoria", async () => {
+    const { repository, service } = harness();
+    const to = new Date("2026-11-10T23:59:59.000Z");
+    const from = new Date("2026-11-01T00:00:00.000Z");
+
+    for (let index = 1; index <= 5; index += 1) {
+      const created = await repository.createAttempt({
+        userId: `learner-${index}`,
+        certification: CLF,
+        mode: "form-a",
+        domain: null,
+        extraTime: false,
+        orientative: index === 5,
+        startedAt: START,
+        deadlineAt: new Date(START.getTime() + MINUTE_MS),
+        items: [{ position: 1, exerciseId: "ex-1", domain: 1 }],
+      });
+
+      await repository.finishAttempt(created.id, {
+        status: "SUBMITTED",
+        submittedAt: START,
+        correctCount: 1,
+        scorePct: 70,
+        domainScores: [{ domain: 1, name: "Dominio", correct: 7, total: 10, pct: 70 }],
+        itemCorrectness: [{ position: 1, correct: true }],
+      });
+    }
+
+    await repository.createRealResult({
+      userId: "learner-1",
+      certification: CLF,
+      passed: true,
+      scaledScore: null,
+      takenOn: START,
+      readyAtRegistration: true,
+    });
+
+    const cohort = await service.cohort(CLF, from, to);
+
+    expect(cohort).toMatchObject({
+      certification: CLF,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      attempts: 4,
+      learners: 4,
+      domains: [],
+      readinessVsReal: { readyPassed: 1, readyFailed: 0, notReadyPassed: 0, notReadyFailed: 0 },
+    });
+  });
+});

@@ -18,6 +18,7 @@ import { PrismaService } from "../../database/prisma.service";
 import type {
   AttemptItemRow,
   AttemptRow,
+  CohortFactsRow,
   CreateAttemptInput,
   CreateRealResultInput,
   ExamsRepository,
@@ -424,5 +425,34 @@ export class PrismaExamsRepository implements ExamsRepository {
     });
 
     return latest ? toRealResult(latest) : null;
+  }
+
+  async cohortFacts(
+    certification: CertificationCode,
+    from: Date,
+    to: Date,
+  ): Promise<CohortFactsRow> {
+    const attempts = await this.prisma.examAttempt.findMany({
+      where: {
+        certification,
+        status: { in: ["SUBMITTED", "EXPIRED"] },
+        startedAt: { gte: from, lte: to },
+      },
+      select: { userId: true, status: true, orientative: true, domainScores: true },
+    });
+    const realResults = await this.prisma.realExamResult.findMany({
+      where: { certification, takenOn: { gte: from, lte: to } },
+      select: { readyAtRegistration: true, passed: true },
+    });
+
+    return {
+      attempts: attempts.map((attempt) => ({
+        userId: attempt.userId,
+        status: examStatusFromPrisma(attempt.status),
+        orientative: attempt.orientative,
+        domainScores: attempt.domainScores,
+      })),
+      realResults,
+    };
   }
 }

@@ -8,6 +8,7 @@ import type {
 import type {
   AttemptItemRow,
   AttemptRow,
+  CohortFactsRow,
   CreateAttemptInput,
   CreateRealResultInput,
   ExamsRepository,
@@ -346,6 +347,38 @@ export class InMemoryExamsRepository implements ExamsRepository {
     }
 
     return latest ? { ...latest } : null;
+  }
+
+  /** Terminados con inicio en `[from, to]`; los resultados reales, por fecha del examen. */
+  async cohortFacts(
+    certification: CertificationCode,
+    from: Date,
+    to: Date,
+  ): Promise<CohortFactsRow> {
+    const inRange = (date: Date): boolean =>
+      date.getTime() >= from.getTime() && date.getTime() <= to.getTime();
+
+    return {
+      attempts: [...this.attempts.values()]
+        .filter(
+          (attempt) =>
+            attempt.certification === certification &&
+            attempt.status !== "in-progress" &&
+            inRange(attempt.startedAt),
+        )
+        .map((attempt) => ({
+          userId: attempt.userId,
+          status: attempt.status,
+          orientative: attempt.orientative,
+          domainScores: attempt.domainScores,
+        })),
+      realResults: [...this.realResults.values()]
+        .filter((stored) => stored.certification === certification && inRange(stored.takenOn))
+        .map((stored) => ({
+          readyAtRegistration: stored.readyAtRegistration,
+          passed: stored.passed,
+        })),
+    };
   }
 
   private toAttemptRow(attempt: StoredAttempt): AttemptRow {

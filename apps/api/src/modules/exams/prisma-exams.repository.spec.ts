@@ -509,3 +509,32 @@ describe("mapeo de enums", () => {
     expect(examStatusFromPrisma("EXPIRED")).toBe("expired");
   });
 });
+
+describe("PrismaExamsRepository.cohortFacts", () => {
+  it("filtra por certificación, rango y estado terminado, y traduce el estado", async () => {
+    const from = new Date("2026-10-11T00:00:00.000Z");
+    const { repository, delegates } = buildRepository({
+      examAttempt: delegate({
+        findMany: [
+          { userId: "user_a", status: "SUBMITTED", orientative: false, domainScores: [] },
+          { userId: "user_b", status: "EXPIRED", orientative: true, domainScores: null },
+        ],
+      }),
+      realExamResult: delegate({ findMany: [{ readyAtRegistration: true, passed: false }] }),
+    });
+
+    const facts = await repository.cohortFacts("SAA-C03", from, NOW);
+
+    expect(firstArgs(delegates.examAttempt?.findMany).where).toEqual({
+      certification: "SAA-C03",
+      status: { in: ["SUBMITTED", "EXPIRED"] },
+      startedAt: { gte: from, lte: NOW },
+    });
+    expect(firstArgs(delegates.realExamResult?.findMany).where).toEqual({
+      certification: "SAA-C03",
+      takenOn: { gte: from, lte: NOW },
+    });
+    expect(facts.attempts.map((attempt) => attempt.status)).toEqual(["submitted", "expired"]);
+    expect(facts.realResults).toEqual([{ readyAtRegistration: true, passed: false }]);
+  });
+});

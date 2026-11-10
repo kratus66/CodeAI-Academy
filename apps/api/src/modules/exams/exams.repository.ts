@@ -130,6 +130,25 @@ export interface RealResultRow {
   createdAt: Date;
 }
 
+/** Intento terminado de la cohorte; `domainScores` llega sin validar. */
+export interface CohortAttemptRow {
+  userId: string;
+  status: ExamAttemptStatus;
+  orientative: boolean;
+  domainScores: unknown | null;
+}
+
+/** Resultado real del rango, reducido a lo que la tabla de la cohorte necesita. */
+export interface CohortRealResultRow {
+  readyAtRegistration: boolean;
+  passed: boolean;
+}
+
+export interface CohortFactsRow {
+  attempts: CohortAttemptRow[];
+  realResults: CohortRealResultRow[];
+}
+
 export interface ExamsRepository {
   /** QUIZ + RESERVED + publicado. */
   listReservedPool(certification: CertificationCode): Promise<ReservedQuestionRow[]>;
@@ -168,4 +187,6 @@ export interface ExamsRepository {
     userId: string,
     certification: CertificationCode,
   ): Promise<RealResultRow | null>;
+  /** Intentos terminados (entregados o vencidos) y resultados reales del rango. */
+  cohortFacts(certification: CertificationCode, from: Date, to: Date): Promise<CohortFactsRow>;
 }

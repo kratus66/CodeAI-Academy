@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { RATE_LIMIT_METADATA } from "../../common/security/rate-limit.decorator";
 import { RateLimitGuard } from "../../common/security/rate-limit.guard";
+import { ROLES_KEY } from "../auth/decorators/roles.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
 import { ExamsController } from "./exams.controller";
 import type { ExamsService } from "./exams.service";
 
@@ -18,6 +20,7 @@ function createController() {
     result: vi.fn(async () => ({ attemptId: "att_1" })),
     history: vi.fn(async () => [{ id: "att_1" }]),
     readiness: vi.fn(async () => ({ ready: false })),
+    cohort: vi.fn(async () => ({ attempts: 0 })),
     registerRealResult: vi.fn(async () => ({ id: "real_1" })),
   };
 
@@ -126,5 +129,38 @@ describe("ExamsController", () => {
     expect(code("start")).toBe(201);
     expect(code("registerRealResult")).toBe(201);
     expect(code("submit")).toBe(200);
+  });
+});
+
+describe("ExamsController.cohort", () => {
+  it("delega con la certificación y el rango, y envuelve { cohort }", async () => {
+    const { controller, service } = createController();
+    const query = { from: "2026-10-01T00:00:00.000Z", to: "2026-11-01T00:00:00.000Z" };
+
+    await expect(controller.cohort({ certification: "SAA-C03" }, query)).resolves.toEqual({
+      cohort: { attempts: 0 },
+    });
+    expect(service.cohort).toHaveBeenCalledWith(
+      "SAA-C03",
+      new Date(query.from),
+      new Date(query.to),
+    );
+  });
+
+  it("sin fechas usa los últimos 30 días", async () => {
+    const { controller, service } = createController();
+
+    await controller.cohort({ certification: "SAA-C03" }, {});
+
+    const [, from, to] = service.cohort.mock.calls[0] as unknown as [string, Date, Date];
+    expect(to.getTime() - from.getTime()).toBe(30 * 86_400_000);
+  });
+
+  it("solo INSTRUCTOR y ADMIN, con RolesGuard en esa ruta", () => {
+    const handler = ExamsController.prototype.cohort;
+
+    expect(Reflect.getMetadata(ROLES_KEY, handler)).toEqual(["INSTRUCTOR", "ADMIN"]);
+    expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([RolesGuard]);
+    expect(Reflect.getMetadata(ROLES_KEY, ExamsController.prototype.history)).toBeUndefined();
   });
 });

@@ -407,3 +407,50 @@ describe("InMemoryExamsRepository", () => {
     expect(await repo.latestRealResult(OTHER_USER, CLF)).toBeNull();
   });
 });
+
+describe("InMemoryExamsRepository.cohortFacts", () => {
+  it("devuelve solo intentos terminados de la certificación y el rango, y resultados reales", async () => {
+    const repo = repository();
+    const done = await repo.createAttempt(attemptInput({ orientative: true }));
+    await close(repo, done.id, { status: "EXPIRED" });
+    await repo.createAttempt(attemptInput({ userId: OTHER_USER }));
+    const late = await repo.createAttempt(attemptInput({ startedAt: at(100_000) }));
+    await close(repo, late.id);
+    const other = await repo.createAttempt(
+      attemptInput({
+        certification: SAA,
+        items: [{ position: 1, exerciseId: "s1", domain: 2 }],
+      }),
+    );
+    await close(repo, other.id);
+    await repo.createRealResult({
+      userId: USER,
+      certification: CLF,
+      passed: true,
+      scaledScore: null,
+      takenOn: at(0),
+      readyAtRegistration: true,
+    });
+    await repo.createRealResult({
+      userId: USER,
+      certification: SAA,
+      passed: false,
+      scaledScore: null,
+      takenOn: at(0),
+      readyAtRegistration: false,
+    });
+
+    const facts = await repo.cohortFacts(CLF, at(-1), at(1));
+
+    expect(facts.attempts).toEqual([
+      {
+        userId: USER,
+        status: "expired",
+        orientative: true,
+        domainScores: [{ domain: 1, scorePct: 80 }],
+      },
+    ]);
+    expect(facts.realResults).toEqual([{ readyAtRegistration: true, passed: true }]);
+    expect((await repo.cohortFacts(CLF, at(10), at(20))).attempts).toEqual([]);
+  });
+});

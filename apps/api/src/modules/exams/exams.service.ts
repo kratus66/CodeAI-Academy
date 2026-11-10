@@ -6,6 +6,7 @@ import {
   type ExamAttempt,
   examDomainScoreSchema,
   type ExamAttemptItem,
+  type ExamCohort,
   type ExamDomainScore,
   type ExamFormCode,
   type ExamHistoryItem,
@@ -29,6 +30,7 @@ import {
 
 import { gradeQuizAnswer } from "../exercises/quiz-grading";
 import { ReviewService } from "../review/review.service";
+import { aggregateCohort } from "./exam-cohort.rules";
 import {
   assembleDomainBlock,
   assembleRandom,
@@ -355,6 +357,23 @@ export class ExamsService {
       evaluatedAt: now.toISOString(),
       lastRealResult: lastReal === null ? null : toRealExamResult(lastReal),
     };
+  }
+
+  async cohort(certification: CertificationCode, from: Date, to: Date): Promise<ExamCohort> {
+    const facts = await this.repository.cohortFacts(certification, from, to);
+
+    return aggregateCohort({
+      definition: CERTIFICATION_REGISTRY[certification],
+      from,
+      to,
+      attempts: facts.attempts.map((attempt) => ({
+        userId: attempt.userId,
+        status: attempt.status,
+        orientative: attempt.orientative,
+        domainScores: readDomainScores(attempt.domainScores),
+      })),
+      realResults: facts.realResults,
+    });
   }
 
   async registerRealResult(
