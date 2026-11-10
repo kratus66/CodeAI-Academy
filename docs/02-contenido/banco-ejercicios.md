@@ -107,6 +107,21 @@ La semilla escribe en `config` solo lo que ve el estudiante: los textos, `select
 - Cada pregunta declara el `concept` para el motor de repaso.
 - La opción correcta no puede duplicar en longitud a sus distractores: ni frente a la media ni frente al más largo (ratio ≤ 2, verificado en `seed-exercise-quality.spec.ts`). Un distractor telegráfico delata la respuesta sin medir comprensión.
 
+**Formas de simulacro (S15):** `apps/api/prisma/seed/aws/exam-forms/<CERT>.json`, validado con `examFormsFileSchema`.
+
+```jsonc
+{ "certification": "CLF-C02",
+  "forms": { "A": ["slug-1", "…"], "B": ["…"], "C": ["…"] } }   // al menos una forma
+```
+
+Cada forma cumple estas reglas:
+- tiene exactamente el número oficial de preguntas;
+- no repite slugs;
+- solo incluye `QUIZ` del banco reservado de esa certificación;
+- solo usa los tipos de pregunta que lista la guía.
+
+El reparto por dominio tiene un margen de ±1 sobre el redondeo por mayor resto de los pesos oficiales (`examFormViolations`). La semilla valida todas las formas antes de escribir ninguna.
+
 ### 3.3 `MEMORY` — Juego de memoria
 
 **Estructura:**

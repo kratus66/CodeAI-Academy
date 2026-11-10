@@ -200,11 +200,25 @@ La producción sigue el método de [`plan-poblado-banco-e0-e2.md`](plan-poblado-
 6. **Cierre del ciclo de error:** cada pregunta fallada muestra la explicación de cada opción, enlaza a la unidad del concepto y entra en la cola SM-2 con prioridad alta.
 7. **Formas sin revisión humana = orientativas** (no cuentan para «listo para presentar»).
 
+**Estado (S15, 2026-11-10): existe.**
+- Simulacro completo con las formas A, B y C o aleatorio, y bloque por dominio de 20 preguntas (todas las que haya si son entre 15 y 19).
+- Cronómetro en el servidor con +30 minutos opcionales, preguntas marcadas para revisar, revisión antes de entregar e informe por dominio con enlace a la unidad.
+- Las preguntas falladas entran en el repaso con prioridad alta y vencen al día siguiente.
+- MLA-C02 no tiene simulacro mientras siga en beta.
+- Las formas se declaran en `apps/api/prisma/seed/aws/exam-forms/<CERT>.json` ([`banco-ejercicios.md`](banco-ejercicios.md) §3.2). Todavía no hay ninguna: llegarán con las preguntas reservadas revisadas por una persona.
+- Decisiones: [`sprint-15-simulador-examen.md`](../04-plan-ejecucion/sprints/sprint-15-simulador-examen.md) §2.6.
+
 ---
 
 ## 9. Criterio «listo para presentar»
 
 Definido en el currículo ([`../01-curriculo/curriculo-aws.md`](../01-curriculo/curriculo-aws.md) §6). La plataforma lo calcula con una función pura (S15) y lo muestra por certificación con lo que falta, nunca sólo «sí/no».
+
+**Estado (S15):**
+- La regla está implementada en `apps/api/src/modules/exams/readiness.rules.ts`.
+- Cada criterio tiene tres estados posibles: cumplido, falta o aún no disponible.
+- El criterio de los simulacros solo cuenta las formas fijas A, B y C cuando no son orientativas.
+- La defensa técnica de AWS llega en S26. Hasta entonces el criterio «evidencia» está «aún no disponible» y nadie sale listo.
 
 ---
 

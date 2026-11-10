@@ -816,6 +816,36 @@ Entrevistas técnicas de práctica en texto: el servidor impone un guion de **se
 
 ---
 
+### 4.13 Simulacros (`/api/exams`) — ✅ implementado (S15, 2026-11-10)
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| POST | `/:certification/attempts` | ✅ | Inicia un simulacro. Body: `{ mode, domain?, extraTime? }`, con `mode` = `form-a`, `form-b`, `form-c`, `random` o `domain`. Responde `201 { attempt }` |
+| GET | `/attempts/:id` | ✅ | `{ attempt }`: preguntas sin solución y `remainingSeconds` calculado por el servidor |
+| PUT | `/attempts/:id/items/:position` | ✅ | Body: `{ answer?, flagged? }`. `answer` usa la forma de `quiz-answers` y `null` la borra. Responde `{ item, remainingSeconds }` |
+| POST | `/attempts/:id/submit` | ✅ | Entrega. Responde `200 { result }` |
+| GET | `/attempts/:id/result` | ✅ | `{ result }`, solo tras entregar (`409` «El simulacro sigue en curso») |
+| GET | `/:certification/history` | ✅ | `{ attempts }`, del más reciente al más antiguo |
+| GET | `/:certification/readiness` | ✅ | `{ readiness }`: los cuatro criterios de «listo para presentar», cada uno con su estado y lo que falta |
+| POST | `/:certification/real-results` | ✅ | Body: `{ passed, scaledScore?, takenOn }`. Responde `201 { realResult }`. Es privado. Una fecha futura o inexistente da `400` |
+| GET | `/:certification/cohort?from&to` | ✅ INSTRUCTOR/ADMIN | `{ cohort }`: dominios débiles (solo con 5 personas o más) y la tabla «listo» × «aprobó». Rango por defecto: los últimos 30 días |
+
+**Reglas**
+- **Sin solución antes de entregar.** Ninguna respuesta incluye `correct`, `correctAnswer`, `explanations` ni `solution`, y las preguntas no exponen `exerciseId` ni `slug`.
+- **El plazo lo fija el servidor:**
+  - `deadlineAt` = inicio + los minutos oficiales; +30 con `extraTime`;
+  - el bloque por dominio tiene minutos proporcionales a sus preguntas;
+  - hay 5 s de gracia;
+  - un intento vencido se cierra al leerlo o escribirlo, con estado `expired` y `submittedAt = deadlineAt`;
+  - un `PUT` tardío da `409` «El tiempo terminó: tu simulacro se entregó automáticamente».
+- **Aislamiento:** un intento ajeno da `404` «El simulacro no existe», igual que uno inexistente.
+- **`409`** en estos casos: certificación en beta (MLA-C02), otro intento en curso de la misma certificación, forma inexistente, banco reservado insuficiente o intento ya entregado.
+- **Puntuación:** porcentaje entero de aciertos, global y por dominio. No hay puntuación escalada. Cada pregunta es todo o nada, y sin respuesta cuenta como fallo.
+- **Repaso:** al entregar, cada pregunta fallada entra en el repaso SM-2 con `priority` alta. Vence al día siguiente, como cualquier fallo.
+- **Contratos:** `packages/shared/src/schemas/exam.ts` y `exam-forms.ts`.
+
+---
+
 ## 5. Reglas de autorización
 
 | Recurso | Regla |
@@ -848,6 +878,8 @@ Entrevistas técnicas de práctica en texto: el servidor impone un guion de **se
 | `/projects/*` | 120 / min por usuario |
 | `/portfolio/:userId` | 120 / min por IP |
 | `/ai/tutor` | 30 / hora por usuario |
+| `POST /exams/:certification/attempts` | 10 / hora por usuario |
+| `/exams/*` | 120 / min por usuario |
 | Resto | 120 / min por usuario |
 
 Al exceder: `429 RATE_LIMITED` con cabecera `Retry-After`.

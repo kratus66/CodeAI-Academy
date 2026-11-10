@@ -1,6 +1,6 @@
 # Sprint 15 — Simulador de examen y preparación por certificación
 
-> **Estado:** 🔄 fichas redactadas (2026-11-09), contrastadas con el código; nada construido aún · **Duración prevista:** 24–26 sesiones de Constructor · **Depende de:** S14 (metadatos y banco reservado), S7 (repaso SM-2), S4 (progreso).
+> **Estado:** ✅ cerrado (2026-11-10): las 26 tareas están hechas y revisadas, con la verificación HTTP de T13 (registro en §8) · **Duración prevista:** 24–26 sesiones de Constructor · **Depende de:** S14 (metadatos y banco reservado), S7 (repaso SM-2), S4 (progreso).
 > **Ámbito:** módulo nuevo `exams` en `apps/api`, contratos en `packages/shared` y vistas en `apps/web`. Las fichas (§4) siguen la [plantilla](../../05-orquestacion/plantilla-tarea.md). El orden de ejecución está en §7.
 > **Por qué existe:** practicar preguntas sueltas no entrena la resistencia de 130–180 minutos ni la gestión del tiempo. Sin simulacros, la plataforma no puede decir con honestidad si alguien está listo para presentar.
 
@@ -202,11 +202,11 @@ export const examItemUpdateResponseSchema = z.object({ item: examAttemptItemSche
 ```
 
 **Criterios de aceptación**
-- [ ] `startExamAttemptSchema` acepta `{ mode: "form-a" }`, con `extraTime` por defecto `false`, y `{ mode: "domain", domain: 2 }`. Rechaza `domain` sin el modo `domain`, el modo `domain` sin `domain`, una clave desconocida y `domain: 7`, cada caso con su mensaje.
-- [ ] `updateExamItemSchema` acepta `{ flagged: true }`, `{ answer: null }` y `{ answer: { optionIds: ["a","c"] } }`. Rechaza `{}` y `{ answer: { optionId: "b", order: ["a"] } }`.
-- [ ] `examAttemptSchema` parsea un intento completo de ejemplo y rechaza `remainingSeconds: -1`.
-- [ ] Las constantes tienen los valores del contrato.
-- [ ] Verificación común en verde.
+- [x] `startExamAttemptSchema` acepta `{ mode: "form-a" }`, con `extraTime` por defecto `false`, y `{ mode: "domain", domain: 2 }`. Rechaza `domain` sin el modo `domain`, el modo `domain` sin `domain`, una clave desconocida y `domain: 7`, cada caso con su mensaje.
+- [x] `updateExamItemSchema` acepta `{ flagged: true }`, `{ answer: null }` y `{ answer: { optionIds: ["a","c"] } }`. Rechaza `{}` y `{ answer: { optionId: "b", order: ["a"] } }`.
+- [x] `examAttemptSchema` parsea un intento completo de ejemplo y rechaza `remainingSeconds: -1`.
+- [x] Las constantes tienen los valores del contrato.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no tocar `exercise.ts` ni `certification.ts`; no definir aquí el resultado (T1b).
 
@@ -275,10 +275,10 @@ export const realResultResponseSchema = z.object({ realResult: realExamResultSch
 ```
 
 **Criterios de aceptación**
-- [ ] Una prueba de parseo válido y otra de rechazo por esquema: `scorePct: 101`, `criteria` con 3 elementos, `scaledScore: 99` y `takenOn: "9/11/2026"`.
-- [ ] `examResultSchema` no tiene ninguna clave de puntuación escalada.
-- [ ] Las pruebas de T1a pasan sin modificarlas.
-- [ ] Verificación común en verde.
+- [x] Una prueba de parseo válido y otra de rechazo por esquema: `scorePct: 101`, `criteria` con 3 elementos, `scaledScore: 99` y `takenOn: "9/11/2026"`.
+- [x] `examResultSchema` no tiene ninguna clave de puntuación escalada.
+- [x] Las pruebas de T1a pasan sin modificarlas.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no añadir una puntuación escalada (decisión 2.2).
 
@@ -363,11 +363,11 @@ model RealExamResult {
 **Secuencia:** comprobar el puerto 5433 → `npm run db:backup` → `npx prisma migrate dev --create-only --name exams` (desde `apps/api`) → revisar el SQL, que solo puede contener `CREATE TYPE`, `CREATE TABLE`, `CREATE INDEX` y `ADD CONSTRAINT … FOREIGN KEY`, sin `DROP` ni `ALTER` de columnas existentes → `npx prisma migrate dev` → `npm run db:generate -w apps/api`, con los puertos 3000 y 3001 libres. Si `migrate dev` propone un reset: **DETENERSE**.
 
 **Criterios de aceptación**
-- [ ] El SQL contiene solo lo listado y se pega resumido en el reporte.
-- [ ] `npx prisma migrate status` dice «up to date» con 14 migraciones.
-- [ ] `git ls-files --eol` de la migración nueva da `i/lf w/lf`.
-- [ ] `npm run db:seed` dos veces con las cifras habituales y la huella de los quizzes `1662|8ca67124b00bae39a25ac73d1fb58d75` sin cambios (consulta de S14).
-- [ ] Verificación común en verde.
+- [x] El SQL contiene solo lo listado y se pega resumido en el reporte.
+- [x] `npx prisma migrate status` dice «up to date» con 14 migraciones.
+- [x] `git ls-files --eol` de la migración nueva da `i/lf w/lf`.
+- [x] `npm run db:seed` dos veces con las cifras habituales y la huella de los quizzes `1662|8ca67124b00bae39a25ac73d1fb58d75` sin cambios (consulta de S14).
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no editar migraciones anteriores; no añadir columnas a `Exercise`; no crear el índice parcial «un intento en curso» (se controla en el servicio, decisión f).
 
@@ -415,10 +415,10 @@ Mensajes exactos de `examFormViolations` (prefijo `` `Forma ${code} de ${cert}: 
 - «el dominio ${d} tiene ${n} preguntas y le tocan ${t} (±1)»: se compara con `allocateByLargestRemainder(questionCount, domains)`.
 
 **Criterios de aceptación**
-- [ ] `allocateByLargestRemainder(65, CLF-C02)` con pesos 24/30/34/12 da `{1:16, 2:19, 3:22, 4:8}`, y la suma es siempre `total` (prueba con los 10 exámenes GA).
-- [ ] Una forma sintética válida de CLF-C02 (65 slugs) devuelve `[]`.
-- [ ] Una prueba por mensaje.
-- [ ] Verificación común en verde.
+- [x] `allocateByLargestRemainder(65, CLF-C02)` con pesos 24/30/34/12 da `{1:16, 2:19, 3:22, 4:8}`, y la suma es siempre `total` (prueba con los 10 exámenes GA).
+- [x] Una forma sintética válida de CLF-C02 (65 slugs) devuelve `[]`.
+- [x] Una prueba por mensaje.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no leer archivos (eso es la semilla, T3b); no crear formas reales (H1).
 
@@ -447,11 +447,11 @@ Mensajes exactos de `examFormViolations` (prefijo `` `Forma ${code} de ${cert}: 
   - imprime «Formas de simulacro: N».
 
 **Criterios de aceptación**
-- [ ] `npm run typecheck:seed -w apps/api` da 0.
-- [ ] `npm run db:seed:aws` (sin `exam-forms/`) imprime «Formas de simulacro: 0» y las mismas cifras que antes.
-- [ ] Un script temporal **fuera del repositorio** prueba `upsertExamForms` contra la base desechable 5441, con una forma inválida (lanza y no escribe) y otra válida (escribe una fila). El reporte resume las salidas.
-- [ ] `npm run db:seed` dos veces: huella de quizzes sin cambios.
-- [ ] Verificación común en verde.
+- [x] `npm run typecheck:seed -w apps/api` da 0.
+- [x] `npm run db:seed:aws` (sin `exam-forms/`) imprime «Formas de simulacro: 0» y las mismas cifras que antes.
+- [x] Un script temporal **fuera del repositorio** prueba `upsertExamForms` contra la base desechable 5441, con una forma inválida (lanza y no escribe) y otra válida (escribe una fila). El reporte resume las salidas.
+- [x] `npm run db:seed` dos veces: huella de quizzes sin cambios.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no crear `aws/exam-forms/` en el repositorio; no tocar las ramas de `exerciseConfig`/`exerciseSolution`.
 
@@ -489,14 +489,14 @@ export function shuffle<T>(items: readonly T[], random: () => number): T[]; // F
 ```
 
 **Criterios de aceptación**
-- [ ] El aleatorio de CLF-C02 con un banco de sobra tiene 65 preguntas y el reparto `{16,19,22,8}`.
-- [ ] Con 3 intentos recientes que cubren parte del banco, no repite ninguna vista **si alcanza**. Si no alcanza, completa con vistas y sigue cumpliendo el reparto.
-- [ ] Un dominio con menos preguntas de las que le tocan devuelve `insufficient` con `domain`, `needed` y `available`.
-- [ ] Un bloque de dominio con 25 disponibles da 20; con 17, da 17; con 14, `insufficient`.
-- [ ] `attemptDurationMinutes`: SAA-C03 da 130 y 160 con `extraTime`. Un bloque de 20 preguntas de SAA-C03 (65 preguntas, 130 min) da 40.
-- [ ] `isPastDeadline` es falso a 5 s del plazo y verdadero a 6 s.
-- [ ] `shuffle` con un `random` fijo es determinista y no muta la entrada.
-- [ ] Verificación común en verde.
+- [x] El aleatorio de CLF-C02 con un banco de sobra tiene 65 preguntas y el reparto `{16,19,22,8}`.
+- [x] Con 3 intentos recientes que cubren parte del banco, no repite ninguna vista **si alcanza**. Si no alcanza, completa con vistas y sigue cumpliendo el reparto.
+- [x] Un dominio con menos preguntas de las que le tocan devuelve `insufficient` con `domain`, `needed` y `available`.
+- [x] Un bloque de dominio con 25 disponibles da 20; con 17, da 17; con 14, `insufficient`.
+- [x] `attemptDurationMinutes`: SAA-C03 da 130 y 160 con `extraTime`. Un bloque de 20 preguntas de SAA-C03 (65 preguntas, 130 min) da 40.
+- [x] `isPastDeadline` es falso a 5 s del plazo y verdadero a 6 s.
+- [x] `shuffle` con un `random` fijo es determinista y no muta la entrada.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no importar Nest ni Prisma; no usar `Math.random` dentro de las reglas (se inyecta).
 
@@ -532,12 +532,12 @@ export function correctAnswerOf(quiz: QuizContent): QuizSubmissionInput;
 - `pct`: `Math.round(100 · correct / total)`. Solo aparecen los dominios con `total > 0`, ordenados por id.
 
 **Criterios de aceptación**
-- [ ] Hay una pregunta de cada variante: acierto, fallo y sin responder.
-- [ ] Respuesta múltiple con una sola correcta de dos cuenta como fallo.
-- [ ] Un intento de 3 dominios da los porcentajes por dominio y el global. `scorePct` de 2/3 es 67.
-- [ ] Una pregunta con `solution` rota devuelve `broken-content` con su `position`.
-- [ ] `correctAnswerOf` devuelve la forma de cuerpo de cada variante.
-- [ ] Verificación común en verde.
+- [x] Hay una pregunta de cada variante: acierto, fallo y sin responder.
+- [x] Respuesta múltiple con una sola correcta de dos cuenta como fallo.
+- [x] Un intento de 3 dominios da los porcentajes por dominio y el global. `scorePct` de 2/3 es 67.
+- [x] Una pregunta con `solution` rota devuelve `broken-content` con su `position`.
+- [x] `correctAnswerOf` devuelve la forma de cuerpo de cada variante.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no cambiar ninguna regla de corrección de `quiz-grading.ts`.
 
@@ -576,10 +576,10 @@ export function evaluateReadiness(input: ReadinessInput): { ready: boolean; crit
 `ready` es verdadero solo si los cuatro criterios están en `met`. Cada `summary` es una frase corta en español.
 
 **Criterios de aceptación**
-- [ ] Hay pruebas de cada criterio por separado en sus tres estados y una prueba combinada en la que los cuatro están en `met` y `ready` es verdadero.
-- [ ] En `mock-exams`: dos intentos de la misma forma no cuentan dos veces; un orientativo no cuenta; un dominio al 69 % invalida el intento; un intento aleatorio no cuenta; el límite de 14 días se prueba en el día 14 (cuenta) y en el 15 (no cuenta).
-- [ ] Con `defense.available = false`, `ready` es falso aunque todo lo demás esté en `met`.
-- [ ] Verificación común en verde.
+- [x] Hay pruebas de cada criterio por separado en sus tres estados y una prueba combinada en la que los cuatro están en `met` y `ready` es verdadero.
+- [x] En `mock-exams`: dos intentos de la misma forma no cuentan dos veces; un orientativo no cuenta; un dominio al 69 % invalida el intento; un intento aleatorio no cuenta; el límite de 14 días se prueba en el día 14 (cuenta) y en el 15 (no cuenta).
+- [x] Con `defense.available = false`, `ready` es falso aunque todo lo demás esté en `met`.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no leer la base; no inventar heurísticas de «competencias críticas» (decisión b).
 
@@ -631,11 +631,11 @@ export interface ExamsRepository {
 El adaptador en memoria guarda filas en `Map`. Expone métodos de siembra para las pruebas: `seedQuestion`, `seedForm`, `seedReadinessFacts`. Respeta la propiedad y `finishAttempt` es condicional.
 
 **Criterios de aceptación**
-- [ ] `findOwnedAttempt` con otro `userId` devuelve `null`.
-- [ ] `finishAttempt` dos veces: la primera `true` y la segunda `false`, sin cambiar nada.
-- [ ] `recentExerciseIds` solo mira los N últimos intentos **terminados** de esa certificación.
-- [ ] `listAttempts` ordena del más reciente al más antiguo.
-- [ ] Verificación común en verde.
+- [x] `findOwnedAttempt` con otro `userId` devuelve `null`.
+- [x] `finishAttempt` dos veces: la primera `true` y la segunda `false`, sin cambiar nada.
+- [x] `recentExerciseIds` solo mira los N últimos intentos **terminados** de esa certificación.
+- [x] `listAttempts` ordena del más reciente al más antiguo.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no implementar Prisma (T6b); no poner reglas de negocio en el repositorio.
 
@@ -663,10 +663,10 @@ El adaptador en memoria guarda filas en `Map`. Expone métodos de siembra para l
 - Mapea los enums de Prisma (`FORM_A`…, `IN_PROGRESS`…) a los del contrato (`form-a`…, `in-progress`…) en un solo lugar.
 
 **Criterios de aceptación**
-- [ ] Hay una prueba por método con el `where` esperado. En `listReservedPool` se comprueba `examPool: "RESERVED"` y `isPublished: true`.
-- [ ] `finishAttempt` devuelve `false` cuando `updateMany` da `count: 0` y entonces no toca los ítems.
-- [ ] Mapeo de enums de ida y vuelta.
-- [ ] Verificación común en verde.
+- [x] Hay una prueba por método con el `where` esperado. En `listReservedPool` se comprueba `examPool: "RESERVED"` y `isPublished: true`.
+- [x] `finishAttempt` devuelve `false` cuando `updateMany` da `count: 0` y entonces no toca los ítems.
+- [x] Mapeo de enums de ida y vuelta.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no usar `ExercisesRepository`; no ejecutar SQL crudo.
 
@@ -691,13 +691,13 @@ El adaptador en memoria guarda filas en `Map`. Expone métodos de siembra para l
 | `submit(userId, attemptId)` | `scoreAttempt` → `finishAttempt` (`SUBMITTED`, o `EXPIRED` si ya pasó el plazo) → por cada pregunta fallada, `reviews.scheduleFromSubmission({ userId, exerciseId, outcome: "FAILED", score: 0, hintsUsed: 0 })`. Devuelve `ExamResult`. | `404` · `409` «El simulacro ya se entregó» (también si `finishAttempt` devuelve `false`) · `500` «El simulacro tiene una pregunta mal configurada» si da `broken-content` |
 
 **Criterios de aceptación** (`exams.service.spec.ts`)
-- [ ] Iniciar `form-a` sirve las preguntas en el orden de la forma, con `questionCount` igual al oficial y el plazo correcto.
-- [ ] **Ninguna respuesta de `start`, `get` ni `updateItem` contiene** `correct`, `correctAnswer`, `explanations` ni `solution`: prueba recursiva sobre el JSON.
-- [ ] Un segundo `start` con uno en curso da `409`. MLA-C02 da `409`.
-- [ ] Con el reloj después del plazo + 5 s: `updateItem` da `409` y el intento queda `expired`; `get` lo devuelve `expired`. Un intento vencido de **otro** usuario no se toca.
-- [ ] Otro usuario recibe `404` en `get`, `updateItem` y `submit`.
-- [ ] `submit` llama a `scheduleFromSubmission` solo por las falladas. Un segundo `submit` da `409`.
-- [ ] Verificación común en verde.
+- [x] Iniciar `form-a` sirve las preguntas en el orden de la forma, con `questionCount` igual al oficial y el plazo correcto.
+- [x] **Ninguna respuesta de `start`, `get` ni `updateItem` contiene** `correct`, `correctAnswer`, `explanations` ni `solution`: prueba recursiva sobre el JSON.
+- [x] Un segundo `start` con uno en curso da `409`. MLA-C02 da `409`.
+- [x] Con el reloj después del plazo + 5 s: `updateItem` da `409` y el intento queda `expired`; `get` lo devuelve `expired`. Un intento vencido de **otro** usuario no se toca.
+- [x] Otro usuario recibe `404` en `get`, `updateItem` y `submit`.
+- [x] `submit` llama a `scheduleFromSubmission` solo por las falladas. Un segundo `submit` da `409`.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no crear el controlador (T8); no crear `Submission` por cada pregunta; no exponer `exerciseId` ni `slug` en las preguntas.
 
@@ -724,11 +724,11 @@ El adaptador en memoria guarda filas en `Map`. Expone métodos de siembra para l
   - `readyAtRegistration` se calcula con `readiness` en ese momento.
 
 **Criterios de aceptación**
-- [ ] `result` de un intento en curso da `409`; tras entregar, devuelve las explicaciones y el `unitCode` de cada pregunta.
-- [ ] `readiness` con hechos sembrados devuelve los cuatro criterios en orden, y `evidence` como `unavailable`.
-- [ ] `registerRealResult` guarda `readyAtRegistration` y rechaza una fecha futura.
-- [ ] Las pruebas de T7a pasan sin modificarlas.
-- [ ] Verificación común en verde.
+- [x] `result` de un intento en curso da `409`; tras entregar, devuelve las explicaciones y el `unitCode` de cada pregunta.
+- [x] `readiness` con hechos sembrados devuelve los cuatro criterios en orden, y `evidence` como `unavailable`.
+- [x] `registerRealResult` guarda `readyAtRegistration` y rechaza una fecha futura.
+- [x] Las pruebas de T7a pasan sin modificarlas.
+- [x] Verificación común en verde.
 
 ---
 
@@ -747,9 +747,9 @@ El adaptador en memoria guarda filas en `Map`. Expone métodos de siembra para l
 - `prisma-ai.repository.ts` **no se toca** y su filtro sigue.
 
 **Criterios de aceptación**
-- [ ] Las pruebas del spec que exigían el filtro se reescriben: ahora comprueban que el `where` **no** lo lleva.
-- [ ] `apps/api/src/modules/content/prisma-exam-pool.spec.ts` (unidad y progreso, S14-T8b) y las pruebas del tutor siguen pasando sin tocarlas.
-- [ ] Verificación común en verde.
+- [x] Las pruebas del spec que exigían el filtro se reescriben: ahora comprueban que el `where` **no** lo lleva.
+- [x] `apps/api/src/modules/content/prisma-exam-pool.spec.ts` (unidad y progreso, S14-T8b) y las pruebas del tutor siguen pasando sin tocarlas.
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no tocar `prisma-ai.repository.ts`, `prisma-content.repository.ts` ni `prisma-progress.repository.ts`.
 
@@ -774,10 +774,10 @@ El adaptador en memoria guarda filas en `Map`. Expone métodos de siembra para l
 - Respuestas con la forma `{ attempt }`, `{ item, remainingSeconds }`, `{ result }`, `{ attempts }`, `{ readiness }` y `{ realResult }`. `POST attempts` y `POST real-results` responden `201`.
 
 **Criterios de aceptación** (`exams.controller.spec.ts`, con el servicio simulado y lectura de metadatos)
-- [ ] Cada ruta llama al método correcto del servicio con `user.sub`.
-- [ ] La clase tiene `JwtAuthGuard` y `RateLimitGuard`, y `POST attempts` tiene su límite propio (se lee `RATE_LIMIT_METADATA`).
-- [ ] `POST attempts` y `POST real-results` usan `@HttpCode(201)` o el valor por defecto de Nest.
-- [ ] Verificación común en verde y `npm run build -w apps/api` en verde.
+- [x] Cada ruta llama al método correcto del servicio con `user.sub`.
+- [x] La clase tiene `JwtAuthGuard` y `RateLimitGuard`, y `POST attempts` tiene su límite propio (se lee `RATE_LIMIT_METADATA`).
+- [x] `POST attempts` y `POST real-results` usan `@HttpCode(201)` o el valor por defecto de Nest.
+- [x] Verificación común en verde y `npm run build -w apps/api` en verde.
 
 ---
 
@@ -804,10 +804,10 @@ export const examsApi = {
 ```
 
 **Criterios de aceptación**
-- [ ] Hay una prueba por método con la ruta (con `encodeURIComponent`), el método HTTP y el cuerpo.
-- [ ] Una respuesta que no cumple el contrato falla.
-- [ ] Las pruebas existentes pasan sin modificarlas.
-- [ ] Verificación común en verde.
+- [x] Hay una prueba por método con la ruta (con `encodeURIComponent`), el método HTTP y el cuerpo.
+- [x] Una respuesta que no cumple el contrato falla.
+- [x] Las pruebas existentes pasan sin modificarlas.
+- [x] Verificación común en verde.
 
 ---
 
@@ -831,11 +831,11 @@ export const examsApi = {
 - Un `kind` desconocido muestra `role="alert"` «Este tipo de pregunta todavía no está disponible.».
 
 **Criterios de aceptación**
-- [ ] Una prueba por variante que comprueba el valor que recibe `onChange`.
-- [ ] `multiple` llama con `null` mientras no hay `selectCount` marcadas.
-- [ ] Con `value` dado, el control lo refleja: se puede retomar una respuesta guardada.
-- [ ] No aparece ningún texto «¡Correcto!» ni «Todavía no».
-- [ ] Verificación común en verde.
+- [x] Una prueba por variante que comprueba el valor que recibe `onChange`.
+- [x] `multiple` llama con `null` mientras no hay `selectCount` marcadas.
+- [x] Con `value` dado, el control lo refleja: se puede retomar una respuesta guardada.
+- [x] No aparece ningún texto «¡Correcto!» ni «Todavía no».
+- [x] Verificación común en verde.
 
 **Qué NO hacer:** no reutilizar ni modificar `QuizPlayer`, `QuizMultiplePlayer`, `QuizOrderingPlayer` ni `QuizMatchingPlayer`.
 
@@ -862,10 +862,10 @@ export const examsApi = {
   - el estado se indica con texto o icono, no solo con color.
 
 **Criterios de aceptación**
-- [ ] Con temporizadores falsos, el cronómetro baja, anuncia los dos avisos una vez cada uno y llama a `onElapsed` una vez.
-- [ ] Al cambiar `remainingSeconds`, se resincroniza.
-- [ ] La cuadrícula refleja respondida, marcada y actual, y `onSelect` recibe la posición.
-- [ ] Verificación común en verde.
+- [x] Con temporizadores falsos, el cronómetro baja, anuncia los dos avisos una vez cada uno y llama a `onElapsed` una vez.
+- [x] Al cambiar `remainingSeconds`, se resincroniza.
+- [x] La cuadrícula refleja respondida, marcada y actual, y `onSelect` recibe la posición.
+- [x] Verificación común en verde.
 
 ---
 
@@ -898,12 +898,12 @@ export const examsApi = {
 - **Salir:** mientras el intento está en curso hay aviso antes de salir (`beforeunload`).
 
 **Criterios de aceptación** (con `api` simulada)
-- [ ] Responder dispara `updateItem(id, n, { answer })`, y marcar dispara `{ flagged: true }`.
-- [ ] La revisión previa lista las sin responder y las marcadas.
-- [ ] Entregar llama a `submit` una sola vez y navega.
-- [ ] Al vencer el tiempo, navega al resultado sin llamar a `submit`.
-- [ ] Un intento ya entregado redirige al cargar.
-- [ ] Verificación común en verde y `npm run build -w apps/web` en verde (restaurar `next-env.d.ts`).
+- [x] Responder dispara `updateItem(id, n, { answer })`, y marcar dispara `{ flagged: true }`.
+- [x] La revisión previa lista las sin responder y las marcadas.
+- [x] Entregar llama a `submit` una sola vez y navega.
+- [x] Al vencer el tiempo, navega al resultado sin llamar a `submit`.
+- [x] Un intento ya entregado redirige al cargar.
+- [x] Verificación común en verde y `npm run build -w apps/web` en verde (restaurar `next-env.d.ts`).
 
 ---
 
@@ -927,11 +927,11 @@ export const examsApi = {
   - el aviso «Las preguntas falladas se añadieron a tu repaso con prioridad alta.».
 
 **Criterios de aceptación**
-- [ ] Muestra el global, la tabla por dominio con el marcador del 70 % y el aviso de orientativo.
-- [ ] El filtro «falladas» oculta las acertadas.
-- [ ] Hay un enlace por pregunta a su unidad.
-- [ ] Cada variante muestra la respuesta correcta en texto legible: los textos de las opciones, no sus ids.
-- [ ] Verificación común en verde.
+- [x] Muestra el global, la tabla por dominio con el marcador del 70 % y el aviso de orientativo.
+- [x] El filtro «falladas» oculta las acertadas.
+- [x] Hay un enlace por pregunta a su unidad.
+- [x] Cada variante muestra la respuesta correcta en texto legible: los textos de las opciones, no sus ids.
+- [x] Verificación común en verde.
 
 ---
 
@@ -952,11 +952,11 @@ export const examsApi = {
 - **Beta:** si la certificación está en beta, los modos se deshabilitan con la explicación.
 
 **Criterios de aceptación**
-- [ ] Iniciar `form-b` con `extraTime` llama a `start(cert, { mode: "form-b", extraTime: true })`.
-- [ ] El bloque por dominio exige elegir un dominio.
-- [ ] Un `409` de «en curso» muestra el enlace de continuar.
-- [ ] Con MLA-C02, los modos están deshabilitados.
-- [ ] Verificación común en verde.
+- [x] Iniciar `form-b` con `extraTime` llama a `start(cert, { mode: "form-b", extraTime: true })`.
+- [x] El bloque por dominio exige elegir un dominio.
+- [x] Un `409` de «en curso» muestra el enlace de continuar.
+- [x] Con MLA-C02, los modos están deshabilitados.
+- [x] Verificación común en verde.
 
 ---
 
@@ -979,10 +979,10 @@ export const examsApi = {
 - **Página de la etapa:** si `certificationForStageId(id)` no es `null`, muestra el enlace «Simulacros y preparación» a `/learn/exams/${code}`.
 
 **Criterios de aceptación**
-- [ ] Hay una prueba con los tres estados de criterio.
-- [ ] El formulario envía el cuerpo correcto y muestra el error `400` de fecha futura.
-- [ ] El enlace aparece en la etapa 103 y no en la 1.
-- [ ] Verificación común en verde y `npm run build -w apps/web` en verde.
+- [x] Hay una prueba con los tres estados de criterio.
+- [x] El formulario envía el cuerpo correcto y muestra el error `400` de fecha futura.
+- [x] El enlace aparece en la etapa 103 y no en la 1.
+- [x] Verificación común en verde y `npm run build -w apps/web` en verde.
 
 ---
 
@@ -1017,10 +1017,10 @@ export function aggregateCohort(input: { definition; from: Date; to: Date;
 - **Privacidad:** si hay menos de 5 personas (`learners < 5`), `domains` sale vacío.
 
 **Criterios de aceptación**
-- [ ] Tres personas: `domains` vacío. Cinco personas: medias correctas y orden ascendente.
-- [ ] Los orientativos se excluyen.
-- [ ] La tabla 2×2 de resultados reales es correcta.
-- [ ] Verificación común en verde.
+- [x] Tres personas: `domains` vacío. Cinco personas: medias correctas y orden ascendente.
+- [x] Los orientativos se excluyen.
+- [x] La tabla 2×2 de resultados reales es correcta.
+- [x] Verificación común en verde.
 
 ---
 
@@ -1038,10 +1038,10 @@ export function aggregateCohort(input: { definition; from: Date; to: Date;
 - El rango se valida con el mismo criterio que `analytics-range.pipe.ts`: por defecto, los últimos 30 días.
 
 **Criterios de aceptación**
-- [ ] Un estudiante recibe `403`; prueba de metadatos de roles.
-- [ ] El servicio devuelve la agregación con los hechos del adaptador en memoria.
-- [ ] El `where` de Prisma filtra por certificación, rango y estado terminado.
-- [ ] Verificación común en verde.
+- [x] Un estudiante recibe `403`; prueba de metadatos de roles.
+- [x] El servicio devuelve la agregación con los hechos del adaptador en memoria.
+- [x] El `where` de Prisma filtra por certificación, rango y estado terminado.
+- [x] Verificación común en verde.
 
 ---
 
@@ -1059,8 +1059,8 @@ export function aggregateCohort(input: { definition; from: Date; to: Date;
 - Tabla 2×2 «listo para presentar» × «aprobó», con la nota de que los datos son voluntarios.
 
 **Criterios de aceptación**
-- [ ] Hay pruebas de las dos tablas y del aviso de privacidad.
-- [ ] Verificación común en verde y `npm run build -w apps/web` en verde.
+- [x] Hay pruebas de las dos tablas y del aviso de privacidad.
+- [x] Verificación común en verde y `npm run build -w apps/web` en verde.
 
 ---
 
@@ -1109,13 +1109,13 @@ Al cerrar el sprint:
 
 ## 5. Criterios de cierre
 
-- [ ] Un intento no devuelve nunca respuestas ni explicaciones antes de entregar (prueba recursiva en T7a y comprobación HTTP en T13).
-- [ ] El servidor rechaza respuestas fuera de plazo y cierra solo el intento vencido.
-- [ ] Un usuario no puede leer ni responder intentos de otro (`404` indistinguible).
-- [ ] El aleatorio respeta los pesos (±1 pregunta por dominio) y no repite preguntas de los tres últimos intentos cuando el banco alcanza.
-- [ ] La regla de preparación tiene pruebas de los cuatro criterios por separado y combinados.
-- [ ] Las preguntas falladas aparecen en el repaso con prioridad alta.
-- [ ] Suite completa, typecheck, lint y build en verde; verificación HTTP con dos usuarios (T13).
+- [x] Un intento no devuelve nunca respuestas ni explicaciones antes de entregar (prueba recursiva en T7a y comprobación HTTP en T13).
+- [x] El servidor rechaza respuestas fuera de plazo y cierra solo el intento vencido.
+- [x] Un usuario no puede leer ni responder intentos de otro (`404` indistinguible).
+- [x] El aleatorio respeta los pesos (±1 pregunta por dominio) y no repite preguntas de los tres últimos intentos cuando el banco alcanza.
+- [x] La regla de preparación tiene pruebas de los cuatro criterios por separado y combinados.
+- [x] Las preguntas falladas aparecen en el repaso con prioridad alta. Vencen al día siguiente, que es el intervalo SM-2 de un fallo, igual que en las unidades (T13 7g).
+- [x] Suite completa, typecheck, lint y build en verde; verificación HTTP con dos usuarios (T13).
 
 ## 6. Documentos relacionados
 
@@ -1147,3 +1147,29 @@ Estas tareas comparten archivo y **no se ejecutan a la vez**:
 - `exams.service.ts`: T7a, T7b y T12b;
 - `api-client.ts`: T9a y T12c;
 - `ExamHome.tsx`: T11a y T11b.
+
+## 8. Registro de revisión (Orquestador)
+
+El 2026-11-09, DeepSeek construyó 16 tareas.
+
+El 2026-11-10 la revisión encontró nueve tareas sin hacer: T2, T3b, T6b, T7a, T7b, T8, T12a, T12b y T12c. Las había saltado el flujo manual, y T13 se bloqueó, con razón, porque no había servidor que probar. A petición del responsable, esas nueve tareas y T13 las ejecutaron subagentes de Claude Sonnet 5.5, una por agente. El Orquestador revisó cada commit y pasó la suite completa al final.
+
+| Tarea | Commit | Nota de la revisión |
+|---|---|---|
+| T1a / T1b | `97edf80` / `85b1139` | |
+| T3a | `71b5ccc` | |
+| T2 | `d0d6ec0` | El constructor reportó la huella `6cd6e1d1…`, que salió de una consulta mal escapada. El Orquestador comprobó `1662\|8ca67124…` en 5433 y en dos respaldos restaurados en 5441 |
+| T3b | `912ce17` | |
+| T4a / T4b / T5 | `b28d203` / `a72d642` / `d64d005` | |
+| T6a / T6b | `b1c0675` / `8e485d2` + `a5e6333` | Corrección: el banco excluye las preguntas sin dominio. Antes entraban con `domain: 0` y rompían el contrato |
+| T7a | `13d7801` | |
+| T7b | `46d1635` + `4525d08` | Corrección: el resultado real rechaza fechas inexistentes, como «2026-02-30» |
+| T7c | `6e3af31` | Se hizo antes que T7a, sin consecuencias |
+| T8 | `5c041e9` | |
+| T9a / T9b / T9c / T9d | `39b2fc7` / `e26d5ee` / `5cd7667` / `6343b95` | |
+| T10 / T11a / T11b | `ffb73c8` / `b92a40a` / `1e86e2c` | |
+| T12a / T12b / T12c | `febff63` / `e204cd2` / `42e3b9f` | T12b: `AnalyticsRangePipe` valida `range`, no `from/to`, así que el controlador usa un esquema local |
+| T13 | informe | 9/9 pasos. Las preguntas falladas vencen al día siguiente (7g) |
+| T14 | este commit | Documentación |
+
+**Lección:** antes de dar un sprint por terminado, el Orquestador compara `git log` con el índice de §4.2.

@@ -198,6 +198,10 @@ El 80 % es una **regla inicial con margen** sobre el corte de AWS, que es el apr
 
 Mientras las formas de un simulacro no tengan revisión humana (`reviewedByHuman`), su resultado se muestra como **orientativo** y no cuenta para el criterio 2.
 
+**Aplicación en la plataforma (S15):**
+- El criterio 1 exige hoy que todas las unidades **publicadas** de la etapa estén en `MASTERED`. El «nivel 3 en las competencias críticas» se añadirá cuando esas competencias existan en los datos.
+- El criterio 4 se muestra «aún no disponible» hasta que existan los escenarios SIM de AWS (S26). Mientras tanto, nadie sale «listo para presentar».
+
 ---
 
 ## 7. Convenciones de esta especificación

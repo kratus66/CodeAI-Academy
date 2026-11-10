@@ -36,7 +36,7 @@
 | **S12** | Experiencia de aprendizaje (UX / frontend) | E1–E11 | — | ✅ 10/10 tareas; T9 (streaming del tutor) como deuda documentada |
 | **S13** | Multi-ruta: la plataforma sirve más de un curso | A0–A12 | `content` (rutas), semilla por unidad | ✅ 23/23 tareas (2026-11-09) |
 | **S14** | Preguntas tipo examen y metadatos de certificación | A1–A11 | `exercises` | ✅ 27/27 tareas (2026-11-09); dos revisiones humanas diferidas: la firma de `aws-guias-examen.md` y el recorrido del punto de control 3 |
-| **S15** | Simulador de examen y preparación por certificación | A1–A11 | `exams` (nuevo) | 🔄 fichas redactadas (2026-11-09): 26 tareas |
+| **S15** | Simulador de examen y preparación por certificación | A1–A11 | `exams` (nuevo) | ✅ 26/26 tareas (2026-11-10); verificación HTTP con dos usuarios (T13) |
 | **S16** | Laboratorios AWS: arnés en el sandbox y laboratorio en tu cuenta | A0–A11 | `sandbox`, `exercises` | ⬜ (requiere sandbox `docker`, S11-T16) |
 | **S17** | Contenido A0–A1 (CLF-C02) | A0–A1 | — | ⬜ |
 | **S18** | Contenido A2 (SAA-C03) | A2 | — | ⬜ |

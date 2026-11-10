@@ -655,6 +655,68 @@ model AiInteraction {
 
 ---
 
+## 6b. Simulacros de examen (S15, migración `20261110170218_exams`)
+
+```prisma
+enum ExamMode { FORM_A FORM_B FORM_C RANDOM DOMAIN }
+enum ExamAttemptStatus { IN_PROGRESS SUBMITTED EXPIRED }
+
+model ExamForm {            // formas fijas A/B/C, sembradas desde aws/exam-forms/<CERT>.json
+  certification String
+  code          String      // "A" | "B" | "C"
+  exerciseSlugs String[]    // ordenadas; solo QUIZ RESERVED de la certificación
+  @@unique([certification, code])
+}
+
+model ExamAttempt {
+  userId        String
+  certification String
+  mode          ExamMode
+  domain        Int?        // solo en DOMAIN
+  extraTime     Boolean     @default(false)
+  status        ExamAttemptStatus @default(IN_PROGRESS)
+  orientative   Boolean     @default(false)  // alguna pregunta sin reviewedByHuman
+  startedAt     DateTime    @default(now())
+  deadlineAt    DateTime    // lo fija el servidor
+  submittedAt   DateTime?
+  correctCount  Int?
+  scorePct      Int?
+  domainScores  Json?
+  items         ExamAttemptItem[]
+  @@index([userId, certification, startedAt])
+  @@index([certification, status])
+}
+
+model ExamAttemptItem {
+  attemptId  String
+  position   Int
+  exerciseId String
+  domain     Int
+  answer     Json?          // validada con quizSubmissionSchema y contra la pregunta
+  flagged    Boolean  @default(false)
+  correct    Boolean?       // solo al entregar
+  answeredAt DateTime?
+  @@unique([attemptId, position])
+  @@index([exerciseId])
+}
+
+model RealExamResult {       // voluntario y privado
+  userId              String
+  certification       String
+  passed              Boolean
+  scaledScore         Int?
+  takenOn             DateTime @db.Date
+  readyAtRegistration Boolean  // «listo para presentar» al registrarlo
+  @@index([userId, certification])
+  @@index([certification, createdAt])
+}
+```
+
+- «Un intento en curso por persona y certificación» se controla en el servicio, no con un índice parcial.
+- Todas las relaciones son `onDelete: Cascade`, igual que `Submission`.
+
+---
+
 ## 7. Reglas de integridad
 
 | Regla | Implementación |
@@ -683,6 +745,7 @@ model AiInteraction {
 - Historial: `@@index([userId, createdAt])` en `Submission`.
 - Pistas: `@@index([userId, exerciseId])` en `HintRequest` — calcular `hintsUsed` desde el envío anterior sin recorrer la tabla.
 - Catálogo: `@@index([unitId, type])` para listar ejercicios por unidad.
+- Simulacros (S15): `@@index([userId, certification, startedAt])` para el historial y «un intento en curso»; `@@index([certification, status])` para la cohorte.
 - Preguntas de examen: `@@index([certification, examDomain, examPool])` (S14, migración `20261109145212_exam_metadata`). Las preguntas se guardan en columnas y no dentro de `config` para que el simulador de S15 pueda armar formas por dominio con una consulta.
 - Proyectos: `@@index([stageId, isPublished])` para el catálogo y `@@index([projectId, status])` para la bandeja de revisión.
 - Portafolio: `@@index([userId, isPublic, publishedAt])` resuelve la vista pública y la propia sin recorrer entregas ajenas.
