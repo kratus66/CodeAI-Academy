@@ -1,6 +1,8 @@
 import type {
   AuditAnswerInput,
   AuditAnswerResponse,
+  CloudEvidenceInput,
+  CloudEvidenceResult,
   CreateSubmissionInput,
   ExerciseDetailResponse,
   ExerciseListQuery,
@@ -22,6 +24,7 @@ import type {
 } from "@codeai/shared";
 import {
   auditAnswerSchema,
+  cloudEvidenceSchema,
   createSubmissionSchema,
   exerciseListQuerySchema,
   flashcardRatingSchema,
@@ -151,6 +154,19 @@ export class ExercisesController {
     @Body(new ZodValidationPipe(auditAnswerSchema)) body: AuditAnswerInput,
   ): Promise<AuditAnswerResponse> {
     return this.exercises.answerAudit(user.sub, params.id, body);
+  }
+
+  /**
+   * Evidencia de un laboratorio en cuenta propia: mismas guardas de clase que
+   * el quiz y la auditoría. La respuesta nunca incluye las expectativas.
+   */
+  @Post(":id/cloud-evidence")
+  async submitCloudEvidence(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(exerciseIdParamsSchema)) params: ExerciseIdParams,
+    @Body(new ZodValidationPipe(cloudEvidenceSchema)) body: CloudEvidenceInput,
+  ): Promise<{ result: CloudEvidenceResult }> {
+    return this.exercises.submitCloudEvidence(user.sub, params.id, body);
   }
 
   @Post(":id/reflections")

@@ -1,6 +1,8 @@
 import type {
   AuditAnswerInput,
   AuditAnswerResponse,
+  CloudEvidenceInput,
+  CloudEvidenceResult,
   CreateSubmissionInput,
   ExerciseDetailResponse,
   FlashcardRatingInput,
@@ -39,6 +41,7 @@ import type { Page, PageWindow } from "../content/content.repository";
 import type { SandboxService } from "../sandbox/sandbox.service";
 import { SANDBOX_SERVICE } from "../sandbox/sandbox.service";
 import { gradeAudit } from "./audit-grading";
+import { evaluateCloudEvidence } from "./cloud-evidence";
 import { gradeSubmission } from "./grading";
 import { gradeQuizAnswer } from "./quiz-grading";
 import {
@@ -116,6 +119,7 @@ type ExerciseTestRow = ExerciseRow["tests"][number];
 
 const NOT_A_QUIZ = "Este ejercicio no es un quiz";
 const NOT_AN_AUDIT = "Este ejercicio no es una auditoría";
+const NOT_A_CLOUD_LAB = "Este ejercicio no es un laboratorio en tu cuenta";
 const NOT_A_FLASHCARD = "Este ejercicio no es una tarjeta";
 const NOT_A_REFLECTION = "Este ejercicio no es una reflexión";
 const REVEAL_FIRST = "Primero intenta recordar y revela la respuesta";
@@ -343,6 +347,58 @@ export class ExercisesService {
       outcome,
       score,
       achievedLevel: this.accreditedLevel(exercise, outcome === "PASSED" ? 3 : null),
+      hintsUsed: 0,
+      durationMs: 0,
+      results: [],
+    } satisfies CreateSubmissionRow);
+
+    await this.reviews.scheduleFromSubmission({ userId, exerciseId, outcome, score, hintsUsed: 0 });
+    await this.recordProgress(userId, exercise.unitCode);
+
+    return { result: graded.result };
+  }
+
+  /**
+   * Evidencia de un laboratorio en la cuenta del estudiante (`CLOUD_LAB`, S16).
+   * Mismo orden que `answerAudit`: tipo → evaluación pura → tope de intentos.
+   * Una evidencia inválida (credenciales incluidas) es un `400` que no gasta
+   * intento. Se guarda solo el resumen sin salida en bruto y el nivel máximo
+   * es 2: esta práctica nunca certifica el nivel 3.
+   */
+  async submitCloudEvidence(
+    userId: string,
+    exerciseId: string,
+    body: CloudEvidenceInput,
+  ): Promise<{ result: CloudEvidenceResult }> {
+    const exercise = await this.requireExercise(exerciseId);
+
+    if (exercise.type !== "CLOUD_LAB") {
+      throw new BadRequestException(NOT_A_CLOUD_LAB);
+    }
+
+    const graded = evaluateCloudEvidence(exercise.solution, exercise.config, body);
+
+    if (graded.status === "invalid-answer") {
+      throw new BadRequestException(graded.message);
+    }
+
+    if (graded.status === "broken-content") {
+      throw new InternalServerErrorException(CONTENT_BROKEN);
+    }
+
+    await this.assertAttemptsLeft(userId, exercise);
+
+    const { outcome, checks } = graded.result;
+    const passedChecks = checks.filter((check) => check.passed).length;
+    const score = Math.round((100 * passedChecks) / checks.length);
+
+    await this.repository.createSubmission({
+      userId,
+      exerciseId,
+      code: graded.storedSummary,
+      outcome,
+      score,
+      achievedLevel: this.accreditedLevel(exercise, outcome === "PASSED" ? 2 : null),
       hintsUsed: 0,
       durationMs: 0,
       results: [],
