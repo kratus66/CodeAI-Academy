@@ -11,6 +11,7 @@ export const EXERCISE_TYPES = [
   "READING",
   "REFLECT",
   "PROJECT",
+  "CLOUD_LAB",
 ] as const;
 
 export type ExerciseType = (typeof EXERCISE_TYPES)[number];
