@@ -237,6 +237,27 @@ describe("ExercisesService: envío", () => {
     });
   });
 
+  it("pasa harness aws al sandbox cuando la configuración del ejercicio lo declara", async () => {
+    const sandbox = stubSandbox(passedAll);
+    const { service } = serviceWith([row({ config: { harness: "aws" } })], sandbox);
+
+    await service.submit("user_a", "ex_1", { code: "const a = 1;" });
+
+    expect(sandbox.calls[0]?.harness).toBe("aws");
+  });
+
+  it("no añade la clave harness si falta o tiene otro valor", async () => {
+    for (const config of [{ starterCode: "x" }, { harness: "gcp" }, null, "aws"]) {
+      const sandbox = stubSandbox(passedAll);
+      const { service } = serviceWith([row({ config })], sandbox);
+
+      await service.submit("user_a", "ex_1", { code: "const a = 1;" });
+
+      expect(sandbox.calls[0]).toBeDefined();
+      expect(sandbox.calls[0]).not.toHaveProperty("harness");
+    }
+  });
+
   it("persiste el envío aprobado con 100, con nivel y sin pistas", async () => {
     const { service } = serviceWith([row()]);
 

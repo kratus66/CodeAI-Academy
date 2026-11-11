@@ -512,6 +512,7 @@ export class ExercisesService {
       ],
       tests: exercise.tests.map(toSandboxTest),
       limits: { ...RUN_LIMITS },
+      ...(declaresAwsHarness(exercise.config) ? { harness: "aws" as const } : {}),
     });
     const grade = gradeSubmission({
       tests: exercise.tests.map((test) => ({
@@ -581,6 +582,16 @@ export class ExercisesService {
       throw new ServiceUnavailableException(SANDBOX_UNAVAILABLE);
     }
   }
+}
+
+/** Solo `config.harness === "aws"` activa el arnés; cualquier otro valor se ignora. */
+function declaresAwsHarness(config: unknown): boolean {
+  return (
+    typeof config === "object" &&
+    config !== null &&
+    "harness" in config &&
+    config.harness === "aws"
+  );
 }
 
 /** `page` es 1-based: la primera página empieza en la fila 0. */
