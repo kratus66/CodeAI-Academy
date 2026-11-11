@@ -573,6 +573,47 @@ export const contentSeedAuditSchema = z.object({
 
 export type ContentSeedAudit = z.infer<typeof contentSeedAuditSchema>;
 
+const CLOUD_CHECK_OPERATORS = ["equals", "exists", "absent", "matches", "lengthAtLeast", "lengthEquals"] as const;
+
+/**
+ * Laboratorio en la nube de AWS (`metodo-aws.md` §4.2). La evidencia es la
+ * salida JSON de comandos de solo lectura; `path` es un camino como
+ * `Budgets[0].BudgetLimit.Amount`.
+ */
+export const contentSeedCloudLabSchema = z.object({
+  region: z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d$/),
+  tag: z.string().regex(/^codeai-lab=[a-z0-9-]+$/),
+  cost: z.object({
+    expectedUsd: z.number().nonnegative(),
+    freeTier: z.string().min(1),
+    source: z.string().url(),
+    checkedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  }),
+  prerequisites: z.array(z.string().min(1)).min(1),
+  steps: z.array(z.object({ title: z.string().min(1), instructions: z.string().min(1) })).min(1),
+  checks: z
+    .array(
+      z.object({
+        id: z.string().regex(/^c\d{1,2}$/),
+        label: z.string().min(1),
+        phase: z.enum(["build", "cleanup"]),
+        command: z.string().regex(/^aws [a-z0-9-]+ (describe|get|list)-[a-z0-9-]+/),
+        expect: z
+          .array(
+            z.object({
+              path: z.string().min(1),
+              op: z.enum(CLOUD_CHECK_OPERATORS),
+              value: z.unknown().optional(),
+            }),
+          )
+          .min(1),
+      }),
+    )
+    .min(1),
+});
+
+export type ContentSeedCloudLab = z.infer<typeof contentSeedCloudLabSchema>;
+
 /**
  * Ejercicio sembrado (`plantilla-ejercicio.md`, `banco-ejercicios.md` §6). Las
  * reglas duras de la plantilla se validan en el esquema de la semilla completa.
@@ -599,6 +640,7 @@ export const contentSeedExerciseSchema = z.object({
   flashcard: contentSeedFlashcardSchema.nullable().default(null),
   memory: contentSeedMemorySchema.nullable().default(null),
   audit: contentSeedAuditSchema.nullable().default(null),
+  cloudLab: contentSeedCloudLabSchema.nullable().default(null),
   sources: z.array(z.string().url()).min(1, "La documentación oficial es obligatoria"),
   maxAttempts: z.number().int().positive().nullable().default(null),
   isPublished: z.boolean(),
@@ -885,6 +927,31 @@ export function exerciseRuleViolations(exercise: ContentSeedExercise): string[] 
     }
   } else if (exercise.audit !== null) {
     problems.push("solo un AUDIT declara audit");
+  }
+
+  if (exercise.type === "CLOUD_LAB") {
+    const cloudLab = exercise.cloudLab;
+
+    if (cloudLab === null) {
+      problems.push("un CLOUD_LAB requiere cloudLab");
+    } else {
+      const checkIds = cloudLab.checks.map((check) => check.id);
+
+      if (!cloudLab.checks.some((check) => check.phase === "cleanup")) {
+        problems.push("un CLOUD_LAB declara al menos una comprobación de limpieza");
+      }
+      if (new Set(checkIds).size !== checkIds.length) {
+        problems.push("las comprobaciones repiten id");
+      }
+    }
+    if (exercise.hints.length > 0 || exercise.tests.length > 0) {
+      problems.push("un CLOUD_LAB no lleva pistas ni pruebas");
+    }
+    if (exercise.ladder === "AUTONOMOUS") {
+      problems.push("un CLOUD_LAB no es de nivel autónomo");
+    }
+  } else if (exercise.cloudLab !== null) {
+    problems.push("solo un CLOUD_LAB declara cloudLab");
   }
 
   if (exercise.harness !== null) {

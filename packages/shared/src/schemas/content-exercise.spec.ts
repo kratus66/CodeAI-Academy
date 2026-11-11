@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  contentSeedCloudLabSchema,
   contentSeedExerciseSchema,
   contentSeedQuizSchema,
   exerciseRuleViolations,
@@ -672,3 +673,101 @@ describe("reglas de AUDIT", () => {
   });
 });
 
+
+describe("reglas de CLOUD_LAB", () => {
+  const check = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: "c1",
+    label: "El presupuesto existe",
+    phase: "build",
+    command: "aws budgets describe-budgets",
+    expect: [{ path: "Budgets[0].BudgetLimit.Amount", op: "equals", value: "5.0" }],
+    ...overrides,
+  });
+
+  const cloudLab = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    region: "us-east-1",
+    tag: "codeai-lab=presupuesto",
+    cost: {
+      expectedUsd: 0,
+      freeTier: "Los dos primeros presupuestos son gratuitos",
+      source: "https://aws.amazon.com/aws-cost-management/pricing/",
+      checkedOn: "2026-11-11",
+    },
+    prerequisites: ["Cuenta de AWS de práctica"],
+    steps: [{ title: "Crea el presupuesto", instructions: "Abre la consola de Billing." }],
+    checks: [check(), check({ id: "c2", label: "El presupuesto ya no existe", phase: "cleanup" })],
+    ...overrides,
+  });
+
+  const cloudLabExercise = (overrides: Record<string, unknown> = {}): ContentSeedExercise =>
+    exercise({
+      type: "CLOUD_LAB",
+      language: null,
+      starterCode: null,
+      solution: null,
+      hints: [],
+      tests: [],
+      cloudLab: cloudLab(),
+      ...overrides,
+    });
+
+  it("acepta un CLOUD_LAB completo y deja cloudLab en null por defecto", () => {
+    expect(exerciseRuleViolations(cloudLabExercise())).toEqual([]);
+    expect(exercise().cloudLab).toBeNull();
+  });
+
+  it("un CLOUD_LAB requiere cloudLab", () => {
+    expect(exerciseRuleViolations(cloudLabExercise({ cloudLab: null }))).toContain(
+      "un CLOUD_LAB requiere cloudLab",
+    );
+  });
+
+  it("solo un CLOUD_LAB declara cloudLab", () => {
+    expect(exerciseRuleViolations(exercise({ cloudLab: cloudLab() }))).toContain(
+      "solo un CLOUD_LAB declara cloudLab",
+    );
+  });
+
+  it("un CLOUD_LAB declara al menos una comprobación de limpieza", () => {
+    const problems = exerciseRuleViolations(cloudLabExercise({ cloudLab: cloudLab({ checks: [check()] }) }));
+
+    expect(problems).toContain("un CLOUD_LAB declara al menos una comprobación de limpieza");
+  });
+
+  it("las comprobaciones repiten id", () => {
+    const checks = [check(), check({ phase: "cleanup" })];
+
+    expect(exerciseRuleViolations(cloudLabExercise({ cloudLab: cloudLab({ checks }) }))).toContain(
+      "las comprobaciones repiten id",
+    );
+  });
+
+  it("un CLOUD_LAB no lleva pistas ni pruebas", () => {
+    const withHints = cloudLabExercise({ hints: [{ level: 1, text: "a" }] });
+    const withTests = cloudLabExercise({
+      tests: [{ name: "visible", isHidden: false, spec: { code: "assert.ok(true)" } }],
+    });
+
+    expect(exerciseRuleViolations(withHints)).toContain("un CLOUD_LAB no lleva pistas ni pruebas");
+    expect(exerciseRuleViolations(withTests)).toContain("un CLOUD_LAB no lleva pistas ni pruebas");
+  });
+
+  it("un CLOUD_LAB no es de nivel autónomo", () => {
+    expect(exerciseRuleViolations(cloudLabExercise({ ladder: "AUTONOMOUS" }))).toContain(
+      "un CLOUD_LAB no es de nivel autónomo",
+    );
+  });
+
+  it("rechaza comandos que no son de solo lectura, regiones y etiquetas mal formadas", () => {
+    const bad = (overrides: Record<string, unknown>): boolean =>
+      contentSeedCloudLabSchema.safeParse(cloudLab(overrides)).success;
+
+    expect(bad({ checks: [check({ command: "aws budgets delete-budget" })] })).toBe(false);
+    expect(bad({ checks: [check({ command: "aws s3 ls" })] })).toBe(false);
+    expect(bad({ region: "useast1" })).toBe(false);
+    expect(bad({ tag: "lab=presupuesto" })).toBe(false);
+    expect(bad({ checks: [check({ id: "check1" })] })).toBe(false);
+    expect(bad({ checks: [check({ expect: [{ path: "a", op: "contains" }] })] })).toBe(false);
+    expect(bad({})).toBe(true);
+  });
+});

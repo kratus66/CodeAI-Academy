@@ -26,6 +26,7 @@ function draft(overrides: Partial<ExerciseDraft> = {}): ExerciseDraft {
     memory: null,
     audit: null,
     harness: null,
+    cloudLab: null,
     sources: [SOURCE],
     hints: [],
     tests: [
