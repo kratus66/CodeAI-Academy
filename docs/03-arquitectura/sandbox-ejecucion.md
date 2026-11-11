@@ -224,6 +224,20 @@ export class MockSandboxService implements SandboxService {
 - **Límites conocidos:** SQL no se ejecuta (responde `ERROR`); las pruebas ocultas viajan en `/work/.codeai` y el código del estudiante podría leerlas, por lo que `exercises` nunca publica el `stdout` de un envío (mover el arnés fuera del contenedor antes de exponerlo).
 - `SANDBOX_MODE` sigue en `mock` por defecto; con `NODE_ENV=production` el arranque exige `docker`.
 
+## 11. Arnés AWS en el sandbox (S16)
+
+Diseño completo en [`arnes-aws.md`](arnes-aws.md) §1 (ADR S16-T0).
+
+- **Petición:** `SandboxRunRequest` acepta `harness: "aws"`. `ExercisesService.submit` lo envía cuando `exercise.config.harness === "aws"`.
+- **Copia del arnés:** el adaptador `docker` copia `@codeai/aws-harness/dist` en `/work/.codeai/harness/`, con un `package.json` `{"type":"module"}`. El montaje es de solo lectura.
+- **Preludio:** antes del código del estudiante, el archivo de comprobación declara `const aws`, que es el espacio de nombres del arnés congelado.
+- **Canario:** después del código del estudiante se ejecuta `selfTest()`. Si falla, imprime `__CODEAI_HARNESS_TAMPERED__` y el resultado es `ERROR`, con «El arnés se alteró durante la ejecución».
+- **Pruebas con Docker real** (`SANDBOX_DOCKER_TESTS=1`):
+  - en `docker-sandbox.integration.spec.ts`, declarar, reasignar o mutar `aws`, alterar `Array.prototype.join` o `String.prototype.startsWith`, o escribir en el arnés da `ERROR`;
+  - en `aws-pilots.docker.integration.spec.ts`, los tres pilotos dan `PASSED` con la solución y `FAILED`/`PARTIAL` con el código inicial.
+- **Guarda en el proceso:** `seed-course-quality.spec.ts` ejecuta los laboratorios AWS sin sandbox. Elimina los tipos con `stripTypeScriptTypes` y usa el mismo `@codeai/aws-harness`.
+- **Límites:** el modo `mock` no ejecuta el arnés. La imagen de producción deberá incluir `packages/aws-harness/dist` cuando se despliegue el modo `docker` (deuda de S11).
+
 ## Documentos relacionados
 
 - [`arquitectura-general.md`](arquitectura-general.md)

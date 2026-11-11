@@ -1,6 +1,6 @@
 # Arnés AWS: evaluadores puros dentro del sandbox
 
-> **Estado:** ADR aceptado (S16-T0, 2026-11-10). Los evaluadores se construyen en S16. La revisión humana de cada evaluador (S16-T8) está **pendiente** y se registra en §4.
+> **Estado:** ADR aceptado (S16-T0, 2026-11-10). Los nueve evaluadores están construidos (S16, 2026-11-11): 465 pruebas, con casos dorados que citan su URL oficial. La revisión humana de cada evaluador (S16-T8) está **pendiente** y se registra en §4.
 > **Por qué existe:** el sandbox no tiene ni tendrá acceso a AWS (`--network none`). Los laboratorios de la ruta AWS se corrigen con **evaluadores puros y fieles**, que modelan un subconjunto declarado del comportamiento de AWS y se prueban contra ejemplos de la documentación oficial ([`../02-contenido/metodo-aws.md`](../02-contenido/metodo-aws.md) §4.1).
 
 ---
@@ -77,4 +77,34 @@ Ningún evaluador se usa en contenido **publicado** sin una revisión humana reg
 
 | Evaluador | Versión | Revisado por | Fecha | Resultado |
 |-----------|---------|--------------|-------|-----------|
-| — | — | — | — | Pendiente |
+| cidr | 0.1.0 | — | — | Pendiente |
+| iam | 0.2.0 | — | — | Pendiente |
+| network | 0.1.0 | — | — | Pendiente |
+| events | 0.1.0 | — | — | Pendiente |
+| cfn | 0.1.0 | — | — | Pendiente |
+| dynamodb | 0.1.0 | — | — | Pendiente |
+| s3access | 0.1.0 | — | — | Pendiente |
+| asl | 0.1.0 | — | — | Pendiente |
+| cost | 0.1.0 | — | — | Pendiente |
+
+**Qué revisar en cada evaluador (T8):**
+- Que cada URL citada corresponde a la sección del PDF de la que salió el ejemplo. El PDF no trae las URL HTML y se dedujeron por el título.
+- Que `notModeled` cubre lo que la guía deja abierto.
+- Las decisiones propias declaradas:
+  - `iam`: clave ausente → condición falsa salvo `…IfExists`/`Null`; `ForAllValues` negado con clave ausente → falso;
+  - `s3access`: el principal anónimo se evalúa como una cuenta ajena; solo cuentan como restrictivos ciertos operadores;
+  - `cost`: redondeo por línea, como los ejemplos oficiales de Lambda. Dos ejemplos de la página se excluyeron porque no cuadran con su propia tabla;
+  - `cfn`: `requireAll` opcional en la regla de bloqueo público;
+  - `dynamodb`: `GetItem` cuando hay igualdad en las dos claves.
+
+**Fuentes en PDF que funcionan** (2026-11-11):
+- `vpc/latest/userguide/vpc-ug.pdf`;
+- `IAM/latest/UserGuide/iam-ug.pdf`;
+- `organizations/latest/userguide/organizations-userguide.pdf`;
+- `eventbridge/latest/userguide/user-guide.pdf`;
+- `AWSCloudFormation/latest/UserGuide/cfn-ug.pdf`;
+- `amazondynamodb/latest/developerguide/dynamodb-dg.pdf`;
+- `AmazonS3/latest/userguide/s3-userguide.pdf`;
+- `step-functions/latest/dg/step-functions-dg.pdf`.
+
+Todas cuelgan de `https://docs.aws.amazon.com/pdfs/`. Las páginas HTML **sí** se leen con `curl`, pero una página inexistente devuelve 200: hay que comparar el `<title>`.

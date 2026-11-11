@@ -258,6 +258,7 @@ enum ExerciseType {
   READING
   REFLECT
   PROJECT
+  CLOUD_LAB    // S16, migración 20261111202707_cloud_lab
 }
 
 enum Ladder {

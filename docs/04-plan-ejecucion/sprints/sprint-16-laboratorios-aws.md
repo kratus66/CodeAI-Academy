@@ -1,6 +1,6 @@
 # Sprint 16 — Laboratorios AWS: arnés en el sandbox y laboratorio en tu cuenta
 
-> **Estado:** 🔄 fichas redactadas (2026-11-10), contrastadas con el código; T0 (ADR) hecho · **Depende de:** S14 y del sandbox `docker` (S11). En desarrollo, el modo `docker` funciona con el Docker del host. Su despliegue en producción es deuda de S11 y queda fuera de este sprint.
+> **Estado:** ✅ cerrado (2026-11-11): las 28 tareas de construcción, T0 y T15 están hechas y revisadas (registro en §7). La revisión humana de los evaluadores (T8) queda **diferida**, y los pilotos siguen sin publicar · **Depende de:** S14 y del sandbox `docker` (S11). En desarrollo, el modo `docker` funciona con el Docker del host. Su despliegue en producción es deuda de S11 y queda fuera de este sprint.
 > **Ámbito:** paquete nuevo `packages/aws-harness` (los evaluadores), integración con `sandbox`, el tipo de ejercicio `CLOUD_LAB` con su reproductor y cuatro laboratorios piloto. El ADR y el registro de revisión están en [`../../03-arquitectura/arnes-aws.md`](../../03-arquitectura/arnes-aws.md).
 > **Por qué existe:** las preguntas entrenan la decisión, pero el trabajo exige escribir políticas, redes, plantillas y código que funcionen. El sandbox no llama a AWS, así que los laboratorios se corrigen con **evaluadores puros y fieles** y, de forma opcional y sin certificar nunca, con práctica en la cuenta propia.
 
@@ -131,10 +131,10 @@ Los evaluadores que usan los pilotos (`cidr`, `iam` y `network`) van primero. Lo
 - **`src/index.ts`:** exporta `aws`, un objeto con los evaluadores (por ahora `{}`), `selfTest`, `listCapabilities` y `HARNESS_VERSION`. Cada evaluador nuevo se añade a `aws` y a `registerEvaluator`.
 
 **Criterios**
-- [ ] `npm run build -w packages/aws-harness` genera `dist/index.js` (ESM) y `dist/index.d.ts`.
-- [ ] La verificación común incluye el paquete: aparece en `npm run typecheck`, `lint` y `test`.
-- [ ] Hay pruebas de `deepFreeze` (anidado, arrays, mutación rechazada en modo estricto) y de `selfTest`: verdadero sin evaluadores, falso si un canario devuelve falso o lanza.
-- [ ] `git diff --numstat package-lock.json` solo añade el workspace.
+- [x] `npm run build -w packages/aws-harness` genera `dist/index.js` (ESM) y `dist/index.d.ts`.
+- [x] La verificación común incluye el paquete: aparece en `npm run typecheck`, `lint` y `test`.
+- [x] Hay pruebas de `deepFreeze` (anidado, arrays, mutación rechazada en modo estricto) y de `selfTest`: verdadero sin evaluadores, falso si un canario devuelve falso o lanza.
+- [x] `git diff --numstat package-lock.json` solo añade el workspace.
 
 **Qué NO hacer:** no añadir dependencias; no tocar `packages/shared`.
 
@@ -159,9 +159,9 @@ validateSubnetPlan(plan: { vpc: string; subnets: { name: string; cidr: string }[
 ```
 
 **Criterios**
-- [ ] Hay como mínimo 8 casos dorados con su URL, entre ellos las 5 reservadas de un ejemplo de la guía y los límites de tamaño.
-- [ ] Casos propios: CIDR mal formado (`null` o problema, sin lanzar), base no alineada, `split` imposible, solapes parciales y totales.
-- [ ] `capabilities.notModeled` incluye IPv6, CIDR secundarios y restricciones de rangos que no estén en la guía leída.
+- [x] Hay como mínimo 8 casos dorados con su URL, entre ellos las 5 reservadas de un ejemplo de la guía y los límites de tamaño.
+- [x] Casos propios: CIDR mal formado (`null` o problema, sin lanzar), base no alineada, `split` imposible, solapes parciales y totales.
+- [x] `capabilities.notModeled` incluye IPv6, CIDR secundarios y restricciones de rangos que no estén en la guía leída.
 
 ---
 
@@ -192,9 +192,9 @@ validatePolicy(doc: unknown): string[]                      // gramática del su
 - En T3a, una sentencia con `Condition` se trata como **no evaluable**. `evaluate` devuelve `ImplicitDeny` con `reason` «La sentencia usa condiciones: requiere el evaluador de condiciones» si esa sentencia decide. T3b lo completa.
 
 **Criterios**
-- [ ] Hay casos dorados del diagrama y de los ejemplos de la lógica de evaluación: denegación explícita, permiso, denegación implícita, recurso de la misma cuenta frente a otra cuenta, límite de permisos, política de sesión, SCP que no permite y RCP. Cada uno con su URL.
-- [ ] Casos de comodines de la gramática documentada.
-- [ ] `notModeled` declara lo que la guía deja fuera del subconjunto: claves KMS, políticas de confianza de roles, ACL, `NotPrincipal` complejo, la cuenta de administración de Organizations…
+- [x] Hay casos dorados del diagrama y de los ejemplos de la lógica de evaluación: denegación explícita, permiso, denegación implícita, recurso de la misma cuenta frente a otra cuenta, límite de permisos, política de sesión, SCP que no permite y RCP. Cada uno con su URL.
+- [x] Casos de comodines de la gramática documentada.
+- [x] `notModeled` declara lo que la guía deja fuera del subconjunto: claves KMS, políticas de confianza de roles, ACL, `NotPrincipal` complejo, la cuenta de administración de Organizations…
 
 ---
 
@@ -256,12 +256,12 @@ canConnect(model: VpcModel, flow: { from: Endpoint; to: Endpoint; protocol; port
 
 **Archivos:** `apps/api/src/modules/sandbox/docker-sandbox.integration.spec.ts` (modificar: añadir casos con `skipIf`, igual que los actuales).
 **Criterios** (se ejecutan con `SANDBOX_DOCKER_TESTS=1` y, sin esa variable, se omiten)
-- [ ] Una prueba que usa `aws.cidr.overlaps` pasa.
-- [ ] El estudiante declara `const aws = …`: `ERROR`.
-- [ ] El estudiante reasigna `aws.cidr = …` o muta una función: `ERROR`.
-- [ ] El estudiante altera `Array.prototype.some` o `String.prototype.startsWith` de forma que un canario falla: `ERROR` con el mensaje del canario.
-- [ ] El estudiante intenta escribir en `/work/.codeai/harness`: falla, porque el montaje es de solo lectura.
-- [ ] El reporte pega la salida de `SANDBOX_DOCKER_TESTS=1 npx vitest run docker-sandbox.integration` (desde `apps/api`).
+- [x] Una prueba que usa `aws.cidr.overlaps` pasa.
+- [x] El estudiante declara `const aws = …`: `ERROR`.
+- [x] El estudiante reasigna `aws.cidr = …` o muta una función: `ERROR`.
+- [x] El estudiante altera `Array.prototype.some` o `String.prototype.startsWith` de forma que un canario falla: `ERROR` con el mensaje del canario.
+- [x] El estudiante intenta escribir en `/work/.codeai/harness`: falla, porque el montaje es de solo lectura.
+- [x] El reporte pega la salida de `SANDBOX_DOCKER_TESTS=1 npx vitest run docker-sandbox.integration` (desde `apps/api`).
 
 ---
 
@@ -298,8 +298,8 @@ canConnect(model: VpcModel, flow: { from: Endpoint; to: Endpoint; protocol; port
 - Una función pura `runLabInProcess(code, tests, { harness })` se prueba con ejemplos sintéticos.
 
 **Criterios:**
-- [ ] Con `aws/units` vacío, la guarda pasa.
-- [ ] Hay ejemplos sintéticos malos (la solución falla, o el código inicial pasa todo) que la disparan.
+- [x] Con `aws/units` vacío, la guarda pasa.
+- [x] Hay ejemplos sintéticos malos (la solución falla, o el código inicial pasa todo) que la disparan.
 
 ---
 
@@ -396,10 +396,10 @@ maskIdentifiers(text: string): string   // 12 dígitos → ************ ; arn:aw
 - **Respuesta:** `{ result }`.
 
 **Criterios**
-- [ ] El nivel máximo es 2, con prueba.
-- [ ] Hay una prueba de que ningún campo guardado contiene la salida en bruto (marcador).
-- [ ] Credenciales → `400` sin crear envío.
-- [ ] `getDetail` no expone `expect`.
+- [x] El nivel máximo es 2, con prueba.
+- [x] Hay una prueba de que ningún campo guardado contiene la salida en bruto (marcador).
+- [x] Credenciales → `400` sin crear envío.
+- [x] `getDetail` no expone `expect`.
 
 ---
 
@@ -438,9 +438,9 @@ maskIdentifiers(text: string): string   // 12 dígitos → ************ ; arn:aw
   - el costo, con su fuente oficial de precios de AWS Budgets y la fecha.
 
 **Criterios de cada piloto**
-- [ ] `npm run db:seed:aws` da 1 ejercicio más y «Formas de simulacro: 0».
-- [ ] La guarda T7 pasa: la solución pasa y el código inicial falla. En T12d, las reglas de `CLOUD_LAB`.
-- [ ] El ejercicio lleva `isPublished: false` y `reviewedByHuman: false`.
+- [x] `npm run db:seed:aws` da 1 ejercicio más y «Formas de simulacro: 0».
+- [x] La guarda T7 pasa: la solución pasa y el código inicial falla. En T12d, las reglas de `CLOUD_LAB`.
+- [x] El ejercicio lleva `isPublished: false` y `reviewedByHuman: false`.
 
 ---
 
@@ -474,15 +474,41 @@ Cada uno con los mismos archivos que T2 (`src/<evaluador>/*` y el registro en `i
 
 ## 5. Criterios de cierre
 
-- [ ] Cada evaluador declara su alcance y tiene pruebas doradas con la URL oficial. T8 queda registrado como diferido o firmado.
-- [ ] Los tres pilotos con arnés pasan contra el sandbox `docker` (T13): la solución pasa y el código inicial falla.
-- [ ] El arnés no se puede sustituir: declararlo, reasignarlo, mutarlo o alterar los prototipos da `ERROR` (T5b).
-- [ ] La evidencia de `CLOUD_LAB` nunca se guarda en bruto y enmascara identificadores (T10a y T10b).
-- [ ] Ningún `CLOUD_LAB` concede nivel 3 (T10b).
-- [ ] La suite completa, el typecheck, el lint y el build pasan.
+- [x] Cada evaluador declara su alcance y tiene pruebas doradas con la URL oficial. T8 queda registrado como **diferido** en [`arnes-aws.md`](../../03-arquitectura/arnes-aws.md) §4.
+- [x] Los tres pilotos con arnés pasan contra el sandbox `docker` (T13): la solución pasa y el código inicial falla.
+- [x] El arnés no se puede sustituir: declararlo, reasignarlo, mutarlo o alterar los prototipos da `ERROR` (T5b).
+- [x] La evidencia de `CLOUD_LAB` nunca se guarda en bruto y enmascara identificadores (T10a y T10b).
+- [x] Ningún `CLOUD_LAB` concede nivel 3 (T10b).
+- [x] La suite completa, el typecheck, el lint y el build pasan.
 
 ## 6. Documentos relacionados
 
 - [`../../03-arquitectura/arnes-aws.md`](../../03-arquitectura/arnes-aws.md) (ADR y registro de revisión)
 - [`../../02-contenido/metodo-aws.md`](../../02-contenido/metodo-aws.md) §4.1–§4.2
 - [`../../03-arquitectura/sandbox-ejecucion.md`](../../03-arquitectura/sandbox-ejecucion.md) §10
+
+## 7. Registro de revisión (Orquestador, 2026-11-11)
+
+Los constructores fueron subagentes de Claude Sonnet 5.5, uno por tarea y en secuencia. El Orquestador revisó cada commit y pasó la suite completa al final.
+
+| Tarea | Commit | Nota |
+|---|---|---|
+| T0 · planificación | `306f243` | ADR y fichas |
+| T1 | `3412a8d` | Paquete ESM sin dependencias |
+| T2 · T3a · T3b · T4 | `5b72a58` · `4ee4d8d` · `005dec6` · `3b0b638` | T3b reescribió, autorizadas, 4 pruebas provisionales de T3a para seguir la semántica real de las condiciones |
+| T5a · T5b | `deee64a` · `bf18e44` | 12/12 en Docker real; 6 intentos de manipulación → `ERROR` |
+| T6a · T6b · T7 | `3fd6d2c` · `d97d586` · `baba497` | Huellas de quizzes y de los 78 `LAB`/`DEBUG` intactas |
+| T9a · T9b · T9c | `338bf0e` · `62e0199` · `0bf3e1c` | T9a se aplicó en la base `codeai-s16-db` (puerto 5442) porque la API del responsable ocupaba la 5433. Ver la nota de abajo |
+| T10a · T10b · T11a · T11b | `6ae19bd` · `cde0c83` · `c52c66f` · `c0802b9` | Nivel máximo 2; la evidencia no se guarda (prueba con marcador) |
+| T12a · T12b · T12c · T12d | `627de8c` · `3dcbdba` · `cad2a67` · `c54cd8d` | Pilotos sin publicar |
+| T13 | `3d32e22` | Los tres pilotos con arnés, 7/7 contra Docker real |
+| T14a–f | `a3db64c` · `ca13471` · `1a197d5` · `ff72a76` · `dc7bc15` · `2edb9f4` | `events`, `cfn`, `dynamodb`, `s3access`, `asl` y `cost` |
+| T15 | este commit | Documentación |
+
+**Notas**
+- **Base local del responsable.** La migración `20261111202707_cloud_lab` y los pilotos se aplicaron solo en `codeai-s16-db` (5442). Para poner al día `codeai-postgres` (5433), hay que arrancarla y ejecutar `npm run db:migrate` y `npm run db:seed:aws`.
+- **Corrección a §2.5:**
+  - las páginas HTML de AWS sí se leen con `curl`, comparando el `<title>`;
+  - el PDF de Organizations es `organizations-userguide.pdf` y el de EventBridge, `user-guide.pdf`.
+- **Atribución.** Desde T12b, los commits de los subagentes llevan «Co-Authored-By: Claude Sonnet 5.5», que es la atribución de su entorno.
+- **Prueba intermitente:** `ExamRoom.spec.tsx` («avisa antes de salir…») falló una vez y pasó al repetirla.

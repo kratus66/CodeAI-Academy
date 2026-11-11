@@ -218,6 +218,7 @@ GET /api/content/courses
 | GET | `/:id/submissions` | ✅ | Historial propio |
 | POST | `/:id/quiz-answers` | ✅ | Corrige un `QUIZ` de cualquier variante en el servidor (S14). El cuerpo lleva **una** de estas claves: `optionId`, `optionIds`, `order` o `pairs`. Responde `{ result }` con `kind`; detalle debajo. La respuesta correcta y las explicaciones salen **solo después** del intento. `400` si no es un quiz o la respuesta no encaja con la pregunta; `409` si agotó `maxAttempts` |
 | POST | `/:id/audit-answers` | ✅ | Corrige un `AUDIT` (S14). Body: `{ marks: [{ findingId, severity }], decision }`. Responde `{ result }`; detalle debajo |
+| POST | `/:id/cloud-evidence` | ✅ | Evalúa la evidencia de un `CLOUD_LAB` (S16). Body: `{ evidence: [{ checkId, output }], cleanupConfirmed }`. Responde `{ result: { outcome, checks: [{ checkId, label, passed, problems }], cleanupConfirmed, maskedSummary } }`. `400` si no es un `CLOUD_LAB`, si la salida no es JSON o si contiene credenciales (sin crear envío ni gastar intento). Solo guarda un resumen sin la salida. El nivel acreditado es 2 como máximo |
 | POST | `/:id/flashcard-reveal` | ✅ | Registra el intento de recuerdo y devuelve el reverso. Body: `{ attempt }` (no vacío). Responde `{ back }` |
 | POST | `/:id/flashcard-ratings` | ✅ | Autocalificación SM-2. Body: `{ quality }` (0–5). Solo válida justo después de revelar (`409` si no); responde `{ scheduled }` y reprograma el ítem de repaso |
 

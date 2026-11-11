@@ -51,7 +51,13 @@ S14 está cerrado. Dos revisiones humanas quedan diferidas ([ficha](docs/04-plan
 - panel «listo para presentar»;
 - vista de cohorte para instructores.
 
-El siguiente sprint es S16 (laboratorios AWS).
+S16 (laboratorios AWS) también está cerrado:
+- el arnés `@codeai/aws-harness`, con nueve evaluadores fieles a la documentación oficial, montado en el sandbox `docker` y protegido contra manipulaciones;
+- laboratorios con arnés;
+- `CLOUD_LAB`, con evidencia de solo lectura;
+- cuatro pilotos sin publicar.
+
+La revisión humana de los evaluadores ([`arnes-aws.md`](docs/03-arquitectura/arnes-aws.md) §4) está pendiente.
 
 Operación (respaldos, restauración, despliegue y checklist de producción): [`docs/05-orquestacion/runbook-operacion.md`](docs/05-orquestacion/runbook-operacion.md).
 

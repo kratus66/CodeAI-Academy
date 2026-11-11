@@ -73,6 +73,11 @@ rubric: default
 - Los tests ocultos nunca se muestran, ni siquiera al fallar (solo el resultado agregado).
 - Debe existir una versión `autonomous` (sin pistas) para certificar Nivel 3.
 
+**Laboratorios con arnés AWS (S16).** Un `LAB` o `DEBUG` de la ruta AWS puede declarar `harness: "aws"`. Se escribe en `typescript` o `javascript`, y solo esos tipos pueden declararlo.
+- Las pruebas ven `aws`, el objeto de [`@codeai/aws-harness`](../03-arquitectura/arnes-aws.md), con `cidr`, `iam`, `network`, `events`, `cfn`, `dynamodb`, `s3access`, `asl` y `cost`, además de `assert`.
+- El estudiante exporta un valor, por ejemplo `export const plan = {…}`.
+- La guarda comprueba que la solución pasa y que el código inicial falla.
+
 ### 3.2 `QUIZ` — Cuestionario
 
 **Estructura** (campo `quiz` del ejercicio sembrado; esquema `contentSeedQuizSchema` en `shared/schemas/content.ts`, S14):
@@ -322,6 +327,21 @@ rubric: interview
 - Incluye una fase obligatoria: *"explica qué generaste con IA y cómo lo verificaste"*.
 
 ---
+
+### 3.9 `CLOUD_LAB` — Laboratorio en tu cuenta (S16)
+
+Es una práctica guiada en la cuenta de AWS de la persona. Es opcional y **nunca concede nivel 3**: el máximo que se guarda es 2. El campo `cloudLab` de la semilla (`contentSeedCloudLabSchema`) incluye:
+- `region` y `tag`, con el formato `codeai-lab=<slug>`;
+- `cost`, con `expectedUsd`, `freeTier`, la fuente oficial y la fecha;
+- `prerequisites` y `steps`;
+- `checks`, cada una con `id`, `label`, `phase` (`build` o `cleanup`), un `command` de solo lectura (`aws <servicio> describe|get|list-…`) y `expect`, con los operadores `equals`, `exists`, `absent`, `matches`, `lengthAtLeast` y `lengthEquals` sobre caminos como `Budgets[0].BudgetLimit.Amount`.
+
+Reglas:
+- Requiere al menos una comprobación de limpieza.
+- No lleva pistas ni pruebas.
+- No es de nivel autónomo.
+- El cliente nunca recibe `expect`.
+- La evidencia que envía la persona (`POST /exercises/:id/cloud-evidence`) se evalúa en el servidor, se enmascaran las cuentas y los ARN, se rechaza si contiene credenciales y **nunca se guarda en bruto**.
 
 ## 4. Escalera de dificultad (obligatoria por concepto)
 
