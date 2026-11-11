@@ -99,4 +99,82 @@ describe.skipIf(!enabled)("DockerSandboxService con Docker real", () => {
 
     expect(run.outcome).toBe("ERROR");
   }, 60_000);
+
+  describe("con el arnés AWS", () => {
+    const TAMPERED_MESSAGE = "El arnés se alteró durante la ejecución";
+
+    function awsRequest(student: string, testCode: string): SandboxRunRequest {
+      return request({
+        language: "typescript",
+        harness: "aws",
+        files: [{ path: "index.ts", content: student }],
+        tests: [{ id: "t1", code: testCode, weight: 1 }],
+      });
+    }
+
+    const overlapsTest =
+      'assert.strictEqual(aws.cidr.overlaps("10.0.0.0/24", "10.0.0.128/25"), true);';
+
+    it("una prueba que usa `aws.cidr.overlaps` pasa", async () => {
+      const run = await sandbox.run(awsRequest("export const x = 1;", overlapsTest));
+
+      expect(run.outcome).toBe("PASSED");
+      expect(run.score).toBe(100);
+    }, 60_000);
+
+    it("declarar `const aws` en el código del estudiante da ERROR", async () => {
+      const run = await sandbox.run(awsRequest("const aws = {};", overlapsTest));
+
+      expect(run.outcome).toBe("ERROR");
+      expect(run.results).toEqual([]);
+    }, 60_000);
+
+    it("reasignar `aws` da ERROR", async () => {
+      const run = await sandbox.run(awsRequest("aws = {};", overlapsTest));
+
+      expect(run.outcome).toBe("ERROR");
+      expect(run.results).toEqual([]);
+    }, 60_000);
+
+    it("mutar `aws.cidr.overlaps` da ERROR", async () => {
+      const run = await sandbox.run(
+        awsRequest("aws.cidr.overlaps = () => true;", overlapsTest),
+      );
+
+      expect(run.outcome).toBe("ERROR");
+      expect(run.results).toEqual([]);
+    }, 60_000);
+
+    it("alterar `Array.prototype.join` hace fallar el canario", async () => {
+      const run = await sandbox.run(
+        awsRequest("Array.prototype.join = () => 'x';", overlapsTest),
+      );
+
+      expect(run.outcome).toBe("ERROR");
+      expect(run.results).toEqual([]);
+      expect(run.stderr).toBe(TAMPERED_MESSAGE);
+    }, 60_000);
+
+    it("alterar `String.prototype.startsWith` hace fallar el canario", async () => {
+      const run = await sandbox.run(
+        awsRequest("String.prototype.startsWith = () => true;", overlapsTest),
+      );
+
+      expect(run.outcome).toBe("ERROR");
+      expect(run.results).toEqual([]);
+      expect(run.stderr).toBe(TAMPERED_MESSAGE);
+    }, 60_000);
+
+    it("no puede escribir en `/work/.codeai/harness`", async () => {
+      const run = await sandbox.run(
+        awsRequest(
+          'require("node:fs").writeFileSync("/work/.codeai/harness/index.js", "export {};");',
+          overlapsTest,
+        ),
+      );
+
+      expect(run.outcome).toBe("ERROR");
+      expect(run.results).toEqual([]);
+    }, 60_000);
+  });
 });
