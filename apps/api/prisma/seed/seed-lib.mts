@@ -106,7 +106,11 @@ export function exerciseConfig(exercise: SeedExercise): Record<string, unknown> 
     };
   }
 
-  return exercise.starterCode === null ? {} : { starterCode: exercise.starterCode };
+  if (exercise.starterCode === null) return {};
+
+  return exercise.harness === null
+    ? { starterCode: exercise.starterCode }
+    : { starterCode: exercise.starterCode, harness: exercise.harness };
 }
 
 /** Lo que solo conoce el servidor: solución, respuesta correcta y explicaciones. */

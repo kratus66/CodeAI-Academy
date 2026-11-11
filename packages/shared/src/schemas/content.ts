@@ -594,6 +594,7 @@ export const contentSeedExerciseSchema = z.object({
   language: sandboxLanguageSchema.nullable().default(null),
   starterCode: z.string().min(1).nullable().default(null),
   solution: z.object({ code: z.string().min(1) }).nullable().default(null),
+  harness: z.enum(["aws"]).nullable().default(null),
   quiz: contentSeedQuizSchema.nullable().default(null),
   flashcard: contentSeedFlashcardSchema.nullable().default(null),
   memory: contentSeedMemorySchema.nullable().default(null),
@@ -884,6 +885,16 @@ export function exerciseRuleViolations(exercise: ContentSeedExercise): string[] 
     }
   } else if (exercise.audit !== null) {
     problems.push("solo un AUDIT declara audit");
+  }
+
+  if (exercise.harness !== null) {
+    if (!CODE_EXERCISE_TYPES.includes(exercise.type)) {
+      problems.push("solo un LAB o DEBUG declara harness");
+    }
+
+    if (exercise.language !== "typescript" && exercise.language !== "javascript") {
+      problems.push("un ejercicio con harness se escribe en typescript o javascript");
+    }
   }
 
   if (CODE_EXERCISE_TYPES.includes(exercise.type)) {

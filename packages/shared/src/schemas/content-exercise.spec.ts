@@ -642,5 +642,33 @@ describe("reglas de AUDIT", () => {
   it("rechaza una auditoría con menos de tres hallazgos", () => {
     expect(() => auditExercise({ audit: audit({ findings: findings().slice(0, 2) }) })).toThrow();
   });
+
+  it("solo un LAB o DEBUG declara harness", () => {
+    const problems = exerciseRuleViolations(
+      exercise({
+        type: "FLASHCARD",
+        harness: "aws",
+        language: null,
+        starterCode: null,
+        solution: null,
+        tests: [],
+        hints: [],
+        flashcard: { back: "Respuesta" },
+      }),
+    );
+
+    expect(problems).toContain("solo un LAB o DEBUG declara harness");
+  });
+
+  it("un ejercicio con harness se escribe en typescript o javascript", () => {
+    const problems = exerciseRuleViolations(exercise({ harness: "aws", language: "sql" }));
+
+    expect(problems).toContain("un ejercicio con harness se escribe en typescript o javascript");
+  });
+
+  it("acepta un LAB con harness en typescript y lo deja en null por defecto", () => {
+    expect(exerciseRuleViolations(exercise({ harness: "aws", language: "typescript" }))).toEqual([]);
+    expect(exercise().harness).toBeNull();
+  });
 });
 
