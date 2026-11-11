@@ -1,0 +1,216 @@
+{
+  "code": "AWS-U0.3.1",
+  "lessons": [
+    {
+      "slug": "aws-redes-ip-cidr-y-subredes",
+      "title": "Redes IP: direcciones, CIDR y cálculo de subredes",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Una dirección IPv4 son 32 bits y un bloque CIDR (por ejemplo 10.0.0.0/24) fija cuántos bits identifican la red: el número tras la barra. Cuanto mayor es ese número, más pequeño es el bloque. Un /24 reúne 256 direcciones y un /25 reúne 128. En Amazon VPC, el CIDR de una VPC va de /16 (65 536 direcciones) a /28 (16 direcciones), y cada subred es un subconjunto de ese bloque. Si creas varias subredes en una VPC, sus bloques no pueden solaparse."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: dividir una VPC 10.0.0.0/24",
+          "text": "La documentación de Amazon VPC lo calcula así: una VPC con el bloque 10.0.0.0/24 admite 256 direcciones y puede dividirse en dos subredes de 128. Una usa 10.0.0.0/25 (direcciones 10.0.0.0 a 10.0.0.127) y la otra usa 10.0.0.128/25 (direcciones 10.0.0.128 a 10.0.0.255). Los dos bloques no comparten ninguna dirección, y juntos cubren exactamente el /24."
+        },
+        {
+          "type": "code",
+          "title": "El mismo ejemplo como plan que exportarás en el laboratorio",
+          "language": "typescript",
+          "code": "export const plan = {\n  vpc: \"10.0.0.0/24\",\n  subnets: [\n    { name: \"a\", cidr: \"10.0.0.0/25\" },\n    { name: \"b\", cidr: \"10.0.0.128/25\" },\n  ],\n};"
+        },
+        {
+          "type": "paragraph",
+          "title": "Direcciones reservadas: AWS se queda cinco por subred",
+          "text": "En cada subred IPv4, las cuatro primeras direcciones y la última no están disponibles para tus recursos. En la subred 10.0.0.0/24 son: 10.0.0.0 (dirección de red), 10.0.0.1 (el router de la VPC), 10.0.0.2 (el DNS, base del rango más dos), 10.0.0.3 (reservada para uso futuro) y 10.0.0.255 (broadcast, que una VPC no admite). Por eso un /24 ofrece 256 - 5 = 251 direcciones utilizables, y un /28 solo 16 - 5 = 11."
+        },
+        {
+          "type": "diagram",
+          "title": "Reparto de las 256 direcciones de 10.0.0.0/24",
+          "text": "10.0.0.0/24  (256 direcciones)\n├─ 10.0.0.0/25    10.0.0.0   ... 10.0.0.127   subred A\n└─ 10.0.0.128/25  10.0.0.128 ... 10.0.0.255   subred B\n\nReservadas en una subred /24 (cinco):\n10.0.0.0  red | 10.0.0.1  router | 10.0.0.2  DNS | 10.0.0.3  futuro | 10.0.0.255  broadcast"
+        },
+        {
+          "type": "mermaid",
+          "title": "Subredes de una VPC repartidas por zona de disponibilidad",
+          "code": "flowchart TD\n  VPC[\"VPC 10.0.0.0/16\"] --> ZA[\"Zona A\"]\n  VPC --> ZB[\"Zona B\"]\n  ZA --> PA[\"publica-a 10.0.0.0/24\"]\n  ZA --> RA[\"privada-a 10.0.8.0/22\"]\n  ZB --> PB[\"publica-b 10.0.1.0/24\"]\n  ZB --> RB[\"privada-b 10.0.12.0/22\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: contar todas las direcciones del bloque",
+          "text": "Si una pregunta pide una subred para N recursos, calcula el tamaño del bloque y réstale cinco. Una subred /28 tiene 16 direcciones pero solo 11 utilizables; elegirla para 14 recursos es un error clásico."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: confundir el prefijo con el tamaño",
+          "text": "Causa: pensar que /28 es mayor que /24 porque 28 es mayor que 24. Consecuencia: eliges un bloque demasiado pequeño y no caben los recursos. Solución: recuerda que a mayor prefijo, menor bloque, y calcula 2 elevado a (32 menos el prefijo)."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: bloques solapados o fuera de la VPC",
+          "text": "Causa: escribir un CIDR que no está alineado con su tamaño, por ejemplo 10.0.0.128/24, o que empieza fuera del bloque de la VPC. Consecuencia: AWS rechaza la subred o la forma canónica no es la que esperabas (100.68.0.18/18 se convierte en 100.68.0.0/18). Solución: escribe cada bloque en su forma canónica y comprueba que contiene sus direcciones y que ninguna otra subred las comparte."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Al terminar podrás calcular el tamaño de un bloque CIDR, el número de direcciones utilizables de una subred de Amazon VPC y un plan de subredes que no se solape ni salga de la VPC. Es una unidad de nivelación del nivel A0: no tiene tarea de examen asociada, y prepara las unidades de redes de la ruta."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee el ejemplo de la VPC 10.0.0.0/24 dividida en dos /25 y comprueba a mano que los dos bloques no comparten direcciones. Observa el diagrama «Reparto de las 256 direcciones de 10.0.0.0/24» y explícalo con tus palabras, sin mirar el texto, antes de seguir. Después calcula cuántas direcciones utilizables tiene cada /25."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Plan de subredes de una VPC con CIDR». Empieza por la tabla de tamaños: cuántas direcciones tiene un /24 y un /22 y cuántas quedan utilizables. Usa las pistas por niveles solo si te atascas. Criterio de paso: las cuatro pruebas visibles pasan y el validador del arnés no devuelve ningún problema."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: diseña un plan para una VPC 172.31.0.0/16 con tres subredes de al menos 500 direcciones utilizables cada una y una cuarta de al menos 60. Elige el prefijo más pequeño que cumpla cada requisito y comprueba el resultado con aws.cidr.validateSubnetPlan. Criterio de paso: el plan no tiene problemas y justificas por escrito el prefijo de cada subred."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Te damos un plan generado por un asistente: pide una VPC 10.0.0.0/16 y propone la subred 10.0.0.128/24 junto a 10.0.0.0/25. Anota qué bloques se solapan y por qué, y audita la respuesta contra la guía de Amazon VPC (subnet-sizing, consultada con fecha) antes de aceptarla. Escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: cuántas direcciones reserva AWS en cada subred IPv4 y cuáles son; cuántas direcciones utilizables tiene un /28; entre qué prefijos debe estar el CIDR de una VPC y por qué 10.0.0.0/15 no vale. Criterio de paso: cuatro de cinco respuestas correctas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: repite el plan del laboratorio dejando libre la mitad superior de la VPC para crecer en el futuro, sin mover las subredes ya asignadas. Pregunta de cierre: un compañero crea una subred y falla por falta de direcciones con solo 11 recursos desplegados; ¿qué revisas primero?"
+        }
+      ],
+      "resources": []
+    }
+  ],
+  "exercises": [
+    {
+      "slug": "plan-de-subredes-cidr-de-una-vpc",
+      "type": "LAB",
+      "title": "Plan de subredes de una VPC con CIDR",
+      "statement": "Diseña el plan de direccionamiento de una VPC con el bloque 10.0.0.0/16 y dos zonas de disponibilidad. Necesitas cuatro subredes con estos nombres: publica-a y publica-b, con al menos 250 direcciones utilizables cada una, y privada-a y privada-b, con al menos 1000 direcciones utilizables cada una. Recuerda que AWS reserva cinco direcciones en cada subred. Las subredes no pueden solaparse ni salir de la VPC. El código inicial exporta un plan que incumple esas reglas: corrígelo sin cambiar la forma del valor exportado (`export const plan = { vpc, subnets: [{ name, cidr }] }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "cidr",
+        "subredes",
+        "direcciones reservadas",
+        "solape de bloques"
+      ],
+      "competencies": [
+        "AWS-C3"
+      ],
+      "estimatedMin": 30,
+      "language": "typescript",
+      "starterCode": "// Plan de subredes de la VPC 10.0.0.0/16: dos zonas, una pública y una privada en cada una.\nexport const plan = {\n  vpc: \"10.0.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"10.0.0.0/24\" },\n    { name: \"publica-b\", cidr: \"10.0.0.128/25\" },\n    { name: \"privada-a\", cidr: \"10.1.0.0/22\" },\n    { name: \"privada-b\", cidr: \"10.0.12.0/22\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  vpc: \"10.0.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"10.0.0.0/24\" },\n    { name: \"publica-b\", cidr: \"10.0.1.0/24\" },\n    { name: \"privada-a\", cidr: \"10.0.8.0/22\" },\n    { name: \"privada-b\", cidr: \"10.0.12.0/22\" },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "maxAttempts": null,
+      "isPublished": false,
+      "order": 1,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Un bloque /24 tiene 256 direcciones y AWS reserva cinco en cada subred. Calcula cuántas quedan utilizables antes de elegir el tamaño."
+        },
+        {
+          "level": 2,
+          "text": "Un /24 deja 251 direcciones utilizables y un /22 deja 1019. Las dos subredes públicas caben en dos /24 distintos y las dos privadas, en dos /22 distintos. Comprueba que cada bloque empieza en una dirección alineada con su tamaño."
+        },
+        {
+          "level": 3,
+          "text": "Dentro de 10.0.0.0/16, un /22 ocupa cuatro bloques /24 seguidos: 10.0.8.0/22 llega hasta 10.0.11.255 y 10.0.12.0/22 empieza justo después. Reparte las públicas en 10.0.0.0/24 y 10.0.1.0/24 y corrige el bloque que queda fuera de la VPC."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el plan no tiene problemas según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cidr.validateSubnetPlan(plan), []);"
+          }
+        },
+        {
+          "name": "el plan declara las cuatro subredes pedidas",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const names = plan.subnets.map((candidate: { name: string }) => candidate.name).sort();\nassert.deepStrictEqual(names, [\"privada-a\", \"privada-b\", \"publica-a\", \"publica-b\"]);"
+          }
+        },
+        {
+          "name": "cada subred pública ofrece al menos 250 direcciones utilizables",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const subnet = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"publica-a\", \"publica-b\"]) {\n  const usable = aws.cidr.usableAddresses(subnet(name).cidr);\n  assert.ok(usable >= 250, name + \" ofrece \" + usable + \" direcciones utilizables y se piden 250\");\n}"
+          }
+        },
+        {
+          "name": "las direcciones reservadas de cada subred caen dentro de su propio bloque",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const { name, cidr } of plan.subnets) {\n  const reserved = aws.cidr.reservedAddresses(cidr);\n  assert.strictEqual(reserved.length, 5, name + \" debe reservar cinco direcciones\");\n  for (const address of reserved) {\n    assert.ok(aws.cidr.contains(cidr, address + \"/32\"), address + \" no pertenece a \" + cidr);\n  }\n}"
+          }
+        },
+        {
+          "name": "la VPC conserva el bloque 10.0.0.0/16",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(aws.cidr.parse(plan.vpc)?.network, \"10.0.0.0\");\nassert.strictEqual(aws.cidr.parse(plan.vpc)?.prefix, 16);"
+          }
+        },
+        {
+          "name": "cada subred privada ofrece al menos 1000 direcciones utilizables",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const subnet = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"privada-a\", \"privada-b\"]) {\n  const usable = aws.cidr.usableAddresses(subnet(name).cidr);\n  assert.ok(usable >= 1000, name + \" ofrece \" + usable + \" direcciones utilizables y se piden 1000\");\n}"
+          }
+        },
+        {
+          "name": "ninguna subred se solapa con otra ni sale de la VPC",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const subnets: { name: string; cidr: string }[] = plan.subnets;\nfor (const [index, first] of subnets.entries()) {\n  assert.ok(aws.cidr.contains(plan.vpc, first.cidr), first.name + \" queda fuera de la VPC\");\n  for (const second of subnets.slice(index + 1)) {\n    assert.ok(!aws.cidr.overlaps(first.cidr, second.cidr), first.name + \" se solapa con \" + second.name);\n  }\n}"
+          }
+        },
+        {
+          "name": "las subredes no se piden más grandes de lo necesario",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const subnet = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"publica-a\", \"publica-b\"]) {\n  assert.ok(aws.cidr.usableAddresses(subnet(name).cidr) <= 507, name + \" es más grande de lo necesario\");\n}\nfor (const name of [\"privada-a\", \"privada-b\"]) {\n  assert.ok(aws.cidr.usableAddresses(subnet(name).cidr) <= 4091, name + \" es más grande de lo necesario\");\n}"
+          }
+        }
+      ],
+      "exam": null
+    }
+  ]
+}
