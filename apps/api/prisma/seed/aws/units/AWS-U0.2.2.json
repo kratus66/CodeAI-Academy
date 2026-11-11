@@ -1,0 +1,230 @@
+{
+  "code": "AWS-U0.2.2",
+  "lessons": [
+    {
+      "slug": "aws-presupuestos-alertas-y-capa-gratuita",
+      "title": "Presupuestos, alertas de facturación y condiciones vigentes de la capa gratuita",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "AWS Budgets te permite fijar un presupuesto de costo o de uso y recibir un aviso cuando lo superas o cuando AWS prevé que lo superarás. Un aviso puede ser sobre el gasto real (ACTUAL) o sobre el gasto previsto (FORECASTED), y se envía a hasta 10 correos y a un tema de Amazon SNS por alerta. Un presupuesto no detiene nada: avisa. Por eso es la primera red de seguridad de una cuenta de práctica, junto con la autenticación multifactor."
+        },
+        {
+          "type": "paragraph",
+          "title": "Lo que debes saber sobre el retraso de los datos",
+          "text": "La información de AWS Budgets se actualiza hasta tres veces al día, normalmente con 8 a 12 horas entre actualizaciones. Entre que usas un recurso y que se factura hay un retraso, así que puedes superar el umbral antes de recibir el aviso. Las alertas basadas en previsión necesitan unas cinco semanas de historial de uso: en una cuenta nueva, una alerta FORECASTED tarda en dispararse. Una alerta ACTUAL se envía una sola vez por presupuesto y periodo, cuando el gasto alcanza el umbral por primera vez."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: presupuesto mensual de 5 USD con alerta al 80 %",
+          "text": "La guía de AWS Cost Management pone este caso: con un presupuesto de 200 dólares y un umbral del 80 %, el aviso llega al pasar de 160 dólares. Aplicado a una cuenta de práctica: un presupuesto de costo, mensual y recurrente, de 5 USD, con una alerta ACTUAL cuando el gasto supere el 80 % del presupuesto (4 USD), enviada a tu correo. AWS envía un correo de verificación a cada dirección nueva y solo las direcciones verificadas reciben avisos: confírmalo antes de dar el presupuesto por bueno."
+        },
+        {
+          "type": "code",
+          "title": "El mismo presupuesto como archivos de la CLI (AWS CLI, create-budget)",
+          "language": "json",
+          "code": "// budget.json\n{\n  \"BudgetName\": \"codeai-presupuesto-mensual\",\n  \"BudgetType\": \"COST\",\n  \"TimeUnit\": \"MONTHLY\",\n  \"BudgetLimit\": { \"Amount\": \"5\", \"Unit\": \"USD\" }\n}\n\n// notifications.json\n[\n  {\n    \"Notification\": {\n      \"NotificationType\": \"ACTUAL\",\n      \"ComparisonOperator\": \"GREATER_THAN\",\n      \"Threshold\": 80,\n      \"ThresholdType\": \"PERCENTAGE\"\n    },\n    \"Subscribers\": [\n      { \"SubscriptionType\": \"EMAIL\", \"Address\": \"tu-correo@ejemplo.com\" }\n    ]\n  }\n]"
+        },
+        {
+          "type": "paragraph",
+          "title": "Costo del propio presupuesto",
+          "text": "Según la página oficial de precios de AWS Budgets (leída el 2026-11-11), monitorizar y recibir notificaciones de tus presupuestos no tiene costo. Lo que sí se cobra: las acciones de presupuesto a partir del tercer presupuesto con acciones (los dos primeros por mes son gratuitos, y después cada uno cuesta 0,10 USD diarios) y cada informe de AWS Budgets Reports entregado (0,01 USD). El laboratorio de esta unidad no usa acciones ni informes, así que su costo esperado es 0 USD."
+        },
+        {
+          "type": "diagram",
+          "title": "Ciclo de vida de una alerta de presupuesto",
+          "text": "uso de recursos --> facturación (con retraso) --> AWS Budgets (se actualiza hasta 3 veces al día)\n                                                   |\n                              gasto real o previsto >= umbral (80 % de 5 USD = 4 USD)\n                                                   |\n                            correo verificado (hasta 10) y/o tema de Amazon SNS"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del consumo al aviso en tu correo",
+          "code": "flowchart LR\n  U[\"Uso de recursos\"] --> F[\"Facturacion con retraso\"]\n  F --> B[\"AWS Budgets: se actualiza hasta 3 veces al dia\"]\n  B --> T{\"Gasto >= umbral?\"}\n  T -- \"si\" --> E[\"Correo verificado o tema SNS\"]\n  T -- \"no\" --> B"
+        },
+        {
+          "type": "paragraph",
+          "title": "Capa gratuita: condiciones vigentes",
+          "text": "Las condiciones cambian y deben consultarse con fecha. Según la guía de AWS Billing, al crear una cuenta eliges entre un plan gratuito y un plan de pago. Quien es nuevo en AWS recibe 100 USD en créditos tras crear la cuenta, y puede ganar hasta 100 USD más completando actividades. El plan gratuito dura hasta seis meses o hasta que se agoten los créditos, lo que ocurra primero; al terminar, la cuenta se cierra y AWS conserva el contenido 90 días mientras puedes pasar al plan de pago. Hay además más de 30 servicios con límites mensuales gratuitos permanentes. Comprueba siempre la guía vigente antes de decidir."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir presupuesto con límite de gasto",
+          "text": "Un presupuesto de AWS Budgets avisa; no bloquea el gasto por sí mismo. Si la pregunta pide impedir que se aprovisionen más recursos al superar un umbral, la respuesta combina el presupuesto con una acción de presupuesto (por ejemplo, aplicar una política de IAM que lo deniegue), no el presupuesto solo."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que el aviso llega en el instante del gasto",
+          "text": "Causa: ignorar que los datos de facturación se actualizan hasta tres veces al día. Consecuencia: el gasto sigue creciendo después de superar el umbral y antes del correo. Solución: fija el umbral por debajo de lo que de verdad no quieres gastar y revisa los recursos creados al terminar cada práctica."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: dar por activa una alerta de previsión en una cuenta nueva",
+          "text": "Causa: configurar solo una alerta FORECASTED. Consecuencia: AWS necesita unas cinco semanas de historial para prever, así que no se dispara. Solución: añade también una alerta ACTUAL y verifica el correo del destinatario."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Al terminar podrás crear un presupuesto mensual de costo con una alerta por correo, explicar qué costo tiene y qué diferencia hay entre alertas ACTUAL y FORECASTED, y consultar las condiciones vigentes de la capa gratuita con su fecha. Es una unidad del módulo de cuenta segura del nivel A0: no tiene tarea de examen asociada, y prepara cualquier laboratorio posterior en tu cuenta."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee el ejemplo del presupuesto mensual de 5 USD con alerta al 80 % y calcula a mano a partir de qué gasto llega el aviso. Observa el diagrama «Ciclo de vida de una alerta de presupuesto» y explica con tus palabras, sin mirar el texto, por qué el correo puede llegar tarde. Después anota qué cambia si la alerta es FORECASTED en lugar de ACTUAL."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio opcional «Presupuesto mensual con alerta por correo» en tu cuenta de práctica. Sigue los pasos en orden: crea el presupuesto, verifica el correo y ejecuta las comprobaciones de solo lectura. Criterio de paso: la comprobación del presupuesto y la de la notificación pasan con la salida de tu cuenta."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pasos: diseña por escrito un segundo presupuesto para una cuenta que usa Amazon S3 y AWS Lambda, con una alerta ACTUAL al 50 % y otra FORECASTED al 100 %. Indica el periodo, el importe, el tipo de umbral y los destinatarios, y justifica qué avisa cada alerta. Criterio de paso: cada decisión tiene su razón y no usas acciones de presupuesto."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente te propone: «crea un presupuesto con una alerta FORECASTED al 100 % y así quedas protegido desde el primer día». Audita la respuesta contra la guía de AWS Budgets (consultada con fecha): comprueba cuánto historial necesita la previsión y si hay alerta ACTUAL. Escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué diferencia hay entre una alerta ACTUAL y una FORECASTED; cuántos correos admite una alerta; qué costo tiene monitorizar un presupuesto y cuándo empieza a cobrarse AWS Budgets; qué dos condiciones acaban el plan gratuito. Criterio de paso: tres de cuatro respuestas correctas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: tu equipo quiere que el gasto se detenga solo al superar un umbral. ¿Basta un presupuesto con alerta? Pregunta de cierre: te llega el aviso de que superaste el 80 % de tu presupuesto un día después de crear unos recursos; ¿qué revisas primero y por qué no lo viste antes?"
+        }
+      ],
+      "resources": []
+    }
+  ],
+  "exercises": [
+    {
+      "slug": "presupuesto-mensual-con-alerta-por-correo",
+      "type": "CLOUD_LAB",
+      "title": "Presupuesto mensual con alerta por correo",
+      "statement": "Laboratorio opcional en tu cuenta de práctica. Crea un presupuesto mensual de costo de 5 USD con una alerta por correo cuando el gasto real supere el 80 %, comprueba con comandos de solo lectura que existe tal como se pide y, al terminar, bórralo y comprueba que ya no aparece. Nunca pegues claves de acceso ni capturas de facturación: solo la salida JSON de los comandos de comprobación. El servidor enmascara los números de cuenta y no guarda la salida en bruto.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Budgets",
+        "alertas de facturación",
+        "gasto real y previsto",
+        "capa gratuita"
+      ],
+      "competencies": [
+        "AWS-C12"
+      ],
+      "estimatedMin": 30,
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": {
+        "region": "us-east-1",
+        "tag": "codeai-lab=aws-u0-2-2-presupuesto",
+        "cost": {
+          "expectedUsd": 0,
+          "freeTier": "Monitorizar presupuestos y recibir sus notificaciones es gratuito; solo se cobran las acciones de presupuesto a partir del tercer presupuesto con acciones y los informes de AWS Budgets Reports. Este laboratorio no usa ninguno de los dos.",
+          "source": "https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/",
+          "checkedOn": "2026-11-11"
+        },
+        "prerequisites": [
+          "Una cuenta de práctica con la autenticación multifactor (MFA) activada en el usuario raíz, según la unidad AWS-U0.2.1.",
+          "Un correo al que tengas acceso, para confirmar la verificación que AWS envía a cada destinatario nuevo.",
+          "AWS CLI configurada con credenciales que solo permitan leer presupuestos, para las comprobaciones. Nunca pegues claves de acceso en la plataforma."
+        ],
+        "steps": [
+          {
+            "title": "Abre AWS Budgets en la cuenta de práctica",
+            "instructions": "Inicia sesión en la consola con un usuario con permiso para crear presupuestos y abre Billing and Cost Management. En el panel de navegación elige Budgets y, arriba, Create budget. Anota el identificador de tu cuenta (12 dígitos): lo necesitarás como <ID> en los comandos. Los presupuestos son un servicio global: usa la región us-east-1 en la CLI."
+          },
+          {
+            "title": "Crea el presupuesto mensual de costo",
+            "instructions": "En Create budget elige Customize (advanced) y el tipo Cost budget. Nombre: codeai-presupuesto-mensual. Periodo: Monthly. Renovación: Recurring budget. Método: Fixed. Importe: 5 USD. Si la consola te lo ofrece, añade la etiqueta codeai-lab=aws-u0-2-2-presupuesto al presupuesto. Alternativa con la CLI: aws budgets create-budget --account-id <ID> --budget file://budget.json --notifications-with-subscribers file://notifications.json --resource-tags Key=codeai-lab,Value=aws-u0-2-2-presupuesto, con los archivos de la lección."
+          },
+          {
+            "title": "Añade la alerta por correo y verifícala",
+            "instructions": "En el paso de alertas elige Add an alert threshold: umbral 80, tipo % of budgeted amount y Actual. En Email recipients escribe tu correo. AWS envía un correo de verificación y solo las direcciones verificadas reciben avisos: abre el correo y confirma el enlace con la sesión de esta cuenta. Guarda el presupuesto con Create budget."
+          },
+          {
+            "title": "Ejecuta las comprobaciones de construcción y pega su salida",
+            "instructions": "Ejecuta las comprobaciones c1 y c2 con tus credenciales de solo lectura, sustituyendo <ID> por el identificador de tu cuenta. La comprobación c1 muestra solo el nombre, el tipo, la unidad de tiempo y el límite del presupuesto, sin los datos de gasto. Pega la salida JSON de cada una en su casilla. El servidor enmascara el número de cuenta."
+          },
+          {
+            "title": "Borra el presupuesto y comprueba la limpieza",
+            "instructions": "Borra el presupuesto: en la consola, Budgets, selecciona codeai-presupuesto-mensual, Actions, Delete y Confirm; o con la CLI, aws budgets delete-budget --account-id <ID> --budget-name codeai-presupuesto-mensual. Al borrar un presupuesto se borran también sus notificaciones y destinatarios, y no se puede recuperar. Ejecuta la comprobación c3, pega su salida y marca la limpieza como confirmada."
+          }
+        ],
+        "checks": [
+          {
+            "id": "c1",
+            "label": "El presupuesto existe, es mensual, de costo y de 5 USD",
+            "phase": "build",
+            "command": "aws budgets describe-budgets --account-id <ID> --region us-east-1 --query '{Budgets: Budgets[?BudgetName==`codeai-presupuesto-mensual`].{BudgetName: BudgetName, BudgetType: BudgetType, TimeUnit: TimeUnit, BudgetLimit: BudgetLimit}}'",
+            "expect": [
+              { "path": "Budgets[0].BudgetName", "op": "equals", "value": "codeai-presupuesto-mensual" },
+              { "path": "Budgets[0].BudgetType", "op": "equals", "value": "COST" },
+              { "path": "Budgets[0].TimeUnit", "op": "equals", "value": "MONTHLY" },
+              { "path": "Budgets[0].BudgetLimit.Amount", "op": "matches", "value": "^5(\\.0+)?$" },
+              { "path": "Budgets[0].BudgetLimit.Unit", "op": "equals", "value": "USD" }
+            ]
+          },
+          {
+            "id": "c2",
+            "label": "El presupuesto tiene una alerta de gasto real al 80 %",
+            "phase": "build",
+            "command": "aws budgets describe-notifications-for-budget --account-id <ID> --region us-east-1 --budget-name codeai-presupuesto-mensual",
+            "expect": [
+              { "path": "Notifications[0].NotificationType", "op": "matches", "value": "^(ACTUAL|FORECASTED)$" },
+              { "path": "Notifications[0].ComparisonOperator", "op": "equals", "value": "GREATER_THAN" },
+              { "path": "Notifications[0].Threshold", "op": "equals", "value": 80 },
+              { "path": "Notifications[0].ThresholdType", "op": "equals", "value": "PERCENTAGE" }
+            ]
+          },
+          {
+            "id": "c3",
+            "label": "Limpieza: el presupuesto ya no aparece",
+            "phase": "cleanup",
+            "command": "aws budgets describe-budgets --account-id <ID> --region us-east-1 --query '{Budgets: Budgets[?BudgetName==`codeai-presupuesto-mensual`].{BudgetName: BudgetName}}'",
+            "expect": [
+              { "path": "Budgets[0]", "op": "absent" }
+            ]
+          }
+        ]
+      },
+      "sources": [
+        "https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-create.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-best-practices.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-delete.html",
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier.html",
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html",
+        "https://docs.aws.amazon.com/cli/latest/reference/budgets/create-budget.html",
+        "https://docs.aws.amazon.com/cli/latest/reference/budgets/describe-budgets.html",
+        "https://docs.aws.amazon.com/cli/latest/reference/budgets/describe-notifications-for-budget.html",
+        "https://docs.aws.amazon.com/cli/latest/reference/budgets/delete-budget.html",
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html",
+        "https://docs.aws.amazon.com/general/latest/gr/billing.html"
+      ],
+      "maxAttempts": null,
+      "isPublished": false,
+      "order": 1,
+      "hints": [],
+      "tests": [],
+      "exam": null
+    }
+  ]
+}
