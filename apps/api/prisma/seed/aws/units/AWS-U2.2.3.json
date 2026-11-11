@@ -1,0 +1,224 @@
+{
+  "code": "AWS-U2.2.3",
+  "lessons": [
+    {
+      "slug": "aws-security-groups-frente-a-network-acl",
+      "title": "Security groups frente a network ACL: con estado y sin estado",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon VPC ofrece dos filtros de tráfico y actúan en niveles distintos. El security group opera en la instancia: solo contiene reglas de permitir y evalúa todas sus reglas antes de decidir. La network ACL (NACL) opera en la subred y se aplica a todas las instancias que contiene: admite reglas de permitir y de denegar, y las evalúa por número ascendente hasta encontrar la primera que coincide. La diferencia que más problemas causa es el tráfico de respuesta. El security group tiene estado: la respuesta a un tráfico permitido sale sin necesitar una regla. La NACL no tiene estado: cada sentido se evalúa por separado y la respuesta debe estar permitida de forma explícita."
+        },
+        {
+          "type": "paragraph",
+          "title": "Con estado y sin estado, en la práctica",
+          "text": "La guía de VPC lo expresa así. Si envías una petición desde una instancia, la respuesta puede llegar a ella sin importar las reglas de entrada del security group, y las respuestas a un tráfico de entrada permitido salen sin importar las reglas de salida. En una NACL, en cambio, si añades una regla que permite cierto tráfico de entrada a la subred, las respuestas a ese tráfico no quedan permitidas de forma automática. La guía pide que para cada regla que añadas exista una regla de entrada o de salida que permita el tráfico de respuesta. Además, la NACL se evalúa cuando el tráfico entra en la subred y cuando sale de ella, no cuando se mueve dentro de la misma subred. Cada NACL termina con una regla * que deniega lo que ninguna regla anterior permite, y esa regla no se puede borrar."
+        },
+        {
+          "type": "paragraph",
+          "title": "Los puertos efímeros",
+          "text": "La respuesta a una petición vuelve al cliente por un puerto efímero que elige el cliente, y el rango depende de su sistema operativo. La guía enumera: muchos núcleos de Linux (incluido el de Amazon Linux) usan 32768-61000; las peticiones de Elastic Load Balancing, un NAT gateway y las funciones de AWS Lambda usan 1024-65535; Windows Server 2008 y posteriores usan 49152-65535. Por eso, si un cliente Windows 10 de Internet pide una página a un servidor de tu VPC, la NACL de la subred necesita una regla de salida que permita el tráfico hacia los puertos 49152-65535. Para cubrir distintos tipos de cliente, la guía indica que puedes abrir los puertos efímeros 1024-65535, y que si quieres bloquear puertos maliciosos de ese rango debes colocar esas reglas de denegar con un número menor que el de las reglas de permitir."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: un ping que llega pero cuya respuesta se pierde",
+          "text": "La guía de registros de flujo plantea este caso. Haces ping desde tu equipo (203.0.113.12) a una instancia (172.31.16.139). Las reglas de entrada del security group permiten ICMP y las de salida no. Como el security group tiene estado, la respuesta del ping se permite. La NACL de la subred permite el ICMP de entrada pero no el de salida, y como no tiene estado, la respuesta se descarta y nunca llega a tu equipo. El registro de flujo lo muestra como dos registros: ACCEPT para el ping de ida, que permitieron la NACL y el security group, y REJECT para la respuesta, que denegó la NACL. La lectura es siempre la misma: si la ida es ACCEPT y la vuelta es REJECT, busca una NACL que no permite el retorno."
+        },
+        {
+          "type": "paragraph",
+          "title": "Las reglas de salida de un servidor web",
+          "text": "La guía de NACL personalizadas da una NACL de ejemplo para una subred con servidor web. Las reglas de entrada permiten HTTP (80) y HTTPS (443) desde 0.0.0.0/0, SSH (22) desde el rango de la red de casa (192.0.2.0/24) y, para las peticiones que se originan en la subred, el rango 32768-65535 desde 0.0.0.0/0. Las de salida permiten HTTP y HTTPS hacia Internet, las respuestas SSH hacia 192.0.2.0/24 por 1024-65535 y las respuestas a los clientes de Internet (por ejemplo, al servir páginas web) por 32768-65535. Si un paquete va al puerto HTTPS no coincide con la regla 100 ni con la 105 y coincide con la 110, que lo deja entrar. Si hubiera ido al puerto 139 (NetBIOS), ninguna regla numerada coincidiría y la regla * lo denegaría."
+        },
+        {
+          "type": "code",
+          "title": "La regla de salida que da paso a las respuestas, como valor de una NACL",
+          "language": "typescript",
+          "code": "export const naclSalida = [\n  { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n  { direction: \"outbound\", number: 110, action: \"allow\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n  { direction: \"outbound\", number: 140, action: \"allow\", protocol: \"tcp\", fromPort: 32768, toPort: 65535, cidr: \"0.0.0.0/0\" },\n];"
+        },
+        {
+          "type": "diagram",
+          "title": "Por dónde pasa una petición HTTPS y su respuesta",
+          "text": "Cliente en Internet (puerto efímero 49152)\n   |  petición a tcp/443\n   v\nInternet gateway -> tabla de rutas de la subred\n   v\nNACL de la subred, ENTRADA (sin estado)\n   - regla 110 permite tcp/443            -> sigue\n   v\nSecurity group de la instancia, ENTRADA (con estado)\n   - permite tcp/443                      -> llega a la instancia\n   v\nLa instancia responde al puerto 49152\n   v\nSecurity group, SALIDA: no hace falta regla (la respuesta está permitida)\n   v\nNACL de la subred, SALIDA (sin estado)\n   - hace falta una regla que permita tcp/49152 hacia el cliente\n   - si no existe, la regla * la deniega     -> la respuesta se pierde"
+        },
+        {
+          "type": "mermaid",
+          "title": "El camino de ida y el de vuelta cruzan filtros distintos",
+          "code": "flowchart LR\n  C[\"Cliente en Internet\"] -->|\"tcp/443\"| N1[\"NACL: entrada\"]\n  N1 --> S1[\"Security group: entrada\"]\n  S1 --> I[\"Instancia\"]\n  I -->|\"respuesta: permitida sin regla\"| S2[\"Security group: salida\"]\n  S2 -->|\"puerto efímero del cliente\"| N2[\"NACL: salida\"]\n  N2 --> C"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: bloquear una dirección con un security group",
+          "text": "Si una pregunta pide bloquear una dirección IP concreta, un security group no es la respuesta: solo contiene reglas de permitir, y lo que no está permitido ya está denegado. Para denegar de forma explícita una dirección usa una regla de denegar en la NACL, con un número menor que el de la regla que permitiría ese tráfico, porque la NACL se evalúa por número ascendente y la primera coincidencia decide."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: abrir en la NACL solo el puerto del servicio",
+          "text": "Causa: pensar que la NACL se comporta como un security group y que la respuesta vuelve sola. Consecuencia: la petición llega al servidor, el security group la admite y el cliente no recibe nada, porque la respuesta sale por un puerto efímero que la NACL deniega con la regla *. Solución: añade a la NACL la regla que permite el tráfico de respuesta por el rango de puertos efímeros de tus clientes (1024-65535 los cubre todos) y bloquea con reglas de denegar de número menor los puertos de ese rango que no quieras."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: arreglar un bloqueo abriendo el security group",
+          "text": "Causa: ver que la conexión falla y ampliar el security group (por ejemplo, abrir SSH a 0.0.0.0/0) sin comprobar qué filtro la rechaza. Consecuencia: la conexión sigue fallando si el culpable era la NACL, y además has abierto un puerto de administración a todo Internet. Solución: lee el motivo del rechazo, identifica si lo deniega el security group o la NACL, y cambia solo ese filtro. En el security group, recuerda que las respuestas no necesitan regla de salida."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Decidir si un flujo se permite combinando security groups y NACL, y corregir la configuración que impide que la respuesta de una conexión permitida vuelva al cliente. Criterio: las pruebas del ejercicio pasan y sabes explicar, para cada regla de tu modelo, si se evalúa con estado o sin estado y por qué la respuesta cruza (o no) el filtro."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee el ejemplo del ping y sigue, sentido por sentido, qué filtro decide en la ida y en la vuelta. Explica con tus palabras, sin mirar el texto, el diagrama «Por dónde pasa una petición HTTPS y su respuesta». Después responde: si la NACL de la subred permitiera la entrada por el puerto 443 y ninguna salida, ¿qué registro de flujo verías para la petición y cuál para la respuesta?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Depurar la NACL que pierde la respuesta HTTPS». Empieza por llamar a aws.network.canConnect con el modelo tal como está y lee el motivo del rechazo: te dice qué filtro y qué sentido deniegan. Usa las pistas por niveles solo si te atascas. Criterio de paso: el flujo HTTPS se permite y el SSH desde Internet sigue bloqueado."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: parte de la VPC corregida y bloquea una dirección concreta de Internet (por ejemplo 198.51.100.7) sin cortar el resto del tráfico web. Decide qué filtro puede expresar esa denegación y en qué número de regla debe ir. Comprueba con aws.network.canConnect que esa dirección queda bloqueada y que otra dirección sigue llegando. Criterio de paso: ambas comprobaciones dan el resultado previsto y justificas por escrito por qué usas ese filtro."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente que bloquee una dirección IP concreta de un servidor web con un security group, y audita su respuesta contra la guía de VPC sobre security groups y NACL (consultada con fecha) antes de aceptarla. Anota qué afirma que la guía no sostiene, qué filtro debería usar y qué regla propondrías. Escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: a qué nivel opera cada filtro; qué tipos de regla admite cada uno; cuál tiene estado y qué significa; cómo se evalúan las reglas de una NACL; y qué es un puerto efímero y por qué importa en una NACL. Criterio de paso: cuatro de cinco respuestas correctas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la subred ahora aloja también clientes de un balanceador y de un NAT gateway que originan tráfico. Reescribe la NACL para que las respuestas lleguen a todos esos clientes con el menor número de reglas. Pregunta de cierre: un cliente reporta que llega la petición pero no la respuesta; ¿qué revisas primero y en qué orden?"
+        }
+      ],
+      "resources": []
+    }
+  ],
+  "exercises": [
+    {
+      "slug": "depurar-la-nacl-que-pierde-la-respuesta-https",
+      "type": "DEBUG",
+      "title": "Depurar la NACL que pierde la respuesta HTTPS",
+      "statement": "La subred pública de la tienda (10.0.1.0/24) aloja un servidor web (10.0.1.10) con el security group sg-web. Debe aceptar HTTP y HTTPS de cualquier dirección de Internet y SSH solo desde la red de la oficina (192.0.2.0/24). Los clientes de Internet usan puertos efímeros entre 32768 y 65535, pero nadie de fuera consigue completar una conexión HTTPS: el modelo (`export const vpc = {...}`) tiene un único defecto. Localízalo con `aws.network.canConnect`, corrígelo con el cambio mínimo sin cambiar la forma del valor exportado y sin abrir más de lo necesario: el SSH desde Internet debe seguir bloqueado y la NACL no debe permitir la salida por puertos bien conocidos como el 22, el 23 o el 25. Explica por qué fallaba y cómo lo comprobaste.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "security groups con estado",
+        "network ACL sin estado",
+        "puertos efímeros",
+        "tráfico de retorno"
+      ],
+      "competencies": [
+        "AWS-C3"
+      ],
+      "estimatedMin": 30,
+      "language": "typescript",
+      "starterCode": "// Modelo de la VPC de la tienda: una subred pública con un servidor web.\n// Una persona de fuera no consigue completar una conexión HTTPS al servidor.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", number: 110, action: \"allow\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", number: 120, action: \"allow\", protocol: \"tcp\", fromPort: 22, toPort: 22, cidr: \"192.0.2.0/24\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 110, action: \"allow\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 22, toPort: 22, cidr: \"192.0.2.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Modelo de la VPC de la tienda: una subred pública con un servidor web.\n// La NACL de la subred permite ahora el tráfico de retorno por los puertos efímeros.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", number: 110, action: \"allow\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", number: 120, action: \"allow\", protocol: \"tcp\", fromPort: 22, toPort: 22, cidr: \"192.0.2.0/24\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 110, action: \"allow\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 140, action: \"allow\", protocol: \"tcp\", fromPort: 1024, toPort: 65535, cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 22, toPort: 22, cidr: \"192.0.2.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nacl-basics.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/custom-network-acl.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-records-examples.html"
+      ],
+      "maxAttempts": null,
+      "isPublished": false,
+      "order": 1,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.network.canConnect con un visitante de Internet (198.51.100.7) hacia 10.0.1.10 por tcp/443 y lee el campo reason: te dice qué filtro deniega y en qué sentido. Recuerda que el security group tiene estado y la NACL no."
+        },
+        {
+          "level": 2,
+          "text": "La petición entra bien: la NACL de entrada y el security group la permiten. Lo que se deniega es la respuesta, que sale de la subred hacia el puerto efímero del cliente, y la NACL de salida solo permite los puertos 80 y 443. Falta una regla de salida para ese rango de puertos efímeros."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el modelo conserva la subred pública y el security group del servidor",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(vpc.subnets.length, 1);\nassert.strictEqual(vpc.subnets[0].id, \"subnet-publica\");\nassert.strictEqual(vpc.subnets[0].cidr, \"10.0.1.0/24\");\nassert.deepStrictEqual(vpc.securityGroups.map((group) => group.id), [\"sg-web\"]);"
+          }
+        },
+        {
+          "name": "un visitante de Internet completa una conexión HTTPS al servidor",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = (ip: string) => ({ ip });\nconst conecta = (ip: string, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from: visitante(ip), to: web, protocol: \"tcp\", port, clientPort });\nconst resultado = conecta(\"198.51.100.7\", 443);\nassert.strictEqual(resultado.allowed, true, resultado.reason);"
+          }
+        },
+        {
+          "name": "el SSH desde cualquier dirección de Internet sigue bloqueado",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = (ip: string) => ({ ip });\nconst conecta = (ip: string, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from: visitante(ip), to: web, protocol: \"tcp\", port, clientPort });\nconst resultado = conecta(\"203.0.113.50\", 22);\nassert.strictEqual(resultado.allowed, false, \"el SSH desde una dirección ajena a la oficina debe seguir bloqueado\");"
+          }
+        },
+        {
+          "name": "la respuesta vuelve a clientes con puertos efímeros de Linux, Windows y balanceadores",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = (ip: string) => ({ ip });\nconst conecta = (ip: string, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from: visitante(ip), to: web, protocol: \"tcp\", port, clientPort });\nfor (const clientPort of [32768, 49152, 61000, 65535]) {\n  for (const port of [80, 443]) {\n    const resultado = conecta(\"198.51.100.7\", port, clientPort);\n    assert.strictEqual(resultado.allowed, true, \"puerto \" + port + \" con puerto efímero \" + clientPort + \": \" + resultado.reason);\n  }\n}"
+          }
+        },
+        {
+          "name": "el SSH desde la red de la oficina sigue permitido",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = (ip: string) => ({ ip });\nconst conecta = (ip: string, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from: visitante(ip), to: web, protocol: \"tcp\", port, clientPort });\nconst resultado = conecta(\"192.0.2.10\", 22);\nassert.strictEqual(resultado.allowed, true, resultado.reason);"
+          }
+        },
+        {
+          "name": "el SSH desde otras direcciones de Internet y los puertos no publicados siguen bloqueados",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = (ip: string) => ({ ip });\nconst conecta = (ip: string, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from: visitante(ip), to: web, protocol: \"tcp\", port, clientPort });\nconst casos: [string, number][] = [\n  [\"198.51.100.7\", 22],\n  [\"203.0.113.50\", 22],\n  [\"198.51.100.7\", 3306],\n  [\"198.51.100.7\", 3389],\n  [\"198.51.100.7\", 8080],\n];\nfor (const [ip, port] of casos) {\n  assert.strictEqual(conecta(ip, port).allowed, false, ip + \" hacia el puerto \" + port + \" debe seguir bloqueado\");\n}\nconst udp = aws.network.canConnect(vpc, { from: visitante(\"198.51.100.7\"), to: web, protocol: \"udp\", port: 443 });\nassert.strictEqual(udp.allowed, false, \"UDP 443 no está publicado\");"
+          }
+        },
+        {
+          "name": "el security group no se ha ampliado: no admite SSH desde Internet",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const grupo = vpc.securityGroups[0];\nconst flujo = (peer: string, port: number) => ({ direction: \"inbound\" as const, protocol: \"tcp\" as const, port, peer });\nassert.strictEqual(aws.network.securityGroupAllows(grupo.rules, flujo(\"198.51.100.7\", 22)), false);\nassert.strictEqual(aws.network.securityGroupAllows(grupo.rules, flujo(\"198.51.100.7\", 443)), true);\nassert.strictEqual(aws.network.securityGroupAllows(grupo.rules, flujo(\"192.0.2.10\", 22)), true);"
+          }
+        },
+        {
+          "name": "la NACL deja salir las respuestas, pero no abre los puertos bien conocidos de salida ni la entrada",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const reglas = vpc.subnets[0].nacl;\nconst salida = (port: number) => aws.network.naclAllows(reglas, { direction: \"outbound\", protocol: \"tcp\", port, peer: \"198.51.100.7\" }).allowed;\nconst entrada = (port: number) => aws.network.naclAllows(reglas, { direction: \"inbound\", protocol: \"tcp\", port, peer: \"198.51.100.7\" }).allowed;\nassert.strictEqual(salida(49152), true, \"la respuesta por el puerto efímero 49152 debe poder salir\");\nfor (const port of [22, 23, 25]) {\n  assert.strictEqual(salida(port), false, \"la NACL no debe permitir salida por el puerto \" + port);\n}\nassert.strictEqual(entrada(443), true);\nassert.strictEqual(entrada(22), false);\nassert.strictEqual(entrada(3306), false);"
+          }
+        }
+      ],
+      "exam": null
+    }
+  ]
+}
