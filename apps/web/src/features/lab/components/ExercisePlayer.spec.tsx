@@ -175,3 +175,42 @@ describe("ExercisePlayer: AUDIT", () => {
     expect(screen.queryByRole("group", { name: "Tablero de memoria" })).not.toBeInTheDocument();
   });
 });
+
+const CLOUD_LAB = exercise({
+  id: "ex-cloud",
+  type: "CLOUD_LAB",
+  title: "Presupuesto de práctica",
+  statement: "Crea un presupuesto en tu cuenta de práctica.",
+  config: {
+    region: "us-east-1",
+    tag: "codeai-lab=presupuesto",
+    cost: {
+      expectedUsd: 0,
+      freeTier: "Dos presupuestos gratuitos por cuenta",
+      source: "https://aws.amazon.com/aws-cost-management/pricing/",
+      checkedOn: "2026-11-10",
+    },
+    prerequisites: ["Una cuenta de práctica con MFA"],
+    steps: [{ title: "Crea el presupuesto", instructions: "Abre la consola de Budgets." }],
+    checks: [
+      {
+        id: "c1",
+        label: "El presupuesto existe",
+        phase: "build",
+        command: "aws budgets describe-budgets --account-id 123456789012",
+      },
+    ],
+  },
+});
+
+describe("ExercisePlayer: CLOUD_LAB", () => {
+  it("abre el laboratorio en tu cuenta en su reproductor, no en el editor de código", async () => {
+    render(<ExercisePlayer unitCode="AWS-1.1" slug="cloud-1" loadLab={loaderFor(CLOUD_LAB)} />);
+
+    expect(await screen.findByRole("button", { name: "Enviar evidencia" })).toBeInTheDocument();
+    expect(screen.getByText("Esta práctica no certifica nivel 3")).toBeInTheDocument();
+    expect(screen.getAllByText(/Laboratorio en tu cuenta/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Modo de práctica/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enviar" })).not.toBeInTheDocument();
+  });
+});

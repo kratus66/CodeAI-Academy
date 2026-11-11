@@ -7,6 +7,7 @@ import { useContentLoader } from "@/features/learning/lib/use-content-loader";
 import { ApiError } from "@/lib/api-client";
 
 import { AuditPlayer } from "./AuditPlayer";
+import { CloudLabPlayer } from "./CloudLabPlayer";
 import { DebugPlayer } from "./DebugPlayer";
 import { ExerciseLab, loadExerciseLab } from "./ExerciseLab";
 import type { ExerciseLabContent, LoadExerciseLab } from "./ExerciseLab";
@@ -18,7 +19,7 @@ import { ReflectionPlayer } from "./ReflectionPlayer";
 
 /**
  * Despacha un ejercicio de la unidad al jugador que corresponde a su tipo:
- * `QUIZ`, `FLASHCARD`, `MEMORY`, `REFLECT` y `AUDIT` no necesitan sandbox; el
+ * `QUIZ`, `FLASHCARD`, `MEMORY`, `REFLECT`, `AUDIT` y `CLOUD_LAB` no necesitan sandbox; el
  * resto sigue en el laboratorio de código, al que se le pasa el ejercicio ya
  * cargado para no pedirlo dos veces.
  */
@@ -38,10 +39,11 @@ const TYPE_LABEL: Record<string, string> = {
   MEMORY: "Juego de memoria",
   REFLECT: "Reflexión",
   AUDIT: "Auditoría",
+  CLOUD_LAB: "Laboratorio en tu cuenta",
 };
 
 /** Tipos que se resuelven en el cliente, sin editor de código. */
-const CLIENT_TYPES: readonly string[] = ["QUIZ", "FLASHCARD", "MEMORY", "REFLECT", "AUDIT"];
+const CLIENT_TYPES: readonly string[] = ["QUIZ", "FLASHCARD", "MEMORY", "REFLECT", "AUDIT", "CLOUD_LAB"];
 
 export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: ExercisePlayerProps) {
   const load = useCallback(
@@ -119,6 +121,8 @@ export function ExercisePlayer({ unitCode, slug, loadLab = loadExerciseLab }: Ex
           )
         ) : exercise.type === "AUDIT" ? (
           <AuditPlayer exercise={exercise} />
+        ) : exercise.type === "CLOUD_LAB" ? (
+          <CloudLabPlayer exercise={exercise} />
         ) : (
           <ReflectionPlayer exercise={exercise} />
         )}
