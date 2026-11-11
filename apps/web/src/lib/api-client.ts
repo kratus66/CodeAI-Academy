@@ -7,6 +7,7 @@ import {
   aiTutorStreamEventSchema,
   aiUsageResponseSchema,
   auditAnswerResponseSchema,
+  cloudEvidenceResultSchema,
   cohortAnalyticsSchema,
   competencyProgressSchema,
   courseListResponseSchema,
@@ -60,6 +61,8 @@ import type {
   AnalyticsRange,
   AuditAnswerInput,
   AuditAnswerResult,
+  CloudEvidenceInput,
+  CloudEvidenceResult,
   CohortAnalytics,
   CompetencyProgress,
   CourseSlug,
@@ -326,6 +329,7 @@ export interface CourseCatalogPage {
 const stagePageSchema = paginatedSchema(stageSummarySchema);
 const stageResponseSchema = z.object({ stage: stageDetailSchema });
 const unitResponseSchema = z.object({ unit: unitDetailSchema });
+const cloudEvidenceResponseSchema = z.object({ result: cloudEvidenceResultSchema });
 const lessonResponseSchema = z.object({ lesson: lessonDetailSchema });
 
 /**
@@ -570,6 +574,22 @@ export const exercisesApi = {
     const response = parseContract(
       auditAnswerResponseSchema,
       await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/audit-answers`, {
+        method: "POST",
+        body,
+      }),
+    );
+
+    return response.result;
+  },
+
+  /**
+   * Evidencia de un laboratorio en la nube (S16). El estudiante pega la salida
+   * JSON de comandos de solo lectura; el servidor la valida y la enmascara.
+   */
+  async submitCloudEvidence(id: string, body: CloudEvidenceInput): Promise<CloudEvidenceResult> {
+    const response = parseContract(
+      cloudEvidenceResponseSchema,
+      await apiRequest<unknown>(`/exercises/${encodeURIComponent(id)}/cloud-evidence`, {
         method: "POST",
         body,
       }),

@@ -944,6 +944,66 @@ describe("exercisesApi.submitAudit", () => {
   });
 });
 
+const CLOUD_EVIDENCE_RESULT = {
+  outcome: "PARTIAL",
+  checks: [
+    { checkId: "c1", label: "Bucket privado", passed: true, problems: [] },
+    { checkId: "c2", label: "Cifrado activo", passed: false, problems: ["Falta el cifrado."] },
+  ],
+  cleanupConfirmed: true,
+  maskedSummary: "1 de 2 comprobaciones superadas.",
+} as const;
+
+describe("exercisesApi.submitCloudEvidence", () => {
+  it("envía la evidencia a la ruta del ejercicio", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ result: CLOUD_EVIDENCE_RESULT }));
+
+    await exercisesApi.submitCloudEvidence("ex 1", {
+      evidence: [{ checkId: "c1", output: "{}" }],
+      cleanupConfirmed: true,
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:3001/api/exercises/ex%201/cloud-evidence",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        evidence: [{ checkId: "c1", output: "{}" }],
+        cleanupConfirmed: true,
+      }),
+    });
+  });
+
+  it("desenvuelve el resultado de la evidencia", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ result: CLOUD_EVIDENCE_RESULT }));
+
+    const result = await exercisesApi.submitCloudEvidence("ex_1", {
+      evidence: [{ checkId: "c1", output: "{}" }],
+      cleanupConfirmed: false,
+    });
+
+    expect(result).toEqual(CLOUD_EVIDENCE_RESULT);
+  });
+
+  it("rechaza una respuesta que incumple el contrato", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ result: { ...CLOUD_EVIDENCE_RESULT, outcome: "OK" } }),
+    );
+
+    const error = await captureApiError(
+      exercisesApi.submitCloudEvidence("ex_1", {
+        evidence: [{ checkId: "c1", output: "{}" }],
+        cleanupConfirmed: true,
+      }),
+    );
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe("INTERNAL_ERROR");
+    expect(error.message).toBe("La respuesta de la API no cumple el contrato esperado");
+  });
+});
+
 const SANDBOX_RUN = {
   outcome: "PASSED",
   score: 100,
