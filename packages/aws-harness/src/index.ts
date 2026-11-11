@@ -10,6 +10,7 @@ import * as dynamodb from "./dynamodb/index.js";
 import * as events from "./events/index.js";
 import * as iam from "./iam/index.js";
 import * as network from "./network/index.js";
+import * as s3access from "./s3access/index.js";
 
 export type { EvaluatorCapabilities, RegisteredEvaluator } from "./core.js";
 
@@ -19,7 +20,8 @@ registerEvaluator({ capabilities: dynamodb.capabilities, canary: dynamodb.canary
 registerEvaluator({ capabilities: events.capabilities, canary: events.canary });
 registerEvaluator({ capabilities: iam.capabilities, canary: iam.canary });
 registerEvaluator({ capabilities: network.capabilities, canary: network.canary });
+registerEvaluator({ capabilities: s3access.capabilities, canary: s3access.canary });
 
-export const aws = { cidr, cfn, dynamodb, events, iam, network };
+export const aws = { cidr, cfn, dynamodb, events, iam, network, s3access };
 
 export { HARNESS_VERSION, listCapabilities, selfTest };
