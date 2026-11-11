@@ -1,6 +1,9 @@
+import assert from "node:assert";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
 import { resolve } from "node:path";
 
+import { aws } from "@codeai/aws-harness";
 import {
   certificationForStageId,
   courseSeedSchema,
@@ -59,6 +62,90 @@ const units = merged.seed.stages.flatMap((stage) =>
 const exercises = units.flatMap((unit) =>
   unit.exercises.map((exercise) => ({ unitCode: unit.code, exercise })),
 );
+
+const AsyncFunction = Object.getPrototypeOf(async () => undefined).constructor as new (
+  ...args: string[]
+) => (...args: unknown[]) => Promise<void>;
+
+/** Una prueba de laboratorio lista para ejecutar en el proceso. */
+interface LabTest {
+  readonly name: string;
+  readonly isHidden: boolean;
+  readonly code: string;
+}
+
+interface LabTestResult {
+  readonly name: string;
+  readonly isHidden: boolean;
+  readonly passed: boolean;
+}
+
+/**
+ * Quita los `export` de nivel superior: dentro de una `AsyncFunction` no son
+ * válidos, y el sandbox los admite porque ejecuta el código como módulo ESM.
+ */
+function stripTopLevelExports(code: string): string {
+  return code
+    .replace(/^export\s*\{[^}]*\};?[ \t]*$/gm, "")
+    .replace(/^export\s+(?=(?:async\s+)?(?:const|let|var|function|class)\b)/gm, "");
+}
+
+/** Código TypeScript o JavaScript listo para una `AsyncFunction`. */
+function toRunnableSource(code: string): string {
+  return stripTopLevelExports(stripTypeScriptTypes(code));
+}
+
+/**
+ * Ejecuta en el proceso el código y cada prueba con `assert` (y `aws`, si el
+ * laboratorio usa el arnés) a la vista, como la guarda de `fullstack-ia`.
+ */
+async function runLabInProcess(
+  code: string,
+  tests: readonly LabTest[],
+  options: { readonly harness: typeof aws | null },
+): Promise<LabTestResult[]> {
+  const results: LabTestResult[] = [];
+
+  for (const test of tests) {
+    let passed: boolean;
+
+    try {
+      const source = `${toRunnableSource(code)}\n${toRunnableSource(test.code)}`;
+      await new AsyncFunction("assert", "aws", source)(assert, options.harness ?? undefined);
+      passed = true;
+    } catch {
+      passed = false;
+    }
+
+    results.push({ name: test.name, isHidden: test.isHidden, passed });
+  }
+
+  return results;
+}
+
+/** Problemas de un laboratorio: la solución falla algo, o el inicial no falla nada visible. */
+async function labProblems(
+  label: string,
+  starterCode: string,
+  solutionCode: string,
+  tests: readonly LabTest[],
+  options: { readonly harness: typeof aws | null },
+): Promise<string[]> {
+  const problems: string[] = [];
+  const solved = await runLabInProcess(solutionCode, tests, options);
+
+  for (const result of solved.filter((candidate) => !candidate.passed)) {
+    problems.push(`${label}: la solución falla «${result.name}»`);
+  }
+
+  const started = await runLabInProcess(starterCode, tests, options);
+
+  if (!started.some((result) => !result.isHidden && !result.passed)) {
+    problems.push(`${label}: el código inicial no falla ninguna prueba visible`);
+  }
+
+  return problems;
+}
 
 /** Una unidad fusionada con la etapa que la contiene: las reglas 5–7 lo necesitan. */
 interface UnitContent {
@@ -692,5 +779,93 @@ describe("guarda de calidad de las preguntas tipo examen AWS", () => {
     const offenders = unitContents.flatMap((unit) => unitRuleProblems(unit));
 
     expect(offenders, `Unidades fuera de norma:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("los laboratorios LAB y DEBUG en TypeScript o JavaScript: la solución pasa y el código inicial falla", async () => {
+    const labs = exercises.filter(
+      ({ exercise }) =>
+        (exercise.type === "LAB" || exercise.type === "DEBUG") &&
+        (exercise.language === "typescript" || exercise.language === "javascript"),
+    );
+    const offenders: string[] = [];
+
+    for (const { unitCode, exercise } of labs) {
+      const tests = exercise.tests.map((test) => ({
+        name: test.name,
+        isHidden: test.isHidden,
+        code: test.spec.code,
+      }));
+
+      offenders.push(
+        ...(await labProblems(
+          `${unitCode} / ${exercise.slug}`,
+          exercise.starterCode ?? "",
+          exercise.solution?.code ?? "",
+          tests,
+          { harness: exercise.harness === "aws" ? aws : null },
+        )),
+      );
+    }
+
+    expect(offenders, `Laboratorios fuera de norma:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  describe("runLabInProcess y la guarda de laboratorios, con ejemplos sintéticos", () => {
+    const tests: readonly LabTest[] = [
+      {
+        name: "el rango contiene su subred",
+        isHidden: false,
+        code: 'assert.strictEqual(contains("10.0.0.0/16", "10.0.1.0/24"), true);',
+      },
+      {
+        name: "el rango no contiene otro",
+        isHidden: true,
+        code: 'assert.strictEqual(contains("10.0.0.0/16", "192.168.0.0/24"), false);',
+      },
+    ];
+    const solution = `export const contains = (outer: string, inner: string): boolean =>
+  aws.cidr.contains(outer, inner);`;
+    const starter = `export const contains = (outer: string, inner: string): boolean => false;`;
+    const options = { harness: aws };
+
+    it("un ejemplo correcto con aws.cidr pasa la guarda", async () => {
+      expect(await labProblems("ok", starter, solution, tests, options)).toEqual([]);
+    });
+
+    it("quita los tipos y los export de nivel superior antes de ejecutar", async () => {
+      const results = await runLabInProcess(solution, tests, options);
+
+      expect(results.map((result) => result.passed)).toEqual([true, true]);
+    });
+
+    it("una solución que falla dispara la guarda", async () => {
+      const broken = "export const contains = (outer: string, inner: string): boolean => true;";
+      const problems = await labProblems("malo", starter, broken, tests, options);
+
+      expect(problems).toEqual(["malo: la solución falla «el rango no contiene otro»"]);
+    });
+
+    it("un código inicial que pasa todo dispara la guarda", async () => {
+      const problems = await labProblems("malo", solution, solution, tests, options);
+
+      expect(problems).toEqual(["malo: el código inicial no falla ninguna prueba visible"]);
+    });
+
+    it("un código inicial que solo falla una prueba oculta también dispara la guarda", async () => {
+      const onlyHiddenFails = "export const contains = (outer: string, inner: string): boolean => outer === outer;";
+      const problems = await labProblems("malo", onlyHiddenFails, solution, tests, options);
+
+      expect(problems).toEqual(["malo: el código inicial no falla ninguna prueba visible"]);
+    });
+
+    it("sin arnés, aws no está a la vista", async () => {
+      const results = await runLabInProcess(
+        "const x = aws.cidr;",
+        [{ name: "t", isHidden: false, code: "assert.ok(true);" }],
+        { harness: null },
+      );
+
+      expect(results.map((result) => result.passed)).toEqual([false]);
+    });
   });
 });
