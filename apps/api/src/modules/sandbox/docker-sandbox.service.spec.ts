@@ -1,11 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { SandboxRunRequest } from "@codeai/shared";
 import { describe, expect, it } from "vitest";
 
 import type { DockerCliPort, DockerCommandResult } from "./docker-sandbox.service";
-import { DockerSandboxService } from "./docker-sandbox.service";
+import { buildCheckFile, DockerSandboxService } from "./docker-sandbox.service";
 
 interface ExecuteInput {
   readonly args: readonly string[];
@@ -350,5 +350,171 @@ describe("DockerSandboxService: peticiones rechazadas sin contenedor", () => {
     expect(run.outcome).toBe("ERROR");
     expect(run.stderr).toContain("SQL");
     expect(cli.calls).toHaveLength(0);
+  });
+});
+
+const PLAIN_CHECK_FILE = [
+  "// Arnés del sandbox de CodeAI: solución del estudiante + sus pruebas.",
+  'import { createRequire } from "node:module";',
+  "const require = createRequire(import.meta.url);",
+  "const module = { exports: {} };",
+  "const exports = module.exports;",
+  'const assert = require("node:assert");',
+  "",
+  "const x = 1;",
+  "",
+  "const __codeaiResults = [];",
+  "async function __codeaiCheck(testId, body) {",
+  "  const startedAt = Date.now();",
+  "",
+  "  try {",
+  "    await body();",
+  "    __codeaiResults.push({ testId, passed: true, durationMs: Date.now() - startedAt });",
+  "  } catch (error) {",
+  "    const message = error instanceof Error ? error.message : String(error);",
+  "    __codeaiResults.push({",
+  "      testId,",
+  "      passed: false,",
+  "      message: message.slice(0, 500),",
+  "      durationMs: Date.now() - startedAt,",
+  "    });",
+  "  }",
+  "}",
+  "",
+  "async function __codeaiMain() {",
+  '  await __codeaiCheck("t1", async () => {',
+  "assert.ok(true);",
+  "  });",
+  '  console.log("__CODEAI_RESULTS__" + JSON.stringify(__codeaiResults));',
+  "}",
+  "",
+  "__codeaiMain().catch((error) => {",
+  "  console.error(error instanceof Error ? error.message : String(error));",
+  "  process.exitCode = 1;",
+  "});",
+  "",
+].join("\n");
+
+describe("buildCheckFile", () => {
+  const tests = [{ id: "t1", code: "assert.ok(true);" }];
+
+  it("sin arnés produce exactamente el archivo de siempre", () => {
+    expect(buildCheckFile("const x = 1;", tests)).toBe(PLAIN_CHECK_FILE);
+    expect(buildCheckFile("const x = 1;", tests, undefined)).toBe(PLAIN_CHECK_FILE);
+  });
+
+  it("con arnés aws ordena: arnés, estudiante, canario y pruebas", () => {
+    const file = buildCheckFile("const x = 1;", tests, "aws");
+    const freeze = file.indexOf("function __codeaiDeepFreeze");
+    const loaded = file.indexOf('await import("./harness/index.js")');
+    const bound = file.indexOf("const aws = __codeaiDeepFreeze(__codeaiHarnessModule.aws);");
+    const student = file.indexOf("const x = 1;");
+    const canary = file.indexOf("__codeaiHarnessModule.selfTest()");
+    const marker = file.indexOf('console.log("__CODEAI_HARNESS_TAMPERED__");');
+    const exit = file.indexOf("process.exit(3);");
+    const check = file.indexOf("const __codeaiResults = [];");
+    const test = file.indexOf("assert.ok(true);");
+
+    expect(freeze).toBeGreaterThan(-1);
+    expect(loaded).toBeGreaterThan(freeze);
+    expect(bound).toBeGreaterThan(loaded);
+    expect(student).toBeGreaterThan(bound);
+    expect(canary).toBeGreaterThan(student);
+    expect(marker).toBeGreaterThan(canary);
+    expect(exit).toBeGreaterThan(marker);
+    expect(check).toBeGreaterThan(exit);
+    expect(test).toBeGreaterThan(check);
+  });
+
+  it("importa el arnés una sola vez", () => {
+    const file = buildCheckFile("const x = 1;", tests, "aws");
+
+    expect(file.split('import("./harness/index.js")')).toHaveLength(2);
+  });
+});
+
+describe("DockerSandboxService: arnés aws", () => {
+  const harnessRequest = (): SandboxRunRequest =>
+    request({
+      harness: "aws",
+      tests: [{ id: "t1", code: "assert.ok(true);", weight: 1 }],
+    });
+
+  it("copia dist del arnés en .codeai/harness con su package.json ESM", async () => {
+    let files: string[] = [];
+    let packageJson = "";
+    let check = "";
+
+    const cli = new FakeCli(({ workspace }) => {
+      const harnessDir = join(workspace, ".codeai", "harness");
+
+      files = readdirSync(harnessDir);
+      packageJson = readFileSync(join(harnessDir, "package.json"), "utf8");
+      check = readFileSync(join(workspace, ".codeai", "check.mjs"), "utf8");
+
+      return marked([{ testId: "t1", passed: true }]);
+    });
+    const sandbox = new DockerSandboxService(cli);
+
+    const run = await sandbox.run(harnessRequest());
+
+    expect(run.outcome).toBe("PASSED");
+    expect(files).toContain("index.js");
+    expect(JSON.parse(packageJson)).toEqual({ type: "module" });
+    expect(check).toContain("__codeaiHarnessModule.selfTest()");
+  });
+
+  it("sin arnés no copia nada ni antepone el preludio", async () => {
+    let hasHarness = true;
+    let check = "";
+
+    const cli = new FakeCli(({ workspace }) => {
+      hasHarness = existsSync(join(workspace, ".codeai", "harness"));
+      check = readFileSync(join(workspace, ".codeai", "check.mjs"), "utf8");
+
+      return marked([{ testId: "t1", passed: true }]);
+    });
+    const sandbox = new DockerSandboxService(cli);
+
+    await sandbox.run(
+      request({ tests: [{ id: "t1", code: "assert.ok(true);", weight: 1 }] }),
+    );
+
+    expect(hasHarness).toBe(false);
+    expect(check).not.toContain("__codeaiHarnessModule");
+  });
+
+  it("traduce __CODEAI_HARNESS_TAMPERED__ a ERROR con resultados vacíos", async () => {
+    const cli = new FakeCli(() => ({
+      stdout: "ruido\n__CODEAI_HARNESS_TAMPERED__\n",
+      stderr: "",
+      exitCode: 3,
+      timedOut: false,
+    }));
+    const sandbox = new DockerSandboxService(cli);
+
+    const run = await sandbox.run(harnessRequest());
+
+    expect(run.outcome).toBe("ERROR");
+    expect(run.score).toBe(0);
+    expect(run.results).toEqual([]);
+    expect(run.stderr).toBe("El arnés se alteró durante la ejecución");
+    expect(run.stdout).toBe("ruido");
+  });
+
+  it("sin arnés ese marcador no tiene significado especial", async () => {
+    const cli = new FakeCli(() => ({
+      stdout: "__CODEAI_HARNESS_TAMPERED__\n",
+      stderr: "",
+      exitCode: 3,
+      timedOut: false,
+    }));
+    const sandbox = new DockerSandboxService(cli);
+
+    const run = await sandbox.run(
+      request({ tests: [{ id: "t1", code: "assert.ok(true);", weight: 1 }] }),
+    );
+
+    expect(run.stderr).not.toBe("El arnés se alteró durante la ejecución");
   });
 });

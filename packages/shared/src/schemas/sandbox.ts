@@ -43,6 +43,7 @@ export const sandboxRunRequestSchema = z.object({
   files: z.array(sandboxFileSchema).min(1).max(FILES_MAX),
   tests: z.array(sandboxTestSchema).max(TESTS_MAX),
   limits: sandboxLimitsSchema.default({}),
+  harness: z.enum(["aws"]).optional(),
 });
 
 export type SandboxRunRequest = z.infer<typeof sandboxRunRequestSchema>;

@@ -52,6 +52,20 @@ describe("sandboxRunRequestSchema", () => {
     });
   });
 
+  it("acepta el arnés aws y lo deja opcional", () => {
+    const withHarness = sandboxRunRequestSchema.safeParse({ ...runRequest, harness: "aws" });
+    const without = sandboxRunRequestSchema.safeParse(runRequest);
+
+    expect(withHarness.success && withHarness.data.harness).toBe("aws");
+    expect(without.success && without.data.harness).toBeUndefined();
+  });
+
+  it("rechaza un arnés desconocido", () => {
+    expect(
+      sandboxRunRequestSchema.safeParse({ ...runRequest, harness: "gcp" }).success,
+    ).toBe(false);
+  });
+
   it("aplica peso 1 a la prueba que no declara peso", () => {
     const result = sandboxRunRequestSchema.safeParse(runRequest);
 

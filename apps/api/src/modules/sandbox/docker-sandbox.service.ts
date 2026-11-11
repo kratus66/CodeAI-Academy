@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 
@@ -100,6 +101,10 @@ export class DockerSandboxService implements SandboxService {
       await writeFile(target, file.content, "utf8");
     }
 
+    if (entry.harness === "aws") {
+      await installHarness(workspace);
+    }
+
     if (entry.tests.length === 0) {
       return [containerPath(entry.entryPath)];
     }
@@ -110,7 +115,7 @@ export class DockerSandboxService implements SandboxService {
     await mkdir(patch, { recursive: true });
     await writeFile(
       join(patch, checkName),
-      buildCheckFile(entry.entryContent, entry.tests),
+      buildCheckFile(entry.entryContent, entry.tests, entry.harness),
       "utf8",
     );
 
@@ -151,6 +156,17 @@ export class DockerSandboxService implements SandboxService {
           };
     }
 
+    if (request.harness === "aws" && hasTamperMarker(stdout)) {
+      return {
+        outcome: "ERROR",
+        score: 0,
+        results: [],
+        stdout: stripTamperMarker(stdout),
+        stderr: HARNESS_TAMPERED_MESSAGE,
+        durationMs,
+      };
+    }
+
     const results = readResults(stdout);
 
     if (results === null) {
@@ -188,6 +204,11 @@ const CHECK_JS = "check.mjs";
 const CHECK_TS = "check.mts";
 /** Prefijo de la línea con los resultados; el resto de `stdout` es del estudiante. */
 const RESULT_MARKER = "__CODEAI_RESULTS__";
+/** Línea que imprime el canario cuando `selfTest()` del arnés falla o lanza. */
+const TAMPER_MARKER = "__CODEAI_HARNESS_TAMPERED__";
+/** Subdirectorio del arnés AWS dentro de `.codeai`, y su paquete ESM. */
+const HARNESS_DIR = "harness";
+const HARNESS_PACKAGE_JSON = '{"type":"module"}\n';
 /** §4: usuario sin privilegios, procesos, CPU y `/tmp` acotados. */
 const CONTAINER_USER = "10001:10001";
 const PIDS_LIMIT = "64";
@@ -211,6 +232,7 @@ const TIMEOUT_MESSAGE =
 const RUN_FAILED_MESSAGE = "Tu solución no terminó correctamente.";
 const CHECK_FAILED_MESSAGE =
   "No se pudo ejecutar la comprobación: revisa la sintaxis de tu solución.";
+const HARNESS_TAMPERED_MESSAGE = "El arnés se alteró durante la ejecución";
 
 /** Ficheros ya validados y el punto de entrada que ejecuta el contenedor. */
 interface PlannedRun {
@@ -219,6 +241,7 @@ interface PlannedRun {
   readonly language: SandboxRunRequest["language"];
   readonly entryPath: string;
   readonly entryContent: string;
+  readonly harness: SandboxRunRequest["harness"];
 }
 
 /**
@@ -259,6 +282,7 @@ function plan(request: SandboxRunRequest): PlannedRun | { readonly error: string
     tests: request.tests.map((test) => ({ id: test.id, code: testCode(test.code) })),
     entryPath: entry.path,
     entryContent: entry.content,
+    harness: request.harness,
   };
 }
 
@@ -364,9 +388,10 @@ function dockerArgs(input: {
  * que las funciones del estudiante quedan a la vista de su prueba sin `export`.
  * Cada prueba se evalúa en su propio `try` para que un fallo no oculte los demás.
  */
-function buildCheckFile(
+export function buildCheckFile(
   entryContent: string,
   tests: readonly { readonly id: string; readonly code: string }[],
+  harness?: SandboxRunRequest["harness"],
 ): string {
   const lines: string[] = [
     "// Arnés del sandbox de CodeAI: solución del estudiante + sus pruebas.",
@@ -376,8 +401,10 @@ function buildCheckFile(
     "const exports = module.exports;",
     'const assert = require("node:assert");',
     "",
+    ...(harness === "aws" ? HARNESS_PRELUDE : []),
     entryContent,
     "",
+    ...(harness === "aws" ? HARNESS_CANARY : []),
     "const __codeaiResults = [];",
     "async function __codeaiCheck(testId, body) {",
     "  const startedAt = Date.now();",
@@ -418,6 +445,79 @@ function buildCheckFile(
   );
 
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Preludio del arnés AWS: congela en profundidad el espacio `aws` antes del
+ * código del estudiante. Si el estudiante declara `aws` hay un `SyntaxError`; si
+ * lo reasigna, un `TypeError`.
+ */
+const HARNESS_PRELUDE: readonly string[] = [
+  "function __codeaiDeepFreeze(value, seen = new Set()) {",
+  '  if ((typeof value !== "object" && typeof value !== "function") || value === null) {',
+  "    return value;",
+  "  }",
+  "",
+  "  if (seen.has(value)) {",
+  "    return value;",
+  "  }",
+  "",
+  "  seen.add(value);",
+  "",
+  "  for (const key of Reflect.ownKeys(value)) {",
+  "    const descriptor = Object.getOwnPropertyDescriptor(value, key);",
+  "",
+  "    if (descriptor !== undefined && \"value\" in descriptor) {",
+  "      __codeaiDeepFreeze(descriptor.value, seen);",
+  "    }",
+  "  }",
+  "",
+  "  // Un espacio de nombres de módulo ya es inmutable y Object.freeze lo rechaza.",
+  '  return Object.prototype.toString.call(value) === "[object Module]" ? value : Object.freeze(value);',
+  "}",
+  `const __codeaiHarnessModule = await import("./${HARNESS_DIR}/index.js");`,
+  "const aws = __codeaiDeepFreeze(__codeaiHarnessModule.aws);",
+  "",
+];
+
+/** Canario: tras el código del estudiante y antes de las pruebas. */
+const HARNESS_CANARY: readonly string[] = [
+  "let __codeaiHarnessIntact = false;",
+  "try {",
+  "  __codeaiHarnessIntact = __codeaiHarnessModule.selfTest() === true;",
+  "} catch {",
+  "  __codeaiHarnessIntact = false;",
+  "}",
+  "if (!__codeaiHarnessIntact) {",
+  `  console.log(${JSON.stringify(TAMPER_MARKER)});`,
+  "  process.exit(3);",
+  "}",
+  "",
+];
+
+/**
+ * Copia `dist/` de `@codeai/aws-harness` en `<ws>/.codeai/harness/` y le añade un
+ * `package.json` ESM para que Node cargue los `.js` como módulos.
+ */
+async function installHarness(workspace: string): Promise<void> {
+  const packageJson = createRequire(__filename).resolve("@codeai/aws-harness/package.json");
+  const target = join(workspace, PATCH_DIR, HARNESS_DIR);
+
+  await mkdir(target, { recursive: true });
+  await cp(join(dirname(packageJson), "dist"), target, { recursive: true });
+  await writeFile(join(target, "package.json"), HARNESS_PACKAGE_JSON, "utf8");
+}
+
+function hasTamperMarker(stdout: string): boolean {
+  return stdout.split(/\r?\n/).some((line) => line === TAMPER_MARKER);
+}
+
+function stripTamperMarker(stdout: string): string {
+  return stdout
+    .split(/\r?\n/)
+    .filter((line) => line !== TAMPER_MARKER)
+    .join("\n")
+    .trimEnd();
 }
 
 /** Lee la línea de resultados del arnés; `null` si la ejecución no llegó a emitirla. */
