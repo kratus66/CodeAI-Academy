@@ -106,6 +106,19 @@ export function exerciseConfig(exercise: SeedExercise): Record<string, unknown> 
     };
   }
 
+  if (exercise.cloudLab !== null) {
+    const { region, tag, cost, prerequisites, steps, checks } = exercise.cloudLab;
+
+    return {
+      region,
+      tag,
+      cost,
+      prerequisites,
+      steps,
+      checks: checks.map(({ id, label, phase, command }) => ({ id, label, phase, command })),
+    };
+  }
+
   if (exercise.starterCode === null) return {};
 
   return exercise.harness === null
@@ -166,6 +179,10 @@ export function exerciseSolution(exercise: SeedExercise): Record<string, unknown
       })),
       verdict: exercise.audit.verdict,
     };
+  }
+
+  if (exercise.cloudLab !== null) {
+    return { checks: exercise.cloudLab.checks.map(({ id, expect }) => ({ id, expect })) };
   }
 
   return exercise.solution ?? undefined;
