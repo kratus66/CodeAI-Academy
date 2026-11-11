@@ -4,6 +4,8 @@ import {
   auditAnswerResponseSchema,
   auditAnswerResultSchema,
   auditAnswerSchema,
+  cloudEvidenceResultSchema,
+  cloudEvidenceSchema,
   createSubmissionSchema,
   exerciseDetailSchema,
   exerciseListItemSchema,
@@ -408,5 +410,47 @@ describe("auditAnswerResultSchema", () => {
     expect(auditAnswerResultSchema.safeParse({ ...RESULT, score: 101 }).success).toBe(false);
     expect(auditAnswerResultSchema.safeParse({ ...RESULT, score: -1 }).success).toBe(false);
     expect(auditAnswerResultSchema.safeParse({ ...RESULT, outcome: "OK" }).success).toBe(false);
+  });
+});
+
+describe("cloudEvidenceSchema", () => {
+  const valid = {
+    evidence: [{ checkId: "c1", output: "{}" }],
+    cleanupConfirmed: false,
+  };
+
+  it("acepta una evidencia válida", () => {
+    expect(cloudEvidenceSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rechaza una evidencia vacía o con más de 20 salidas", () => {
+    expect(cloudEvidenceSchema.safeParse({ ...valid, evidence: [] }).success).toBe(false);
+    const many = Array.from({ length: 21 }, (_, i) => ({ checkId: `c${i}`, output: "{}" }));
+    expect(cloudEvidenceSchema.safeParse({ ...valid, evidence: many }).success).toBe(false);
+  });
+
+  it("rechaza una salida demasiado corta o demasiado larga", () => {
+    const short = { ...valid, evidence: [{ checkId: "c1", output: "1" }] };
+    const long = { ...valid, evidence: [{ checkId: "c1", output: "x".repeat(200_001) }] };
+    expect(cloudEvidenceSchema.safeParse(short).success).toBe(false);
+    expect(cloudEvidenceSchema.safeParse(long).success).toBe(false);
+  });
+
+  it("exige cleanupConfirmed y rechaza campos desconocidos", () => {
+    expect(cloudEvidenceSchema.safeParse({ evidence: valid.evidence }).success).toBe(false);
+    expect(cloudEvidenceSchema.safeParse({ ...valid, extra: 1 }).success).toBe(false);
+  });
+});
+
+describe("cloudEvidenceResultSchema", () => {
+  it("acepta un resultado válido y rechaza un desenlace desconocido", () => {
+    const result = {
+      outcome: "PARTIAL",
+      checks: [{ checkId: "c1", label: "Bucket", passed: true, problems: [] }],
+      cleanupConfirmed: false,
+      maskedSummary: "resumen",
+    };
+    expect(cloudEvidenceResultSchema.safeParse(result).success).toBe(true);
+    expect(cloudEvidenceResultSchema.safeParse({ ...result, outcome: "OK" }).success).toBe(false);
   });
 });

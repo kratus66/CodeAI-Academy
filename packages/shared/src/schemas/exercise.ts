@@ -426,3 +426,43 @@ export const exerciseProgressResponseSchema = z.object({
 });
 
 export type ExerciseProgressResponse = z.infer<typeof exerciseProgressResponseSchema>;
+
+/**
+ * Evidencia de un `CLOUD_LAB` (`POST /api/exercises/:id/cloud-evidence`).
+ *
+ * El estudiante pega la salida JSON de comandos de solo lectura. El servidor la
+ * valida, la enmascara y no guarda la salida en bruto.
+ */
+export const cloudEvidenceSchema = z
+  .object({
+    evidence: z
+      .array(
+        z.object({
+          checkId: z.string(),
+          output: z.string().min(2).max(200_000),
+        }),
+      )
+      .min(1)
+      .max(20),
+    cleanupConfirmed: z.boolean(),
+  })
+  .strict();
+
+export type CloudEvidenceInput = z.infer<typeof cloudEvidenceSchema>;
+
+/** `maskedSummary` no contiene números de cuenta ni ARN. */
+export const cloudEvidenceResultSchema = z.object({
+  outcome: z.enum(["PASSED", "PARTIAL", "FAILED"]),
+  checks: z.array(
+    z.object({
+      checkId: z.string(),
+      label: z.string(),
+      passed: z.boolean(),
+      problems: z.array(z.string()),
+    }),
+  ),
+  cleanupConfirmed: z.boolean(),
+  maskedSummary: z.string(),
+});
+
+export type CloudEvidenceResult = z.infer<typeof cloudEvidenceResultSchema>;
