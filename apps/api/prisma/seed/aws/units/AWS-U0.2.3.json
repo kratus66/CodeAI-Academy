@@ -1,0 +1,1142 @@
+{
+  "code": "AWS-U0.2.3",
+  "lessons": [
+    {
+      "slug": "aws-u0-2-3-iam-identity-center-y-credenciales-temporales",
+      "title": "IAM Identity Center y credenciales temporales para la CLI",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "IAM Identity Center es la solución de AWS para conectar a las personas de una organización con las aplicaciones administradas por AWS y con los recursos de AWS. Puedes inscribir el proveedor de identidad que ya usas y sincronizar sus usuarios y grupos, o crear y administrar los usuarios directamente en IAM Identity Center. A partir de ahí, cada persona entra con su identidad corporativa en el portal de AWS y elige la cuenta o la aplicación que tiene asignada. La CLI no guarda una clave de larga duración en el portátil: pide credenciales temporales a AWS STS para un perfil concreto, las usa mientras están vigentes y las renueva mientras la sesión siga abierta."
+        },
+        {
+          "type": "list",
+          "title": "Qué resuelve, según la guía del servicio",
+          "items": [
+            "Dos tipos de acceso: a aplicaciones administradas por AWS y a cuentas de AWS. Puedes usar uno de los dos o ambos.",
+            "Un solo punto de federación: inscribes el directorio una vez y reduces el esfuerzo de administrar varias cuentas y aplicaciones; con un proveedor SAML 2.0 hay un único certificado que mantener.",
+            "Administración central del acceso a las cuentas: asignas usuarios y grupos a las cuentas desde IAM Identity Center.",
+            "Permission sets para funciones comunes: defines los permisos una vez, los aprovisionas en varias cuentas y los asignas a usuarios y grupos. Es una función opcional y solo existe en las instancias de organización.",
+            "Un portal de AWS donde cada persona ve las cuentas y las aplicaciones que tiene asignadas."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Dos tipos de instancia, y solo una administra cuentas",
+          "text": "La instancia de organización es la recomendada: se despliega en la cuenta de administración de AWS Organizations, es el único tipo que permite administrar el acceso a las cuentas de AWS y da un punto único para gestionar el acceso de toda la organización. La instancia de cuenta queda ligada a la cuenta en la que se habilita y se reserva para despliegues aislados de aplicaciones administradas concretas. Si tu objetivo es que la gente entre en varias cuentas con la misma identidad, la decisión ya está tomada: instancia de organización."
+        },
+        {
+          "type": "paragraph",
+          "title": "Credenciales temporales: qué son y qué cambian",
+          "text": "Las credenciales temporales las crea AWS STS y funcionan casi igual que las claves de acceso de larga duración, con cuatro diferencias que importan. Son de corta duración: duran de unos minutos a varias horas y, cuando caducan, AWS ya no las reconoce ni acepta peticiones firmadas con ellas. No se guardan junto al usuario: se generan cuando se solicitan y se pueden volver a pedir mientras quien las pide conserve el permiso. No hay que distribuirlas ni incrustarlas en una aplicación. Y, al tener una vida limitada, no hay que actualizarlas ni revocarlas expresamente cuando dejan de necesitarse. Son la base de los roles y de la federación de identidades."
+        },
+        {
+          "type": "code",
+          "title": "Lo que deja el asistente en el archivo de configuración",
+          "language": "ini",
+          "code": "[profile estudio-dev]\nsso_session = estudio\nsso_account_id = 111122223333\nsso_role_name = ReadOnly\nregion = us-west-2\noutput = json\n\n[sso-session estudio]\nsso_region = us-east-1\nsso_start_url = https://mi-empresa.awsapps.com/start\nsso_registration_scopes = sso:account:access"
+        },
+        {
+          "type": "mermaid",
+          "title": "Cómo obtiene credenciales temporales la CLI",
+          "code": "flowchart TD\n  A[\"aws configure sso crea la sección sso-session y el perfil\"] --> B[\"aws sso login --profile abre la sesión de Identity Center\"]\n  B --> C[\"El token de la sesión se cachea en ~/.aws/sso/cache\"]\n  C --> D[\"El perfil pide credenciales temporales a AWS STS\"]\n  D --> E[\"La CLI firma los comandos con esas credenciales\"]\n  E --> F{\"¿Sigue vigente el token de la sesión?\"}\n  F -- \"Sí\" --> G[\"La CLI renueva sola las credenciales caducadas\"]\n  G --> E\n  F -- \"No\" --> H[\"Hay que volver a ejecutar aws sso login\"]\n  H --> B"
+        },
+        {
+          "type": "paragraph",
+          "title": "Firmar, usar y cerrar la sesión",
+          "text": "El asistente `aws configure sso` pide un nombre de sesión, la URL de inicio de Identity Center, la región que aloja el directorio de Identity Center y los scopes de registro; después te deja elegir la cuenta y el rol, la región de los comandos, el formato de salida y el nombre del perfil. Con el perfil creado, `aws sso login --profile estudio-dev` abre la sesión y el token queda cacheado en el disco, en el directorio `sso/cache`. A partir de ahí, la CLI renueva sola las credenciales de AWS que caducan mientras el token siga vigente; si lo que caduca es la sesión de Identity Center, hay que volver a iniciarla. `aws sts get-caller-identity --profile estudio-dev` confirma con qué identidad estás firmando, y `aws sso logout` borra las credenciales cacheadas de todas las sesiones cuando terminas. Desde la versión 2.22.0 el CLI usa la autorización PKCE por omisión, que exige un navegador en el mismo equipo; en un equipo sin navegador, o para autorizar desde otro dispositivo, se añade `--use-device-code`."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica: dos regiones que no tienen por qué coincidir",
+          "text": "La región de la sesión (`sso_region`) es la que aloja el directorio de IAM Identity Center; la región del perfil (`region`) es la que reciben los comandos. Un equipo con el directorio en us-east-1 y los recursos en us-west-2 escribe us-east-1 en la sesión y us-west-2 en el perfil. Si copias la región del perfil a la sesión, el CLI busca el directorio en el sitio equivocado."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: dejar la región de la sesión fuera de la sección sso-session",
+          "text": "Causa: escribir a mano el archivo de configuración y repartir las claves por donde parece lógico, con `sso_region` en la sección del perfil. Consecuencia: la sección de la sesión se queda sin la región que la guía exige dentro de ella, así que el CLI no puede resolver la URL de inicio y ningún comando con ese perfil consigue credenciales. Solución: `sso_start_url` y `sso_region` van en `[sso-session <nombre>]`; en el perfil quedan `sso_session`, `sso_account_id`, `sso_role_name`, la región de los comandos y el formato de salida."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: guardar claves de acceso de larga duración en el perfil",
+          "text": "Causa: crear el perfil con `aws configure`, que escribe `aws_access_key_id` y `aws_secret_access_key` en el archivo de configuración, porque es el asistente que se conoce de otros tutoriales. Consecuencia: la CLI firma con una credencial que no caduca, hay que rotarla a mano y la copia del portátil sigue siendo válida aunque la persona cambie de equipo o de rol. Solución: crear el perfil con `aws configure sso`, dejar que la sección `sso-session` y el perfil guarden solo la cuenta y el rol, y obtener las credenciales temporales con `aws sso login --profile <perfil>`; el archivo de configuración no debe contener claves de acceso."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: autorizar sin navegador en el equipo",
+          "text": "Causa: ejecutar `aws sso login` en un servidor sin navegador, o en un equipo distinto del que tiene el navegador, y esperar que se abra la página de autorización PKCE. Consecuencia: el inicio de sesión se queda esperando: la autorización PKCE, que es la de por omisión desde la versión 2.22.0, tiene que abrirse en el mismo equipo donde se firma la sesión. Solución: añadir `--use-device-code` para usar la autorización por código de dispositivo, que se puede completar desde otro dispositivo o desde un equipo sin navegador."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Configurar IAM Identity Center para trabajar con credenciales temporales en la CLI: elegir el tipo de instancia, escribir la sección `sso-session` y el perfil, abrir la sesión y comprobar la identidad con la que firmas. Criterio: en un archivo de configuración nuevo colocas cada clave en su sección, explicas por qué el perfil no guarda claves de acceso y nombras el comando que renueva la sesión cuando caduca, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee el ejemplo del archivo de configuración y rehazlo tapando la explicación: separa lo que pertenece a la sesión de lo que pertenece al perfil, y di en voz alta qué pasa si la región del directorio se escribe en el perfil. Después responde de memoria: qué tipo de instancia administra el acceso a las cuentas, qué credencial obtiene la CLI y qué ocurre cuando caduca la sesión de Identity Center."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Un perfil de la CLI sin la región de la sesión». El objeto describe el archivo de configuración de un equipo y la región del directorio se quedó en el perfil. Usa las tres pistas solo si te atascas. Criterio de paso: las pruebas visibles pasan y el resto de valores (sesión, cuenta, rol y región de los comandos) siguen como estaban."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Un portátil nuevo que pide claves antes de firmar». La secuencia de puesta en marcha de un equipo incluye un alta de perfil con claves estáticas. Corrige el objeto para que el perfil se cree con el asistente de Identity Center, sin claves guardadas y con la sesión abierta antes de la comprobación. Criterio de paso: las pruebas visibles pasan y no has cambiado el nombre del perfil, la comprobación ni el cierre."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente generó un archivo de configuración para el equipo. Audítalo en «Auditar un archivo de configuración generado por IA»: marca solo los defectos reales (claves de acceso de larga duración, un perfil que apunta a una sesión que no existe) y deja sin marcar lo que es correcto aunque parezca raro, como que la región de la sesión no coincida con la de los comandos. Contrasta cada hallazgo con la guía del AWS CLI y con la de credenciales temporales (leídas el 2026-11-12) antes de decidir si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, anota en una línea la restricción del escenario y el calificador en mayúsculas; al corregir, lee la explicación de cada opción y registra si fallaste por no aplicar la restricción o por no comparar con el calificador. Criterio de paso: al menos 6 de 8 correctas y una restricción identificada por escrito en cada pregunta."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Escribe el procedimiento de incorporación de una persona nueva a tu equipo en cinco pasos: qué se le asigna en Identity Center, qué perfil crea con `aws configure sso`, qué ejecuta para abrir la sesión, cómo comprueba con qué identidad firma y qué ejecuta al terminar en un equipo compartido. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero dice que las credenciales temporales obligan a revocarlas al final del día; ¿qué responde la guía de IAM y qué parte del procedimiento lo demuestra?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-identity-center-que-es",
+          "order": 0,
+          "note": "Explica los dos tipos de acceso, los dos tipos de instancia y los permission sets."
+        },
+        {
+          "resourceSlug": "aws-cli-configurar-sso",
+          "order": 1,
+          "note": "El asistente aws configure sso, el archivo de configuración, aws sso login y aws sso logout."
+        },
+        {
+          "resourceSlug": "aws-iam-credenciales-temporales",
+          "order": 2,
+          "note": "Qué son las credenciales temporales de AWS STS y qué ventajas tienen frente a las de larga duración."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Aplicaciones administradas por AWS y cuentas de AWS. El portal de AWS reúne, en un solo sitio, las aplicaciones y las cuentas que cada persona tiene asignadas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los dos accesos que reúne el portal",
+      "statement": "¿Qué dos tipos de acceso se pueden gestionar con IAM Identity Center y desde dónde se reúnen?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "IAM Identity Center",
+        "portal de AWS",
+        "acceso a cuentas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La de organización se despliega en la cuenta de administración de AWS Organizations, es la recomendada y la única que permite administrar el acceso a las cuentas. La de cuenta queda ligada a la cuenta donde se habilita y solo cubre despliegues aislados de aplicaciones administradas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Instancia de organización o de cuenta",
+      "statement": "¿Qué diferencia hay entre una instancia de organización y una instancia de cuenta de IAM Identity Center?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "instancia de organización",
+        "instancia de cuenta",
+        "AWS Organizations"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un conjunto de permisos para una función común (por ejemplo, administración o lectura) que se define una vez, se aprovisiona en varias cuentas y se asigna a usuarios y grupos. Es una función opcional y solo existe en las instancias de organización."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué es un permission set",
+      "statement": "¿Qué es un permission set de IAM Identity Center y en qué tipo de instancia está disponible?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "permission set",
+        "funciones comunes",
+        "aprovisionamiento"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una sección sso-session con sso_start_url, sso_region y los scopes de registro, y un perfil que la referencia con sso_session y añade sso_account_id, sso_role_name, la región de los comandos y el formato de salida."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué escribe el asistente en el archivo de configuración",
+      "statement": "¿Qué dos bloques crea `aws configure sso` en el archivo de configuración y qué claves quedan en cada uno?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "aws configure sso",
+        "sso-session",
+        "perfil"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Mientras el token de la sesión siga vigente, la CLI renueva sola las credenciales de AWS que caducan. Si caduca la sesión de Identity Center, hay que volver a iniciarla con aws sso login para el perfil."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Renovación y caducidad de la sesión",
+      "statement": "Con un perfil de IAM Identity Center, ¿qué se renueva solo y qué hay que volver a hacer cuando caduca?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "renovación",
+        "caducidad",
+        "aws sso login"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "aws sso logout. Cierra las sesiones de SSO y borra las credenciales cacheadas en el disco; también puedes dejar que caduquen, porque después de expirar ya no se pueden reutilizar."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Cerrar la sesión en un equipo compartido",
+      "statement": "Al terminar de usar el perfil de Identity Center en un equipo compartido, ¿qué comando borra las credenciales cacheadas?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "aws sso logout",
+        "caché",
+        "equipo compartido"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Archivo ~/.aws/config de un equipo recién configurado, como objeto.\nexport const configuracion = {\n  sesiones: [\n    {\n      nombre: \"estudio\",\n      startUrl: \"https://mi-empresa.awsapps.com/start\",\n      scopes: \"sso:account:access\",\n    },\n  ],\n  perfiles: [\n    {\n      nombre: \"estudio-dev\",\n      sesion: \"estudio\",\n      cuenta: \"111122223333\",\n      rol: \"ReadOnly\",\n      region: \"us-west-2\",\n      salida: \"json\",\n      regionSesion: \"us-east-1\",\n    },\n  ],\n};",
+      "solution": {
+        "code": "export const configuracion = {\n  sesiones: [\n    {\n      nombre: \"estudio\",\n      startUrl: \"https://mi-empresa.awsapps.com/start\",\n      region: \"us-east-1\",\n      scopes: \"sso:account:access\",\n    },\n  ],\n  perfiles: [\n    {\n      nombre: \"estudio-dev\",\n      sesion: \"estudio\",\n      cuenta: \"111122223333\",\n      rol: \"ReadOnly\",\n      region: \"us-west-2\",\n      salida: \"json\",\n    },\n  ],\n};"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Qué clave falta: la guía pide dentro de la sección `sso-session` tanto la URL de inicio como la región que aloja el directorio de IAM Identity Center."
+        },
+        {
+          "level": 2,
+          "text": "Dónde va: la región de la sesión no es la región de los comandos; la primera describe al directorio y la segunda es la que recibe cada comando."
+        },
+        {
+          "level": 3,
+          "text": "El cambio: añade `region: \"us-east-1\"` al objeto de `sesiones[0]` y quita la clave `regionSesion` del perfil, sin tocar el `region: \"us-west-2\"` del perfil."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la sesión declara la región del directorio y el perfil ya no la guarda",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(configuracion.sesiones[0].region, \"us-east-1\");\nassert.strictEqual(configuracion.perfiles[0].regionSesion, undefined);"
+          }
+        },
+        {
+          "name": "el perfil conserva la sesión, la cuenta y el rol",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(configuracion.perfiles[0].sesion, \"estudio\");\nassert.strictEqual(configuracion.perfiles[0].cuenta, \"111122223333\");\nassert.strictEqual(configuracion.perfiles[0].rol, \"ReadOnly\");"
+          }
+        },
+        {
+          "name": "la región de los comandos sigue siendo la del escenario",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(configuracion.perfiles[0].region, \"us-west-2\");"
+          }
+        },
+        {
+          "name": "la sesión conserva la URL de inicio y el scope que lista cuentas y roles",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(configuracion.sesiones[0].startUrl, \"https://mi-empresa.awsapps.com/start\");\nassert.strictEqual(configuracion.sesiones[0].scopes, \"sso:account:access\");"
+          }
+        },
+        {
+          "name": "el archivo no guarda claves de acceso de larga duración",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const texto = JSON.stringify(configuracion);\nassert.doesNotMatch(texto, /AKIA/);\nassert.doesNotMatch(texto, /aws_access_key_id/);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-debug-01",
+      "type": "DEBUG",
+      "title": "Un perfil de la CLI sin la región de la sesión",
+      "statement": "El objeto `configuracion` describe el archivo `~/.aws/config` de un equipo que creó su perfil con `aws configure sso`: un arreglo `sesiones` con la sección `sso-session` y otro `perfiles` con los perfiles. Su defecto principal: la región que aloja el directorio de IAM Identity Center se quedó en el perfil, en la clave `regionSesion`, y la sesión no la declara, así que el CLI no puede resolver la sesión. Mueve esa región a la sesión en una clave `region` y quita `regionSesion` del perfil, conservando el nombre de la sesión, la URL de inicio, los scopes, la cuenta, el rol y la región de los comandos (`us-west-2`). Mantén la forma del valor exportado (`export const configuracion = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "sso-session",
+        "sso_region",
+        "archivo de configuración"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Puesta en marcha de la CLI en un portátil nuevo, como lista de tareas.\nexport const puestaEnMarcha = {\n  perfil: \"estudio-dev\",\n  altaDelPerfil: \"aws configure\",\n  clavesEstaticas: [\"aws_access_key_id\", \"aws_secret_access_key\"],\n  inicioDeSesion: null,\n  comprobacion: \"aws sts get-caller-identity --profile estudio-dev\",\n  cierre: \"aws sso logout\",\n};",
+      "solution": {
+        "code": "export const puestaEnMarcha = {\n  perfil: \"estudio-dev\",\n  altaDelPerfil: \"aws configure sso\",\n  clavesEstaticas: [],\n  inicioDeSesion: \"aws sso login --profile estudio-dev\",\n  comprobacion: \"aws sts get-caller-identity --profile estudio-dev\",\n  cierre: \"aws sso logout\",\n};"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el alta del perfil usa el asistente de Identity Center y la sesión se abre antes de comprobar",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(puestaEnMarcha.altaDelPerfil, \"aws configure sso\");\nassert.strictEqual(puestaEnMarcha.inicioDeSesion, \"aws sso login --profile estudio-dev\");"
+          }
+        },
+        {
+          "name": "la secuencia no guarda ninguna clave de acceso estática",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(puestaEnMarcha.clavesEstaticas, []);"
+          }
+        },
+        {
+          "name": "la comprobación usa el perfil de la práctica",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.match(puestaEnMarcha.comprobacion, /^aws sts get-caller-identity --profile estudio-dev$/);"
+          }
+        },
+        {
+          "name": "el cierre borra las credenciales cacheadas",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(puestaEnMarcha.cierre, \"aws sso logout\");"
+          }
+        },
+        {
+          "name": "los pasos que se ejecutan nombran el mismo perfil",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(puestaEnMarcha.perfil, \"estudio-dev\");\nassert.match(puestaEnMarcha.inicioDeSesion, /estudio-dev/);\nassert.match(puestaEnMarcha.comprobacion, /estudio-dev/);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-debug-02",
+      "type": "DEBUG",
+      "title": "Un portátil nuevo que pide claves antes de firmar",
+      "statement": "El objeto `puestaEnMarcha` recoge cómo prepara un portátil nuevo el acceso a la CLI. Tal como está, el alta del perfil se hace con el asistente de claves estáticas `aws configure`, la secuencia declara dos claves de acceso y nadie abre la sesión de Identity Center. Corrige el objeto sin cambiar el nombre del perfil, la comprobación ni el cierre: el perfil se crea con `aws configure sso`, no queda ninguna clave de acceso guardada y la sesión se abre con `aws sso login --profile estudio-dev` antes de ejecutar la comprobación. Mantén la forma del valor exportado (`export const puestaEnMarcha = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "aws configure sso",
+        "aws sso login",
+        "credenciales temporales"
+      ],
+      "estimatedMin": 12,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "# Archivo ~/.aws/config generado por un asistente para el equipo\n[default]\naws_access_key_id = AKIAIOSFODNN7EXAMPLE\naws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\nregion = us-west-2\n\n[profile estudio-dev]\nsso_session = estudio\nsso_account_id = 111122223333\nsso_role_name = ReadOnly\nregion = us-west-2\noutput = json\n\n[sso-session oficina]\nsso_start_url = https://mi-empresa.awsapps.com/start\nsso_region = us-east-1\nsso_registration_scopes = sso:account:access"
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              2,
+              4
+            ],
+            "label": "Credenciales del perfil [default]",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "El archivo empieza con un par de claves de acceso de larga duración. La guía del CLI configura el perfil con `aws configure sso`, que no guarda claves: pide credenciales temporales a STS. Una clave escrita en el disco sobrevive a la sesión, viaja con las copias del perfil y no caduca sola."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Clave sso_session del perfil",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "El perfil apunta a la sesión `estudio`, pero la única sesión declarada en el archivo se llama `oficina`. La CLI busca el bloque `sso-session estudio` y no lo encuentra, así que el perfil no se puede resolver ni con `aws sso login`."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              11,
+              11
+            ],
+            "label": "Clave region del perfil",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcta: la región del perfil es la que reciben los comandos, y la guía admite que no coincida con la región del directorio de Identity Center. Que diga `us-west-2` mientras la sesión dice `us-east-1` parece un error, pero son dos valores distintos a propósito."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              12,
+              12
+            ],
+            "label": "Clave output del perfil",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcta: `output = json` solo fija el formato de salida por defecto del perfil. El asistente lo escribe, el CLI lo entiende y no afecta a cómo se autentica el perfil."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              14,
+              17
+            ],
+            "label": "Sección [sso-session oficina]",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcta: la sección trae la URL de inicio, la región del directorio y el scope `sso:account:access` que la guía pide para listar cuentas y roles. El espacio en el nombre de la sesión es legal en el archivo de configuración."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un archivo de configuración generado por IA",
+      "statement": "Un asistente de IA generó este archivo `~/.aws/config` para el equipo. Audítalo contra la guía del AWS CLI y la de credenciales temporales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el archivo se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "credenciales de larga duración",
+        "sso-session",
+        "región del directorio"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: cómo entra tu equipo en AWS sin claves guardadas",
+      "statement": "Escribe, en 4 a 6 líneas, cómo prepararías el acceso a la CLI para una persona que se incorpora a tu equipo:\n\n1) Identidad: qué recibe en IAM Identity Center (usuario o grupo, cuenta y permission set) y por qué eso sustituye a un usuario de IAM con claves.\n\n2) Perfil: qué ejecuta esa persona en su equipo para crear el perfil y qué dos regiones aparecen en el archivo de configuración.\n\n3) Sesión: cómo abre la sesión, cómo comprueba con qué identidad firma y qué ejecuta al terminar en un equipo compartido.\n\n4) Límite: qué ocurre cuando caduca la sesión de Identity Center y por qué no hay que revocar nada a mano.\n\nNo hay una única respuesta correcta: cuenta que nombres las dos regiones, la diferencia entre usuario de IAM y usuario de Identity Center, y el comando de cierre. Escríbelo con tus palabras; releerlo antes de configurar un equipo nuevo te ahorrará guardar claves donde no van.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "usuario de IAM Identity Center",
+        "perfil de la CLI",
+        "aws sso logout"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Guardar en `~/.aws/credentials` las claves de acceso de un usuario de IAM creado para ella",
+            "explanation": "Incumple la restricción: el escenario pide no guardar claves de acceso, y este camino crea credenciales de larga duración que no caducan solas ni dependen de Identity Center."
+          },
+          {
+            "id": "b",
+            "text": "Ejecutar `aws configure sso` y responder el asistente con la URL de inicio, la cuenta y el rol",
+            "explanation": "Cumple la restricción y el calificador: es un solo comando, el asistente escribe el perfil con la sesión de Identity Center y no guarda ninguna clave de acceso en el disco."
+          },
+          {
+            "id": "c",
+            "text": "Ejecutar `aws configure` y escribir la clave de acceso y la clave secreta que le entregue el administrador",
+            "explanation": "Incumple la restricción: pide claves de acceso de larga duración y además ignora el usuario de Identity Center que ya tiene asignado, así que no obtiene credenciales temporales."
+          },
+          {
+            "id": "d",
+            "text": "Ejecutar `aws sso logout` antes de configurar el perfil en el portátil corporativo",
+            "explanation": "No cumple el objetivo: el cierre borra sesiones y credenciales cacheadas, pero no crea el perfil ni obtiene credenciales nuevas, así que el primer comando seguiría sin identidad."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-quiz-01",
+      "type": "QUIZ",
+      "title": "El primer comando de un portátil con usuario de Identity Center",
+      "statement": "Una persona acaba de recibir en IAM Identity Center un usuario, el permiso de lectura sobre la cuenta 111122223333 y la URL de inicio del portal. Trabaja en un portátil corporativo y necesita ejecutar comandos de la CLI con esa identidad. Quiere el perfil configurado con el MENOR número de pasos manuales y sin guardar claves de acceso. ¿Qué ejecuta primero?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "aws configure sso",
+        "perfil",
+        "credenciales temporales"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que la sesión está mal: la región del directorio debe coincidir siempre con la región de los comandos",
+            "explanation": "Es falso: la guía describe dos regiones distintas y no exige que coincidan. La del directorio solo indica dónde vive IAM Identity Center y la del perfil, dónde se envían los comandos."
+          },
+          {
+            "id": "b",
+            "text": "Que el CLI ignora la región del perfil y firma todas las peticiones contra `us-east-1`",
+            "explanation": "Es falso: `region` en el perfil es la región que recibe cada petición. Si el CLI ignorara esa clave, el comando `aws s3 ls` habría consultado los buckets de otra región."
+          },
+          {
+            "id": "c",
+            "text": "Que el directorio de Identity Center está en `us-east-1` y los comandos se envían a `us-west-2`",
+            "explanation": "Es la lectura correcta: `sso_region` describe la ubicación del directorio que emite el token y `region` la del servicio que atiende el comando, y por eso las dos claves conviven sin conflicto."
+          },
+          {
+            "id": "d",
+            "text": "Que `us-west-2` solo fija el formato de salida y no la región de las peticiones firmadas",
+            "explanation": "Es falso: el formato de salida lo fija `output`, no `region`. La clave `region` del perfil decide el punto de conexión del servicio al que se envía cada comando."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-quiz-02",
+      "type": "QUIZ",
+      "title": "Dos regiones en el mismo perfil",
+      "statement": "El archivo de configuración de un equipo tiene un perfil con `sso_region = us-east-1` en su sesión y `region = us-west-2` en el perfil. La persona ejecuta `aws s3 ls --profile estudio-dev` y el comando funciona. ¿Qué explica esa combinación?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "sso_region",
+        "region del perfil",
+        "directorio de Identity Center"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "`aws sso login --profile estudio-dev`, que abre la sesión del perfil en el navegador",
+            "explanation": "Es la respuesta: la configuración del perfil sigue siendo válida y lo único que caducó fue el token de la sesión, así que basta con volver a iniciarla para el perfil concreto sin tocar el archivo."
+          },
+          {
+            "id": "b",
+            "text": "`aws configure sso` otra vez, para recrear el perfil desde cero con los mismos datos",
+            "explanation": "No hace falta: recrear el perfil repite un trabajo que ya está hecho y no cambia la causa del error, que es un token caducado y no una configuración incorrecta."
+          },
+          {
+            "id": "c",
+            "text": "`aws configure` para escribir una clave de acceso nueva y una clave secreta",
+            "explanation": "Incumple la restricción del equipo: introduce claves de larga duración donde había credenciales temporales y deja el perfil de Identity Center sin usar."
+          },
+          {
+            "id": "d",
+            "text": "`aws iam create-access-key` para generar credenciales del usuario de IAM",
+            "explanation": "Añade un problema: crea un par de claves de larga duración que hay que custodiar y rotar, cuando el perfil ya puede obtener credenciales temporales con un solo inicio de sesión."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-quiz-03",
+      "type": "QUIZ",
+      "title": "La sesión caducó y el perfil sigue igual",
+      "statement": "Al día siguiente, el mismo perfil responde con un error de credenciales caducadas y pide volver a iniciar sesión. Nadie ha cambiado el archivo de configuración. ¿Qué comando restablece el acceso con el MENOR esfuerzo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "aws sso login",
+        "caducidad del token",
+        "renovación"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cerrar el navegador que se abrió durante `aws sso login`",
+            "explanation": "No basta: cerrar el navegador no borra nada del disco. El token y las credenciales cacheadas siguen en el equipo y otro usuario puede reutilizarlos hasta que caduquen."
+          },
+          {
+            "id": "b",
+            "text": "Eliminar el perfil del archivo `~/.aws/config` con un editor de texto",
+            "explanation": "No cumple el objetivo: quita la configuración del perfil, pero deja intacta la caché de credenciales de la sesión, que es justo lo que hay que borrar en un equipo compartido."
+          },
+          {
+            "id": "c",
+            "text": "Esperar sin ejecutar nada hasta que el token de la sesión caduque solo",
+            "explanation": "No es inmediato: el token sigue siendo válido durante su vigencia y cualquiera puede usarlo mientras tanto. El escenario pide cortar el acceso en el acto."
+          },
+          {
+            "id": "d",
+            "text": "Ejecutar `aws sso logout`, que cierra las sesiones de SSO y borra la caché",
+            "explanation": "Es la respuesta: el comando cierra las sesiones de SSO y elimina las credenciales cacheadas del disco, así que el siguiente usuario del equipo no puede reutilizarlas."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-quiz-04",
+      "type": "QUIZ",
+      "title": "Dejar el portátil compartido sin credenciales",
+      "statement": "Terminas una sesión de trabajo en un portátil que comparten tres personas del equipo y quieres que nadie pueda reutilizar tus credenciales de inmediato. ¿Qué acción lo consigue?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "aws sso logout",
+        "caché de credenciales",
+        "equipo compartido"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una instancia de cuenta de IAM Identity Center habilitada en cada una de las cinco cuentas",
+            "explanation": "Incumple la restricción: deja cinco directorios que administrar por separado, y una instancia de cuenta no permite administrar el acceso a las cuentas de AWS."
+          },
+          {
+            "id": "b",
+            "text": "Una instancia de organización desplegada en la cuenta de administración de AWS Organizations",
+            "explanation": "Cumple la restricción y el calificador: es un solo directorio para toda la organización, es el único tipo que administra el acceso a las cuentas y es el que la guía recomienda."
+          },
+          {
+            "id": "c",
+            "text": "Un usuario de IAM con claves de acceso en cada cuenta, replicado por un script",
+            "explanation": "Incumple la restricción de una sola identidad: multiplica los usuarios y las claves de larga duración por cuenta, y ninguna persona entra con su identidad corporativa."
+          },
+          {
+            "id": "d",
+            "text": "Un proveedor SAML 2.0 distinto en cada cuenta, sin habilitar IAM Identity Center",
+            "explanation": "Funciona, pero incumple el calificador: cada cuenta mantiene su propio certificado y su propia configuración, así que el esfuerzo de administración crece con el número de cuentas."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-quiz-05",
+      "type": "QUIZ",
+      "title": "Cinco cuentas y una sola identidad",
+      "statement": "Un equipo administra cinco cuentas de AWS con AWS Organizations y quiere que las mismas personas entren a varias cuentas con una sola identidad, usando el MENOR número de directorios posible. ¿Qué configuración cumple eso?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "instancia de organización",
+        "instancia de cuenta",
+        "AWS Organizations"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear un usuario de IAM por persona en cada cuenta y adjuntarle la política de lectura",
+            "explanation": "Incumple el calificador: repite el alta y el mantenimiento de usuarios en las cinco cuentas y crea identidades con claves de larga duración que nadie centraliza."
+          },
+          {
+            "id": "b",
+            "text": "Adjuntar la misma política administrada de lectura a cada rol de cada cuenta, a mano",
+            "explanation": "No cumple el calificador: el permiso se define cinco veces y cualquier cambio futuro obliga a repetirlo cuenta por cuenta, con riesgo de que unas queden desalineadas."
+          },
+          {
+            "id": "c",
+            "text": "Definir un permission set de solo lectura y aprovisionarlo en las cinco cuentas",
+            "explanation": "Cumple la restricción y el calificador: el permiso se define una sola vez, se aprovisiona en todas las cuentas y se asigna al grupo que ya existe en el directorio."
+          },
+          {
+            "id": "d",
+            "text": "Replicar el grupo de auditoría en el directorio propio de cada una de las cuentas",
+            "explanation": "Incumple la restricción de definir el permiso una vez: replica identidades en varios directorios y no resuelve cómo se concede el mismo permiso de lectura en cada cuenta."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-quiz-06",
+      "type": "QUIZ",
+      "title": "Un permiso definido una vez para cinco cuentas",
+      "statement": "El equipo necesita que quien esté en el grupo de auditoría tenga solo lectura en las cinco cuentas, y quiere definir ese permiso una sola vez. ¿Qué configuración consigue eso con el MÍNIMO trabajo de administración?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "permission set",
+        "aprovisionamiento",
+        "grupo del directorio"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que las credenciales viajan cifradas dentro del archivo de configuración del equipo",
+            "explanation": "No es una ventaja real: las credenciales temporales no se guardan junto al usuario y, si se escribieran en un archivo, seguirían siendo un secreto en disco que cualquiera con acceso al equipo podría copiar."
+          },
+          {
+            "id": "b",
+            "text": "Que el usuario de IAM conserva el mismo par de claves durante años, sin cambios",
+            "explanation": "Es lo contrario de lo que aporta STS: las credenciales de larga duración son el problema que el equipo quiere quitar, porque nadie las rota y siguen valiendo aunque la persona cambie de función."
+          },
+          {
+            "id": "c",
+            "text": "Que hay que revocarlas a mano al final de cada jornada para que dejen de valer",
+            "explanation": "Es falso: al tener una vida limitada, dejan de ser válidas cuando caducan y no hace falta revocarlas expresamente, que es justo el trabajo manual que se quiere evitar."
+          },
+          {
+            "id": "d",
+            "text": "Que caducan solas y no hay que distribuirlas ni rotarlas entre las personas",
+            "explanation": "Cumple el calificador: la guía de IAM destaca que no se distribuyen ni se incrustan, que se piden cuando se necesitan y que al caducar AWS ya no acepta peticiones firmadas con ellas."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-quiz-07",
+      "type": "QUIZ",
+      "title": "Quitar las claves de larga duración del portátil",
+      "statement": "Un equipo guarda hoy un par de claves de acceso de larga duración en el portátil de cada persona y quiere eliminar ese riesgo con el MENOR trabajo de rotación. ¿Qué aportan las credenciales temporales de AWS STS?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "credenciales temporales",
+        "AWS STS",
+        "rotación"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El portal de AWS, donde ve y abre las cuentas y las aplicaciones que tiene asignadas",
+            "explanation": "Cumple la restricción y el calificador: el portal reúne en un solo sitio los dos tipos de acceso y la persona inicia sesión una vez con su identidad corporativa."
+          },
+          {
+            "id": "b",
+            "text": "Un usuario de IAM por cuenta, cada uno con su contraseña y sus claves de acceso",
+            "explanation": "Incumple la restricción de una sola identidad: obliga a mantener dos usuarios y a recordar dos contraseñas, y las claves de acceso no sirven para las aplicaciones administradas."
+          },
+          {
+            "id": "c",
+            "text": "Un par de claves de acceso de larga duración que se comparte entre las cuentas",
+            "explanation": "Añade riesgo en vez de quitarlo: una clave compartida no identifica a nadie en los registros y sigue siendo válida hasta que alguien la rote o la revoque a mano."
+          },
+          {
+            "id": "d",
+            "text": "La consola de cada cuenta por separado, entrando con el usuario raíz de la organización",
+            "explanation": "Incumple la restricción y el mínimo privilegio: el usuario raíz no es una identidad de trabajo diario, no se asigna por grupo y no da acceso a las aplicaciones administradas."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-2-3-quiz-08",
+      "type": "QUIZ",
+      "title": "Dos cuentas y tres aplicaciones con una sola sesión",
+      "statement": "Una persona tiene asignadas dos cuentas de AWS y tres aplicaciones administradas por AWS. Quiere abrirlas todas con la misma identidad corporativa y el MENOR número de inicios de sesión. ¿Qué le ofrece IAM Identity Center?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "portal de AWS",
+        "aplicaciones administradas",
+        "sesión única"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html"
+      ],
+      "order": 18
+    }
+  ]
+}
