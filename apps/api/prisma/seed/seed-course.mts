@@ -3,10 +3,11 @@
  *
  * Uso: `node prisma/seed/seed-course.mts aws-cloud`.
  *
- * Lee el esqueleto `<ruta>/course.seed.json` y los archivos `<ruta>/units/*.json`,
- * los fusiona, valida el resultado completo con `courseSeedSchema` y, solo si todo
- * es válido, aplica `upsert` por clave natural. Cualquier problema detiene el
- * proceso antes de conectarse a la base de datos.
+ * Lee el esqueleto `<ruta>/course.seed.json`, los archivos `<ruta>/units/*.json`
+ * y el banco reservado `<ruta>/exam-bank/*.json`, los fusiona, valida el
+ * resultado completo con `courseSeedSchema` y, solo si todo es válido, aplica
+ * `upsert` por clave natural. Cualquier problema detiene el proceso antes
+ * de conectarse a la base de datos.
  */
 import { readdir, readFile } from "node:fs/promises";
 
@@ -17,6 +18,7 @@ import {
   courseUnitFileSchema,
   DEFAULT_COURSE_SLUG,
   mergeCourseSeed,
+  mergeExamBankFiles,
 } from "@codeai/shared";
 import type { CourseSlug, CourseUnitFileEntry, FormExerciseFacts } from "@codeai/shared";
 
@@ -25,6 +27,7 @@ import {
   describeIssues,
   prepareDatabaseEnv,
   previousUnitCodes,
+  readExamBankFiles,
   readExamFormFiles,
   upsertExamForms,
   upsertResources,
@@ -115,11 +118,20 @@ async function readUnitFiles(courseDir: string): Promise<CourseUnitFileEntry[]> 
 async function readCourseSeed(courseDir: string) {
   const skeleton = await readSkeleton(courseDir);
   const files = await readUnitFiles(courseDir);
-  const { seed: merged, problems } = mergeCourseSeed(skeleton, files);
+  const { seed: withUnits, problems: unitProblems } = mergeCourseSeed(skeleton, files);
 
-  if (problems.length > 0) {
+  if (unitProblems.length > 0) {
     throw new Error(
-      `Semilla de ${courseDir} con ${problems.length} problema(s) al fusionar los archivos de unidad:\n${problems.map((problem) => `  · ${problem}`).join("\n")}`,
+      `Semilla de ${courseDir} con ${unitProblems.length} problema(s) al fusionar los archivos de unidad:\n${unitProblems.map((problem) => `  · ${problem}`).join("\n")}`,
+    );
+  }
+
+  const bankFiles = await readExamBankFiles(new URL(`./${courseDir}/`, import.meta.url));
+  const { seed: merged, problems: bankProblems } = mergeExamBankFiles(withUnits, bankFiles);
+
+  if (bankProblems.length > 0) {
+    throw new Error(
+      `Semilla de ${courseDir} con ${bankProblems.length} problema(s) al fusionar el banco reservado:\n${bankProblems.map((problem) => `  · ${problem}`).join("\n")}`,
     );
   }
 

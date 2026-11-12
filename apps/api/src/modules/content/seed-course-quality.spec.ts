@@ -6,30 +6,35 @@ import { resolve } from "node:path";
 import { aws } from "@codeai/aws-harness";
 import {
   certificationForStageId,
+  courseSeedExerciseSchema,
   courseSeedSchema,
   courseUnitFileSchema,
+  examBankFileSchema,
   examTaskBelongsToDomain,
   isExamDomainOf,
   mergeCourseSeed,
+  mergeExamBankFiles,
   type ContentSeedLesson,
   type ContentSeedQuiz,
   type CourseSeedExam,
   type CourseSeedExercise,
   type CourseUnitFileEntry,
+  type ExamBankFileEntry,
   type QuizKind,
 } from "@codeai/shared";
 import { describe, expect, it } from "vitest";
 
 /**
  * Guarda de calidad de la semilla de la ruta AWS (esqueleto + archivos de
- * unidad). Si `aws/units` aún no existe, se leen cero archivos y la guarda
- * pasa igual. Al final, las reglas 1–7 de las preguntas tipo examen
+ * unidad y banco reservado). Si `aws/units` o `aws/exam-bank` aún no existen,
+ * se leen cero archivos y la guarda pasa igual. Al final, las reglas 1–7 de las preguntas tipo examen
  * (`metodo-aws.md` §5 y §6) se prueban con ejemplos sintéticos y se aplican al
  * contenido real.
  */
 
 const AWS_DIR = resolve(__dirname, "../../../prisma/seed/aws");
 const UNITS_DIR = resolve(AWS_DIR, "units");
+const EXAM_BANK_DIR = resolve(AWS_DIR, "exam-bank");
 
 const EXPECTED_STAGE_IDS = Array.from({ length: 13 }, (_, index) => 100 + index);
 const EXPECTED_MODULES_PER_STAGE = [3, 5, 10, 8, 7, 7, 7, 4, 6, 7, 5, 5, 3];
@@ -55,7 +60,25 @@ const unitFiles: CourseUnitFileEntry[] = unitFileNames.map((fileName) => ({
   ),
 }));
 
-const merged = mergeCourseSeed(skeleton, unitFiles);
+const bankFileNames = existsSync(EXAM_BANK_DIR)
+  ? readdirSync(EXAM_BANK_DIR)
+      .filter((name) => name.endsWith(".json"))
+      .sort()
+  : [];
+
+const bankFiles: ExamBankFileEntry[] = bankFileNames.map((fileName) => ({
+  fileName,
+  bank: examBankFileSchema.parse(
+    JSON.parse(readFileSync(resolve(EXAM_BANK_DIR, fileName), "utf8")),
+  ),
+}));
+
+const mergedUnits = mergeCourseSeed(skeleton, unitFiles);
+const mergedBank = mergeExamBankFiles(mergedUnits.seed, bankFiles);
+const merged = {
+  seed: mergedBank.seed,
+  problems: [...mergedUnits.problems, ...mergedBank.problems],
+};
 
 const units = merged.seed.stages.flatMap((stage) =>
   stage.modules.flatMap((module) => module.units),
@@ -487,7 +510,7 @@ function examMetadataProblems(exam: CourseSeedExam, stageId: number): string[] {
   return problems;
 }
 
-/** Regla 6 (§5.5): con seis o más de respuesta única, ninguna letra es más de la mitad. */
+/** Regla 6 (§5.5): con seis o más de respuesta única, ninguna letra es más de la mitad. Se juzga por banco. */
 function correctLetterProblems(correctLetters: readonly string[]): string[] {
   if (correctLetters.length < MIN_SINGLE_QUIZZES_PER_UNIT) return [];
 
@@ -548,15 +571,25 @@ function quizProblems(stageId: number, exercise: CourseSeedExercise): string[] {
   ].map((problem) => `${exercise.slug}: ${problem}`);
 }
 
-function singleLettersOf(unit: UnitContent): string[] {
-  return unit.exercises.flatMap((exercise) =>
+function isReserved(exercise: CourseSeedExercise): boolean {
+  return exercise.exam?.pool === "reserved";
+}
+
+/** Letras correctas de las preguntas de respuesta única de un banco (el de unidad o el reservado). */
+function singleLettersOfExercises(exercises: readonly CourseSeedExercise[]): string[] {
+  return exercises.flatMap((exercise) =>
     exercise.quiz?.kind === "single" ? [exercise.quiz.correctOptionId] : [],
   );
 }
 
+/** Banco de unidad: los ejercicios de la unidad que no son del banco reservado. */
+function singleLettersOf(unit: UnitContent): string[] {
+  return singleLettersOfExercises(unit.exercises.filter((exercise) => !isReserved(exercise)));
+}
+
 function examQuizKindsOf(unit: UnitContent): QuizKind[] {
   return unit.exercises.flatMap((exercise) => {
-    if (!isExamQuiz(exercise) || exercise.quiz === null) return [];
+    if (!isExamQuiz(exercise) || exercise.quiz === null || isReserved(exercise)) return [];
 
     return [exercise.quiz.kind];
   });
@@ -568,6 +601,15 @@ function unitRuleProblems(unit: UnitContent): string[] {
     ...correctLetterProblems(singleLettersOf(unit)),
     ...typeSpreadProblems(unit.stageId, unit.isPublished, examQuizKindsOf(unit)),
   ].map((problem) => `${unit.code}: ${problem}`);
+}
+
+/** Regla 6 aplicada al banco reservado: una vez por archivo del banco. */
+function bankRuleProblems(files: readonly ExamBankFileEntry[]): string[] {
+  return files.flatMap(({ fileName, bank }) =>
+    correctLetterProblems(
+      singleLettersOfExercises(bank.questions.map((question) => question.exercise)),
+    ).map((problem) => `banco ${fileName}: ${problem}`),
+  );
 }
 
 const EXPLANATION = "Descarta la opción porque incumple la restricción del enunciado";
@@ -633,6 +675,113 @@ function matchingQuiz([a, b, c]: readonly [string, string, string]): ContentSeed
     correctPairs: { a: "1", b: "2", c: "3" },
   };
 }
+
+/** QUIZ de respuesta única de la etapa 101 con la letra correcta indicada y el banco declarado. */
+function bankQuiz(
+  slug: string,
+  correctOptionId: string,
+  pool: "unit" | "reserved",
+  order: number,
+): CourseSeedExercise {
+  return courseSeedExerciseSchema.parse({
+    slug,
+    type: "QUIZ",
+    title: slug,
+    statement: "¿Qué opción tiene la MENOR sobrecarga operativa?",
+    ladder: "SEMI",
+    difficulty: 1,
+    concepts: ["iam"],
+    competencies: ["AWS-C1"],
+    sources: ["https://docs.aws.amazon.com/"],
+    quiz: singleQuiz(["Opción uno", "Opción dos", "Opción tres", "Opción cuatro"], correctOptionId),
+    exam: { certification: "CLF-C02", domain: 1, task: null, pool },
+    isPublished: false,
+    order,
+  });
+}
+
+function slugOf(fileName: string): string {
+  return fileName.replace(/\W+/g, "-").toLowerCase();
+}
+
+function bankFileOf(
+  fileName: string,
+  letters: readonly string[],
+  pool: "unit" | "reserved" = "reserved",
+): ExamBankFileEntry {
+  return {
+    fileName,
+    bank: examBankFileSchema.parse({
+      certification: "CLF-C02",
+      domain: 1,
+      questions: letters.map((letter, index) => ({
+        unitCode: "AWS-U1.1.1",
+        exercise: bankQuiz(`${slugOf(fileName)}-${index}`, letter, pool, index + 1),
+      })),
+    }),
+  };
+}
+
+describe("regla 6 por banco (unidad y reservado)", () => {
+  const SKEWED = ["a", "a", "a", "a", "b", "c"];
+  const BALANCED = ["a", "b", "c", "d", "a", "b"];
+
+  it("el banco reservado se juzga por archivo del banco", () => {
+    expect(bankRuleProblems([bankFileOf("CLF-C02-D1-a.json", BALANCED)])).toEqual([]);
+    expect(bankRuleProblems([bankFileOf("CLF-C02-D1-a.json", SKEWED)])).toEqual([
+      "banco CLF-C02-D1-a.json: la letra «a» es la correcta en 4 de 6 preguntas",
+    ]);
+  });
+
+  it("dos archivos equilibrados cada uno no se compensan ni se suman", () => {
+    const files = [
+      bankFileOf("CLF-C02-D1-a.json", BALANCED),
+      bankFileOf("CLF-C02-D1-b.json", SKEWED),
+    ];
+
+    expect(bankRuleProblems(files)).toHaveLength(1);
+    expect(bankRuleProblems(files)[0]).toContain("CLF-C02-D1-b.json");
+  });
+
+  it("las preguntas reservadas no cuentan en el reparto de la unidad", () => {
+    const unitExercises = [
+      ...["a", "b", "c", "d", "a", "b"].map((letter, index) =>
+        bankQuiz(`unidad-${index}`, letter, "unit", index + 1),
+      ),
+      ...bankFileOf("CLF-C02-D1-a.json", SKEWED).bank.questions.map((question, index) => ({
+        ...question.exercise,
+        order: 10 + index,
+      })),
+    ];
+    const unit: UnitContent = {
+      code: "AWS-U1.1.1",
+      stageId: 101,
+      isPublished: false,
+      exercises: unitExercises,
+    };
+
+    expect(unitRuleProblems(unit)).toEqual([]);
+  });
+
+  it("las preguntas de unidad siguen juzgándose por unidad", () => {
+    const unit: UnitContent = {
+      code: "AWS-U1.1.1",
+      stageId: 101,
+      isPublished: false,
+      exercises: SKEWED.map((letter, index) => bankQuiz(`unidad-${index}`, letter, "unit", index + 1)),
+    };
+
+    expect(unitRuleProblems(unit)).toEqual([
+      "AWS-U1.1.1: la letra «a» es la correcta en 4 de 6 preguntas",
+    ]);
+  });
+
+  it("el banco reservado de la ruta AWS reparte las letras por archivo", () => {
+    const offenders = bankRuleProblems(bankFiles);
+
+    expect(offenders, `Bancos fuera de norma:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
 
 describe("guarda de calidad de las preguntas tipo examen AWS", () => {
   it("regla 1: exige un calificador en mayúsculas y no confunde las siglas", () => {

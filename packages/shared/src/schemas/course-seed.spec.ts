@@ -7,7 +7,9 @@ import {
   courseSeedExerciseSchema,
   courseSeedSchema,
   courseUnitFileSchema,
+  examBankFileSchema,
   mergeCourseSeed,
+  mergeExamBankFiles,
 } from "./course-seed";
 import type {
   CourseSeed,
@@ -670,5 +672,191 @@ describe("mergeCourseSeed", () => {
       pool: "unit",
     });
     expect(courseSeedSchema.safeParse(seed).success).toBe(true);
+  });
+});
+
+/** Semilla de la etapa 101 (CLF-C02) con dos unidades. */
+function bankSeed(): CourseSeed {
+  const seed = validSeed();
+  const stage = stageOf(seed);
+  stage.id = 101;
+  stage.slug = "aws1-fundamentos-nube";
+  moduleOf(seed).code = "AWS-M1.1";
+  const unit = unitOf(seed);
+  unit.code = "AWS-U1.1.1";
+  moduleOf(seed).units.push({
+    code: "AWS-U1.1.2",
+    title: "Segunda unidad",
+    objective: "Objetivo de la segunda unidad.",
+    order: 2,
+    isPublished: false,
+  });
+
+  return courseSeedSchema.parse(seed);
+}
+
+function bankQuestion(
+  slug: string,
+  order: number,
+  examOverrides: Record<string, unknown> = {},
+  unitCode = "AWS-U1.1.1",
+): { unitCode: string; exercise: CourseSeedExercise } {
+  return {
+    unitCode,
+    exercise: quizExercise({
+      slug,
+      order,
+      exam: { certification: "CLF-C02", domain: 1, task: null, pool: "reserved", ...examOverrides },
+    }),
+  };
+}
+
+function bankFile(
+  questions: readonly { unitCode: string; exercise: CourseSeedExercise }[],
+  overrides: Record<string, unknown> = {},
+): unknown {
+  return { certification: "CLF-C02", domain: 1, questions, ...overrides };
+}
+
+function bankMessages(input: unknown): string[] {
+  const result = examBankFileSchema.safeParse(input);
+
+  if (result.success) {
+    throw new Error("Se esperaba que el banco fuese inválido");
+  }
+
+  return messagesOf(result);
+}
+
+describe("examBankFileSchema", () => {
+  it("acepta un banco con QUIZ reservados de su certificación y dominio", () => {
+    const result = examBankFileSchema.safeParse(
+      bankFile([bankQuestion("clf-c02-r-uno", 1), bankQuestion("clf-c02-r-dos", 2)]),
+    );
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza una pregunta con pool unit", () => {
+    expect(bankMessages(bankFile([bankQuestion("clf-c02-r-uno", 1, { pool: "unit" })]))).toEqual([
+      "Ejercicio clf-c02-r-uno: el banco reservado exige exam.pool «reserved», no «unit»",
+    ]);
+  });
+
+  it("rechaza una pregunta de otro dominio", () => {
+    expect(bankMessages(bankFile([bankQuestion("clf-c02-r-uno", 1, { domain: 2 })]))).toEqual([
+      "Ejercicio clf-c02-r-uno: el dominio 2 no es el del archivo (1)",
+    ]);
+  });
+
+  it("rechaza una pregunta de otra certificación", () => {
+    expect(
+      bankMessages(bankFile([bankQuestion("clf-c02-r-uno", 1, { certification: "SAA-C03" })])),
+    ).toEqual([
+      "Ejercicio clf-c02-r-uno: la certificación SAA-C03 no es la del archivo (CLF-C02)",
+    ]);
+  });
+
+  it("rechaza una pregunta sin exam", () => {
+    const question = { unitCode: "AWS-U1.1.1", exercise: quizExercise({ slug: "clf-c02-r-uno" }) };
+
+    expect(bankMessages(bankFile([question]))).toEqual([
+      "Ejercicio clf-c02-r-uno: el banco reservado exige exam",
+    ]);
+  });
+
+  it("rechaza un ejercicio que no es QUIZ", () => {
+    const question = {
+      unitCode: "AWS-U1.1.1",
+      exercise: courseSeedExerciseSchema.parse({
+        ...readingExercise(["AWS-C1"]),
+        slug: "clf-c02-r-lectura",
+        exam: { certification: "CLF-C02", domain: 1, pool: "reserved" },
+      }),
+    };
+
+    expect(bankMessages(bankFile([question]))).toContain(
+      "Ejercicio clf-c02-r-lectura: el banco reservado solo admite QUIZ",
+    );
+  });
+
+  it("rechaza un banco vacío y claves desconocidas", () => {
+    expect(examBankFileSchema.safeParse(bankFile([])).success).toBe(false);
+    expect(
+      examBankFileSchema.safeParse(bankFile([bankQuestion("clf-c02-r-uno", 1)], { extra: 1 }))
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("mergeExamBankFiles", () => {
+  const bank = (questions: Parameters<typeof bankFile>[0]) =>
+    examBankFileSchema.parse(bankFile(questions));
+
+  it("añade cada pregunta a los ejercicios de su unidad", () => {
+    const files = [
+      {
+        fileName: "CLF-C02-D1-a.json",
+        bank: bank([
+          bankQuestion("clf-c02-r-uno", 1),
+          bankQuestion("clf-c02-r-dos", 2, {}, "AWS-U1.1.2"),
+        ]),
+      },
+    ];
+
+    const { seed, problems } = mergeExamBankFiles(bankSeed(), files);
+    const units = seed.stages[0]?.modules[0]?.units ?? [];
+
+    expect(problems).toEqual([]);
+    expect(units[0]?.exercises.map((exercise) => exercise.slug)).toEqual(["clf-c02-r-uno"]);
+    expect(units[1]?.exercises.map((exercise) => exercise.slug)).toEqual(["clf-c02-r-dos"]);
+    expect(courseSeedSchema.safeParse(seed).success).toBe(true);
+  });
+
+  it("conserva los ejercicios que la unidad ya tenía", () => {
+    const withUnitExercise = mergeCourseSeed(bankSeed(), [
+      entry(
+        "AWS-U1.1.1.json",
+        unitFileWithExercises("AWS-U1.1.1", [lessonFixture("leccion-uno")], [
+          quizExercise({
+            slug: "aws-u1-1-1-q1",
+            order: 1,
+            exam: examFixture({ certification: "CLF-C02", task: null }),
+          }),
+        ]),
+      ),
+    ]).seed;
+
+    const { seed, problems } = mergeExamBankFiles(withUnitExercise, [
+      { fileName: "CLF-C02-D1-a.json", bank: bank([bankQuestion("clf-c02-r-uno", 2)]) },
+    ]);
+
+    expect(problems).toEqual([]);
+    expect(seed.stages[0]?.modules[0]?.units[0]?.exercises.map((exercise) => exercise.slug)).toEqual(
+      ["aws-u1-1-1-q1", "clf-c02-r-uno"],
+    );
+    expect(courseSeedSchema.safeParse(seed).success).toBe(true);
+  });
+
+  it("ignora una pregunta cuya unidad no existe en el esqueleto", () => {
+    const files = [
+      {
+        fileName: "CLF-C02-D1-a.json",
+        bank: bank([bankQuestion("clf-c02-r-uno", 1, {}, "AWS-U1.9.9")]),
+      },
+    ];
+
+    const { seed, problems } = mergeExamBankFiles(bankSeed(), files);
+
+    expect(problems).toEqual([
+      "La unidad AWS-U1.9.9 de la pregunta clf-c02-r-uno del archivo CLF-C02-D1-a.json no existe en el esqueleto",
+    ]);
+    expect(seed.stages[0]?.modules[0]?.units.flatMap((unit) => unit.exercises)).toEqual([]);
+  });
+
+  it("sin archivos devuelve la semilla igual y sin problemas", () => {
+    const skeleton = bankSeed();
+
+    expect(mergeExamBankFiles(skeleton, [])).toEqual({ seed: skeleton, problems: [] });
   });
 });

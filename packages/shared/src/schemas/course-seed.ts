@@ -407,3 +407,117 @@ export function mergeCourseSeed(
 
   return { seed, problems };
 }
+
+/** Contenido de `aws/exam-bank/<certificación>-D<n>-<lote>.json`: banco reservado de un dominio. */
+export const examBankFileSchema = z
+  .object({
+    certification: certificationCodeSchema,
+    domain: z.number().int().min(1).max(6),
+    questions: z
+      .array(
+        z
+          .object({
+            unitCode: z.string().regex(UNIT_CODE_PATTERN),
+            exercise: courseSeedExerciseSchema,
+          })
+          .strict(),
+      )
+      .min(1),
+  })
+  .strict()
+  .superRefine((file, ctx) => {
+    for (const [index, question] of file.questions.entries()) {
+      const { exercise } = question;
+      const path: (string | number)[] = ["questions", index, "exercise"];
+      const fail = (message: string): void => {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message, path });
+      };
+
+      if (exercise.type !== "QUIZ") {
+        fail(`Ejercicio ${exercise.slug}: el banco reservado solo admite QUIZ`);
+      }
+      if (exercise.exam === null) {
+        fail(`Ejercicio ${exercise.slug}: el banco reservado exige exam`);
+        continue;
+      }
+      if (exercise.exam.pool !== "reserved") {
+        fail(
+          `Ejercicio ${exercise.slug}: el banco reservado exige exam.pool «reserved», no «${exercise.exam.pool}»`,
+        );
+      }
+      if (exercise.exam.certification !== file.certification) {
+        fail(
+          `Ejercicio ${exercise.slug}: la certificación ${exercise.exam.certification} no es la del archivo (${file.certification})`,
+        );
+      }
+      if (exercise.exam.domain !== file.domain) {
+        fail(
+          `Ejercicio ${exercise.slug}: el dominio ${exercise.exam.domain} no es el del archivo (${file.domain})`,
+        );
+      }
+    }
+  });
+
+export type ExamBankFile = z.infer<typeof examBankFileSchema>;
+
+export interface ExamBankFileEntry {
+  readonly fileName: string;
+  readonly bank: ExamBankFile;
+}
+
+/**
+ * Añade cada pregunta del banco reservado a los ejercicios de su unidad. No
+ * valida el resultado (el llamador lo vuelve a pasar por `courseSeedSchema`).
+ * Una pregunta cuya unidad no existe en el esqueleto se ignora y su motivo se
+ * añade a `problems`.
+ */
+export function mergeExamBankFiles(
+  seed: CourseSeed,
+  files: readonly ExamBankFileEntry[],
+): { seed: CourseSeed; problems: string[] } {
+  const problems: string[] = [];
+  const unitCodes = new Set<string>();
+
+  for (const stage of seed.stages) {
+    for (const module of stage.modules) {
+      for (const unit of module.units) {
+        unitCodes.add(unit.code);
+      }
+    }
+  }
+
+  const addedByUnit = new Map<string, CourseSeedExercise[]>();
+
+  for (const { fileName, bank } of files) {
+    for (const question of bank.questions) {
+      if (!unitCodes.has(question.unitCode)) {
+        problems.push(
+          `La unidad ${question.unitCode} de la pregunta ${question.exercise.slug} del archivo ${fileName} no existe en el esqueleto`,
+        );
+        continue;
+      }
+
+      const added = addedByUnit.get(question.unitCode) ?? [];
+      added.push(question.exercise);
+      addedByUnit.set(question.unitCode, added);
+    }
+  }
+
+  return {
+    seed: {
+      ...seed,
+      stages: seed.stages.map((stage) => ({
+        ...stage,
+        modules: stage.modules.map((module) => ({
+          ...module,
+          units: module.units.map((unit) => {
+            const added = addedByUnit.get(unit.code);
+
+            return added ? { ...unit, exercises: [...unit.exercises, ...added] } : unit;
+          }),
+        })),
+      })),
+    },
+    problems,
+  };
+}

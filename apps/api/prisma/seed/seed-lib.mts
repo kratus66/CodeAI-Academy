@@ -9,6 +9,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import {
   CERTIFICATION_REGISTRY,
   EXAM_FORM_CODES,
+  examBankFileSchema,
   examFormsFileSchema,
   examFormViolations,
 } from "@codeai/shared";
@@ -19,6 +20,7 @@ import type {
   CourseSeedExercise,
   CourseSeedStage,
   CourseSlug,
+  ExamBankFileEntry,
   ExamFormsFile,
   FormExerciseFacts,
 } from "@codeai/shared";
@@ -515,6 +517,43 @@ export async function readExamFormFiles(courseDir: URL): Promise<ExamFormsFile[]
     }
 
     files.push(result.data);
+  }
+
+  return files;
+}
+
+/**
+ * Lee `<courseDir>/exam-bank/*.json` y valida cada archivo con
+ * `examBankFileSchema`. Si la carpeta no existe, no hay banco: devuelve `[]`.
+ * `courseDir` es la URL de la carpeta de la ruta, terminada en `/`.
+ */
+export async function readExamBankFiles(courseDir: URL): Promise<ExamBankFileEntry[]> {
+  const bankDir = new URL("exam-bank/", courseDir);
+  let names: string[];
+
+  try {
+    names = (await readdir(bankDir)).filter((name) => name.endsWith(".json")).sort();
+  } catch (error: unknown) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return [];
+    }
+
+    throw error;
+  }
+
+  const files: ExamBankFileEntry[] = [];
+
+  for (const fileName of names) {
+    const raw: unknown = JSON.parse(await readFile(new URL(fileName, bankDir), "utf8"));
+    const result = examBankFileSchema.safeParse(raw);
+
+    if (!result.success) {
+      throw new Error(
+        `Archivo de banco inválido: exam-bank/${fileName}\n${describeIssues(result.error.issues)}`,
+      );
+    }
+
+    files.push({ fileName, bank: result.data });
   }
 
   return files;
