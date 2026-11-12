@@ -1599,10 +1599,9 @@ describe("guarda de completitud del paquete de las unidades AWS", () => {
     expect(offenders, `Paquetes incompletos:\n${offenders.join("\n")}`).toEqual([]);
   });
 
-  it("los pilotos actuales, sin QUIZ, no se evalúan todavía", () => {
+  it("el piloto que aún no tiene QUIZ no se evalúa todavía", () => {
     const evaluated = packageUnits.map(({ unit }) => unit.code);
 
-    expect(evaluated).not.toContain("AWS-U0.2.2");
     expect(evaluated).not.toContain("AWS-U0.3.1");
   });
 });
