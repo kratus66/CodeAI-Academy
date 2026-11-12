@@ -1,0 +1,1133 @@
+{
+  "code": "AWS-U0.1.5",
+  "lessons": [
+    {
+      "slug": "aws-u0-1-5-prueba-diagnostica-sin-ayuda",
+      "title": "Prueba diagnóstica sin ayuda (redes, Linux, HTTP, programación, bases de datos)",
+      "estimatedMin": 40,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Esta unidad no enseña un servicio: mide tu punto de partida. La ruta AWS da por sabidas cinco áreas técnicas —redes, Linux, HTTP, programación y bases de datos— porque todo lo que viene después las usa: una unidad de redes habla de bloques CIDR y de reglas de tráfico, una de IAM se lee como un documento JSON y una de bases de datos compara un motor relacional con uno clave-valor. La prueba diagnóstica sirve para separar lo que puedes dar por sabido de lo que conviene repasar antes de que esa base falte. No hay nota que aprobar: hay un mapa por área y un plan de nivelación que escribes tú al final."
+        },
+        {
+          "type": "list",
+          "title": "Las cinco áreas y qué mide cada una",
+          "items": [
+            "Redes: leer bloques de direcciones, reconocer un rango privado y entender qué permite una regla de un security group.",
+            "Linux: conectarse por SSH a una instancia, cuidar los permisos de la clave privada y leer los mensajes de error de la conexión.",
+            "HTTP: distinguir las partes de una petición y de una respuesta, y saber en cuál se mira el resultado.",
+            "Programación: leer un fragmento de configuración en JSON o YAML y entender qué devuelve una función cuando se la invoca.",
+            "Bases de datos: diferenciar un motor relacional de una base clave-valor y saber qué consulta resuelve cada uno."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómo se hace sin ayuda",
+          "text": "Reserva una sesión de 30 a 40 minutos, cierra las pestañas de documentación y deja el móvil fuera. Responde las 12 preguntas seguidas, sin buscar y sin volver atrás a cambiar una respuesta por lo que recuerdes después: el objetivo es medir lo que sabes hoy, no lo que puedes encontrar en diez minutos. Si una pregunta te resulta desconocida, elige la opción que puedas justificar con lo que ya sabes y anota en tu registro que fue una duda, no un acierto. Al terminar, corrige leyendo la explicación de cada opción y cuenta los aciertos por área antes de leer el total."
+        },
+        {
+          "type": "mermaid",
+          "title": "Del diagnóstico al plan de nivelación",
+          "code": "flowchart TD\n  A[\"Responde las 12 preguntas sin ayuda\"] --> B[\"Corrige y anota el motivo de cada fallo\"]\n  B --> C[\"Cuenta los aciertos por área\"]\n  C --> D{\"¿Qué área queda más baja?\"}\n  D -- \"Una sola\" --> E[\"Estudia la unidad de la ruta que trata esa área\"]\n  D -- \"Varias\" --> F[\"Empieza por la que más uses en las unidades siguientes\"]\n  E --> G[\"Escribe el plan de nivelación en la reflexión\"]\n  F --> G\n  G --> H[\"Repite la prueba al empezar el módulo siguiente\"]"
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómo se lee el resultado",
+          "text": "Cuenta los aciertos por área. Con las tres preguntas bien, el área está lista y solo pide repaso espaciado. Con dos, hay un hueco concreto que se cierra con la unidad de la ruta que lo trata. Con una o ninguna, conviene estudiar esa unidad antes de seguir con las de servicio. El módulo de fundamentos técnicos de la ruta tiene una unidad por área: redes IP y CIDR, HTTP y APIs REST, Linux mínimo para servidores, JSON y YAML, y bases de datos. Un resultado bajo en una sola área no invalida el resto: el plan se escribe por área, no con un número global."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: leer la pregunta antes de elegir",
+          "text": "Una subred con el bloque 10.0.0.0/24. La pregunta pide cuántas direcciones se pueden asignar a recursos y el calificador es «MÁXIMO». Paso 1: el bloque /24 abarca de 10.0.0.0 a 10.0.0.255, es decir, 256 direcciones. Paso 2: la documentación de Amazon VPC avisa de que las cuatro primeras direcciones y la última de cada subred no están disponibles para tu uso. Paso 3: 256 menos esas cinco reservadas deja 251 direcciones asignables. Paso 4: se responde 251 y se descartan 256, que es el total del bloque, y 254, que solo descuenta la dirección de red y la de difusión. El error caro no es la resta: es responder el total del bloque sin leer que la pregunta pedía direcciones utilizables."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de diagnóstico: confundir acertar por azar con saber",
+          "text": "Con cuatro opciones, una respuesta acertada puede venir de un descarte afortunado. Al corregir, no cuentes solo el acierto: cuenta si puedes explicar por qué cada distractor está mal. Un área con tres aciertos que no sabes justificar sigue siendo un área por repasar, y es la que fallará en la unidad de servicio que la dé por sabida."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: hacer la prueba con apuntes o con búsquedas",
+          "text": "Causa: la costumbre de estudiar con la documentación abierta y la incomodidad de fallar una pregunta. Consecuencia: el resultado mide tu capacidad de buscar, no tu base, y el plan de nivelación se escribe sobre un diagnóstico falso. Solución: haz la prueba en una sesión cerrada, sin pestañas de documentación, y deja las búsquedas para la corrección, cuando la pregunta ya está contestada."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: leer el resultado como una nota y no como un mapa",
+          "text": "Causa: sumar los aciertos de las cinco áreas en un solo número y decidir con él. Consecuencia: un 9 de 12 puede esconder un área con cero aciertos, que es justo la que hará fallar las unidades siguientes. Solución: cuenta por área antes de mirar el total, escribe qué área queda más baja y empieza el plan por ahí."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Medir tu punto de partida en redes, Linux, HTTP, programación y bases de datos, y traducir el resultado en un plan de nivelación por área. Criterio: terminas la prueba sin ayuda, corriges con la explicación de cada opción y escribes un plan con una prioridad por área y el recurso con el que piensas practicarla. Esta unidad no prepara un examen concreto: es un diagnóstico de la base técnica que las unidades de servicio de la ruta dan por sabida."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee los bloques con las cinco áreas, con la forma de hacer la prueba y con la regla para leer el resultado, y resuelve el ejemplo de la subred antes de empezar. Después haz la prueba cerrada y corrige con la explicación de cada opción. Criterio: puedes decir qué mide cada área y qué umbral de aciertos usas para decidir si un área está lista."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve las seis primeras preguntas de la prueba, las de redes y Linux, sin apuntes y en el orden en que aparecen. Al corregir, escribe junto a cada fallo la página citada en la pregunta y la frase que lo desmiente. Criterio de paso: las seis respondidas y cada fallo con su frase de respaldo copiada de la fuente."
+        },
+
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas y con un cronómetro de 15 minutos, resuelve las seis preguntas restantes, las de HTTP, programación y bases de datos. No cambies una respuesta después de corregir: anota el motivo del fallo y sigue con la siguiente. Criterio de paso: las seis respondidas dentro del tiempo y el recuento de aciertos por área anotado antes de leer el total."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Revisa tus respuestas falladas contra la documentación citada en cada pregunta, no contra tu memoria: abre la página, busca la frase que decide y escribe qué leíste mal (una palabra del enunciado, una dirección de la tabla o un formato de archivo). Si un asistente te propone una explicación distinta, contrástala con esa misma frase antes de aceptarla. Si la fuente no aclara tu duda, lo anotas como duda abierta en lugar de inventar la explicación."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "La evaluación es la propia prueba: 12 preguntas repartidas entre las cinco áreas. Criterio de paso: al menos 9 aciertos y al menos un acierto en cada área, con el recuento por área escrito antes de leer las conclusiones. Si no llegas, no repitas la prueba el mismo día: estudia el área más baja y vuelve a intentarla al empezar el módulo siguiente."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Escribe tu plan de nivelación en la reflexión de la unidad: qué área atacas primero, con qué unidad de la ruta y con qué recurso la practicas, y en qué momento repites la prueba. Los recursos de la unidad enlazan la formación en línea de AWS (AWS Skill Builder y su oferta de formación digital) para practicar fuera de la plataforma. Pregunta de cierre: si el total es alto pero un área quedó en cero, ¿qué pesa más en el plan, el total o el área?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-primeros-pasos",
+          "order": 0,
+          "note": "Punto de entrada de AWS con tutoriales para empezar; sirve para practicar en la consola las áreas del diagnóstico."
+        },
+        {
+          "resourceSlug": "aws-skill-builder",
+          "order": 1,
+          "note": "Formación en línea de AWS; es el recurso natural del plan de nivelación fuera de la plataforma."
+        },
+        {
+          "resourceSlug": "aws-formacion-digital",
+          "order": 2,
+          "note": "Página de formación digital de AWS; complementa el plan de nivelación con cursos por área."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "251: el bloque abarca 256 direcciones y la documentación de Amazon VPC reserva las cuatro primeras y la última de cada subred, así que esas cinco no se pueden asignar a un recurso."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: direcciones utilizables de una subred /24",
+      "statement": "¿Cuántas direcciones de una subred /24 se pueden asignar a recursos y por qué?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "subred",
+        "CIDR",
+        "direcciones reservadas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Los permisos del archivo: la guía de Amazon EC2 exige que la clave privada y el archivo authorized_keys de la instancia estén limitados al dueño, y mientras otro usuario pueda leerla el cliente la considera desprotegida."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: clave privada desprotegida en SSH",
+      "statement": "SSH rechaza la conexión con «Unprotected private key file». ¿Qué se revisa primero?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "SSH",
+        "permisos",
+        "clave privada"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En el código de estado HTTP de la respuesta; el cuerpo lleva el contenido que se devuelve y las cabeceras describen la respuesta, por ejemplo su tipo de contenido."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: dónde se lee el resultado de una llamada HTTP",
+      "statement": "¿Qué parte de la respuesta HTTP indica si la petición salió bien?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "HTTP",
+        "respuesta",
+        "código de estado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-test-method.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ambos sirven para lo mismo; YAML está pensado para ser más legible y menos verboso para las personas, y JSON es más fácil de interpretar y generar para las máquinas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: JSON frente a YAML",
+      "statement": "¿Qué diferencia práctica hay entre JSON y YAML en una plantilla?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "JSON",
+        "YAML",
+        "plantillas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Amazon RDS es un servicio administrado de motores relacionales (MySQL, PostgreSQL, MariaDB y otros); Amazon DynamoDB es una base NoSQL de modelos clave-valor y documento que no admite el operador JOIN."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: relacional administrado frente a clave-valor",
+      "statement": "¿Qué distingue a Amazon RDS de Amazon DynamoDB en el modelo de datos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "base de datos relacional",
+        "NoSQL",
+        "modelo de datos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Contando aciertos por área y no solo el total: tres aciertos dejan el área lista, dos señalan un hueco concreto que se cierra con la unidad de la ruta que lo trata y uno o ninguno pide estudiar esa unidad antes de seguir."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: cómo se lee el resultado del diagnóstico",
+      "statement": "¿Cómo se convierte el resultado de la prueba en un plan de nivelación?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "diagnóstico",
+        "plan de nivelación",
+        "repaso espaciado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://skillbuilder.aws/",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "256 direcciones, porque el bloque /24 abarca todas las combinaciones de su último octeto",
+            "explanation": "Es el total del bloque, pero ignora las direcciones que la documentación de Amazon VPC reserva en cada subred: las cuatro primeras y la última no se pueden asignar a un recurso."
+          },
+          {
+            "id": "b",
+            "text": "251 direcciones, porque de las 256 del bloque se reservan las cuatro primeras y la última",
+            "explanation": "La documentación de Amazon VPC declara reservadas las cuatro primeras direcciones y la última de cada subred; esas cinco no se asignan, así que quedan 251 de las 256 del bloque /24."
+          },
+          {
+            "id": "c",
+            "text": "250 direcciones, porque se reservan las cuatro primeras, la última y la puerta de enlace de la subred",
+            "explanation": "La página de tamaño de subredes no reserva ninguna dirección adicional por puerta de enlace de la subred: el total reservado son cinco direcciones, no seis, y la cuenta queda corta."
+          },
+          {
+            "id": "d",
+            "text": "254 direcciones, porque solo se pierden la dirección de red y la de difusión del bloque",
+            "explanation": "Descuenta dos direcciones, cuando la documentación de Amazon VPC declara cinco reservadas en cada subred: las cuatro primeras y la última del bloque CIDR."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-01",
+      "type": "QUIZ",
+      "title": "Direcciones asignables en una subred /24",
+      "statement": "Un equipo recibe el bloque 10.0.0.0/24 para una subred en la que asignará direcciones a instancias de Amazon EC2 y necesita saber con cuántas contará de verdad. ¿Cuál es el MÁXIMO de direcciones que podrá asignar a recursos en esa subred?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "subred",
+        "CIDR",
+        "direcciones reservadas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "172.32.0.0/16, porque toda la familia 172 está reservada para direcciones privadas",
+            "explanation": "El rango privado de la familia 172 es 172.16.0.0/12, que llega hasta 172.31.255.255; el bloque 172.32.0.0 queda fuera y sus direcciones serían enrutables en internet."
+          },
+          {
+            "id": "b",
+            "text": "11.0.0.0/8, porque la familia 11 no está repartida entre proveedores de internet",
+            "explanation": "La documentación de Amazon VPC cita 10.0.0.0/8 como rango privado de la familia 10, no 11.0.0.0/8, que no aparece en la lista de rangos privados tomada de RFC 1918."
+          },
+          {
+            "id": "c",
+            "text": "192.168.0.0/20, porque cae dentro del rango privado 192.168.0.0/16",
+            "explanation": "La documentación de Amazon VPC toma de RFC 1918 los rangos 10.0.0.0/8, 172.16.0.0/12 y 192.168.0.0/16, y usa 192.168.0.0/20 como ejemplo de bloque dentro del último."
+          },
+          {
+            "id": "d",
+            "text": "127.0.0.0/8, porque está reservado y ningún proveedor lo enruta",
+            "explanation": "La documentación excluye expresamente 127.0.0.0/8: es el rango de bucle local del propio equipo, no un rango privado con el que direccionar una VPC."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-02",
+      "type": "QUIZ",
+      "title": "Elegir un bloque privado para la VPC",
+      "statement": "Un equipo elige el bloque de direcciones de una VPC y la restricción es que las direcciones no pueden ser enrutables en internet. ¿Cuál de los cuatro bloques pertenece ÚNICAMENTE a un rango privado de los que documenta Amazon VPC?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "rangos privados",
+        "RFC 1918",
+        "VPC"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Sale de la instancia sin regla de salida, porque el security group recuerda el estado de la conexión",
+            "explanation": "La documentación de Amazon VPC indica que las respuestas al tráfico de entrada permitido salen de la instancia con independencia de sus reglas de salida: el security group es stateful."
+          },
+          {
+            "id": "b",
+            "text": "Se descarta en el security group, porque no hay ninguna regla de salida que la permita",
+            "explanation": "El security group sí empieza negando lo que no tiene regla, pero la documentación exceptúa el tráfico de respuesta de una conexión de entrada ya permitida, que es el caso del escenario."
+          },
+          {
+            "id": "c",
+            "text": "Se descarta salvo que se añada una regla de salida hacia la dirección que inició la conexión",
+            "explanation": "Añadir esa regla es innecesario: la documentación de Amazon VPC afirma que las respuestas al tráfico de entrada permitido salen de la instancia aunque no exista ninguna regla de salida."
+          },
+          {
+            "id": "d",
+            "text": "Sale de la instancia solo si la conexión se inició dentro de la misma zona de disponibilidad",
+            "explanation": "La zona de disponibilidad no interviene en la evaluación del security group: la respuesta sale porque el grupo recuerda el estado de la conexión que ya se permitió."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-03",
+      "type": "QUIZ",
+      "title": "Tráfico de respuesta de una conexión permitida",
+      "statement": "Una instancia de Amazon EC2 acepta una conexión SSH entrante gracias a una regla de entrada de su security group, y responde al cliente. El security group no tiene reglas de salida. Según la documentación de Amazon VPC, ¿qué opción describe MEJOR lo que ocurre con ese tráfico de respuesta?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "security group",
+        "stateful",
+        "tráfico de respuesta"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que la instancia tenga asignada una dirección IP elástica en lugar de una pública",
+            "explanation": "Una dirección elástica solo fija la dirección pública de la instancia, pero no abre el tráfico: sin una regla de entrada que permita SSH, el cliente sigue esperando respuesta."
+          },
+          {
+            "id": "b",
+            "text": "Que el archivo de la clave privada esté guardado en la carpeta correcta del equipo local",
+            "explanation": "Una ruta equivocada produce un mensaje de archivo no encontrado o de clave no reconocida; no explica un cliente que se queda esperando sin respuesta del servidor."
+          },
+          {
+            "id": "c",
+            "text": "Que el usuario del sistema operativo de la instancia tenga habilitado el acceso por contraseña",
+            "explanation": "La guía de conexión por SSH usa autenticación con par de claves, y un rechazo por contraseña llegaría después de que el tráfico alcanzara la instancia, no antes."
+          },
+          {
+            "id": "d",
+            "text": "Que el security group de la instancia permita el tráfico SSH entrante desde tu dirección IP",
+            "explanation": "La guía de solución de problemas de Amazon EC2 indica que el security group predeterminado de la VPC no permite SSH entrante y que hay que permitirlo desde la dirección del equipo que se conecta."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-04",
+      "type": "QUIZ",
+      "title": "SSH sin respuesta en una instancia nueva",
+      "statement": "Una instancia Linux recién creada no acepta conexiones SSH: el cliente se queda esperando, sin mensaje de clave rechazada. La instancia está en ejecución y la clave privada es la correcta. Según la guía de solución de problemas de Amazon EC2, ¿qué conviene comprobar PRIMERO?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SSH",
+        "security group",
+        "solución de problemas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-ssh.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Volver a descargar el par de claves desde la consola de Amazon EC2",
+            "explanation": "Descargar otra vez la misma clave no cambia quién puede leer el archivo, que es justo lo que el mensaje de archivo desprotegido señala como problema."
+          },
+          {
+            "id": "b",
+            "text": "Restringir los permisos del archivo de clave para que solo su dueño pueda leerlo",
+            "explanation": "La guía de Amazon EC2 exige que los permisos del archivo de clave y del authorized_keys de la instancia estén limitados al dueño; mientras otro usuario pueda leerlo, el cliente lo considera desprotegido."
+          },
+          {
+            "id": "c",
+            "text": "Convertir la clave privada al formato PEM antes de volver a intentarlo",
+            "explanation": "El formato cambia cómo se interpreta el contenido de la clave, no quién puede leer el archivo, que es la causa que el propio mensaje nombra."
+          },
+          {
+            "id": "d",
+            "text": "Añadir la clave pública de la instancia al archivo de configuración de SSH",
+            "explanation": "Esa clave pública ya está asociada a la instancia al crearla; el aviso aparece en el equipo local antes de que el cliente llegue a autenticarse contra el servidor."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-05",
+      "type": "QUIZ",
+      "title": "Clave privada que el cliente rechaza",
+      "statement": "Al conectarse por SSH a una instancia Linux, el cliente muestra «Unprotected private key file» y no completa la conexión. La clave privada del equipo local puede leerla cualquier usuario de ese equipo. ¿Qué corrección resuelve el problema de la forma MÁS directa?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SSH",
+        "permisos",
+        "clave privada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que en Amazon Linux el usuario de la instancia es «ec2-user», no «ubuntu»",
+            "explanation": "La guía de solución de problemas de Amazon EC2 lista el usuario de cada AMI: Amazon Linux usa ec2-user y Ubuntu usa ubuntu, así que el usuario de la otra distribución no existe en la instancia."
+          },
+          {
+            "id": "b",
+            "text": "Que la clave privada se guardó con un nombre de archivo distinto al del par de claves",
+            "explanation": "El nombre del archivo local no participa en la autenticación; con el tráfico llegando a la instancia, el rechazo se refiere al usuario y a la clave que se le presentan."
+          },
+          {
+            "id": "c",
+            "text": "Que el cliente SSH del equipo local está desactualizado para esa AMI",
+            "explanation": "La versión del cliente cambia cómo se negocia la conexión, no qué cuentas existen en la instancia; el rechazo de clave pública apunta al usuario, no al cliente."
+          },
+          {
+            "id": "d",
+            "text": "Que la instancia no tiene asociado ningún grupo de seguridad",
+            "explanation": "Sin grupo de seguridad el tráfico no llegaría a la instancia y no habría respuesta de clave pública; el escenario dice que el tráfico llega y que el servidor rechaza."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-06",
+      "type": "QUIZ",
+      "title": "Rechazo de clave pública con el usuario equivocado",
+      "statement": "Un compañero se conecta con la clave correcta a una instancia creada con una AMI de Amazon Linux y recibe «Permission denied (publickey)» al entrar con el usuario «ubuntu». El tráfico SSH llega a la instancia. ¿Qué explica MEJOR el rechazo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SSH",
+        "usuario de la AMI",
+        "autenticación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "En el cuerpo de la respuesta, que repite el resultado numérico de la llamada",
+            "explanation": "El cuerpo lleva el contenido que devuelve la integración; el documento de prueba de métodos describe el estado como el código de estado HTTP de la respuesta, no como parte del cuerpo."
+          },
+          {
+            "id": "b",
+            "text": "En la latencia de la llamada, que crece cuando la petición falla",
+            "explanation": "La latencia mide el tiempo entre la petición y la respuesta, no el resultado: una llamada fallida puede responderse muy rápido y una correcta puede tardar."
+          },
+          {
+            "id": "c",
+            "text": "En el código de estado HTTP que devuelve la respuesta",
+            "explanation": "El documento de prueba de métodos de API Gateway indica que el estado es el código de estado HTTP de la respuesta, y lo presenta separado del cuerpo y de las cabeceras."
+          },
+          {
+            "id": "d",
+            "text": "En las cabeceras de la petición que envió el cliente",
+            "explanation": "Las cabeceras de la petición describen lo que se envió; el resultado de la llamada viaja en la respuesta del servidor, que es la parte que se examina."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-07",
+      "type": "QUIZ",
+      "title": "Dónde se mira el resultado de una llamada",
+      "statement": "Un equipo prueba desde la consola de API Gateway un método de una API REST y necesita distinguir, en la respuesta, si la llamada funcionó antes de interpretar el contenido. Según la documentación de API Gateway, ¿en qué parte de la respuesta se mira el resultado de la forma MÁS directa?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "HTTP",
+        "respuesta",
+        "código de estado"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-test-method.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "En el código de estado de la respuesta, que incluye el tipo de contenido",
+            "explanation": "El código de estado indica el resultado de la petición, no el formato del contenido que lo acompaña: son dos datos distintos de la misma respuesta."
+          },
+          {
+            "id": "b",
+            "text": "En la ruta de la petición, que termina con la extensión del formato pedido",
+            "explanation": "La ruta identifica el recurso solicitado y no describe el formato del cuerpo; muchas rutas de una API REST no llevan ninguna extensión de archivo."
+          },
+          {
+            "id": "c",
+            "text": "En el cuerpo de la respuesta, leyendo sus primeros caracteres",
+            "explanation": "Deducir el formato por los primeros caracteres es una conjetura; la documentación de Amazon S3 sitúa el tipo de contenido entre los metadatos HTTP que acompañan a la respuesta."
+          },
+          {
+            "id": "d",
+            "text": "En las cabeceras de la respuesta, en el tipo de contenido",
+            "explanation": "La documentación de Amazon S3 cita Content-Type como metadato HTTP estándar de los objetos, y el documento de prueba de métodos de API Gateway presenta las cabeceras como parte de la respuesta."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-08",
+      "type": "QUIZ",
+      "title": "Dónde se declara el formato del contenido",
+      "statement": "Un cliente recibe la respuesta de una API y necesita saber en qué formato viene el contenido (JSON, texto o binario) antes de procesarlo. ¿En qué parte de la respuesta HTTP lo encuentra de la forma MÁS fiable?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "HTTP",
+        "cabeceras",
+        "tipo de contenido"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-test-method.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "JSON, porque las máquinas lo interpretan con menos errores que cualquier otro formato",
+            "explanation": "La documentación reconoce que JSON es ligero y fácil de interpretar para las máquinas, pero advierte que puede volverse incómodo de leer y escribir para las personas, que es la restricción del caso."
+          },
+          {
+            "id": "b",
+            "text": "YAML, porque está pensado para ser más legible para las personas y menos verboso",
+            "explanation": "La documentación indica que las plantillas se escriben en JSON o en YAML y que YAML está pensado para ser más legible para las personas y menos verboso que JSON, que es el criterio del equipo."
+          },
+          {
+            "id": "c",
+            "text": "Un volcado de la consola, porque refleja el estado real de los recursos creados",
+            "explanation": "La documentación describe dos formatos de plantilla, JSON y YAML; un volcado de la consola no es una plantilla que el equipo pueda mantener y comentar."
+          },
+          {
+            "id": "d",
+            "text": "Las dos versiones a la vez, para comparar los cambios entre una y otra",
+            "explanation": "Mantener dos copias no reduce el esfuerzo de lectura de quien comenta la plantilla y añade el riesgo de que las versiones se separen con el tiempo."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-09",
+      "type": "QUIZ",
+      "title": "Formato de plantilla para que la lea el equipo",
+      "statement": "Un equipo mantiene sus plantillas de CloudFormation y quiere que las personas que las comentan las lean con menos esfuerzo, sin cambiar de herramienta ni de servicio. Según la documentación de CloudFormation, ¿qué formato conviene MÁS para ese objetivo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "JSON",
+        "YAML",
+        "plantillas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que cada invocación se ejecuta de forma independiente y sin estado compartido",
+            "explanation": "La documentación describe cada invocación como independiente y sin estado compartido, así que una variable en memoria no sirve para llevar un contador entre llamadas distintas."
+          },
+          {
+            "id": "b",
+            "text": "Que la función necesita más memoria asignada para conservar el valor del contador",
+            "explanation": "La memoria asignada afecta al rendimiento y al costo de ejecución de la función, no a la conservación de variables entre invocaciones que la documentación declara independientes."
+          },
+          {
+            "id": "c",
+            "text": "Que el disparador de la función descarta la respuesta de la invocación anterior",
+            "explanation": "El disparador entrega eventos a la función y no guarda sus variables; lo que explica el resultado es que cada invocación arranca sin el estado de la anterior."
+          },
+          {
+            "id": "d",
+            "text": "Que la función necesita un rol de IAM con permisos sobre el servicio que la invoca",
+            "explanation": "El rol de IAM define qué puede hacer la función, no dónde se guardan sus variables: el contador se pierde por la independencia de cada invocación, no por los permisos."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-10",
+      "type": "QUIZ",
+      "title": "Un contador que no sobrevive entre invocaciones",
+      "statement": "Una función de AWS Lambda atiende las peticiones de una API y guarda en una variable global un contador de visitas. En las pruebas, el contador no conserva su valor entre invocaciones. Según la documentación de AWS Lambda, ¿qué explica MEJOR el resultado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Lambda",
+        "invocación",
+        "estado"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Mover los datos a Amazon DynamoDB y crear un índice secundario por cada tabla",
+            "explanation": "La documentación de DynamoDB indica que no admite el operador JOIN; un índice secundario permite consultar por otros atributos, pero no añade la capacidad de combinar tablas."
+          },
+          {
+            "id": "b",
+            "text": "Mover los datos a Amazon ElastiCache y guardar las tres tablas en memoria",
+            "explanation": "ElastiCache es un servicio de base de datos en memoria pensado para caché y no un motor relacional que resuelva combinaciones entre tablas con JOIN."
+          },
+          {
+            "id": "c",
+            "text": "Mantener los datos en un motor relacional administrado con Amazon RDS",
+            "explanation": "La documentación de Amazon RDS describe motores relacionales administrados y la de DynamoDB declara que este no admite JOIN, así que conservar el modelo relacional es lo que mantiene las consultas."
+          },
+          {
+            "id": "d",
+            "text": "Mover los datos a Amazon DynamoDB y activar las transacciones ACID por tabla",
+            "explanation": "DynamoDB ofrece transacciones, pero su documentación mantiene que no admite JOIN: una transacción agrupa operaciones y no sustituye la combinación de tablas."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-11",
+      "type": "QUIZ",
+      "title": "Conservar consultas con JOIN al cambiar de base de datos",
+      "statement": "Una aplicación consulta tres tablas y combina sus filas con JOIN para armar un informe diario. El equipo quiere reducir la administración, pero conservar esas consultas tal como están escritas. Según la documentación de ambos servicios, ¿qué opción las conserva de la forma MÁS directa?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "base de datos relacional",
+        "NoSQL",
+        "JOIN"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "b"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon RDS es un servicio administrado que gestiona copias de seguridad y parches del motor",
+            "explanation": "La documentación de Amazon RDS describe un servicio administrado responsable de la mayoría de las tareas de gestión, entre ellas las copias de seguridad y el parcheo del software del motor."
+          },
+          {
+            "id": "b",
+            "text": "Un despliegue Multi-AZ de Amazon RDS mantiene una instancia en espera en otra zona de disponibilidad",
+            "explanation": "La documentación de Amazon RDS indica que, en un despliegue Multi-AZ, AWS aprovisiona y mantiene instancias en espera en otra zona de disponibilidad y replica en ellas la instancia principal."
+          },
+          {
+            "id": "c",
+            "text": "Amazon DynamoDB admite el operador JOIN entre tablas igual que un motor relacional",
+            "explanation": "La documentación de DynamoDB afirma que no admite el operador JOIN y recomienda desnormalizar el modelo para evitar combinaciones entre tablas, así que la afirmación es falsa."
+          },
+          {
+            "id": "d",
+            "text": "Amazon RDS solo admite motores propios de AWS y ninguno de los comerciales conocidos",
+            "explanation": "La documentación de Amazon RDS lista motores conocidos como MySQL, PostgreSQL, MariaDB, Oracle Database, Microsoft SQL Server e IBM Db2, así que la afirmación es falsa."
+          },
+          {
+            "id": "e",
+            "text": "Amazon DynamoDB obliga a administrar el sistema operativo de los servidores que la ejecutan",
+            "explanation": "La documentación describe DynamoDB como una base de datos sin servidores y totalmente administrada, en la que el equipo no administra el sistema operativo, así que la afirmación es falsa."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-quiz-12",
+      "type": "QUIZ",
+      "title": "Qué respalda la documentación sobre motores administrados",
+      "statement": "Un equipo compara un motor relacional administrado con una base de datos NoSQL de tipo clave-valor antes de decidir dónde guardar los datos de una aplicación. Selecciona DOS afirmaciones que respalde la documentación de AWS.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "base de datos relacional",
+        "NoSQL",
+        "alta disponibilidad"
+      ],
+      "estimatedMin": 4,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://aws.amazon.com/getting-started/"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-5-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: plan de nivelación a partir del diagnóstico",
+      "statement": "Escribe tu plan de nivelación en 4 a 6 líneas, con estos cuatro apartados:\n\n1) Resultado: cuántos aciertos obtuviste en cada una de las cinco áreas (redes, Linux, HTTP, programación y bases de datos).\n\n2) Prioridad: qué área atacas primero y por qué (por el resultado o por el peso que tendrá en las unidades siguientes).\n\n3) Práctica: con qué unidad de la ruta y con qué recurso de la unidad vas a practicarla, y en qué fechas.\n\n4) Repetición: en qué momento repites la prueba y qué resultado te hará considerar el área resuelta.\n\nNo hay una única respuesta correcta: se valora que el plan nombre un área concreta, una acción con fechas y un criterio de repetición. Guárdalo y vuelve a leerlo al empezar el módulo siguiente: es tu punto de partida, no una nota.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "diagnóstico",
+        "plan de nivelación",
+        "repaso espaciado"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://aws.amazon.com/getting-started/",
+        "https://skillbuilder.aws/",
+        "https://aws.amazon.com/training/digital/"
+      ],
+      "order": 19
+    }
+  ]
+}
