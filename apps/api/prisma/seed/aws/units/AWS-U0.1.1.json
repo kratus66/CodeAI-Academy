@@ -1,0 +1,1287 @@
+{
+  "code": "AWS-U0.1.1",
+  "lessons": [
+    {
+      "slug": "aws-u0-1-1-el-mapa-de-certificaciones-aws",
+      "title": "El mapa de certificaciones AWS, los roles que acreditan y sus versiones vigentes",
+      "estimatedMin": 50,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Las certificaciones de AWS no son una lista suelta: se agrupan en niveles y cada nivel acredita un tipo de rol. El nivel dice cuánta experiencia se espera; el nombre de la certificación dice qué trabajo se acredita; y el código del examen (CLF-C02, SOA-C03…) dice qué versión está vigente. Las tres cosas cambian con el tiempo: AWS renombra exámenes, publica versiones nuevas y retira las anteriores. Por eso esta unidad no es una lista para memorizar sino un mapa para consultar: qué certificación existe, qué rol acredita y dónde comprobar la versión que se puede rendir hoy."
+        },
+        {
+          "type": "list",
+          "title": "Los niveles que agrupa la página oficial de certificaciones",
+          "items": [
+            "Business: valida criterio de negocio para aplicar nube e IA a resultados; no exige experiencia técnica. Ahí figura AWS Certified AI Business Strategist, ofrecida como examen beta.",
+            "Foundational: valida conocimientos fundamentales de nube e IA y no requiere experiencia previa. Incluye AWS Certified Cloud Practitioner y AWS Certified AI Practitioner.",
+            "Associate: valida habilidades técnicas centrales y recomienda experiencia previa en nube o TI. Incluye Solutions Architect, Developer, Data Engineer, Machine Learning Engineer y CloudOps Engineer.",
+            "Professional: apunta a arquitecturas y soluciones avanzadas; exige dos años o más de experiencia en AWS.",
+            "Specialty: demuestra pericia en una tecnología concreta. La página lista Security y Advanced Networking, y esta última ya tiene fecha de retiro anunciada.",
+            "Fuera de los niveles, AWS publica microcredenciales: evaluaciones prácticas en un entorno real que complementan la certificación y no la sustituyen."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "El código del examen cuenta una historia",
+          "text": "Cada examen se identifica con una familia y una versión. Cloud Practitioner se rinde como CLF-C02; el examen de operaciones pasó de SOA-C02 a SOA-C03 cuando AWS lo actualizó. Los dos dígitos finales no son un adorno: cuando se publica una versión nueva, el código cambia, la guía de examen cambia y hay una ventana en la que conviven la versión anterior y la nueva. Por eso, antes de inscribirte, lo que se confirma no es el nombre de la certificación sino el código con la versión que se rinde ese día."
+        },
+        {
+          "type": "list",
+          "title": "Dónde se comprueba, y en qué orden",
+          "items": [
+            "Página de AWS Certification: el mapa por niveles, los beneficios de estar certificado y la ruta recomendada según el rol al que aspiras.",
+            "Página de la certificación concreta: qué valida, a quién está dirigida y qué exámenes propone AWS como siguiente paso para ese perfil.",
+            "Guía de examen oficial: el documento que fija el alcance del examen y su código con versión; es la referencia con la que se estudia.",
+            "Página de novedades de AWS Certification: anuncia actualizaciones, exámenes beta y certificaciones nuevas, con las fechas clave de cada cambio.",
+            "El orden importa: primero el rol, después la certificación y al final el código con versión. Si empiezas por el código puedes acabar preparando una versión que se retira."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: el examen de operaciones cambió de nombre",
+          "text": "AWS actualizó su examen de operaciones: AWS Certified SysOps Administrator - Associate (SOA-C02) se convirtió en AWS Certified CloudOps Engineer - Associate (SOA-C03). La página de novedades publica tres fechas clave —apertura de inscripción de la versión nueva, último día de la versión anterior y primer día de la nueva— y describe el perfil al que apunta: personas con experiencia desplegando, gestionando y operando cargas en AWS, con roles como especialista en operaciones, ingeniero de soporte o consultor. También explica qué hacer si ya tienes la certificación anterior: se puede recertificar ascendiendo al examen de nivel Professional. Leer esa página antes de inscribirte evita preparar un examen que ya no se rinde."
+        },
+        {
+          "type": "mermaid",
+          "title": "Del rol al código vigente",
+          "code": "flowchart TD\n  A[\"Rol que quieres acreditar\"] --> B{\"¿Tienes experiencia previa en nube o TI?\"}\n  B -- \"No\" --> C[\"Business o Foundational\"]\n  B -- \"Uno o dos años\" --> D[\"Associate\"]\n  B -- \"Dos años o más en AWS\" --> E[\"Professional\"]\n  C --> F[\"Certificación concreta: nombre y rol que acredita\"]\n  D --> F\n  E --> F\n  F --> G[\"Guía de examen: código con versión\"]\n  G --> H{\"¿La página de novedades anuncia una versión nueva?\"}\n  H -- \"Sí\" --> I[\"Anota las fechas clave y decide qué versión rendir\"]\n  H -- \"No\" --> J[\"Ese es el código vigente\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica: la microcredencial no es una certificación",
+          "text": "La página de certificaciones separa dos cosas. La certificación valida conocimiento amplio y se obtiene con un examen; la microcredencial valida habilidades prácticas con una evaluación en un entorno real de AWS. Se complementan: la primera demuestra que entiendes, la segunda que sabes hacer. Ninguna sustituye a la otra, y aprobar una microcredencial no renueva ni reemplaza una certificación."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: memorizar el nombre y no el código con versión",
+          "text": "Causa: el nombre de la certificación es lo que aparece en las ofertas de trabajo, así que se estudia con el material que alguien compartió hace meses. Consecuencia: te preparas para una versión que ya no se rinde, o citas en una entrevista un código que corresponde a un examen retirado. Solución: para cada certificación que te interese anota tres datos —nombre, código con versión y fecha en que lo comprobaste— y revisa la página de novedades antes de inscribirte."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: elegir la certificación por prestigio y no por el rol que acredita",
+          "text": "Causa: se empieza por la certificación que más se menciona en redes, sin mirar a qué perfil está dirigida ni qué experiencia previa pide. Consecuencia: acabas en un examen de nivel Professional sin la base que ese nivel exige, o preparando una especialidad que no corresponde al trabajo que quieres hacer. Solución: define primero el rol que quieres acreditar, busca en la página oficial qué certificaciones lo cubren y usa la ruta de certificación para ordenar los pasos."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Explicar, sin mirar la lección, qué nivel acredita cada rol y con qué código con versión se rinde hoy una certificación. Criterio: ante dos certificaciones dadas, dices a qué nivel pertenece cada una, qué rol acredita y en qué página oficial comprobarías su versión vigente. Esta unidad no prepara un examen concreto: ordena el mapa con el que elegirás el tuyo."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee el ejemplo del examen de operaciones y rehazlo tapando el texto: ¿qué cambió además del nombre? ¿qué tres fechas publica AWS? ¿qué pasa si ya tenías la certificación anterior? Después responde de memoria qué aporta cada nivel y qué diferencia una microcredencial de una certificación."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve «La ficha de Cloud Practitioner mezcla nivel y versión». El objeto declara a la vez un nivel equivocado y un código sin versión. Usa las pistas por escalones solo si te atascas. Criterio de paso: las pruebas visibles pasan y no has tocado el nombre ni el rol que acredita la certificación."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El plan del equipo confunde certificación con microcredencial». Dos campos están mal: la certificación recomendada para un perfil de negocio y lo que aporta una microcredencial. Criterio de paso: los tres perfiles siguen describiendo el mismo trabajo y la microcredencial deja de presentarse como sustituto."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un mapa de certificaciones del equipo. Audítalo en «Auditar el mapa de certificaciones de un asistente»: marca solo los defectos reales —nombre anterior presentado como vigente y microcredencial presentada como sustituto de un examen— y deja sin marcar lo que es correcto aunque parezca discutible. Contrasta cada línea con las páginas oficiales y decide si el borrador se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de la unidad. Antes de elegir, escribe en una línea el nivel, el rol y el código implicados; al corregir, lee la explicación de cada opción y anota si fallaste por confundir niveles o por no comprobar la versión. Criterio de paso: al menos 6 de 8 correctas y los tres datos anotados en cada pregunta."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Escribe tu propio mapa de tres certificaciones que te interesen: rol que acredita cada una, nivel, código con versión y página donde lo comprobaste. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero dice que estudiará con un curso de hace dos años porque «el examen es el mismo»; ¿qué dos comprobaciones le propones antes de que empiece?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-certification-inicio",
+          "order": 0,
+          "note": "Mapa por niveles, beneficios y ruta recomendada según el rol al que aspiras."
+        },
+        {
+          "resourceSlug": "aws-certification-cloud-practitioner",
+          "order": 1,
+          "note": "Ejemplo de ficha de certificación: qué valida, a quién se dirige y cuál es el siguiente paso."
+        },
+        {
+          "resourceSlug": "aws-certification-guias-de-examen",
+          "order": 2,
+          "note": "Índice de las guías de examen: alcance y código con versión de cada examen."
+        },
+        {
+          "resourceSlug": "aws-certification-novedades-de-examenes",
+          "order": 3,
+          "note": "Actualizaciones, exámenes beta y certificaciones nuevas con sus fechas clave."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El nivel Business. Ahí figura AWS Certified AI Business Strategist, que valida criterio estratégico para aplicar nube e IA a resultados de negocio y no exige experiencia técnica. Los niveles Foundational y Associate sí piden base técnica o la recomiendan."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: el nivel que no pide experiencia técnica",
+      "statement": "Responde antes de girar la tarjeta y luego contrasta con la descripción oficial del nivel.",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "nivel Business",
+        "rol acreditado",
+        "experiencia previa"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La versión del examen. La familia identifica el examen (CLF es Cloud Practitioner y SOA el de operaciones) y los dos dígitos finales marcan la versión: CLF-C02 y SOA-C03. Cuando AWS publica una versión nueva, el código cambia y la guía de examen también."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: qué dice el sufijo del código de examen",
+      "statement": "Te dan los códigos CLF-C02 y SOA-C03: ¿qué información aporta cada parte del código?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "código de examen",
+        "versión",
+        "guía de examen"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/examguides/"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "AWS Certified CloudOps Engineer - Associate, con el código SOA-C03. AWS actualizó el examen de operaciones: publicó el nombre nuevo, el perfil al que apunta (desplegar, gestionar y operar cargas en AWS) y tres fechas clave para la transición desde la versión anterior."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: el examen de operaciones actualizado",
+      "statement": "¿Qué certificación y qué código sustituyen a SOA-C02, y qué perfil acredita la versión nueva?",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "CloudOps Engineer",
+        "SOA-C03",
+        "transición de versión"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/coming-soon/"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La certificación valida conocimiento amplio y se obtiene con un examen; la microcredencial valida habilidades prácticas con una evaluación en un entorno real de AWS. Se complementan y ninguna sustituye a la otra: aprobar una microcredencial no renueva ni reemplaza una certificación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: microcredencial frente a certificación",
+      "statement": "¿Qué distingue a una microcredencial de una certificación y por qué una no reemplaza a la otra?",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "microcredencial",
+        "certificación",
+        "evaluación práctica"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El nivel Professional, el más alto por experiencia: apunta a arquitecturas y soluciones avanzadas y pide dos años o más de experiencia en AWS. El nivel Associate, en cambio, solo recomienda experiencia previa en nube o TI."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: el nivel que exige experiencia en AWS",
+      "statement": "¿Qué nivel pide dos años o más de experiencia en AWS, y en qué se diferencia del nivel Associate?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "nivel Professional",
+        "nivel Associate",
+        "experiencia exigida"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La página de Cloud Practitioner propone Solutions Architect - Associate, Developer - Associate y el examen de operaciones, que AWS actualiza hoy como CloudOps Engineer - Associate. Los vincula a roles de arquitecto de soluciones, ingeniero, desarrollador y administrador de sistemas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: la ruta después de Cloud Practitioner",
+      "statement": "Alguien con Cloud Practitioner quiere seguir creciendo: ¿qué exámenes propone AWS y a qué roles llevan?",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "ruta de certificación",
+        "siguiente paso",
+        "rol"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/certified-cloud-practitioner/"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "nivel-business",
+            "term": "Nivel Business",
+            "definition": "Criterio de negocio para aplicar nube e IA; no exige experiencia técnica"
+          },
+          {
+            "id": "nivel-foundational",
+            "term": "Nivel Foundational",
+            "definition": "Conocimientos fundamentales de nube e IA; no requiere experiencia previa"
+          },
+          {
+            "id": "nivel-associate",
+            "term": "Nivel Associate",
+            "definition": "Habilidades técnicas centrales; se recomienda experiencia previa en nube o TI"
+          },
+          {
+            "id": "nivel-professional",
+            "term": "Nivel Professional",
+            "definition": "Arquitectura avanzada; exige dos años o más de experiencia en AWS"
+          },
+          {
+            "id": "nivel-specialty",
+            "term": "Nivel Specialty",
+            "definition": "Pericia en una tecnología concreta, como seguridad o redes"
+          },
+          {
+            "id": "microcredencial",
+            "term": "Microcredencial",
+            "definition": "Evaluación práctica en un entorno real; complementa la certificación"
+          },
+          {
+            "id": "clf-c02",
+            "term": "CLF-C02",
+            "definition": "Código del examen Cloud Practitioner: familia CLF y versión 02"
+          },
+          {
+            "id": "soa-c03",
+            "term": "SOA-C03",
+            "definition": "Código vigente del examen CloudOps Engineer - Associate"
+          },
+          {
+            "id": "examen-beta",
+            "term": "Examen beta",
+            "definition": "Versión que valida el rendimiento de las preguntas antes del examen estándar"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada nivel, código y concepto con lo que acredita. Si dudas entre dos definiciones, pregúntate qué experiencia previa exige y qué rol acredita la credencial.",
+          "list": {
+            "title": "Los cinco niveles, de menos a más experiencia",
+            "ordered": true,
+            "items": [
+              "Business: criterio de negocio, sin experiencia técnica",
+              "Foundational: fundamentos, sin experiencia previa",
+              "Associate: habilidades técnicas, experiencia previa recomendada",
+              "Professional: arquitectura avanzada, dos años o más en AWS",
+              "Specialty: pericia en una tecnología concreta"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-memoria-01",
+      "type": "MEMORY",
+      "title": "Memoria: niveles, códigos y roles del mapa AWS",
+      "statement": "Arrastra cada definición hasta su término. Los pares cubren los cinco niveles, el código de dos exámenes, la microcredencial y el examen beta; las definiciones no dicen el nombre, describen lo que la credencial acredita o exige.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "niveles de certificación",
+        "código con versión",
+        "microcredencial",
+        "examen beta"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://aws.amazon.com/certification/",
+        "https://aws.amazon.com/certification/coming-soon/",
+        "https://docs.aws.amazon.com/aws-certification/latest/examguides/"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Ficha de una certificación escrita como objeto. Corrige sus dos datos.\nexport const ficha = {\n  nombre: \"AWS Certified Cloud Practitioner\",\n  nivel: \"Associate\",\n  codigo: \"CLF\",\n  rolAcreditado:\n    \"Perfil de negocio que necesita vocabulario de nube, sin experiencia técnica previa\",\n  requisitoPrevio: \"no requiere experiencia previa en la nube\",\n};\n",
+      "solution": {
+        "code": "export const ficha = {\n  nombre: \"AWS Certified Cloud Practitioner\",\n  nivel: \"Foundational\",\n  codigo: \"CLF-C02\",\n  rolAcreditado:\n    \"Perfil de negocio que necesita vocabulario de nube, sin experiencia técnica previa\",\n  requisitoPrevio: \"no requiere experiencia previa en la nube\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Son dos datos distintos los que están mal: uno dice a qué nivel pertenece la certificación y el otro identifica el examen. Ninguno de los dos es el nombre ni el rol acreditado."
+        },
+        {
+          "level": 2,
+          "text": "Cloud Practitioner valida conocimientos fundamentales y no pide experiencia previa, así que su nivel no puede ser el que se recomienda con experiencia. Para el otro campo, compara `codigo` con el de un examen que ya conoces: familia, guion y dos dígitos de versión."
+        },
+        {
+          "level": 3,
+          "text": "Usa `nivel: \"Foundational\"` y `codigo: \"CLF-C02\"`. No toques `nombre`, `rolAcreditado` ni `requisitoPrevio`."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el nivel es el fundamental y no el de experiencia recomendada",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(ficha.nivel, \"Foundational\", \"Cloud Practitioner pertenece al nivel Foundational\");"
+          }
+        },
+        {
+          "name": "el código declara familia y versión",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.match(ficha.codigo, /^[A-Z]{2,3}-C\\d{2}$/, \"el código incluye guion y versión\");"
+          }
+        },
+        {
+          "name": "el código vigente es CLF-C02",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(ficha.codigo, \"CLF-C02\");"
+          }
+        },
+        {
+          "name": "se conserva el rol que acredita la certificación",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(ficha.nombre, \"AWS Certified Cloud Practitioner\");\nassert.match(ficha.rolAcreditado, /negocio/i);"
+          }
+        },
+        {
+          "name": "se conserva el requisito previo del perfil",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(ficha.requisitoPrevio, \"no requiere experiencia previa en la nube\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-debug-01",
+      "type": "DEBUG",
+      "title": "La ficha de Cloud Practitioner mezcla nivel y versión",
+      "statement": "El objeto `ficha` describe AWS Certified Cloud Practitioner para un folleto interno, pero dos campos no coinciden con la página oficial: el nivel al que pertenece la certificación y el código del examen, que aparece sin versión. Corrige esos dos campos para que el nivel sea el que no exige experiencia previa y el código incluya familia, guion y versión. Conserva el nombre, el rol acreditado y el requisito previo, y mantén la forma del valor exportado (`export const ficha = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "nivel de certificación",
+        "código con versión",
+        "ficha de certificación"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://aws.amazon.com/certification/",
+        "https://aws.amazon.com/certification/certified-cloud-practitioner/"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de estudio de un equipo. Dos campos contradicen el mapa oficial.\nexport const plan = {\n  perfiles: [\n    {\n      perfil: \"Dirección de producto sin experiencia técnica\",\n      certificacion: \"AWS Certified Solutions Architect - Associate\",\n    },\n    {\n      perfil: \"Desarrollo de aplicaciones sobre AWS\",\n      certificacion: \"AWS Certified Developer - Associate\",\n    },\n    {\n      perfil: \"Operación de cargas en AWS\",\n      certificacion: \"AWS Certified CloudOps Engineer - Associate\",\n    },\n  ],\n  microcredenciales: {\n    cubren: \"el mismo alcance que la certificación del tema\",\n    sustituyen: true,\n  },\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  perfiles: [\n    {\n      perfil: \"Dirección de producto sin experiencia técnica\",\n      certificacion: \"AWS Certified Cloud Practitioner\",\n    },\n    {\n      perfil: \"Desarrollo de aplicaciones sobre AWS\",\n      certificacion: \"AWS Certified Developer - Associate\",\n    },\n    {\n      perfil: \"Operación de cargas en AWS\",\n      certificacion: \"AWS Certified CloudOps Engineer - Associate\",\n    },\n  ],\n  microcredenciales: {\n    cubren: \"una evaluación práctica en un entorno real de AWS\",\n    sustituyen: false,\n  },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el perfil de negocio recibe la certificación fundamental",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.perfiles[0].certificacion, \"AWS Certified Cloud Practitioner\", \"sin experiencia técnica, la ruta empieza en el nivel fundamental\");"
+          }
+        },
+        {
+          "name": "la microcredencial deja de sustituir a la certificación",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.microcredenciales.sustituyen, false);"
+          }
+        },
+        {
+          "name": "la microcredencial se describe como evaluación práctica",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.match(plan.microcredenciales.cubren, /pr[aá]ctica/i);"
+          }
+        },
+        {
+          "name": "se conservan los otros dos perfiles y sus certificaciones",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(plan.perfiles.slice(1).map((item) => item.certificacion), [\"AWS Certified Developer - Associate\", \"AWS Certified CloudOps Engineer - Associate\"]);"
+          }
+        },
+        {
+          "name": "se conserva el trabajo que describe cada perfil",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(plan.perfiles.map((item) => item.perfil), [\"Dirección de producto sin experiencia técnica\", \"Desarrollo de aplicaciones sobre AWS\", \"Operación de cargas en AWS\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-debug-02",
+      "type": "DEBUG",
+      "title": "El plan del equipo confunde certificación con microcredencial",
+      "statement": "El objeto `plan` recomienda una certificación a cada uno de tres perfiles y describe qué aportan las microcredenciales, pero dos datos contradicen el mapa oficial: el perfil de negocio recibe una certificación de nivel Associate que recomienda experiencia previa, y las microcredenciales se presentan como sustituto de un examen. Corrige esos dos datos para que el perfil sin experiencia técnica reciba la certificación fundamental y la microcredencial quede descrita por lo que realmente evalúa. Conserva los otros dos perfiles, sus certificaciones y el texto que describe cada trabajo. Resuelve sin pistas.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "rol acreditado",
+        "microcredencial",
+        "nivel de certificación"
+      ],
+      "estimatedMin": 12,
+      "sources": [
+        "https://aws.amazon.com/certification/",
+        "https://aws.amazon.com/certification/certified-cloud-practitioner/"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Mapa de certificaciones del equipo (borrador del asistente)\n\nNivel Business · AWS Certified AI Business Strategist · criterio de negocio para llevar IA a escala\nNivel Foundational · AWS Certified Cloud Practitioner · perfil de negocio sin experiencia técnica\nNivel Associate · AWS Certified Solutions Architect - Associate · diseño de arquitecturas en AWS\nNivel Associate · AWS Certified SysOps Administrator - Associate · operación de cargas en AWS\nNivel Professional · AWS Certified Solutions Architect - Professional · arquitectos con experiencia en AWS\nNivel Specialty · AWS Certified Security - Specialty · protección de cargas y datos en AWS\nMicrocredencial de operaciones · sustituye al examen CloudOps Engineer - Associate\n\nComprobado con las páginas oficiales de certificación y de novedades."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Certificación de negocio sin experiencia técnica",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el nivel Business valida criterio de negocio para aplicar nube e IA a resultados y no exige experiencia técnica; ahí figura AWS Certified AI Business Strategist."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Examen de operaciones con el nombre anterior",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un defecto real: AWS actualizó ese examen y hoy se llama AWS Certified CloudOps Engineer - Associate (SOA-C03). SysOps Administrator - Associate (SOA-C02) es la versión sustituida, así que presentarla como vigente manda al equipo a una guía que ya no se rinde."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Experiencia que exige el nivel Professional",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el nivel Professional apunta a arquitecturas avanzadas y exige dos años o más de experiencia en AWS. La línea no promete que ese sea el único requisito ni le atribuye una fecha de retiro."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Alcance de la especialidad en seguridad",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el nivel Specialty demuestra pericia en una tecnología concreta y la especialidad de seguridad se centra en proteger cargas y datos en AWS."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Microcredencial que sustituye a un examen",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un defecto real: la microcredencial se valida con una evaluación práctica en un entorno real de AWS y complementa a la certificación; no sustituye al examen ni renueva una certificación."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar el mapa de certificaciones de un asistente",
+      "statement": "Un asistente redactó el mapa de certificaciones que el equipo usará para decidir qué examen preparar. Revisa cada hallazgo y marca solo los defectos reales: líneas que nombran un examen retirado como si estuviera vigente o que atribuyen a una microcredencial lo que no hace. Hay líneas que parecen discutibles y son correctas; dejarlas sin marcar también forma parte del trabajo. Cierra con el veredicto: aceptar el borrador, corregirlo o descartarlo.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "nombre anterior de un examen",
+        "microcredencial",
+        "veredicto de auditoría"
+      ],
+      "estimatedMin": 12,
+      "sources": [
+        "https://aws.amazon.com/certification/",
+        "https://aws.amazon.com/certification/coming-soon/",
+        "https://docs.aws.amazon.com/aws-certification/latest/examguides/"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Business, porque valida criterio de negocio sin experiencia técnica.",
+            "explanation": "Business describe el criterio estratégico para aplicar nube e IA a resultados, pero Cloud Practitioner figura en el nivel fundamental, no en Business."
+          },
+          {
+            "id": "b",
+            "text": "Foundational, porque valida fundamentos y no exige experiencia previa.",
+            "explanation": "Foundational es el nivel que AWS describe para conocimientos fundamentales de nube e IA sin experiencia previa, y ahí figura Cloud Practitioner."
+          },
+          {
+            "id": "c",
+            "text": "Associate, porque es el primer nivel técnico con experiencia recomendada.",
+            "explanation": "Associate recomienda experiencia previa en nube o TI, justo lo que esta persona no tiene, así que no es el nivel de entrada."
+          },
+          {
+            "id": "d",
+            "text": "Specialty, porque demuestra pericia en una tecnología concreta.",
+            "explanation": "Specialty acredita pericia en una tecnología concreta, como seguridad o redes, y no el vocabulario general de la nube."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-quiz-01",
+      "type": "QUIZ",
+      "title": "El nivel que corresponde a Cloud Practitioner",
+      "statement": "Una persona que trabaja en ventas necesita demostrar que entiende el vocabulario de la nube de AWS y no tiene experiencia previa en TI. ¿En qué nivel de certificación encaja AWS Certified Cloud Practitioner?",
+      "ladder": "SEMI",
+      "difficulty": 1,
+      "concepts": [
+        "nivel Foundational",
+        "rol de negocio",
+        "Cloud Practitioner"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://aws.amazon.com/certification/",
+        "https://aws.amazon.com/certification/certified-cloud-practitioner/"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Certified AI Practitioner, porque es la certificación fundamental de IA.",
+            "explanation": "Es otra certificación del nivel fundamental; la página de Cloud Practitioner propone exámenes de nivel Associate para quien quiere diseñar soluciones."
+          },
+          {
+            "id": "b",
+            "text": "AWS Certified Security - Specialty, porque todo arquitecto debe dominar la seguridad.",
+            "explanation": "La especialidad llega después de cubrir el nivel Associate en la ruta que describe AWS, no como paso inmediato tras la certificación fundamental."
+          },
+          {
+            "id": "c",
+            "text": "AWS Certified Solutions Architect - Associate, porque acredita diseño de arquitecturas.",
+            "explanation": "La página oficial cita Solutions Architect - Associate, Developer - Associate y el examen de operaciones como siguientes pasos hacia roles de arquitecto o ingeniero."
+          },
+          {
+            "id": "d",
+            "text": "AWS Certified Advanced Networking - Specialty, porque profundiza en redes.",
+            "explanation": "Es una especialidad de redes que AWS retira, y la página de Cloud Practitioner no la propone como siguiente paso."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-quiz-02",
+      "type": "QUIZ",
+      "title": "El siguiente paso después de Cloud Practitioner",
+      "statement": "Alguien acaba de obtener AWS Certified Cloud Practitioner y quiere pasar a diseñar arquitecturas en AWS. Según la página oficial de esa certificación, ¿cuál es el siguiente paso que recomienda AWS?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "ruta de certificación",
+        "siguiente paso",
+        "Solutions Architect"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://aws.amazon.com/certification/certified-cloud-practitioner/"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Certified CloudOps Engineer - Associate, con el código SOA-C03.",
+            "explanation": "Es el nombre y el código con los que AWS actualiza el examen de operaciones; el perfil acreditado sigue siendo quien despliega, gestiona y opera cargas en AWS."
+          },
+          {
+            "id": "b",
+            "text": "AWS Certified DevOps Engineer - Professional, con el código DOP-C02.",
+            "explanation": "Es el examen de nivel Professional al que se puede ascender al recertificar, no la versión que sustituye al examen de operaciones."
+          },
+          {
+            "id": "c",
+            "text": "AWS Certified Cloud Practitioner, con el código CLF-C02.",
+            "explanation": "Es el examen fundamental de entrada, que acredita vocabulario de nube y no la operación de cargas en AWS."
+          },
+          {
+            "id": "d",
+            "text": "AWS Certified Solutions Architect - Associate, con el código SAA-C03.",
+            "explanation": "Acredita diseño de arquitecturas en AWS; no es la actualización del examen de operaciones."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-quiz-03",
+      "type": "QUIZ",
+      "title": "El nombre nuevo del examen de operaciones",
+      "statement": "El examen de operaciones que antes se llamaba AWS Certified SysOps Administrator - Associate se actualiza. ¿Cómo se llama la versión que lo sustituye?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudOps Engineer",
+        "SOA-C03",
+        "actualización de examen"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://aws.amazon.com/certification/coming-soon/",
+        "https://docs.aws.amazon.com/aws-certification/latest/examguides/"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "En un resumen de blog que copia el temario del año pasado.",
+            "explanation": "Un resumen copiado no se actualiza cuando AWS publica una versión nueva, así que puede describir un examen que ya no se rinde."
+          },
+          {
+            "id": "b",
+            "text": "En el foro de la comunidad, preguntando qué examen hizo cada persona.",
+            "explanation": "Los relatos de otros sirven para estudiar, pero no son la fuente que fija el código con versión vigente ni las fechas de transición."
+          },
+          {
+            "id": "c",
+            "text": "En el listado de precios de los exámenes de AWS Certification.",
+            "explanation": "La página de precios dice cuánto cuesta un examen, no qué versión se rinde ni si hay una nueva anunciada."
+          },
+          {
+            "id": "d",
+            "text": "En la guía de examen de la certificación y en la página de novedades de AWS Certification.",
+            "explanation": "La guía fija el alcance y el código con versión del examen, y la página de novedades anuncia actualizaciones, exámenes beta y fechas clave."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-quiz-04",
+      "type": "QUIZ",
+      "title": "Dónde se confirma la versión vigente",
+      "statement": "Antes de inscribirte necesitas confirmar el código con versión del examen y si hay una versión nueva anunciada. ¿Dónde lo compruebas?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "guía de examen",
+        "novedades de certificación",
+        "versión vigente"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/examguides/",
+        "https://aws.amazon.com/certification/coming-soon/"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "matching",
+        "left": [
+          {
+            "id": "a",
+            "text": "AWS Certified Cloud Practitioner",
+            "explanation": "Su perfil es el de negocio: ventas, producto o proyecto que necesita el vocabulario de la nube sin experiencia técnica previa."
+          },
+          {
+            "id": "b",
+            "text": "AWS Certified Solutions Architect - Associate",
+            "explanation": "Es nivel Associate: acredita habilidades técnicas centrales, recomienda experiencia previa y se centra en diseñar arquitecturas en AWS."
+          },
+          {
+            "id": "c",
+            "text": "AWS Certified Security - Specialty",
+            "explanation": "Es nivel Specialty: demuestra pericia en una tecnología concreta, aquí la protección de cargas y datos en AWS."
+          },
+          {
+            "id": "d",
+            "text": "AWS Certified AI Business Strategist",
+            "explanation": "Es del nivel Business: valida criterio de negocio para llevar la IA a escala y no exige experiencia técnica."
+          }
+        ],
+        "right": [
+          {
+            "id": "1",
+            "text": "Diseñar arquitecturas en AWS con experiencia previa recomendada"
+          },
+          {
+            "id": "2",
+            "text": "Aportar criterio de negocio para llevar IA a escala, sin experiencia técnica"
+          },
+          {
+            "id": "3",
+            "text": "Acreditar vocabulario de nube en un perfil de negocio sin experiencia técnica"
+          },
+          {
+            "id": "4",
+            "text": "Especializarse en proteger cargas y datos en AWS"
+          }
+        ],
+        "correctPairs": {
+          "a": "3",
+          "b": "1",
+          "c": "4",
+          "d": "2"
+        }
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-quiz-05",
+      "type": "QUIZ",
+      "title": "Emparejar certificación, nivel y rol",
+      "statement": "Cada certificación acredita un trabajo distinto. Empareja cada una con el rol o la tarea que describe, sin guiarte por el prestigio del nombre.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "certificación y rol",
+        "niveles",
+        "especialidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/",
+        "https://aws.amazon.com/certification/certified-cloud-practitioner/"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "options": [
+          {
+            "id": "a",
+            "text": "Se obtiene tras un examen de opción múltiple con preguntas de escenario.",
+            "explanation": "Ese es el formato de la certificación: el examen evalúa conocimiento amplio con preguntas de escenario, no la ejecución en un entorno real."
+          },
+          {
+            "id": "b",
+            "text": "Se valida con una evaluación práctica en un entorno real de AWS.",
+            "explanation": "La página oficial describe así las microcredenciales: validan habilidades prácticas con una evaluación en vivo, sin suscripción previa a Skill Builder."
+          },
+          {
+            "id": "c",
+            "text": "Sustituye a la certificación del mismo tema y sirve para recertificarse.",
+            "explanation": "Complementan a la certificación, no la sustituyen ni la renuevan; la recertificación tiene su propio procedimiento."
+          },
+          {
+            "id": "d",
+            "text": "Demuestra que sabes identificar, diagnosticar e implementar soluciones en AWS.",
+            "explanation": "Es la definición de la página: la certificación valida conocimiento y la microcredencial verifica esa capacidad de identificar, diagnosticar e implementar."
+          },
+          {
+            "id": "e",
+            "text": "Exige una suscripción activa a AWS Skill Builder para inscribirse.",
+            "explanation": "La página indica que no se necesita suscripción a Skill Builder para obtener una microcredencial."
+          }
+        ],
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué aporta una microcredencial",
+      "statement": "Selecciona DOS afirmaciones que describan lo que aporta una microcredencial de AWS, según la página de certificaciones.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "microcredencial",
+        "evaluación práctica",
+        "certificación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "ordering",
+        "items": [
+          {
+            "id": "c",
+            "text": "Anotar el código con versión que aparece en la guía de examen.",
+            "explanation": "Va tercero: la guía de examen fija el alcance y el código con versión, y solo se consulta cuando ya elegiste la certificación."
+          },
+          {
+            "id": "a",
+            "text": "Definir el rol que quieres acreditar y qué experiencia tienes hoy.",
+            "explanation": "Va primero: sin rol y sin experiencia no hay forma de decidir nivel ni certificación, y cualquier código elegido sería una apuesta."
+          },
+          {
+            "id": "d",
+            "text": "Revisar la página de novedades por si hay una versión nueva o un retiro anunciado.",
+            "explanation": "Va último: es la comprobación que confirma si el código que anotaste sigue vigente o si conviene esperar a la versión nueva."
+          },
+          {
+            "id": "b",
+            "text": "Elegir, en el mapa por niveles, la certificación que acredita ese rol.",
+            "explanation": "Va segundo: el mapa por niveles traduce el rol y la experiencia en una certificación concreta antes de mirar códigos."
+          }
+        ],
+        "correctOrder": [
+          "a",
+          "b",
+          "c",
+          "d"
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-quiz-07",
+      "type": "QUIZ",
+      "title": "Ordenar la decisión: del rol al código",
+      "statement": "Ordena los pasos con los que una persona decide qué examen preparar y en qué versión, de primero a último.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "orden de consulta",
+        "código con versión",
+        "rol"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/",
+        "https://aws.amazon.com/certification/coming-soon/",
+        "https://docs.aws.amazon.com/aws-certification/latest/examguides/"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La versión del examen: pide la guía de esa versión y sustituye a la anterior.",
+            "explanation": "Los dos dígitos finales marcan la versión: SOA-C02 quedó sustituido por SOA-C03, así que estudiar con la guía anterior prepara un examen que ya no se rinde."
+          },
+          {
+            "id": "b",
+            "text": "El nivel de dificultad del examen dentro de su familia.",
+            "explanation": "El nivel se lee en la certificación (Foundational, Associate, Professional), no en los dos dígitos del código."
+          },
+          {
+            "id": "c",
+            "text": "La cantidad de idiomas en los que se puede rendir el examen.",
+            "explanation": "Los idiomas y sus adaptaciones son políticas del examen que se consultan aparte; el sufijo no los cuenta."
+          },
+          {
+            "id": "d",
+            "text": "El número de preguntas que trae el examen.",
+            "explanation": "La cantidad de preguntas la fija la guía de cada examen, no el código con el que se identifica."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-quiz-08",
+      "type": "QUIZ",
+      "title": "Qué significa el sufijo de SOA-C03",
+      "statement": "Un compañero copia «SOA-C03» de la guía de examen y pregunta qué indica ese sufijo. ¿Qué le respondes?",
+      "ladder": "SEMI",
+      "difficulty": 1,
+      "concepts": [
+        "sufijo del código",
+        "versión del examen",
+        "guía vigente"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/examguides/",
+        "https://aws.amazon.com/certification/coming-soon/"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u0-1-1-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: tu mapa de certificaciones y su fecha de comprobación",
+      "statement": "Elige el rol al que aspiras a medio plazo y escribe un registro breve de decisión, en 4 a 6 líneas:\n\n1) Rol y nivel: qué rol quieres acreditar y qué experiencia tienes hoy, con el nivel de certificación que corresponde a esa combinación.\n\n2) Certificación y código: qué certificación eliges, qué código con versión usa su examen y qué rol acredita exactamente.\n\n3) Fuente y fecha: en qué página oficial lo comprobaste y qué día, para saber cuándo vuelve a caducar ese dato.\n\n4) Qué cambia si cambia la versión: qué harías si la página de novedades anunciara una versión nueva con fechas de transición.\n\nNo hay una única respuesta correcta: cuenta que el registro nombre el rol, el código con versión y la fuente. Escríbelo con tus palabras; releerlo antes de inscribirte te recordará qué comprobar.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "rol y nivel",
+        "código con versión",
+        "fuente oficial"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://aws.amazon.com/certification/",
+        "https://aws.amazon.com/certification/coming-soon/"
+      ],
+      "order": 19
+    }
+  ]
+}
