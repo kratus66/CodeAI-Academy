@@ -1,0 +1,1139 @@
+{
+  "code": "AWS-U0.1.3",
+  "lessons": [
+    {
+      "slug": "aws-u0-1-3-metodo-de-estudio",
+      "title": "Método de estudio: repaso espaciado, simulacros y registro de errores",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Estudiar para una certificación no es leer hasta que todo suene conocido: es responder preguntas, anotar por qué fallas y volver sobre lo fallado antes de que se olvide. El método de esta ruta tiene tres piezas que se alimentan entre sí. La sesión de estudio produce la primera lista de fallos. El registro de errores guarda cada fallo con lo necesario para repasarlo. Y el repaso espaciado devuelve esas preguntas en vueltas cada vez más separadas, cerrando con simulacros completos que miden tu disposición. La pieza que une las tres es el registro: sin él, el repaso se convierte en releer lo mismo y el simulacro, en una nota que se olvida."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas y su trabajo",
+          "items": [
+            "Sesión de estudio: lees o ves el recurso de la unidad y respondes sus preguntas antes de volver al texto. Produce la primera lista de fallos.",
+            "Registro de errores: por cada fallo, el dominio del examen, la restricción del enunciado que no aplicaste y el recurso recomendado que acompañaba al feedback.",
+            "Repaso espaciado: cada vuelta empieza por lo fallado y llega más tarde que la anterior. Lo que aciertas se aleja; lo que vuelve a fallar regresa pronto.",
+            "Simulacro completo: se resuelve de una vez, sin apuntes, y da una puntuación con formato de examen con la que decides si presentarte."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué ofrece AWS para practicar",
+          "text": "AWS Skill Builder reúne la formación en línea de AWS, y su capa gratuita incluye las series de preguntas de práctica oficiales y los cursos Exam Prep. Las series las desarrolla AWS, demuestran el estilo de los exámenes de certificación e incluyen feedback detallado y recursos recomendados. Los cursos Exam Prep exploran las áreas de un examen y revisan preguntas de muestra de cada dominio. Con suscripción se añaden los exámenes de práctica oficiales, los laboratorios y más preguntas de práctica. La página de preparación de AWS recomienda además el examen de práctica completo como paso previo a presentarse: da una puntuación con formato de examen que indica si aprobarías y un feedback de las opciones con recursos para profundizar."
+        },
+        {
+          "type": "list",
+          "title": "Cada recurso oficial y para qué sirve",
+          "items": [
+            "Series de preguntas de práctica oficiales: gratuitas y desarrolladas por AWS. Demuestran el estilo de los exámenes de certificación e incluyen feedback detallado y recursos recomendados.",
+            "Cursos Exam Prep: cursos digitales que exploran las áreas de un examen y revisan preguntas de muestra de cada dominio.",
+            "Exámenes de práctica oficiales: misma dificultad y estilo que el examen de certificación, con una puntuación con formato de examen que indica si aprobarías. Requieren suscripción.",
+            "Laboratorios hands-on y Cloud Quest: entornos que reflejan escenarios reales de AWS para lo que se aprende haciendo.",
+            "Webinars de preparación: sesiones en directo, gratuitas, impartidas por instructores acreditados de AWS.",
+            "Skills Profile: perfil donde se muestran las certificaciones, las insignias y los logros prácticos."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómo se agenda un repaso",
+          "text": "Cada repaso se decide con dos preguntas: qué entra y cuándo llega. Qué entra lo fija el registro: primero las preguntas que fallaste, después las que ya aciertas. Cuándo llega lo decide tu calendario, con una condición: cada vuelta tiene que caer más tarde que la anterior, y lo que vuelve a fallar regresa a la primera vuelta. Ejemplo resuelto: un candidato falla tres preguntas de un dominio en la sesión del lunes. Anota las tres con su restricción y su recurso recomendado. En la vuelta siguiente responde primero esas tres y después dos que ya acertó. La vuelta posterior llega más tarde y vuelve a empezar por lo que siga fallando. Cuando el registro deja de crecer durante dos vueltas seguidas, hace el simulacro completo y decide con su resultado. Ninguna de estas reglas viene de AWS: son el método de la ruta, y cada persona ajusta sus fechas a su calendario. Lo que no se ajusta es el orden: primero lo fallado."
+        },
+        {
+          "type": "mermaid",
+          "title": "El ciclo de estudio, registro y repaso",
+          "code": "flowchart TD\n  A[\"Estudiar la unidad y su recurso\"] --> B[\"Responder las preguntas de práctica\"]\n  B --> C{\"¿Algún fallo?\"}\n  C -- \"Sí\" --> D[\"Anotar dominio, restricción y recurso recomendado\"]\n  D --> E[\"Repaso: primero lo fallado, después lo acertado\"]\n  E --> F{\"¿Vuelve a fallar?\"}\n  F -- \"Sí\" --> D\n  F -- \"No\" --> G[\"Programar la vuelta siguiente más tarde\"]\n  C -- \"No\" --> G\n  G --> H[\"Simulacro completo sin apuntes\"]\n  H --> I[\"Leer la puntuación y el feedback de las falladas\"]\n  I --> J{\"¿Disposición suficiente?\"}\n  J -- \"No\" --> D\n  J -- \"Sí\" --> K[\"Reservar el examen\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica: confundir la nota del simulacro con el plan",
+          "text": "El resultado del simulacro no es el objetivo: es el punto de partida para elegir qué repasar. Los exámenes de práctica oficiales devuelven, además de la puntuación con formato de examen, un feedback de las opciones de cada pregunta con recursos recomendados. Un candidato que solo anota «he sacado X» tira la parte que convierte el simulacro en un plan; uno que anota las falladas con su recurso recomendado sale del simulacro con la siguiente vuelta de repaso ya decidida."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: releer en vez de recuperar",
+          "text": "Causa: releer el tema se siente productivo y no expone ninguna laguna, porque el texto siempre está delante. Consecuencia: el repaso confirma lo que ya sabías y no toca lo que fallas, así que el día del examen el fallo aparece igual, con la sensación de haber estudiado. Solución: en cada sesión, responde primero las preguntas de la unidad y vuelve al texto solo con lo que hayas fallado; lo que no falla no necesita otra lectura, necesita otra vuelta más tarde."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: llevar un registro que no se puede usar",
+          "text": "Causa: se anota lo primero que aparece —cuántas fallaste, o el texto de la opción equivocada— porque es rápido y parece suficiente. Consecuencia: semanas después el registro no dice qué unidad repasar, ni por qué falló la pregunta, ni qué recurso recomendaba el feedback; se abandona y el repaso vuelve a empezar de cero. Solución: una línea por fallo con el dominio del examen, la restricción del enunciado que no aplicaste, el recurso recomendado y la fecha de la próxima vuelta; si falta uno de esos datos, la entrada no sirve para repasar."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Planificar y ejecutar un ciclo de estudio con repaso espaciado, simulacros completos y un registro de errores utilizable, y justificar cada vuelta del ciclo. Criterio: ante un fallo nuevo, escribes la entrada del registro con dominio, restricción y recurso recomendado, y dices qué vuelta de repaso lo recoge y por qué llega más tarde que la anterior. Esta unidad no prepara un examen concreto: usa los recursos de preparación de AWS como material para montar el ciclo."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee el ejemplo del candidato que falla tres preguntas el lunes y rehazlo tapando la explicación: qué anota de cada fallo, por dónde empieza la vuelta siguiente, cuándo llega la posterior y con qué decide hacer el simulacro. Después responde de memoria: qué tres datos guarda el registro, en qué orden entra el contenido de un repaso y qué parte del resultado de un simulacro se aprovecha."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El plan de repaso no amplía los intervalos». Un plan escrito como objeto repite el mismo día en sus tres repasos, así que no espacia nada. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan, los tres repasos siguen siendo los mismos y cada uno llega más tarde que el anterior."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La sesión de repaso empieza por lo que ya dominas». El orden de la sesión deja fuera una pregunta pendiente y coloca delante las que ya aciertas. Criterio de paso: cada pregunta del registro aparece una vez en el orden nuevo, las pendientes van antes que las acertadas y entre las pendientes va primero la que más veces fallaste."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un plan de estudio de dos semanas. Audítalo en «Auditar un plan de estudio generado por IA»: marca solo los defectos reales (lectura sin recuperación, simulacro sin revisión del feedback, registro que solo cuenta fallos) y deja sin marcar lo que es correcto aunque parezca sospechoso, como que el plan se apoye en series de preguntas gratuitas. Contrasta lo que afirme el plan con la página de preparación de AWS y la de formación digital (leídas el 2026-11-12) antes de decidir si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe en una línea qué recurso o qué paso del ciclo decide cada una; al corregir, lee la explicación de cada opción y anota si fallaste por no leer el feedback, por no espaciar el repaso o por no partir de lo fallado. Criterio de paso: al menos 6 de 8 correctas y una causa escrita por cada fallo."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Monta tu propio registro con una semana de preguntas de esta etapa: una línea por fallo con dominio, restricción, recurso recomendado y fecha de la próxima vuelta, y programa dos vueltas con intervalos crecientes. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero lleva dos simulacros con la misma puntuación y afirma que su repaso funciona; ¿qué revisas primero, el registro de errores o la puntuación?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-certification-preparacion",
+          "order": 0,
+          "note": "Preparación oficial: series de preguntas de práctica, cursos Exam Prep, exámenes de práctica, laboratorios y webinars."
+        },
+        {
+          "resourceSlug": "aws-skill-builder",
+          "order": 1,
+          "note": "Plataforma de formación en línea de AWS, con el catálogo donde se filtran los recursos de preparación de exámenes."
+        },
+        {
+          "resourceSlug": "aws-formacion-digital",
+          "order": 2,
+          "note": "Formación digital autoasistida, entornos de práctica hands-on y recursos de preparación de exámenes."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Las series de preguntas son gratuitas, las desarrolla AWS y demuestran el estilo de los exámenes de certificación con feedback detallado y recursos recomendados. Los exámenes de práctica, con suscripción, tienen la misma dificultad y estilo que el examen y dan una puntuación con formato de examen que indica si aprobarías."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Series de preguntas y exámenes de práctica",
+      "statement": "¿En qué se diferencian las series de preguntas de práctica oficiales de los exámenes de práctica oficiales?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "preguntas de práctica",
+        "examen de práctica",
+        "preparación"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El dominio del examen, la restricción del enunciado que no aplicaste y el recurso recomendado que acompañaba al feedback; con esos tres datos la vuelta siguiente empieza por lo fallado y sabe qué unidad y qué recurso volver a estudiar."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los tres datos de un fallo",
+      "statement": "¿Qué conviene anotar de cada fallo para que el repaso siguiente sepa por dónde empezar?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "registro de errores",
+        "dominio del examen",
+        "recurso recomendado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cursos digitales que exploran las áreas de un examen y revisan preguntas de muestra de cada dominio; la suscripción añade cursos con más preguntas de práctica y laboratorios."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Cursos Exam Prep",
+      "statement": "¿Qué son los cursos Exam Prep de AWS Skill Builder?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Exam Prep",
+        "áreas del examen",
+        "preguntas de muestra"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/",
+        "https://aws.amazon.com/training/digital/"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una puntuación con formato de examen que indica si aprobarías o no y sirve para medir tu disposición. AWS lo describe como un paso muy recomendado antes de presentarse, y acompaña las preguntas de feedback con recursos recomendados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: La señal del simulacro",
+      "statement": "¿Qué señal da un examen de práctica oficial antes de reservar el examen?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "simulacro",
+        "disposición",
+        "examen de práctica"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para practicar lo que se aprende haciendo: laboratorios y entornos inmersivos que reflejan escenarios reales de AWS. Cloud Quest lo plantea como un juego de rol en el que se resuelven retos mientras se aprenden conceptos de tecnología de AWS."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Laboratorios hands-on",
+      "statement": "¿Para qué sirven los laboratorios y Cloud Quest en la preparación?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "laboratorios",
+        "práctica hands-on",
+        "Cloud Quest"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/",
+        "https://aws.amazon.com/training/digital/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Sesiones en directo gratuitas, impartidas por instructores acreditados de AWS, que ayudan a preparar los exámenes de certificación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Webinars de preparación",
+      "statement": "¿Qué aportan los webinars de preparación de AWS?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "webinars",
+        "instructores acreditados",
+        "preparación"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de repaso de una unidad escrito como objeto. Tiene un defecto principal.\nexport const plan = {\n  unidad: \"AWS-U0.1.2\",\n  falladas: [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"],\n  repasos: [\n    {\n      id: \"repaso-1\",\n      dia: 2,\n      preguntas: [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"],\n    },\n    {\n      id: \"repaso-2\",\n      dia: 2,\n      preguntas: [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"],\n    },\n    {\n      id: \"repaso-3\",\n      dia: 2,\n      preguntas: [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  unidad: \"AWS-U0.1.2\",\n  falladas: [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"],\n  repasos: [\n    {\n      id: \"repaso-1\",\n      dia: 2,\n      preguntas: [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"],\n    },\n    {\n      id: \"repaso-2\",\n      dia: 5,\n      preguntas: [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"],\n    },\n    {\n      id: \"repaso-3\",\n      dia: 12,\n      preguntas: [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"],\n    },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Un repaso espaciado solo sirve si cada vuelta llega más tarde que la anterior: mira el campo `dia` de los tres repasos antes de tocar nada más."
+        },
+        {
+          "level": 2,
+          "text": "Los tres repasos están programados el mismo día, así que el plan repite la misma sesión tres veces. Cambia `dia` para que la distancia entre una vuelta y la siguiente crezca."
+        },
+        {
+          "level": 3,
+          "text": "Por ejemplo, día 2, día 5 y día 12: la primera vuelta queda cerca de la sesión en la que fallaste y las siguientes se alejan. No toques `falladas`, `preguntas` ni los `id`."
+        }
+      ],
+      "tests": [
+        {
+          "name": "cada repaso llega más tarde que el anterior",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "for (let i = 1; i < plan.repasos.length; i += 1) {\n  assert.ok(\n    plan.repasos[i].dia > plan.repasos[i - 1].dia,\n    plan.repasos[i].id + \" no llega después que \" + plan.repasos[i - 1].id,\n  );\n}"
+          }
+        },
+        {
+          "name": "cada repaso empieza por las preguntas falladas",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const falladas = [...plan.falladas].sort();\nfor (const repaso of plan.repasos) {\n  assert.deepStrictEqual(\n    [...repaso.preguntas].slice(0, falladas.length).sort(),\n    falladas,\n    repaso.id + \" no empieza por las preguntas falladas\",\n  );\n}"
+          }
+        },
+        {
+          "name": "el número de repasos y sus identificadores no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(plan.repasos.map((repaso) => repaso.id), [\"repaso-1\", \"repaso-2\", \"repaso-3\"]);"
+          }
+        },
+        {
+          "name": "no se alteraron las preguntas falladas ni las de cada repaso",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(plan.falladas, [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"]);\nfor (const repaso of plan.repasos) {\n  assert.deepStrictEqual([...repaso.preguntas].sort(), [\"aws-u0-1-2-quiz-02\", \"aws-u0-1-2-quiz-06\"]);\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-debug-01",
+      "type": "DEBUG",
+      "title": "El plan de repaso no amplía los intervalos",
+      "statement": "El objeto `plan` describe el repaso de una unidad: las preguntas que un candidato falló y una serie de repasos con el día en que toca cada uno. Localiza el defecto principal del plan y corrígelo sin cambiar las preguntas falladas, el número de repasos ni las preguntas de cada uno de ellos. Mantén la forma del valor exportado (`export const plan = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "repaso espaciado",
+        "intervalo",
+        "registro de errores"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Sesión de repaso construida a partir de un registro de errores. Tiene un defecto principal.\nexport const sesion = {\n  unidad: \"AWS-U0.1.2\",\n  registro: [\n    { pregunta: \"aws-u0-1-2-quiz-02\", fallos: 2, acertadaUltimaVez: false },\n    { pregunta: \"aws-u0-1-2-quiz-05\", fallos: 0, acertadaUltimaVez: true },\n    { pregunta: \"aws-u0-1-2-quiz-06\", fallos: 1, acertadaUltimaVez: false },\n    { pregunta: \"aws-u0-1-2-quiz-08\", fallos: 0, acertadaUltimaVez: true },\n  ],\n  orden: [\n    \"aws-u0-1-2-quiz-05\",\n    \"aws-u0-1-2-quiz-08\",\n    \"aws-u0-1-2-quiz-02\",\n  ],\n};\n",
+      "solution": {
+        "code": "export const sesion = {\n  unidad: \"AWS-U0.1.2\",\n  registro: [\n    { pregunta: \"aws-u0-1-2-quiz-02\", fallos: 2, acertadaUltimaVez: false },\n    { pregunta: \"aws-u0-1-2-quiz-05\", fallos: 0, acertadaUltimaVez: true },\n    { pregunta: \"aws-u0-1-2-quiz-06\", fallos: 1, acertadaUltimaVez: false },\n    { pregunta: \"aws-u0-1-2-quiz-08\", fallos: 0, acertadaUltimaVez: true },\n  ],\n  orden: [\n    \"aws-u0-1-2-quiz-02\",\n    \"aws-u0-1-2-quiz-06\",\n    \"aws-u0-1-2-quiz-05\",\n    \"aws-u0-1-2-quiz-08\",\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el orden recorre una vez cada pregunta del registro",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(\n  [...sesion.orden].sort(),\n  sesion.registro.map((entrada) => entrada.pregunta).sort(),\n  \"el orden no coincide con las preguntas del registro\",\n);\nassert.strictEqual(new Set(sesion.orden).size, sesion.orden.length, \"el orden repite preguntas\");"
+          }
+        },
+        {
+          "name": "las preguntas pendientes van antes que las acertadas",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const pendientes = sesion.registro\n  .filter((entrada) => !entrada.acertadaUltimaVez)\n  .map((entrada) => entrada.pregunta);\nconst acertadas = sesion.registro\n  .filter((entrada) => entrada.acertadaUltimaVez)\n  .map((entrada) => entrada.pregunta);\nconst ultimaPendiente = Math.max(...pendientes.map((pregunta) => sesion.orden.indexOf(pregunta)));\nconst primeraAcertada = Math.min(...acertadas.map((pregunta) => sesion.orden.indexOf(pregunta)));\nassert.ok(ultimaPendiente < primeraAcertada, \"hay una pregunta pendiente después de una acertada\");"
+          }
+        },
+        {
+          "name": "entre las pendientes, primero la que más veces fallaste",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const pendientes = sesion.registro\n  .filter((entrada) => !entrada.acertadaUltimaVez)\n  .sort((a, b) => b.fallos - a.fallos)\n  .map((entrada) => entrada.pregunta);\nconst posiciones = pendientes.map((pregunta) => sesion.orden.indexOf(pregunta));\nassert.deepStrictEqual(\n  posiciones,\n  [...posiciones].sort((a, b) => a - b),\n  \"las pendientes no están ordenadas por número de fallos\",\n);"
+          }
+        },
+        {
+          "name": "el registro no se ha tocado",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "assert.deepStrictEqual(sesion.registro, [\n  { pregunta: \"aws-u0-1-2-quiz-02\", fallos: 2, acertadaUltimaVez: false },\n  { pregunta: \"aws-u0-1-2-quiz-05\", fallos: 0, acertadaUltimaVez: true },\n  { pregunta: \"aws-u0-1-2-quiz-06\", fallos: 1, acertadaUltimaVez: false },\n  { pregunta: \"aws-u0-1-2-quiz-08\", fallos: 0, acertadaUltimaVez: true },\n]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-debug-02",
+      "type": "DEBUG",
+      "title": "La sesión de repaso empieza por lo que ya dominas",
+      "statement": "El objeto `sesion` combina un registro de errores con el orden en que un candidato va a repasar cuatro preguntas de una unidad. Ese orden no sirve para cerrar sus lagunas: cada pregunta del registro debe aparecer una vez, las que aún no acierta deben ir antes que las que ya acierta y, entre las pendientes, la que más veces falló va primero. Corrige solo el orden del campo `orden` y mantén la forma del valor exportado (`export const sesion = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "sesión de repaso",
+        "registro de errores",
+        "orden de las preguntas"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Plan de estudio para el examen (borrador generado por un asistente)\nObjetivo: aprobar el examen de certificación en dos semanas.\nSemana 1\n- Lunes a jueves: leer una vez cada unidad de la etapa, en el orden del temario.\n- Viernes: ver dos webinars de preparación sin tomar notas.\nSemana 2\n- Repetir la lectura de todas las unidades y subrayar lo importante.\n- Sábado: hacer un simulacro completo y anotar la nota final.\nRegistro de errores\n- Anotar cuántas preguntas fallaste en cada sesión.\nRecursos\n- Series de preguntas de práctica oficiales: son gratuitas, demuestran el estilo del examen y traen feedback con recursos recomendados.\n- Exámenes de práctica oficiales: dan una puntuación con formato de examen que indica si aprobarías."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              4,
+              5
+            ],
+            "label": "Semana 1: lectura y webinars",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "El plan no incluye ni una sola recuperación: leer las unidades en orden y ver webinars sin tomar notas no produce evidencia de lo que sabes responder. Sin preguntas de práctica no hay fallos que registrar y el repaso se queda sin materia."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              7,
+              8
+            ],
+            "label": "Semana 2: segunda lectura y simulacro",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Repite la actividad pasiva de la semana 1 y usa el simulacro como nota final: se descarta el feedback de las opciones con recursos recomendados, que es lo que convierte el resultado en un plan de repaso. Además, el único simulacro llega al final, cuando ya no queda margen para corregir."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              10,
+              10
+            ],
+            "label": "Registro de errores",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Un recuento por sesión no permite repasar: no identifica la pregunta, ni el dominio del examen, ni la restricción que no se aplicó, ni el recurso recomendado. El registro se queda en una cifra que nadie vuelve a abrir."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              12,
+              12
+            ],
+            "label": "Series de preguntas de práctica oficiales",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: AWS ofrece las series de preguntas de práctica oficiales en la capa gratuita de AWS Skill Builder, demuestran el estilo de los exámenes de certificación e incluyen feedback detallado con recursos recomendados. Que el plan se apoye en un recurso gratuito no es un defecto."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              13,
+              13
+            ],
+            "label": "Exámenes de práctica oficiales",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "También es correcto: los exámenes de práctica oficiales dan una puntuación con formato de examen que indica si aprobaste o no, y AWS los recomienda como paso previo a presentarse. La falta de uso de ese feedback ya se corrige en el hallazgo de la línea 8."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un plan de estudio generado por IA",
+      "statement": "Un asistente de IA redactó este plan de estudio de dos semanas para una certificación. Audítalo contra el método de la unidad y las páginas de preparación de AWS: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el plan se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "registro de errores",
+        "repaso espaciado",
+        "simulacro"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/",
+        "https://aws.amazon.com/training/digital/"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El dominio del examen al que pertenece la pregunta, la restricción del enunciado y el recurso recomendado del feedback",
+            "explanation": "Es lo que permite decidir qué repasar: el dominio sitúa la pregunta en el examen, la restricción explica por qué falló y el recurso recomendado dice dónde volver a estudiarlo."
+          },
+          {
+            "id": "b",
+            "text": "El número de preguntas respondidas en la sesión y el porcentaje de aciertos de esa semana",
+            "explanation": "Describe la sesión y no el fallo: con el recuento y el porcentaje sabes cuánto fallaste, pero no qué contenido ni qué recurso toca repasar."
+          },
+          {
+            "id": "c",
+            "text": "El nombre de la serie de preguntas que usaste y la hora a la que terminó cada sesión",
+            "explanation": "Identifica la sesión y su horario, que es lo que menos cambia la decisión de repaso: no dice qué restricción no aplicaste ni dónde volver a estudiarlo."
+          },
+          {
+            "id": "d",
+            "text": "El texto completo de las opciones que descartaste y el nombre del servicio de la opción correcta",
+            "explanation": "El texto de las opciones está en la propia pregunta y no explica el fallo; lo que orienta el repaso es la restricción que no viste, no el servicio que aparecía en la respuesta."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué añadir al registro de errores",
+      "statement": "Un candidato lleva varias semanas respondiendo series de preguntas de práctica y su registro de errores solo guarda cuántas falló cada día. Cuando vuelve al registro para preparar el siguiente repaso, no sabe qué estudiar. ¿Qué dato añadido hace el registro MÁS útil para ese repaso?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "registro de errores",
+        "recurso recomendado",
+        "dominio del examen"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Repasar las unidades con menos anotaciones y subrayar otra vez sus definiciones principales",
+            "explanation": "Es la actividad que ya dominas: subrayar no produce ninguna medida de lo que respondes bajo condiciones de examen, así que no informa de tu disposición."
+          },
+          {
+            "id": "b",
+            "text": "Ver dos webinars de preparación seguidos y anotar los servicios que se mencionan en cada uno",
+            "explanation": "Los webinars enseñan a encarar el examen, pero verlos no mide cómo respondes tú: sigue sin haber una señal sobre tu nivel."
+          },
+          {
+            "id": "c",
+            "text": "Hacer un simulacro completo con puntuación de examen y revisar el feedback de las preguntas falladas",
+            "explanation": "El examen de práctica oficial da una puntuación con formato de examen que indica si aprobarías, y su feedback de las opciones con recursos recomendados señala qué repasar: es la señal de disposición que describe AWS."
+          },
+          {
+            "id": "d",
+            "text": "Comparar el temario de la etapa con la lista de servicios que aparecen en la consola de AWS",
+            "explanation": "Comparar temario y catálogo mide la cobertura del contenido, no tu capacidad de responder preguntas: deja sin medir lo único que decide el simulacro."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-quiz-02",
+      "type": "QUIZ",
+      "title": "La señal más fiable antes de reservar el examen",
+      "statement": "Un candidato ha terminado todas las unidades de la etapa y quiere saber si ya está listo para reservar el examen. Tiene una tarde libre y no quiere gastarla en algo que no le diga nada sobre su disposición. ¿Qué acción da la señal MÁS fiable?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "simulacro",
+        "disposición",
+        "examen de práctica"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Repetir esa misma pregunta hasta acertarla, para cerrar la sesión con la respuesta correcta delante",
+            "explanation": "Repetir de inmediato te deja con la respuesta recién leída en la memoria, no con la causa del fallo: la entrada del registro se queda vacía y el repaso siguiente no sabe qué repasar."
+          },
+          {
+            "id": "b",
+            "text": "Pasar a la siguiente pregunta y volver a ese bloque entero al final de la sesión",
+            "explanation": "Aplaza la lectura del feedback y, en una sesión larga, se queda sin hacer: la causa del fallo se pierde y no llega al registro."
+          },
+          {
+            "id": "c",
+            "text": "Leer la explicación de todas las opciones, anotar la restricción que no aplicaste y el recurso recomendado",
+            "explanation": "El feedback explica las opciones y propone recursos recomendados: leerlo y anotar la restricción convierte el fallo en una entrada de registro con la que se puede repasar, que es lo que el método pide primero."
+          },
+          {
+            "id": "d",
+            "text": "Abrir la documentación del servicio y leer su página de introducción completa antes de seguir",
+            "explanation": "Leer la documentación completa antes de entender el fallo cambia una sesión de preguntas por una de lectura y no deja anotada la causa ni el recurso recomendado."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué haces primero tras un fallo",
+      "statement": "Resuelves una serie de preguntas de práctica y fallas una sobre almacenamiento. Tienes el feedback de la pregunta delante y el registro de errores abierto. ¿Qué haces PRIMERO?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "feedback",
+        "registro de errores",
+        "restricción"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Los laboratorios hands-on de la consola, que se resuelven con tareas guiadas sobre servicios reales",
+            "explanation": "Los laboratorios entrenan la ejecución en la consola, no la lectura de enunciados: no muestran cómo se pregunta en el examen."
+          },
+          {
+            "id": "b",
+            "text": "Las series de preguntas de práctica oficiales, que demuestran el estilo y traen feedback detallado",
+            "explanation": "Es lo que AWS describe para entender el formato: son gratuitas, las desarrolla AWS, demuestran el estilo de los exámenes de certificación e incluyen feedback detallado y recursos recomendados."
+          },
+          {
+            "id": "c",
+            "text": "Los cursos Exam Prep, que repasan las áreas del examen y las preguntas de muestra por dominio",
+            "explanation": "Los cursos Exam Prep explican las áreas del examen y revisan preguntas de muestra; sirven para estudiar el temario, no para ver series de preguntas con su feedback y medirte con ellas."
+          },
+          {
+            "id": "d",
+            "text": "Los webinars de preparación, que se emiten en directo con instructores acreditados por AWS",
+            "explanation": "Los webinars orientan sobre cómo prepararse, pero su formato es una sesión en directo con instructor, no una serie de preguntas con feedback con la que puedas medirte."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-quiz-04",
+      "type": "QUIZ",
+      "title": "Recurso gratuito para ver el estilo de las preguntas",
+      "statement": "Un candidato quiere ver el estilo de las preguntas del examen antes de decidir si paga la suscripción de AWS Skill Builder. ¿Qué recurso gratuito le sirve MEJOR para eso?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "preguntas de práctica",
+        "estilo del examen",
+        "recursos gratuitos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "b"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Incluyen feedback de las opciones de cada pregunta, con recursos recomendados para profundizar",
+            "explanation": "Es una de las características que AWS describe: el feedback de las opciones con recursos recomendados acompaña a las preguntas del examen de práctica."
+          },
+          {
+            "id": "b",
+            "text": "Indican, con una puntuación con formato de examen, si aprobarías o no",
+            "explanation": "También la describe AWS: la puntuación con formato de examen indica si aprobaste o no y ayuda a medir tu disposición antes de presentarte."
+          },
+          {
+            "id": "c",
+            "text": "Reproducen preguntas del examen real que te tocará resolver",
+            "explanation": "No: los exámenes de práctica demuestran el estilo y la dificultad del examen, no reproducen preguntas reales, y ninguna filtración forma parte de la preparación oficial."
+          },
+          {
+            "id": "d",
+            "text": "Se resuelven en grupo con un instructor acreditado que corrige en directo",
+            "explanation": "No: la corrección en directo con instructores corresponde a clases y webinars; el examen de práctica se resuelve solo y devuelve la puntuación con el feedback."
+          },
+          {
+            "id": "e",
+            "text": "Sustituyen al examen de certificación y entregan la credencial",
+            "explanation": "No: la credencial solo la otorga el examen de certificación; un examen de práctica no lo sustituye ni acredita nada."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué ofrecen los exámenes de práctica oficiales",
+      "statement": "Un empleado con suscripción de AWS Skill Builder quiere saber qué le ofrecen los exámenes de práctica oficiales frente a las series de preguntas de práctica, que ya conoce. Selecciona DOS características que AWS atribuye a los exámenes de práctica oficiales.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "examen de práctica",
+        "feedback",
+        "puntuación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Las series de preguntas de práctica oficiales, con feedback detallado de cada opción",
+            "explanation": "Miden tu nivel con preguntas y feedback, pero no están organizadas por áreas del examen con preguntas de muestra de cada dominio, que es lo que el escenario pide."
+          },
+          {
+            "id": "b",
+            "text": "El webinar de preparación, con instructores acreditados que responden preguntas en directo",
+            "explanation": "Un webinar es una sesión en directo y puede cubrir el examen, pero no ofrece un repaso por áreas con preguntas de muestra que puedas seguir a tu ritmo."
+          },
+          {
+            "id": "c",
+            "text": "El laboratorio hands-on, con tareas guiadas sobre los servicios de la etapa",
+            "explanation": "El laboratorio entrena la ejecución práctica de tareas y no repasa las áreas del examen con preguntas de muestra de cada dominio."
+          },
+          {
+            "id": "d",
+            "text": "El curso Exam Prep, que explora las áreas del examen y revisa preguntas de muestra por dominio",
+            "explanation": "AWS describe los cursos Exam Prep como cursos digitales que exploran las áreas de un examen y revisan preguntas de muestra de cada dominio: es el recurso pensado para ese repaso."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-quiz-06",
+      "type": "QUIZ",
+      "title": "Repaso por áreas del examen antes de los simulacros",
+      "statement": "Un candidato ya conoce los servicios de la etapa y quiere repasar las áreas del examen dominio por dominio, con preguntas de muestra de cada una, antes de empezar los simulacros. ¿Qué recurso encaja MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Exam Prep",
+        "áreas del examen",
+        "preguntas de muestra"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/",
+        "https://aws.amazon.com/training/digital/"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Empezar por las preguntas que falló y dejó anotadas, y pasar después a las que ya acierta",
+            "explanation": "Concentra el tiempo en lo que aún no sabes: las anotadas son justo las que no puedes defender todavía, y las que ya aciertas siguen en el repaso, después."
+          },
+          {
+            "id": "b",
+            "text": "Añadir preguntas de otra unidad al principio, para repasar más contenido en la misma sesión",
+            "explanation": "Suma contenido nuevo sin haber cerrado los fallos de esta unidad: acabas con más preguntas respondidas y los mismos huecos."
+          },
+          {
+            "id": "c",
+            "text": "Responder primero las que ya acierta, para entrar en calor antes de las difíciles",
+            "explanation": "Es el orden inverso al que fija el registro: gasta la sesión en lo que ya domina y llega a lo fallado con menos atención."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar el orden original por un orden aleatorio, para no memorizar la secuencia",
+            "explanation": "El orden aleatorio cambia la secuencia, no el reparto del tiempo: sigue dedicando lo mismo a lo fallado y a lo que ya sabe."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-quiz-07",
+      "type": "QUIZ",
+      "title": "Qué cambia en el segundo repaso",
+      "statement": "En su segundo repaso de una unidad, un candidato vuelve a responder todas las preguntas en el orden original y dedica el mismo tiempo a cada una. Quiere gastar MENOS tiempo y cerrar antes sus lagunas. ¿Qué cambia en ese repaso?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "repaso espaciado",
+        "registro de errores",
+        "tiempo de estudio"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "b"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Reprogramar en la siguiente vuelta las preguntas que falló, empezando por ellas",
+            "explanation": "Es el uso que convierte el registro en un plan: la pregunta fallada vuelve en la siguiente vuelta y al principio de la sesión."
+          },
+          {
+            "id": "b",
+            "text": "Agrupar los fallos por dominio del examen para decidir qué unidad repasar",
+            "explanation": "El dominio sitúa cada fallo en el examen y permite elegir la unidad que toca repasar en vez de repasar la etapa entera."
+          },
+          {
+            "id": "c",
+            "text": "Guardar solo el total de fallos de cada sesión, sin identificar las preguntas",
+            "explanation": "Sin identificar la pregunta no hay nada que reprogramar: el recuento dice cuánto fallaste, no qué contenido repasar."
+          },
+          {
+            "id": "d",
+            "text": "Borrar cada fallo en cuanto acierta esa pregunta una vez",
+            "explanation": "Un acierto único no cierra el fallo: la pregunta vuelve en repasos posteriores y sale del registro cuando se sostiene en el tiempo."
+          },
+          {
+            "id": "e",
+            "text": "Sustituir el simulacro completo por la lectura del registro",
+            "explanation": "El simulacro mide bajo condiciones de examen y el registro orienta el repaso: ninguno de los dos sustituye al otro."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-quiz-08",
+      "type": "QUIZ",
+      "title": "Cómo se mantiene útil un registro de errores",
+      "statement": "Un candidato tiene un registro de errores con una línea por fallo y, desde hace dos semanas, no lo abre. Quiere que el registro le sirva de verdad en el repaso. Selecciona DOS usos que lo mantienen útil.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "registro de errores",
+        "dominio del examen",
+        "repaso espaciado"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/",
+        "https://aws.amazon.com/training/digital/"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-3-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: tu registro de errores y el repaso que lo aprovecha",
+      "statement": "Elige un fallo real de esta etapa (o el de las preguntas de práctica de esta unidad) y escribe, en 4 a 6 líneas, cómo lo conviertes en una entrada de tu registro de errores:\n\n1) Decisión: qué anotas del fallo —el dominio del examen, la restricción del enunciado que no aplicaste y el recurso recomendado que acompañaba al feedback— y qué vuelta de repaso lo recoge.\n\n2) Alternativa descartada: qué información decidiste no guardar (por ejemplo, la nota de la sesión o el texto de la opción equivocada) y por qué no basta para repasar.\n\n3) Consecuencia: qué hará distinto tu siguiente repaso gracias a esa entrada, y si eso cambia el momento en que harás el simulacro completo.\n\n4) Pilar: qué pilar del Well-Architected Framework se parece más a medir y corregir con evidencia (excelencia operativa, fiabilidad u otro) y por qué.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el fallo, su causa y la vuelta de repaso que lo recoge. Releerlo antes de tu próximo simulacro te recordará por dónde empezar.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "registro de errores",
+        "repaso espaciado",
+        "simulacro"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://aws.amazon.com/certification/certification-prep/",
+        "https://aws.amazon.com/training/digital/"
+      ],
+      "order": 18
+    }
+  ]
+}
