@@ -1,0 +1,1278 @@
+{
+  "code": "AWS-U0.3.2",
+  "lessons": [
+    {
+      "slug": "aws-u0-3-2-dns-tcp-udp-puertos-y-tls",
+      "title": "DNS, TCP/UDP, puertos y TLS",
+      "estimatedMin": 50,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cuando alguien escribe un dominio o abre una conexión por SSH, ocurren cuatro cosas en orden. Primero, una consulta DNS traduce el nombre a una dirección IP: Route 53 guarda esa información en una zona alojada con registros. Segundo, el cliente abre una conexión TCP hacia esa IP en un puerto concreto; los puertos separan servicios dentro de la misma máquina y el protocolo (TCP o UDP) decide si hay conexión y confirmación de entrega. Tercero, si el servicio habla HTTPS, TLS cifra la conversación con un certificado. Cuarto, en AWS cada salto atraviesa el security group y la NACL de la subred, que filtran por protocolo, puerto y origen. Diagnosticar una conexión consiste en recorrer esas cuatro piezas en ese orden."
+        },
+        {
+          "type": "mermaid",
+          "title": "El recorrido de una conexión hasta la instancia",
+          "code": "flowchart TD\n  A[\"Escribes www.ejemplo.com\"] --> B[\"Consulta DNS\"]\n  B --> C{\"¿Route 53 tiene el registro?\"}\n  C -- \"Sí\" --> D[\"Devuelve la dirección IP del registro\"]\n  C -- \"No\" --> E[\"El nombre no resuelve: revisa la zona y el registro\"]\n  D --> F[\"Conexión TCP al puerto del servicio\"]\n  F --> G{\"Security group: ¿protocolo, puerto y origen permitidos?\"}\n  G -- \"No\" --> H[\"La conexión se queda esperando o se rechaza\"]\n  G -- \"Sí\" --> I{\"NACL de la subred: ¿entrada y puertos efímeros de vuelta?\"}\n  I -- \"No\" --> H\n  I -- \"Sí\" --> J{\"¿El servicio usa HTTPS?\"}\n  J -- \"Sí\" --> K[\"TLS: el cliente valida el certificado\"]\n  J -- \"No\" --> L[\"La petición llega al servicio\"]\n  K --> L"
+        },
+        {
+          "type": "list",
+          "title": "Las cuatro piezas y la pregunta que responde cada una",
+          "items": [
+            "DNS: ¿a qué dirección IP corresponde el nombre? Route 53 responde a la consulta con lo que dice el registro de la zona alojada.",
+            "TCP o UDP: ¿la conversación abre conexión y confirma la entrega (TCP) o manda mensajes sin esa garantía (UDP)?",
+            "Puerto: ¿a qué servicio de la máquina va el tráfico? El security group y la NACL filtran por puerto y por protocolo.",
+            "TLS: ¿el cliente puede comprobar que habla con el dominio correcto y viajar cifrado? Lo resuelve un certificado.",
+            "Security group y NACL: ¿el origen, el puerto y el protocolo están permitidos? Son dos filtros distintos: el security group tiene estado y la NACL no."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: el SSH que dejó de entrar",
+          "text": "Un administrador entraba por SSH a una instancia Linux y dejó de poder hacerlo. Recorrido: (1) DNS: el nombre de la instancia resuelve a su dirección pública, así que el problema no está en Route 53. (2) TCP y puerto: SSH usa el puerto 22; el security group permite la entrada al 22 solo desde el rango de la oficina, y la dirección pública del administrador cambió porque la asigna el proveedor de Internet, así que el origen ya no coincide con la regla. (3) NACL: además del 22 de entrada, la NACL debe permitir la salida hacia los puertos efímeros (1024-65535), porque la respuesta viaja a un puerto temporal del cliente. (4) TLS: no interviene, porque SSH no usa el certificado de un balanceador. La corrección es autorizar el rango de direcciones del cliente, no abrir el 22 a 0.0.0.0/0."
+        },
+        {
+          "type": "table",
+          "title": "Puerto, protocolo y qué hay que comprobar",
+          "items": [
+            "22 (SSH): regla de entrada en el security group y en la NACL desde el rango de tu cliente; sin eso, la conexión no entra.",
+            "3389 (RDP): mismo criterio en Windows; la guía pide autorizar solo rangos de IP concretos.",
+            "Puertos efímeros 1024-65535: por ahí vuelve la respuesta del servidor al cliente; la NACL de salida debe permitirlos.",
+            "ICMP: no usa puertos; una regla ICMP en el security group permite, por ejemplo, hacer ping a la instancia.",
+            "0.0.0.0/0 y ::/0: significan «cualquier dirección IPv4» y «cualquier dirección IPv6»; con el 22 abierto ahí, cualquiera puede intentar entrar."
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: abrir el puerto a 0.0.0.0/0 para que «funcione»",
+          "text": "Causa: se prueba desde una red distinta a la autorizada y, en vez de averiguar qué origen falta, se abre el puerto a cualquier dirección. Consecuencia: cualquier dirección IPv4 de Internet puede intentar conectar al 22 o al 3389, y el registro de intentos se llena de tráfico ajeno. Solución: identifica la dirección o el rango real del cliente —si es dinámica, el rango que usa— y autoriza solo eso; la guía de security groups pide exactamente eso para los puertos 22 y 3389."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir el security group con la NACL",
+          "text": "Causa: los dos filtran por puerto y protocolo, así que se toca uno solo y el caso se da por resuelto. Consecuencia: el security group permite el 22 y la NACL de salida no admite los puertos efímeros, o al revés: la conexión entra pero la respuesta no vuelve. Solución: revisa los dos filtros y en ambos sentidos —entrada al puerto del servicio y salida hacia el puerto efímero del cliente— y recuerda que el security group tiene estado y la NACL no."
+        },
+        {
+          "type": "paragraph",
+          "title": "TLS y certificados en AWS",
+          "text": "TLS protege la conversación con un certificado que el cliente valida contra el nombre del dominio. AWS Certificate Manager (ACM) crea, guarda y renueva certificados X.509 públicos y privados, y sus certificados son recursos regionales: para el mismo nombre con balanceadores en varias regiones hay que solicitar o importar un certificado en cada una, porque no se pueden copiar entre regiones. Un listener de balanceador puede usar un certificado de ACM y el balanceador termina la conexión: descifra las peticiones y las entrega al destino. Para CloudFront, el certificado se solicita o se importa en la región US East (N. Virginia), es decir, us-east-1. Un certificado caducado, del dominio equivocado o de otra región se manifiesta como un aviso de TLS antes de que ninguna petición llegue a la instancia."
+        },
+        {
+          "type": "callout",
+          "title": "Cómo se reconoce en un escenario",
+          "text": "Un enunciado de puertos y TLS casi siempre esconde un filtro o una región: «la conexión se queda esperando» apunta al security group, a la NACL o a la tabla de rutas; «el navegador avisa de que la conexión no es segura» apunta al certificado o a la región en la que se pidió; «funcionaba y dejó de funcionar» apunta a un origen que cambió, como la dirección dinámica de un cliente. Antes de elegir, escribe qué pieza del recorrido explica el síntoma."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo",
+          "body": "Explicar cómo DNS, TCP/UDP, los puertos y TLS participan en una conexión y localizar en ese recorrido la pieza que falla. Criterio: ante un caso de «no conecta», nombras las cuatro piezas en orden, dices qué evidencia descarta cada una y distingues el filtro con estado (security group) del que no lo tiene (NACL)."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación",
+          "body": "Lee el ejemplo del SSH que dejó de entrar y rehazlo tapando la solución: anota qué comprueba cada pieza y qué evidencia la descarta. Después responde sin mirar: qué devuelve una consulta DNS, qué añade TCP frente a UDP, qué filtra por puerto un security group y qué hace un certificado en una conexión HTTPS. Si una respuesta no te sale, vuelve al bloque o a la lista donde aparece."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El puerto del security group que no coincide». Es un DEBUG guiado: el modelo de la VPC declara un puerto distinto al del servicio y el arnés ejecuta la conexión de extremo a extremo. Usa las tres pistas solo si te atascas. Criterio de paso: las pruebas visibles pasan, la conexión desde el rango de administración entra y desde otra dirección no."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica autónoma",
+          "body": "Sin pistas: resuelve «El certificado del sitio en la región equivocada». Corrige la región del certificado de la distribución y el listener del origen sin cambiar el dominio ni la forma del valor exportado. Criterio de paso: las pruebas visibles pasan y el registro DNS sigue siendo un alias del dominio."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración",
+          "body": "Audita «Auditar un plan de conectividad con puertos abiertos»: marca solo los hallazgos que son defectos reales, deja sin marcar lo que es correcto aunque parezca raro y decide si el plan se acepta, se corrige o se descarta. Contrasta cada afirmación con la guía de security groups y la de solución de problemas de conexión antes de dar el veredicto."
+        },
+        {
+          "kind": "assessment",
+          "title": "Evaluación",
+          "body": "Sin apuntes, responde las 8 preguntas de la unidad. En cada una escribe antes de elegir qué pieza del recorrido (DNS, TCP/UDP, puerto, TLS) explica el síntoma y qué filtro revisas. Criterio de paso: al menos 6 de 8 correctas y la pieza escrita en cada pregunta."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Escribe el diagnóstico de una conexión que no llega de un compañero: elige un síntoma real (un SSH que se queda esperando, un aviso de certificado, un dominio que resuelve a otra dirección), recorre las cuatro piezas y anota qué evidencia pedirías en cada una. Restricción: no puedes abrir ningún puerto a 0.0.0.0/0. Después completa la reflexión de la unidad. Pregunta de cierre: la conexión entra por el 22 pero la respuesta no vuelve; ¿qué revisas primero, el security group o la NACL de salida, y por qué?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-route53-conceptos",
+          "order": 0,
+          "note": "Zona alojada, registros, servidores de nombres y cómo se resuelve una consulta DNS."
+        },
+        {
+          "resourceSlug": "aws-vpc-grupos-de-seguridad",
+          "order": 1,
+          "note": "Reglas por protocolo, puerto y origen; puertos 22 y 3389, rangos concretos en vez de 0.0.0.0/0 y qué tráfico no filtran los security groups."
+        },
+        {
+          "resourceSlug": "aws-ec2-solucionar-conexion-linux",
+          "order": 2,
+          "note": "Comprobaciones de SSH que no conecta: security group, NACL, tabla de rutas, dirección pública y puertos efímeros."
+        },
+        {
+          "resourceSlug": "aws-acm-que-es",
+          "order": 3,
+          "note": "Certificados regionales, renovación, validación del dominio y el requisito de us-east-1 para CloudFront."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir a la NACL una regla de salida hacia los puertos efímeros 1024-65535",
+            "explanation": "La respuesta viaja al puerto efímero del cliente y la NACL no tiene estado: sin esa regla de salida, la conexión entra pero no vuelve."
+          },
+          {
+            "id": "b",
+            "text": "Abrir el puerto 22 del security group a 0.0.0.0/0 para descartar el filtro",
+            "explanation": "El security group ya permite el 22 desde la dirección de la oficina; abrirlo a todas las direcciones amplía la exposición sin arreglar la vuelta."
+          },
+          {
+            "id": "c",
+            "text": "Sustituir el certificado del balanceador por uno emitido en la misma región",
+            "explanation": "SSH no usa el certificado de un balanceador; el defecto está en el filtro de la NACL de la subred, no en TLS."
+          },
+          {
+            "id": "d",
+            "text": "Aumentar el TTL del registro DNS para que el nombre resuelva más rápido",
+            "explanation": "El nombre ya resuelve y el TTL solo controla cuánto se guarda en caché la respuesta; no cambia las reglas de la NACL."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-quiz-01",
+      "type": "QUIZ",
+      "title": "El SSH que entra pero no vuelve",
+      "statement": "Un administrador no consigue entrar por SSH a una instancia Linux. El security group permite el puerto 22 desde la dirección de la oficina y la NACL de la subred permite la entrada al 22, pero su regla de salida solo admite el puerto de HTTPS. ¿Qué corriges PRIMERO?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "NACL sin estado",
+        "puertos efímeros",
+        "solución de problemas de SSH"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Copiar el certificado de una región a otra desde la consola de ACM",
+            "explanation": "ACM no permite copiar certificados entre regiones: son recursos regionales y cada región necesita su propia solicitud o importación."
+          },
+          {
+            "id": "b",
+            "text": "Solicitar o importar un certificado en cada región y volver a validar el dominio",
+            "explanation": "Es lo que pide la documentación de ACM: un certificado por región y la validación del dominio en cada uno, sin copias entre regiones."
+          },
+          {
+            "id": "c",
+            "text": "Usar el certificado de la región us-east-1 en los balanceadores de las otras dos",
+            "explanation": "us-east-1 solo se exige para CloudFront; un certificado de otra región no se puede asociar al listener de un balanceador."
+          },
+          {
+            "id": "d",
+            "text": "Crear un certificado por cada zona de disponibilidad de cada región",
+            "explanation": "Los certificados de ACM pertenecen a la región, no a la zona de disponibilidad; multiplicarlos por zona no cumple el requisito."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-quiz-02",
+      "type": "QUIZ",
+      "title": "El mismo dominio en tres regiones",
+      "statement": "Una empresa publica el mismo nombre de dominio con balanceadores en tres regiones. ¿Qué debe hacer ÚNICAMENTE con los certificados para que cada balanceador tenga el suyo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "certificados regionales",
+        "AWS Certificate Manager",
+        "balanceador de carga"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Se bloquea porque ninguna regla de salida admite el puerto de HTTPS",
+            "explanation": "El security group tiene estado: la respuesta del tráfico que ya se permitió vuelve sin necesidad de una regla de salida propia."
+          },
+          {
+            "id": "b",
+            "text": "Se bloquea porque la NACL de la subred no recuerda la conexión abierta",
+            "explanation": "La NACL no tiene estado, pero su regla de salida hacia el puerto efímero del cliente permite la respuesta; el filtro que recuerda es el security group."
+          },
+          {
+            "id": "c",
+            "text": "Sale hacia el cliente sin regla de salida, porque el security group tiene estado",
+            "explanation": "La guía lo describe así: los security groups son con estado, y el tráfico de respuesta de una conexión permitida no se vuelve a evaluar."
+          },
+          {
+            "id": "d",
+            "text": "Sale solo si la instancia tiene una dirección IP elástica asociada",
+            "explanation": "La dirección elástica cambia cómo te refieres a la instancia desde fuera; no interviene en que el tráfico de vuelta atraviese las reglas."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-quiz-03",
+      "type": "QUIZ",
+      "title": "La respuesta que no necesita regla",
+      "statement": "Un security group permite la entrada TCP por el puerto de HTTPS y sus reglas de salida solo admiten el puerto 22. ¿Qué ocurre con la respuesta del servidor al cliente?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "security group con estado",
+        "reglas de salida",
+        "tráfico de retorno"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Solicitar el certificado en la misma región que la instancia de origen",
+            "explanation": "La región del origen no decide dónde se guarda el certificado de CloudFront; el requisito de CloudFront es us-east-1."
+          },
+          {
+            "id": "b",
+            "text": "Importar el certificado dentro de la zona alojada de Route 53",
+            "explanation": "La zona alojada guarda registros de DNS, no certificados; el certificado se gestiona en ACM y el registro solo apunta al destino."
+          },
+          {
+            "id": "c",
+            "text": "Crear un registro alias que incluya el certificado en su valor",
+            "explanation": "Un registro alias guarda un destino de AWS, no un certificado: el certificado se asocia a la distribución, no al registro."
+          },
+          {
+            "id": "d",
+            "text": "Solicitar o importar el certificado en la región us-east-1",
+            "explanation": "La documentación de ACM lo exige para CloudFront: el certificado debe estar en US East (N. Virginia), es decir, us-east-1."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-quiz-04",
+      "type": "QUIZ",
+      "title": "El certificado que CloudFront sí acepta",
+      "statement": "Una distribución de CloudFront debe presentar un certificado para www.ejemplo.com. ¿Cuál es el requisito ÚNICAMENTE de CloudFront que hay que cumplir?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudFront",
+        "región del certificado",
+        "us-east-1"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Responder a la consulta DNS con la dirección IP del registro de la zona alojada",
+            "explanation": "Es el primer paso del recorrido: el resolutor pregunta por el nombre y Route 53 responde con el valor del registro que corresponde a ese nombre."
+          },
+          {
+            "id": "b",
+            "text": "Abrir la conexión TCP con el servidor web en el puerto del servicio",
+            "explanation": "La conexión la abre el cliente y solo después de conocer la dirección; Route 53 no abre conexiones hacia el servidor."
+          },
+          {
+            "id": "c",
+            "text": "Negociar la sesión TLS con el certificado del balanceador",
+            "explanation": "TLS se negocia bastante después: primero se resuelve el nombre, luego se abre la conexión y solo entonces se habla de certificados."
+          },
+          {
+            "id": "d",
+            "text": "Terminar la conexión en el balanceador y descifrar la petición",
+            "explanation": "Eso lo hace el balanceador con su certificado cuando el tráfico ya llegó; el servicio de DNS no ve la petición del cliente."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-quiz-05",
+      "type": "QUIZ",
+      "title": "El primer paso del recorrido",
+      "statement": "Un usuario escribe www.ejemplo.com en el navegador y el sitio responde desde la dirección correcta. ¿Qué hace Route 53 PRIMERO en ese recorrido?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "consulta DNS",
+        "zona alojada",
+        "Route 53"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que el TTL del registro DNS baje y aumenten las consultas",
+            "explanation": "El TTL y el número de consultas no dependen de las reglas de puertos del security group; son ajustes distintos del DNS."
+          },
+          {
+            "id": "b",
+            "text": "Que cualquier dirección IPv4 de Internet pueda intentar una sesión de RDP",
+            "explanation": "La guía de security groups pide autorizar solo rangos concretos en el 22 y el 3389; 0.0.0.0/0 deja el escritorio remoto expuesto a cualquier dirección."
+          },
+          {
+            "id": "c",
+            "text": "Que el certificado de ACM deje de renovarse automáticamente",
+            "explanation": "La renovación del certificado la gestiona ACM y no depende de los puertos abiertos en el security group de la instancia."
+          },
+          {
+            "id": "d",
+            "text": "Que la NACL de la subred deje de evaluar sus reglas en orden",
+            "explanation": "La NACL sigue evaluando de menor a mayor número de regla; abrir un puerto en el security group no altera ese orden."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-quiz-06",
+      "type": "QUIZ",
+      "title": "El puerto abierto «para que funcione»",
+      "statement": "Un equipo abre el puerto 3389 a 0.0.0.0/0 «para que funcione». ¿Cuál es el riesgo MAYOR de esa decisión?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "0.0.0.0/0",
+        "puerto 3389",
+        "exposición a Internet"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Que el registro DNS del dominio tenga un TTL suficientemente alto",
+            "explanation": "El TTL solo afecta a cuánto se guarda en caché la respuesta del DNS; no explica que la conexión al puerto 22 se agote."
+          },
+          {
+            "id": "b",
+            "text": "Que el security group permita la entrada al puerto 22 desde la dirección de tu equipo",
+            "explanation": "La guía revisa primero el security group: sin una regla de entrada al 22 desde tu dirección, la conexión no llega a la instancia."
+          },
+          {
+            "id": "c",
+            "text": "Que el certificado de ACM esté solicitado en la región us-east-1",
+            "explanation": "us-east-1 solo se exige para CloudFront; SSH no usa certificados de ACM, así que esa comprobación no explica el tiempo de espera."
+          },
+          {
+            "id": "d",
+            "text": "Que la tabla de rutas envíe 0.0.0.0/0 al internet gateway de la VPC",
+            "explanation": "Una subred sin ruta hacia el internet gateway no recibe conexiones desde Internet, aunque el security group permita el 22."
+          },
+          {
+            "id": "e",
+            "text": "Que la instancia tenga un rol de IAM con autenticación multifactor",
+            "explanation": "El rol de IAM no interviene en que el paquete llegue al puerto 22; la autenticación de SSH va por clave y esa capa llega después."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-quiz-07",
+      "type": "QUIZ",
+      "title": "El SSH que se queda esperando",
+      "statement": "Un SSH a una instancia Linux devuelve un tiempo de espera agotado. Selecciona DOS comprobaciones que la guía de solución de problemas de conexión de EC2 pide revisar.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "solución de problemas de SSH",
+        "security group",
+        "tabla de rutas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Un certificado de ACM se puede copiar a otra región sin volver a validar el dominio",
+            "explanation": "No existe esa copia: los certificados son recursos regionales y cada región exige su propia solicitud o importación con validación."
+          },
+          {
+            "id": "b",
+            "text": "ACM crea, guarda y renueva certificados X.509 públicos y privados",
+            "explanation": "La guía de ACM describe esas tres tareas como la razón de ser del servicio, así que la afirmación está respaldada."
+          },
+          {
+            "id": "c",
+            "text": "ACM instala el certificado en el sistema operativo de cada instancia",
+            "explanation": "ACM entrega certificados a servicios integrados, como los balanceadores; no instala nada en el sistema operativo de una instancia."
+          },
+          {
+            "id": "d",
+            "text": "Los certificados de ACM son regionales y no se copian entre regiones",
+            "explanation": "La documentación lo dice al explicar el uso con balanceadores en varias regiones: hay que solicitar uno en cada región."
+          },
+          {
+            "id": "e",
+            "text": "Un certificado de ACM sustituye al security group en el filtrado de puertos",
+            "explanation": "El certificado cifra la conversación y acredita el dominio; el filtrado por puerto y origen sigue en el security group y en la NACL."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-quiz-08",
+      "type": "QUIZ",
+      "title": "Lo que ACM hace y lo que no",
+      "statement": "Selecciona DOS afirmaciones correctas sobre los certificados de AWS Certificate Manager.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Certificate Manager",
+        "certificados X.509",
+        "alcance regional"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Que la regla siga apuntando al origen correcto: si la dirección del cliente es dinámica, cambia y deja de coincidir con el rango autorizado. Por eso la guía pide autorizar rangos concretos y no 0.0.0.0/0. Revisa también la NACL: entrada al 22 y salida hacia los puertos efímeros 1024-65535."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-flashcard-01",
+      "type": "FLASHCARD",
+      "title": "La regla del 22 que envejeció",
+      "statement": "El security group permite el 22 desde una dirección fija y el SSH dejó de entrar esta mañana. ¿Qué revisas en esa regla antes de tocar nada?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "origen de la regla",
+        "dirección dinámica",
+        "puerto 22"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Son dos filtros independientes. El security group tiene estado: decide por protocolo, puerto y origen, y la respuesta vuelve sin regla propia. La NACL no tiene estado: hay que permitir la entrada al puerto del servicio y la salida hacia el puerto efímero del cliente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-flashcard-02",
+      "type": "FLASHCARD",
+      "title": "Security group frente a NACL",
+      "statement": "¿Qué diferencia hay entre permitir un puerto en el security group y permitirlo en la NACL de la subred?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "security group con estado",
+        "NACL sin estado",
+        "puertos efímeros"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Porque los certificados de ACM son recursos regionales y no se copian entre regiones. Para el mismo nombre en otra región hay que solicitar o importar un certificado allí y volver a validar el dominio; us-east-1 solo es obligatorio para CloudFront."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-flashcard-03",
+      "type": "FLASHCARD",
+      "title": "El certificado de otra región",
+      "statement": "¿Por qué no sirve para este balanceador un certificado de ACM que se pidió en otra región?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "certificados regionales",
+        "validación del dominio",
+        "CloudFront"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La dirección IP o el destino que corresponde al nombre, tomado de un registro de la zona alojada del dominio. Los servidores de nombres de Route 53 buscan el registro del nombre consultado y devuelven su valor."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-flashcard-04",
+      "type": "FLASHCARD",
+      "title": "Qué devuelve una consulta DNS",
+      "statement": "¿Qué devuelve una consulta DNS y en qué parte de Route 53 está ese dato?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "consulta DNS",
+        "zona alojada",
+        "registro"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Que el certificado sea del dominio correcto, que esté vigente (ACM renueva los suyos, pero un certificado importado se renueva aparte) y que esté en la región que el servicio exige: us-east-1 para CloudFront y la región del balanceador para ELB."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-flashcard-05",
+      "type": "FLASHCARD",
+      "title": "El aviso de certificado en el navegador",
+      "statement": "Un usuario ve un aviso de certificado al abrir https://www.ejemplo.com. ¿Qué tres cosas revisas primero?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "nombre del dominio",
+        "vigencia del certificado",
+        "región del servicio"
+      ],
+      "estimatedMin": 2,
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Termina la conexión TLS: descifra las peticiones que llegan del cliente y las entrega al destino configurado. El certificado acredita el dominio ante el cliente y el descifrado ocurre en el balanceador, no en el servicio de DNS."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-flashcard-06",
+      "type": "FLASHCARD",
+      "title": "Qué hace el balanceador con el certificado",
+      "statement": "¿Qué hace un balanceador cuando su listener usa un certificado de ACM?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "terminación de TLS",
+        "listener",
+        "balanceador de carga"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-reflexion-01",
+      "type": "REFLECT",
+      "title": "El diagnóstico de una conexión que no llega",
+      "statement": "Escribe, en cuatro o cinco líneas, el diagnóstico de una conexión que no llega: elige un caso (un SSH que se queda esperando, un aviso de certificado o un dominio que resuelve a otra dirección), recorre en orden DNS, TCP/UDP y puerto, TLS y los dos filtros, y anota qué evidencia pedirías en cada pieza. Cierra diciendo qué pieza descartarías primero y por qué.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "diagnóstico por capas",
+        "evidencia",
+        "orden de comprobaciones"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "puerto-22",
+            "term": "Puerto 22",
+            "definition": "SSH: la regla de entrada debe permitir el origen del cliente"
+          },
+          {
+            "id": "puerto-3389",
+            "term": "Puerto 3389",
+            "definition": "RDP: la guía pide autorizar solo rangos de IP concretos"
+          },
+          {
+            "id": "puertos-efimeros",
+            "term": "Puertos efímeros 1024-65535",
+            "definition": "Por ahí vuelve la respuesta; la NACL de salida debe permitirlos"
+          },
+          {
+            "id": "icmp",
+            "term": "ICMP",
+            "definition": "No usa puertos: una regla ICMP permite, por ejemplo, hacer ping"
+          },
+          {
+            "id": "security-group",
+            "term": "Security group",
+            "definition": "Filtra por protocolo, puerto y origen, y tiene estado"
+          },
+          {
+            "id": "nacl",
+            "term": "NACL de la subred",
+            "definition": "Filtra al entrar y al salir de la subred, y no tiene estado"
+          },
+          {
+            "id": "certificado-acm",
+            "term": "Certificado de ACM",
+            "definition": "Acredita el dominio y es regional: no se copia entre regiones"
+          },
+          {
+            "id": "cloudfront-us-east-1",
+            "term": "CloudFront",
+            "definition": "Exige su certificado en us-east-1, o no lo acepta"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada puerto, protocolo o control con lo que hay que comprobar para que una conexión funcione. Si dudas entre dos definiciones, pregúntate en qué punto del recorrido actúa cada pieza: nombre, conexión, puerto, cifrado o filtro.",
+          "list": {
+            "title": "El recorrido que repasa el juego",
+            "ordered": true,
+            "items": [
+              "El nombre se resuelve con DNS y devuelve una dirección IP",
+              "El cliente abre la conexión TCP o envía el datagrama UDP",
+              "El puerto decide a qué servicio de la máquina llega el tráfico",
+              "El security group y la NACL filtran por protocolo, puerto y origen",
+              "TLS valida el certificado del dominio y cifra la conversación"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-memoria-01",
+      "type": "MEMORY",
+      "title": "Puertos y protocolos del recorrido",
+      "statement": "Empareja cada puerto o protocolo con lo que hay que comprobar para que una conexión funcione.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "puerto y protocolo",
+        "filtros de red",
+        "certificado"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Plan de conectividad para la web de una distribución de CloudFront (borrador de un asistente)\nvpc: 10.0.0.0/16\nsubred_publica:\n  cidr: 10.0.0.0/24\nsecurity_group_web:\n  entrada:\n    - puerto: 22\n      protocolo: tcp\n      origen: 0.0.0.0/0\n    - puerto: 3389\n      protocolo: tcp\n      origen: 0.0.0.0/0\n  salida:\n    - protocolo: -1\n      destino: 0.0.0.0/0\nnacl_subred_publica:\n  entrada:\n    - numero: 100\n      puerto: 22\n      accion: allow\n      origen: 203.0.113.0/24\n  salida:\n    - numero: 100\n      puerto: 22\n      accion: allow\n      destino: 0.0.0.0/0\ntls:\n  proveedor: acm\n  region: us-east-1\n  terminacion: balanceador\ndiagnostico:\n  sintoma: el SSH falla cuando cambia la IP de la oficina"
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              7,
+              9
+            ],
+            "label": "Origen de la regla del puerto 22",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "0.0.0.0/0 significa cualquier dirección IPv4: deja el SSH expuesto a todo Internet. La guía de security groups pide autorizar solo rangos de IP concretos para el 22 y el 3389, y el propio diagnóstico del plan dice que el cliente usa una dirección que cambia."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              10,
+              12
+            ],
+            "label": "Origen de la regla del puerto 3389",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "El mismo error que en el 22, aplicado al escritorio remoto: con 0.0.0.0/0 cualquier dirección de Internet puede intentar abrir una sesión de RDP. La guía pide el rango concreto del equipo que administra."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              13,
+              15
+            ],
+            "label": "Reglas de salida del security group",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "No es un defecto: el security group tiene estado, así que la respuesta de una conexión permitida vuelve aunque la salida estuviera restringida. Además, permitir todo el tráfico de salida es lo que hace el grupo por omisión cuando se crea."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              22,
+              26
+            ],
+            "label": "Salida de la NACL limitada al puerto 22",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "La NACL no tiene estado: la respuesta del servidor sale hacia el puerto efímero del cliente (1024-65535), y esta regla de salida no lo permite. La conexión entraría y se quedaría esperando, justo el síntoma del plan."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              27,
+              30
+            ],
+            "label": "Región del certificado y terminación de TLS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto para una distribución de CloudFront: ACM exige el certificado en us-east-1 y el balanceador puede terminar la conexión TLS con él. Si la web se publicara con un balanceador en otra región, el requisito de us-east-1 ya no aplicaría."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              31,
+              32
+            ],
+            "label": "Síntoma que abre el diagnóstico",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Anotar que el SSH deja de entrar cuando cambia la dirección de la oficina es correcto: apunta a un origen dinámico que dejó de coincidir con la regla, que es la causa que el plan todavía no corrige."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un plan de conectividad con puertos abiertos",
+      "statement": "Un asistente redactó el plan de conectividad de una web servida por CloudFront: una subred pública, un security group, la NACL de esa subred y el TLS del balanceador que hace de origen. Audítalo con la guía de security groups y la de solución de problemas de conexión: marca solo los hallazgos que son defectos reales con su severidad, deja sin marcar lo que es correcto aunque parezca raro, explica cada veredicto y decide si el plan se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "auditoría de reglas",
+        "origen autorizado",
+        "puertos efímeros"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Modelo de la VPC del laboratorio: una subred pública y una instancia bastión.\n// El SSH desde la red de administración no consigue entrar.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.0.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-bastion\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 2222, toPort: 2222, cidr: \"203.0.113.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Modelo de la VPC del laboratorio: la regla de entrada ahora apunta al puerto de SSH.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.0.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-bastion\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 22, toPort: 22, cidr: \"203.0.113.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El modelo declara una sola regla de entrada. Compara el puerto de esa regla con el puerto que usa el servicio al que intentas conectarte: el enunciado pide SSH."
+        },
+        {
+          "level": 2,
+          "text": "SSH escucha en el puerto 22 y el modelo permite el 2222, así que la conexión se rechaza en el filtro de entrada. Cambia `fromPort` y `toPort` de la regla de entrada."
+        },
+        {
+          "level": 3,
+          "text": "Deja la regla así: `{ direction: \"inbound\", protocol: \"tcp\", fromPort: 22, toPort: 22, cidr: \"203.0.113.0/24\" }`. No toques el origen ni la NACL: la respuesta sigue permitida hacia el puerto efímero."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el SSH desde la red de administración llega a la instancia",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const bastion = { ip: \"10.0.0.10\", securityGroups: [\"sg-bastion\"] };\nconst admin = { ip: \"203.0.113.24\" };\nconst ssh = aws.network.canConnect(vpc, { from: admin, to: bastion, protocol: \"tcp\", port: 22 });\nassert.strictEqual(ssh.allowed, true, \"El SSH desde la red de administración no llega: \" + ssh.reason);"
+          }
+        },
+        {
+          "name": "el modelo sigue publicando una sola dirección de origen",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const reglas = vpc.securityGroups[0].rules;\nconst entradas = reglas.filter((regla: { direction: string }) => regla.direction === \"inbound\");\nassert.strictEqual(entradas.length, 1, \"Debe quedar una sola regla de entrada\");\nassert.strictEqual(entradas[0].cidr, \"203.0.113.0/24\", \"El origen de la regla de entrada debe seguir siendo la red de administración\");"
+          }
+        },
+        {
+          "name": "el puerto permitido es el que usa SSH, no otro",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const regla = vpc.securityGroups[0].rules.find((candidata: { direction: string }) => candidata.direction === \"inbound\");\nassert.ok(regla, \"Falta la regla de entrada del security group\");\nassert.strictEqual(regla.protocol, \"tcp\");\nassert.strictEqual(regla.fromPort, 22);\nassert.strictEqual(regla.toPort, 22);"
+          }
+        },
+        {
+          "name": "el SSH desde otra dirección de Internet sigue bloqueado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const bastion = { ip: \"10.0.0.10\", securityGroups: [\"sg-bastion\"] };\nconst ssh = aws.network.canConnect(vpc, { from: { ip: \"198.51.100.7\" }, to: bastion, protocol: \"tcp\", port: 22 });\nassert.strictEqual(ssh.allowed, false, \"El 22 no puede quedar abierto a cualquier dirección\");\nconst puertoViejo = aws.network.canConnect(vpc, { from: { ip: \"203.0.113.24\" }, to: bastion, protocol: \"tcp\", port: 2222 });\nassert.strictEqual(puertoViejo.allowed, false, \"El 2222 no es el puerto de SSH y no debe quedar permitido\");"
+          }
+        },
+        {
+          "name": "la NACL sigue dejando volver la respuesta al puerto efímero",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const nacl = vpc.subnets[0].nacl;\nconst entrada = aws.network.naclAllows(nacl, { direction: \"inbound\", protocol: \"tcp\", port: 22, peer: \"203.0.113.24\" });\nassert.strictEqual(entrada.allowed, true, \"La NACL debe permitir la entrada al 22: \" + entrada.reason);\nconst salida = aws.network.naclAllows(nacl, { direction: \"outbound\", protocol: \"tcp\", port: 49152, peer: \"203.0.113.24\" });\nassert.strictEqual(salida.allowed, true, \"La NACL debe permitir la respuesta al puerto efímero: \" + salida.reason);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-debug-01",
+      "type": "DEBUG",
+      "title": "El puerto del security group que no coincide",
+      "statement": "La subred pública del laboratorio (10.0.0.0/24) aloja una instancia bastión (10.0.0.10) con el security group sg-bastion. La instancia debe aceptar SSH solo desde la red de administración (203.0.113.0/24) y nadie de esa red consigue entrar. El modelo (`export const vpc = {...}`) tiene un único defecto y el arnés ejecuta la conexión de extremo a extremo con `aws.network.canConnect`. Localízalo, corrígelo con el cambio mínimo sin cambiar la forma del valor exportado y sin ampliar el origen: el SSH desde otras direcciones debe seguir bloqueado. Explica por qué fallaba y cómo lo comprobaste.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "puerto del servicio",
+        "security group",
+        "conexión de extremo a extremo"
+      ],
+      "estimatedMin": 12,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Entrega del sitio y certificados, redactado por un asistente.\nexport const sitio = {\n  dominio: \"www.ejemplo.com\",\n  distribucion: {\n    servicio: \"cloudfront\",\n    certificado: { proveedor: \"acm\", region: \"eu-west-1\" },\n  },\n  origen: {\n    balanceador: \"alb\",\n    listener: { protocolo: \"HTTP\", certificado: null },\n  },\n  registroDns: { nombre: \"www.ejemplo.com\", tipo: \"A\", alias: true },\n};\n",
+      "solution": {
+        "code": "// Entrega del sitio: certificado en us-east-1 para CloudFront y listener del origen en HTTPS.\nexport const sitio = {\n  dominio: \"www.ejemplo.com\",\n  distribucion: {\n    servicio: \"cloudfront\",\n    certificado: { proveedor: \"acm\", region: \"us-east-1\", dominio: \"www.ejemplo.com\" },\n  },\n  origen: {\n    balanceador: \"alb\",\n    listener: { protocolo: \"HTTPS\", certificado: \"www.ejemplo.com\" },\n  },\n  registroDns: { nombre: \"www.ejemplo.com\", tipo: \"A\", alias: true },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el certificado de la distribución se pide en us-east-1",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const certificado = sitio.distribucion.certificado;\nassert.strictEqual(certificado.proveedor, \"acm\", \"La distribución usa un certificado de ACM\");\nassert.strictEqual(certificado.region, \"us-east-1\", \"CloudFront exige el certificado en us-east-1 y el modelo lo pide en \" + certificado.region);"
+          }
+        },
+        {
+          "name": "el listener del origen termina TLS con el certificado del sitio",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const listener = sitio.origen.listener;\nassert.strictEqual(listener.protocolo, \"HTTPS\", \"El listener sigue en \" + listener.protocolo + \" y no termina TLS\");\nassert.strictEqual(listener.certificado, sitio.dominio, \"El listener debe presentar el certificado de \" + sitio.dominio);"
+          }
+        },
+        {
+          "name": "el certificado declara el dominio que se publica",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(sitio.distribucion.certificado.dominio, sitio.dominio, \"El certificado debe cubrir \" + sitio.dominio);"
+          }
+        },
+        {
+          "name": "el registro DNS sigue siendo un alias del dominio",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(sitio.registroDns.alias, true);\nassert.strictEqual(sitio.registroDns.tipo, \"A\");\nassert.strictEqual(sitio.registroDns.nombre, sitio.dominio);"
+          }
+        },
+        {
+          "name": "la entrega sigue siendo CloudFront y el dominio no cambia",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(sitio.distribucion.servicio, \"cloudfront\");\nassert.strictEqual(sitio.dominio, \"www.ejemplo.com\");\nassert.strictEqual(sitio.origen.balanceador, \"alb\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-2-debug-02",
+      "type": "DEBUG",
+      "title": "El certificado del sitio en la región equivocada",
+      "statement": "Este objeto describe la entrega del sitio: una distribución de CloudFront cuyo origen es un balanceador con su listener. Lo redactó un asistente y tiene dos defectos de TLS: el certificado se pide en una región que CloudFront no acepta y el listener del origen no termina TLS. Corrige la región del certificado, añade el dominio que debe cubrir y haz que el listener use el certificado del sitio; mantén el dominio, el servicio de entrega y el registro DNS tal como están y conserva la forma del valor exportado (`export const sitio = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "región del certificado",
+        "terminación de TLS",
+        "CloudFront"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html"
+      ],
+      "order": 19
+    }
+  ]
+}
