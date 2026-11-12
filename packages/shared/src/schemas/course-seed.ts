@@ -175,12 +175,12 @@ export const courseSeedSchema = z
         moduleOrders.add(module.order);
 
         const unitOrders = new Set<number>();
-        const lessonOrders = new Set<number>();
-        const exerciseOrders = new Set<number>();
         const expectedUnitPrefix = unitCodePrefix(module.code);
 
         for (const [unitIndex, unit] of module.units.entries()) {
           const unitPath: (string | number)[] = [...modulePath, "units", unitIndex];
+          const lessonOrders = new Set<number>();
+          const exerciseOrders = new Set<number>();
 
           if (unitCodes.has(unit.code)) {
             fail(`Unidad duplicada: ${unit.code}`, [...unitPath, "code"]);

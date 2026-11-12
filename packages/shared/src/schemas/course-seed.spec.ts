@@ -330,6 +330,42 @@ describe("courseSeedSchema", () => {
     expect(pathsOf(result)).toContainEqual(["stages", 0, "modules", 0, "units", 1, "order"]);
   });
 
+  it("acepta el mismo orden de lección y de ejercicio en unidades hermanas", () => {
+    const seed = validSeed();
+    unitOf(seed).lessons = [lessonFixture("leccion-uno")];
+    unitOf(seed).exercises = [readingExercise(["AWS-C1"])];
+    moduleOf(seed).units.push({
+      code: "AWS-U0.1.2",
+      title: "Segunda unidad",
+      objective: "Objetivo de la segunda unidad.",
+      order: 2,
+      isPublished: false,
+      lessons: [lessonFixture("leccion-dos")],
+      exercises: [{ ...readingExercise(["AWS-C1"]), slug: "leer-servicios-aws-dos" }],
+    });
+
+    expect(courseSeedSchema.safeParse(seed).success).toBe(true);
+  });
+
+  it("rechaza un orden de lección repetido dentro de la misma unidad", () => {
+    const result = invalidSeed((seed) => {
+      unitOf(seed).lessons = [lessonFixture("leccion-uno"), lessonFixture("leccion-dos")];
+    });
+
+    expect(messagesOf(result)).toContain("Orden de lección repetido en AWS-U0.1.1: 1");
+    expect(pathsOf(result)).toContainEqual([
+      "stages",
+      0,
+      "modules",
+      0,
+      "units",
+      0,
+      "lessons",
+      1,
+      "order",
+    ]);
+  });
+
   it("rechaza un módulo cuyo código no pertenece a su etapa", () => {
     const result = invalidSeed((seed) => {
       moduleOf(seed).code = "AWS-M1.1";
