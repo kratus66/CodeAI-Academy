@@ -1599,10 +1599,14 @@ describe("guarda de completitud del paquete de las unidades AWS", () => {
     expect(offenders, `Paquetes incompletos:\n${offenders.join("\n")}`).toEqual([]);
   });
 
-  it("el piloto que aún no tiene QUIZ no se evalúa todavía", () => {
-    const evaluated = packageUnits.map(({ unit }) => unit.code);
+  it("una unidad sin QUIZ no se evalúa todavía", () => {
+    const withoutQuiz = syntheticUnit("AWS-U0.9.9", [syntheticExercise("LAB", 1)]);
+    const evaluated = [...packageUnits.map(({ unit }) => unit), withoutQuiz]
+      .filter((unit) => unit.exercises.some((exercise) => exercise.type === "QUIZ"))
+      .map((unit) => unit.code);
 
-    expect(evaluated).not.toContain("AWS-U0.3.1");
+    expect(evaluated).not.toContain("AWS-U0.9.9");
+    expect(packageUnits.map(({ unit }) => unit.code)).toContain("AWS-U0.3.1");
   });
 });
 

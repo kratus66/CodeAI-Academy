@@ -92,7 +92,23 @@
           "body": "Variante con restricción: repite el plan del laboratorio dejando libre la mitad superior de la VPC para crecer en el futuro, sin mover las subredes ya asignadas. Pregunta de cierre: un compañero crea una subred y falla por falta de direcciones con solo 11 recursos desplegados; ¿qué revisas primero?"
         }
       ],
-      "resources": []
+      "resources": [
+        {
+          "resourceSlug": "aws-vpc-bloques-cidr",
+          "order": 0,
+          "note": "Tamaños permitidos del CIDR de una VPC, de /16 a /28; los rangos de RFC 1918 recomendados, los bloques que no se pueden especificar y la forma canónica."
+        },
+        {
+          "resourceSlug": "aws-vpc-subnet-sizing",
+          "order": 1,
+          "note": "Reparto de un /24 en dos /25, tamaño permitido de una subred IPv4 y las cinco direcciones reservadas en cada subred."
+        },
+        {
+          "resourceSlug": "aws-vpc-que-es",
+          "order": 2,
+          "note": "Qué es una VPC y qué es una subred: un rango de direcciones que reside en una sola zona de disponibilidad."
+        }
+      ]
     }
   ],
   "exercises": [
@@ -211,6 +227,938 @@
         }
       ],
       "exam": null
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de subredes de la VPC 172.20.0.0/16: dos zonas, tres capas en cada una.\nexport const plan = {\n  vpc: \"172.20.0.0/16\",\n  subnets: [\n    { name: \"web-a\", cidr: \"172.20.0.0/26\" },\n    { name: \"web-b\", cidr: \"172.20.0.64/26\" },\n    { name: \"app-a\", cidr: \"172.20.1.0/25\" },\n    { name: \"app-b\", cidr: \"172.20.1.128/25\" },\n    { name: \"datos-a\", cidr: \"172.20.4.0/22\" },\n    { name: \"datos-b\", cidr: \"172.21.4.0/22\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  vpc: \"172.20.0.0/16\",\n  subnets: [\n    { name: \"web-a\", cidr: \"172.20.0.0/25\" },\n    { name: \"web-b\", cidr: \"172.20.0.128/25\" },\n    { name: \"app-a\", cidr: \"172.20.1.0/24\" },\n    { name: \"app-b\", cidr: \"172.20.2.0/24\" },\n    { name: \"datos-a\", cidr: \"172.20.4.0/22\" },\n    { name: \"datos-b\", cidr: \"172.20.8.0/22\" },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el plan no tiene problemas según el validador del arnés",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cidr.validateSubnetPlan(plan), []);"
+          }
+        },
+        {
+          "name": "el plan declara las seis subredes pedidas",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const nombres = plan.subnets.map((candidate: { name: string }) => candidate.name).sort();\nassert.deepStrictEqual(nombres, [\"app-a\", \"app-b\", \"datos-a\", \"datos-b\", \"web-a\", \"web-b\"]);"
+          }
+        },
+        {
+          "name": "cada subred ofrece al menos las direcciones utilizables de su capa",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const subred = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nconst minimos: { name: string; usable: number }[] = [\n  { name: \"web-a\", usable: 60 },\n  { name: \"web-b\", usable: 60 },\n  { name: \"app-a\", usable: 250 },\n  { name: \"app-b\", usable: 250 },\n  { name: \"datos-a\", usable: 1000 },\n  { name: \"datos-b\", usable: 1000 },\n];\nfor (const { name, usable } of minimos) {\n  const hay = aws.cidr.usableAddresses(subred(name).cidr);\n  assert.ok(hay >= usable, name + \" ofrece \" + hay + \" direcciones utilizables y se piden \" + usable);\n}"
+          }
+        },
+        {
+          "name": "todas las subredes caben en la mitad inferior de la VPC",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "for (const { name, cidr } of plan.subnets) {\n  assert.ok(aws.cidr.contains(\"172.20.0.0/17\", cidr), name + \" (\" + cidr + \") queda fuera de la mitad inferior de la VPC\");\n}"
+          }
+        },
+        {
+          "name": "ninguna subred es más grande de lo necesario",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const subred = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nconst maximos: { name: string; usable: number }[] = [\n  { name: \"web-a\", usable: 123 },\n  { name: \"web-b\", usable: 123 },\n  { name: \"app-a\", usable: 251 },\n  { name: \"app-b\", usable: 251 },\n  { name: \"datos-a\", usable: 1019 },\n  { name: \"datos-b\", usable: 1019 },\n];\nfor (const { name, usable } of maximos) {\n  assert.ok(aws.cidr.usableAddresses(subred(name).cidr) <= usable, name + \" es más grande de lo necesario\");\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-plan-de-subredes-autonomo",
+      "type": "LAB",
+      "title": "Plan de subredes de tres capas sin pistas",
+      "statement": "Diseña el plan de direccionamiento de la VPC 172.20.0.0/16 para un entorno de tres capas en dos zonas de disponibilidad. Necesitas seis subredes: web-a y web-b, con al menos 60 direcciones utilizables cada una; app-a y app-b, con al menos 250; y datos-a y datos-b, con al menos 1000. Recuerda que AWS reserva cinco direcciones en cada subred IPv4. Cada subred usa el prefijo MÁS pequeño que cubra su requisito, ninguna se solapa con otra y todas caben en la mitad inferior de la VPC (172.20.0.0/17), para dejar la mitad superior libre para crecer. El código inicial exporta un plan que incumple varias de esas condiciones: corrígelo sin cambiar la forma del valor exportado (`export const plan = { vpc, subnets: [{ name, cidr }] }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "cidr",
+        "subredes",
+        "direcciones reservadas",
+        "plan de direccionamiento"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Indica cuántos bits identifican la red. Cuanto mayor es el número, más pequeño es el bloque: un /24 reúne 256 direcciones y un /25 reúne 128."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: el prefijo y el tamaño del bloque",
+      "statement": "¿Qué indica el número que va después de la barra en un bloque como 10.0.0.0/24 y qué pasa con el tamaño del bloque cuando ese número crece?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "prefijo",
+        "tamaño del bloque"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Las cuatro primeras y la última: la de red, la del router de la VPC (la base más uno), la del DNS (la base más dos), una reservada para uso futuro y la de broadcast, que una VPC no admite."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: las cinco direcciones reservadas",
+      "statement": "¿Cuáles son las cinco direcciones que AWS reserva en cada subred IPv4 y a qué se destina cada una?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "direcciones reservadas",
+        "subred"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La VPC admite de /16 (65 536 direcciones) a /28 (16). La subred IPv4 también va de /16 a /28, y su bloque puede ser igual al de la VPC si es la única subred de la VPC."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: los tamaños permitidos",
+      "statement": "¿Qué tamaños de bloque admite el CIDR de una VPC y qué tamaños admite el de una subred IPv4?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "tamaño de la vpc",
+        "tamaño de la subred"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "No está permitido: si creas más de una subred en una VPC, sus bloques CIDR no pueden solaparse. El bloque de cada subred es el de la VPC o un subconjunto suyo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: bloques que se solapan",
+      "statement": "¿Qué ocurre si dos subredes de la misma VPC declaran bloques que se solapan?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "solape de bloques",
+        "subredes"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Queda 100.68.0.0/18. Las herramientas de línea de comandos y la API de Amazon EC2 convierten el bloque a su forma canónica, que empieza en la dirección de red."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: la forma canónica del bloque",
+      "statement": "Un ingeniero escribe 100.68.0.18/18 al crear una subred con la CLI. ¿Qué bloque queda registrado y por qué?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "forma canónica",
+        "alineación del bloque"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "0.0.0.0/8, 127.0.0.0/8 (loopback del host), 169.254.0.0/16 (enlace local) y 224.0.0.0/4 (multicast). La guía recomienda además evitar 172.17.0.0/16, que usan algunos servicios."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: los rangos que una VPC no admite",
+      "statement": "¿Qué rangos de IPv4 no se pueden especificar como CIDR de una VPC?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "rangos reservados",
+        "cidr de la vpc"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una subred con el bloque 10.0.0.0/25 y otra con el bloque 10.0.0.128/25",
+            "explanation": "Es el reparto que documenta la guía: el /24 admite dos /25 que cubren 10.0.0.0 a 10.0.0.127 y 10.0.0.128 a 10.0.0.255, sin compartir ninguna dirección."
+          },
+          {
+            "id": "b",
+            "text": "Una subred con el bloque 10.0.0.0/25 y otra con el bloque 10.0.0.64/25",
+            "explanation": "El segundo bloque no está alineado con su tamaño: un /25 solo puede empezar en un múltiplo de 128, así que su forma canónica es 10.0.0.0/25 y se solapa con el primero."
+          },
+          {
+            "id": "c",
+            "text": "Una subred con el bloque 10.0.0.0/26 y otra con el bloque 10.0.0.96/26",
+            "explanation": "Dos /26 ocupan solo la mitad baja del /24 y dejan libres 10.0.0.128 a 10.0.0.255; además 96 no es un inicio válido para un bloque de 64 direcciones."
+          },
+          {
+            "id": "d",
+            "text": "Una subred con el bloque 10.0.0.0/24 y otra con el bloque 10.0.0.128/24",
+            "explanation": "Un /24 que empieza en 10.0.0.0 es el mismo bloque que la VPC: contiene las 256 direcciones, y el otro también se normaliza a ese bloque, así que se solapan."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-quiz-01",
+      "type": "QUIZ",
+      "title": "Repartir una VPC /24 en dos subredes",
+      "statement": "Una empresa crea una VPC con el bloque 10.0.0.0/24 y quiere repartirlo en DOS subredes del mismo tamaño, sin que ninguna dirección quede en las dos. ¿Qué par de bloques cumple el reparto?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "cidr",
+        "reparto de bloques",
+        "subredes"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una subred con el bloque 10.0.0.0/28",
+            "explanation": "Un /28 reúne 16 direcciones y, con las cinco reservadas, deja 11 utilizables: se queda corto para 14 instancias."
+          },
+          {
+            "id": "b",
+            "text": "Una subred con el bloque 10.0.0.0/27",
+            "explanation": "Un /27 reúne 32 direcciones y deja 27 utilizables: es el bloque más pequeño que cubre las 14 instancias."
+          },
+          {
+            "id": "c",
+            "text": "Una subred con el bloque 10.0.0.0/26",
+            "explanation": "Un /26 deja 59 direcciones utilizables: cubre las 14 instancias, pero no es el bloque más pequeño, así que incumple el calificador."
+          },
+          {
+            "id": "d",
+            "text": "Una subred con el bloque 10.0.0.0/25",
+            "explanation": "Un /25 deja 123 direcciones utilizables: también funciona, pero desperdicia espacio y no es el bloque más pequeño que se pide."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-quiz-02",
+      "type": "QUIZ",
+      "title": "El bloque más pequeño para 14 instancias",
+      "statement": "Un equipo despliega 14 instancias de Amazon EC2 en una subred nueva y necesita una dirección para cada una. La guía de Amazon VPC reserva cinco direcciones en cada subred IPv4. ¿Cuál es el bloque MÁS pequeño que permite alojar las 14 instancias?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "direcciones reservadas",
+        "tamaño de la subred"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El bloque 10.0.0.0/16",
+            "explanation": "Está dentro del rango privado 10.0.0.0/8 de RFC 1918 y su tamaño es el máximo que admite una VPC, así que es un candidato válido."
+          },
+          {
+            "id": "b",
+            "text": "El bloque 172.31.0.0/16",
+            "explanation": "Está dentro del rango privado 172.16.0.0/12 de RFC 1918 y la guía lo usa como ejemplo de bloque válido para una VPC."
+          },
+          {
+            "id": "c",
+            "text": "El bloque 127.0.0.0/16",
+            "explanation": "Cae dentro de 127.0.0.0/8, el rango de loopback del host, que la guía enumera entre los bloques que no se pueden especificar para una VPC."
+          },
+          {
+            "id": "d",
+            "text": "El bloque 192.168.0.0/20",
+            "explanation": "Está dentro del rango privado 192.168.0.0/16 de RFC 1918 y su tamaño está entre /16 y /28: no hay nada que lo descarte."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-quiz-03",
+      "type": "QUIZ",
+      "title": "El bloque que una VPC no admite",
+      "statement": "Un equipo prepara la lista de bloques candidatos para una VPC nueva y quiere descartar PRIMERO los que la documentación de Amazon VPC no permite especificar. ¿Cuál de los cuatro bloques se rechaza?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "rangos reservados",
+        "cidr de la vpc"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El bloque 100.68.0.18/18, con esa misma dirección de inicio",
+            "explanation": "La CLI y la API de Amazon EC2 no conservan un inicio que no sea la dirección de red: el bloque se modifica a su forma canónica antes de crearse."
+          },
+          {
+            "id": "b",
+            "text": "El bloque 100.68.0.0/18, con la dirección de red al inicio",
+            "explanation": "Es la forma canónica: dentro del /18, 100.68.0.18 cae en el bloque que empieza en 100.68.0.0, y ese es el bloque que se registra."
+          },
+          {
+            "id": "c",
+            "text": "El bloque 100.68.0.0/19, con un prefijo más específico",
+            "explanation": "La normalización ajusta la dirección de inicio, no el prefijo: cambiar a /19 reduce el tamaño del bloque y ya no cubriría el rango pedido."
+          },
+          {
+            "id": "d",
+            "text": "El bloque 100.68.32.0/18, con el inicio en la mitad alta",
+            "explanation": "La corrección baja el inicio hasta la dirección de red del propio bloque, no lo desplaza a la mitad alta de un bloque mayor."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-quiz-04",
+      "type": "QUIZ",
+      "title": "La forma canónica que registra la CLI",
+      "statement": "Un ingeniero crea una subred con la AWS CLI y escribe el bloque 100.68.0.18/18. Antes de aplicar el cambio quiere anotar PRIMERO qué bloque quedará registrado, porque el equipo comparará el resultado con su inventario de direcciones. ¿Qué bloque crea AWS?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "forma canónica",
+        "alineación del bloque"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Las cuatro primeras del bloque, incluida la del router de la VPC",
+            "explanation": "La guía de tamaños de subred menciona la primera y la última dirección del rango; no dice que se liberen las cuatro primeras ni incluye la del router entre las aprovechables."
+          },
+          {
+            "id": "b",
+            "text": "Solo la del servidor DNS de la VPC, que se libera en los rangos propios",
+            "explanation": "La dirección del DNS se reserva en la base del rango más dos y la guía no la menciona entre las que BYOIP devuelve al uso de la empresa."
+          },
+          {
+            "id": "c",
+            "text": "Solo la última del rango, la de broadcast",
+            "explanation": "Se queda a medias: con BYOIP también se puede usar la primera dirección, la de red, que en un bloque normal no se asigna."
+          },
+          {
+            "id": "d",
+            "text": "La primera y la última del rango, la de red y la de broadcast",
+            "explanation": "La guía lo dice expresamente: con BYOIP se pueden usar todas las direcciones del rango, incluidas la primera (red) y la última (broadcast)."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-quiz-05",
+      "type": "QUIZ",
+      "title": "Direcciones propias traídas con BYOIP",
+      "statement": "Una empresa trae a AWS un rango IPv4 propio con BYOIP y quiere aprovechar el MÁXIMO de direcciones posible en sus subredes. De las direcciones que normalmente no se pueden asignar en una subred, ¿cuáles pasan a estar disponibles en un rango traído con BYOIP?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "byoip",
+        "direcciones reservadas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "123 direcciones utilizables",
+            "explanation": "El /25 reúne 128 direcciones y AWS reserva cinco (las cuatro primeras y la última), así que quedan 123 asignables."
+          },
+          {
+            "id": "b",
+            "text": "128 direcciones utilizables",
+            "explanation": "Cuenta todas las direcciones del bloque y olvida las cinco reservadas que la guía excluye en cada subred IPv4."
+          },
+          {
+            "id": "c",
+            "text": "125 direcciones utilizables",
+            "explanation": "Descontar tres no basta: son cinco las direcciones que no se pueden asignar en cada subred, no tres."
+          },
+          {
+            "id": "d",
+            "text": "127 direcciones utilizables",
+            "explanation": "Descontar solo la de broadcast deja fuera las cuatro primeras direcciones, que tampoco se pueden asignar."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-quiz-06",
+      "type": "QUIZ",
+      "title": "Direcciones utilizables de una subred /25",
+      "statement": "Un equipo dimensiona una subred con el bloque 10.0.0.128/25 y necesita saber cuántas direcciones podrá asignar como MÁXIMO antes de repartir recursos entre las instancias. ¿Cuántas direcciones utilizables tiene ese bloque?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "direcciones reservadas",
+        "direcciones utilizables"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "options": [
+          {
+            "id": "a",
+            "text": "El bloque 10.0.4.0/22",
+            "explanation": "Cabe en la VPC (10.0.4.0 a 10.0.7.255), su tamaño está entre /28 y /16 y su inicio está alineado: es un bloque que la VPC admite como subred."
+          },
+          {
+            "id": "b",
+            "text": "El bloque 10.0.9.0/29",
+            "explanation": "Un /29 reúne 8 direcciones y el tamaño permitido de una subred IPv4 va de /28 a /16, así que es demasiado pequeño."
+          },
+          {
+            "id": "c",
+            "text": "El bloque 192.168.8.0/24",
+            "explanation": "Queda fuera del bloque de la VPC: una subred es el bloque de la VPC o un subconjunto suyo, y 192.168.8.0/24 no lo es."
+          },
+          {
+            "id": "d",
+            "text": "El bloque 10.0.0.0/15",
+            "explanation": "Un /15 es más grande que el /16 de la VPC, así que no puede ser una subred de ella: se sale del rango reservado."
+          },
+          {
+            "id": "e",
+            "text": "El bloque 10.0.20.0/24",
+            "explanation": "Cabe en la VPC (10.0.20.0 a 10.0.20.255), su tamaño está entre /28 y /16 y su inicio está alineado: es un bloque que la VPC admite como subred."
+          },
+          {
+            "id": "f",
+            "text": "El bloque 10.1.0.0/24",
+            "explanation": "Empieza en 10.1.0.0, fuera del rango 10.0.0.0 a 10.0.255.255 de la VPC: una subred es el bloque de la VPC o un subconjunto suyo."
+          }
+        ],
+        "correctOptionIds": [
+          "a",
+          "e"
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-quiz-07",
+      "type": "QUIZ",
+      "title": "Dos bloques que pueden convivir en una VPC",
+      "statement": "Un equipo reparte la VPC 10.0.0.0/16 entre dos subredes nuevas y quiere elegir bloques que puedan convivir en esa VPC sin pisarse. Selecciona DOS bloques que puedan crearse como subredes de esa VPC y que no se solapen entre sí.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "solape de bloques",
+        "subredes",
+        "cidr de la vpc"
+      ],
+      "estimatedMin": 4,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "options": [
+          {
+            "id": "a",
+            "text": "Un bloque /28 ofrece 16 direcciones, y las 16 se pueden asignar a recursos.",
+            "explanation": "Falso: en cada subred IPv4 las cuatro primeras direcciones y la última quedan reservadas, así que un /28 deja 11 asignables."
+          },
+          {
+            "id": "b",
+            "text": "Una subred debe residir en una sola zona de disponibilidad.",
+            "explanation": "La guía de Amazon VPC lo indica al describir las subredes: una subred es un rango de direcciones que reside en una sola zona de disponibilidad."
+          },
+          {
+            "id": "c",
+            "text": "El CIDR de una VPC puede ser tan grande como /8, si el rango es privado.",
+            "explanation": "No: el bloque de una VPC va de /16 (65 536 direcciones) a /28 (16); un /8 queda fuera de los tamaños permitidos."
+          },
+          {
+            "id": "d",
+            "text": "Las subredes de una misma VPC no pueden tener bloques que se solapen.",
+            "explanation": "La guía de tamaños de subred lo dice al describir varias subredes en una VPC: los bloques CIDR de las subredes no pueden solaparse."
+          },
+          {
+            "id": "e",
+            "text": "Dos subredes pueden compartir bloque si están en zonas de disponibilidad distintas.",
+            "explanation": "La zona de disponibilidad no cambia el direccionamiento: si se crean varias subredes en una VPC, sus bloques no pueden solaparse."
+          },
+          {
+            "id": "f",
+            "text": "El bloque de una subred no puede ser igual al bloque de la VPC.",
+            "explanation": "Sí puede: la guía indica que el bloque de una subred puede ser el mismo que el de la VPC cuando la VPC tiene una sola subred."
+          }
+        ],
+        "correctOptionIds": [
+          "b",
+          "d"
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-quiz-08",
+      "type": "QUIZ",
+      "title": "Qué respalda la documentación sobre subredes y bloques",
+      "statement": "Un compañero resume las reglas de direccionamiento de Amazon VPC antes de empezar el laboratorio. Selecciona DOS afirmaciones que la documentación oficial de Amazon VPC respalde.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "reglas de direccionamiento",
+        "subredes",
+        "zona de disponibilidad"
+      ],
+      "estimatedMin": 4,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Dimensionamiento de una subred para 14 instancias, redactado por un asistente.\nexport const subred = {\n  cidr: \"10.0.0.16/28\",\n  recursos: 14,\n  direccionesUtilizables: 16,\n};\n",
+      "solution": {
+        "code": "export const subred = {\n  cidr: \"10.0.0.0/27\",\n  recursos: 14,\n  direccionesUtilizables: 27,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El número de direcciones utilizables no es el tamaño del bloque: la guía resta cinco direcciones en cada subred IPv4. Compara `direccionesUtilizables` con las 16 direcciones que tiene un /28."
+        },
+        {
+          "level": 2,
+          "text": "Para 14 instancias necesitas al menos 19 direcciones en el bloque: 14 más las cinco reservadas. El siguiente tamaño después de 16 es 32, es decir, un /27 con 27 utilizables."
+        },
+        {
+          "level": 3,
+          "text": "Escribe `cidr: \"10.0.0.0/27\"` y `direccionesUtilizables: 27`; deja `recursos` en 14 y no cambies la forma del objeto."
+        }
+      ],
+      "tests": [
+        {
+          "name": "las direcciones utilizables descuentan las cinco reservadas",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const partes = subred.cidr.split(\"/\");\nconst prefijo = Number(partes[1] ?? \"32\");\nconst total = 2 ** (32 - prefijo);\nassert.strictEqual(subred.direccionesUtilizables, total - 5, \"La subred \" + subred.cidr + \" reúne \" + total + \" direcciones y reserva cinco\");"
+          }
+        },
+        {
+          "name": "el bloque sigue empezando en una dirección de red",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const partes = subred.cidr.split(\"/\");\nconst direccion = partes[0] ?? \"\";\nconst prefijo = Number(partes[1] ?? \"32\");\nconst valor = direccion.split(\".\").reduce((total: number, trozo: string) => total * 256 + Number(trozo), 0);\nassert.strictEqual(valor % 2 ** (32 - prefijo), 0, subred.cidr + \" no empieza en una dirección de red\");"
+          }
+        },
+        {
+          "name": "caben las 14 instancias en la subred",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(subred.direccionesUtilizables >= subred.recursos, \"La subred deja \" + subred.direccionesUtilizables + \" direcciones utilizables y hay \" + subred.recursos + \" recursos\");"
+          }
+        },
+        {
+          "name": "la subred no se sobredimensiona",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(subred.direccionesUtilizables - subred.recursos < 16, \"La subred guarda \" + (subred.direccionesUtilizables - subred.recursos) + \" direcciones de más para \" + subred.recursos + \" recursos\");"
+          }
+        },
+        {
+          "name": "se conserva el número de recursos del enunciado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(subred.recursos, 14);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-debug-01",
+      "type": "DEBUG",
+      "title": "La subred que no cabe en el bloque calculado",
+      "statement": "Este objeto resume el dimensionamiento de una subred para 14 instancias y lo redactó un asistente. Su defecto principal: trata las 16 direcciones de un /28 como si todas se pudieran asignar, así que la subred elegida no alcanza para los recursos. La guía de Amazon VPC reserva cinco direcciones en cada subred IPv4. Corrige el bloque y el número de direcciones utilizables sin cambiar el número de recursos, y mantén la forma del valor exportado (`export const subred = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "direcciones reservadas",
+        "tamaño de la subred",
+        "estimación de un asistente"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-1-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: el plan de subredes como registro de decisión",
+      "statement": "Escribe en 4 a 6 líneas un registro breve de decisión sobre el plan de subredes del laboratorio autónomo:\n\n1) Decisión: qué prefijo elegiste para cada capa y qué requisito de direcciones lo fijó.\n\n2) Alternativa descartada: un bloque más grande que también cabía y por qué no lo usaste.\n\n3) Consecuencia: qué cambia si dentro de seis meses la capa de datos necesita el doble de direcciones.\n\n4) Pilar: qué pilar del Well-Architected Framework sostiene tu forma de repartir el espacio de direcciones (excelencia operativa, seguridad, fiabilidad, eficiencia del rendimiento, optimización de costos o sostenibilidad).\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el requisito que decidió cada prefijo y el espacio que dejaste libre para crecer.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "plan de direccionamiento",
+        "restricción",
+        "Well-Architected"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 18
     }
   ]
 }
