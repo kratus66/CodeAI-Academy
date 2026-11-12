@@ -1,7 +1,7 @@
 /**
  * Semilla de proyectos (Sprint 09, S9-T4).
  *
- * Lee `projects.seed.json`, lo valida con Zod y aplica `upsert` por `slug`, de
+ * Lee `projects.seed.json` (y `aws/projects.seed.json` si existe), lo valida con Zod y aplica `upsert` por `slug`, de
  * modo que ejecutarla dos veces deja los mismos cuatro proyectos publicados
  * (uno por etapa 0–3) sin duplicar filas ni tocar las entregas existentes.
  *
@@ -12,12 +12,12 @@
  * (`node prisma/seed/seed-projects.mts`), sin `ts-node` ni `tsx`. El typecheck
  * del seed corre antes en `npm run db:seed:projects`.
  */
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 import {
-  CURRICULUM_STAGE_COUNT,
   DEFAULT_PROJECT_RUBRIC,
   competencyCodeSchema,
+  isKnownStageId,
   projectRubricSchema,
   projectSlugSchema,
 } from "@codeai/shared";
@@ -33,14 +33,16 @@ const ENV_FILES = [".env", "apps/api/.env"] as const;
 
 const SEED_FILE = new URL("./projects.seed.json", import.meta.url);
 
+/** Proyectos de la ruta AWS; el archivo es opcional. */
+const AWS_SEED_FILE = new URL("./aws/projects.seed.json", import.meta.url);
+
 const projectSeedSchema = z
   .object({
     slug: projectSlugSchema,
     stageId: z
       .number({ invalid_type_error: "La etapa debe ser un número entero" })
       .int("La etapa debe ser un número entero")
-      .min(0, "La etapa debe estar entre 0 y 11")
-      .max(CURRICULUM_STAGE_COUNT - 1, "La etapa debe estar entre 0 y 11"),
+      .refine(isKnownStageId, "La etapa no existe en ninguna ruta"),
     title: z.string().trim().min(3, "El título es demasiado corto").max(120),
     brief: z.string().trim().min(20, "El enunciado es demasiado corto").max(2_000),
     requirements: z
@@ -78,17 +80,35 @@ function describeIssues(
     .join("\n");
 }
 
-async function readSeed() {
-  const raw: unknown = JSON.parse(await readFile(SEED_FILE, "utf8"));
+async function readSeedFile(file: URL, label: string) {
+  const raw: unknown = JSON.parse(await readFile(file, "utf8"));
   const result = seedSchema.safeParse(raw);
 
   if (!result.success) {
     throw new Error(
-      `Semilla inválida: ${result.error.issues.length} problema(s) en projects.seed.json\n${describeIssues(result.error.issues)}`,
+      `Semilla inválida: ${result.error.issues.length} problema(s) en ${label}
+${describeIssues(result.error.issues)}`,
     );
   }
 
-  return result.data;
+  return result.data.projects;
+}
+
+async function readAwsSeedFile() {
+  try {
+    await access(AWS_SEED_FILE);
+  } catch {
+    return [];
+  }
+
+  return readSeedFile(AWS_SEED_FILE, "aws/projects.seed.json");
+}
+
+async function readSeed() {
+  const base = await readSeedFile(SEED_FILE, "projects.seed.json");
+  const aws = await readAwsSeedFile();
+
+  return { projects: [...base, ...aws], awsCount: aws.length };
 }
 
 /**
@@ -166,7 +186,9 @@ async function main(): Promise<void> {
       `Semilla aplicada: ${projects} proyectos (${published} publicados), rúbrica base ${weights}/100.`,
     );
     console.log(
-      `Declarado en projects.seed.json: ${seed.projects.length} proyectos.`,
+      seed.awsCount === 0
+        ? `Declarado en projects.seed.json: ${seed.projects.length} proyectos.`
+        : `Declarado en projects.seed.json y aws/projects.seed.json: ${seed.projects.length} proyectos (${seed.awsCount} de AWS).`,
     );
     console.log(
       `Publicados por etapa: ${publishedByStage

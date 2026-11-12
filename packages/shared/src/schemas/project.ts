@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from "../constants/pagination";
 import { paginatedSchema } from "./common";
-import { CURRICULUM_STAGE_COUNT } from "./content";
+import { isKnownStageId } from "./course";
 import { competencyCodeSchema } from "./progress";
 import { unlockStatusSchema } from "./unlock";
 import { avatarUrlSchema } from "./user";
@@ -77,14 +77,12 @@ export const projectSlugSchema = z
     "Slug en minúsculas separado por guiones",
   );
 
+const STAGE_UNKNOWN_MESSAGE = "La etapa no existe en ninguna ruta";
+
 const stageIdSchema = z
   .number({ invalid_type_error: "La etapa debe ser un número entero" })
   .int("La etapa debe ser un número entero")
-  .min(0, `La etapa debe estar entre 0 y ${CURRICULUM_STAGE_COUNT - 1}`)
-  .max(
-    CURRICULUM_STAGE_COUNT - 1,
-    `La etapa debe estar entre 0 y ${CURRICULUM_STAGE_COUNT - 1}`,
-  );
+  .refine(isKnownStageId, STAGE_UNKNOWN_MESSAGE);
 
 const isoTimestampSchema = z
   .string({ invalid_type_error: "La fecha debe ser texto ISO 8601" })
@@ -522,11 +520,7 @@ export const projectListQuerySchema = z
     stage: z.coerce
       .number({ invalid_type_error: "La etapa debe ser un número entero" })
       .int("La etapa debe ser un número entero")
-      .min(0, `La etapa debe estar entre 0 y ${CURRICULUM_STAGE_COUNT - 1}`)
-      .max(
-        CURRICULUM_STAGE_COUNT - 1,
-        `La etapa debe estar entre 0 y ${CURRICULUM_STAGE_COUNT - 1}`,
-      )
+      .refine(isKnownStageId, STAGE_UNKNOWN_MESSAGE)
       .optional(),
     page: z.coerce
       .number({ invalid_type_error: "La página debe ser un número entero" })

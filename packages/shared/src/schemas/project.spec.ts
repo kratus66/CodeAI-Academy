@@ -291,10 +291,18 @@ describe("projectListQuerySchema", () => {
     });
   });
 
-  it("rechaza una etapa fuera del currículo", () => {
-    expect(projectListQuerySchema.safeParse({ stage: "12" }).success).toBe(
-      false,
+  it("rechaza una etapa que no existe en ninguna ruta", () => {
+    const result = projectListQuerySchema.safeParse({ stage: "50" });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(
+      "La etapa no existe en ninguna ruta",
     );
+  });
+
+  it("acepta la etapa 100 de la ruta AWS y la 11 de la ruta base", () => {
+    expect(projectListQuerySchema.parse({ stage: "100" }).stage).toBe(100);
+    expect(projectListQuerySchema.parse({ stage: "11" }).stage).toBe(11);
   });
 
   it("rechaza un tamaño de página por encima del máximo", () => {
@@ -322,10 +330,19 @@ describe("projectSummarySchema", () => {
     ).toBe(false);
   });
 
-  it("rechaza una etapa fuera de rango y un slug inválido", () => {
+  it("acepta las etapas 100 y 11 y rechaza la 50", () => {
     expect(
-      projectSummarySchema.safeParse({ ...SUMMARY, stageId: 12 }).success,
+      projectSummarySchema.safeParse({ ...SUMMARY, stageId: 100 }).success,
+    ).toBe(true);
+    expect(
+      projectSummarySchema.safeParse({ ...SUMMARY, stageId: 11 }).success,
+    ).toBe(true);
+    expect(
+      projectSummarySchema.safeParse({ ...SUMMARY, stageId: 50 }).success,
     ).toBe(false);
+  });
+
+  it("rechaza un slug inválido", () => {
     expect(
       projectSummarySchema.safeParse({ ...SUMMARY, slug: "API_de_Tareas" })
         .success,
