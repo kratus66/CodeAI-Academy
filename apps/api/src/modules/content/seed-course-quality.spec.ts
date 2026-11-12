@@ -1606,3 +1606,151 @@ describe("guarda de completitud del paquete de las unidades AWS", () => {
     expect(evaluated).not.toContain("AWS-U0.3.1");
   });
 });
+
+const SIMILARITY_THRESHOLD = 0.6;
+
+function normalizedWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
+}
+
+function wordTrigrams(text: string): Set<string> {
+  const words = normalizedWords(text);
+  if (words.length < 3) return new Set(words);
+
+  return new Set(words.slice(0, words.length - 2).map((_, index) => words.slice(index, index + 3).join(" ")));
+}
+
+/** Jaccard de los trigramas de palabras normalizadas (unigramas si el texto tiene menos de 3 palabras). */
+function statementSimilarity(a: string, b: string): number {
+  const first = wordTrigrams(a);
+  const second = wordTrigrams(b);
+  const union = new Set([...first, ...second]);
+  if (union.size === 0) return 0;
+
+  const shared = [...first].filter((gram) => second.has(gram)).length;
+
+  return shared / union.size;
+}
+
+interface SimilarityQuiz {
+  readonly slug: string;
+  readonly certification: string;
+  readonly pool: "unit" | "reserved";
+  readonly statement: string;
+}
+
+function similarityQuizzesOf(
+  items: readonly { readonly exercise: CourseSeedExercise }[],
+): SimilarityQuiz[] {
+  return items.flatMap(({ exercise }) =>
+    exercise.type === "QUIZ" && exercise.exam !== null
+      ? [
+          {
+            slug: exercise.slug,
+            certification: exercise.exam.certification,
+            pool: exercise.exam.pool,
+            statement: exercise.statement,
+          },
+        ]
+      : [],
+  );
+}
+
+/** Cada QUIZ reservado frente a cada QUIZ de unidad de la misma certificación. */
+function similarityProblems(quizzes: readonly SimilarityQuiz[]): string[] {
+  const reservedQuizzes = quizzes.filter((quiz) => quiz.pool === "reserved");
+  const unitQuizzes = quizzes.filter((quiz) => quiz.pool === "unit");
+
+  return reservedQuizzes.flatMap((reservedQuiz) =>
+    unitQuizzes
+      .filter((unitQuiz) => unitQuiz.certification === reservedQuiz.certification)
+      .flatMap((unitQuiz) => {
+        const similarity = statementSimilarity(reservedQuiz.statement, unitQuiz.statement);
+
+        return similarity >= SIMILARITY_THRESHOLD
+          ? [
+              `${reservedQuiz.slug} se parece a ${unitQuiz.slug} (similitud ${similarity.toFixed(2)})`,
+            ]
+          : [];
+      }),
+  );
+}
+
+describe("similitud entre el banco reservado y el de unidad", () => {
+  const BASE = "uno dos tres cuatro cinco seis siete ocho nueve diez once doce trece catorce quince dieciseis";
+
+  it("textos idénticos valen 1 y sin palabras en común valen 0", () => {
+    expect(statementSimilarity(BASE, BASE)).toBe(1);
+    expect(statementSimilarity("alfa beta gamma delta", "uno dos tres cuatro")).toBe(0);
+    expect(statementSimilarity("", "")).toBe(0);
+  });
+
+  it("los textos de menos de 3 palabras se comparan por unigramas", () => {
+    expect(statementSimilarity("Alfa beta", "alfa beta")).toBe(1);
+    expect(statementSimilarity("alfa beta", "alfa gamma")).toBeCloseTo(1 / 3);
+  });
+
+  it("las tildes, las mayúsculas y los signos no cambian el resultado", () => {
+    const plain = "que opcion tiene la menor sobrecarga operativa en aws";
+    const accented = "¿QUÉ opción tiene la MENOR sobrecarga operativa en AWS?";
+
+    expect(statementSimilarity(plain, accented)).toBe(1);
+  });
+
+  it("el umbral separa 0,59 de 0,6", () => {
+    const below = `${BASE.split(" ").slice(0, 12).join(" ")} x1 x2 x3`;
+
+    expect(statementSimilarity(BASE, below).toFixed(2)).toBe("0.59");
+    expect(statementSimilarity("a1 a2 a3 a4 a5 a6", "a1 a2 a3 a4 a5 b6")).toBe(0.6);
+  });
+
+  function quizOf(
+    slug: string,
+    pool: "unit" | "reserved",
+    statement: string,
+    certification = "CLF-C02",
+  ): SimilarityQuiz {
+    return { slug, certification, pool, statement };
+  }
+
+  it("la guarda nombra los dos slugs y la cifra cuando la similitud llega a 0,6", () => {
+    const problems = similarityProblems([
+      quizOf("reservada-1", "reserved", "a1 a2 a3 a4 a5 a6"),
+      quizOf("unidad-1", "unit", "a1 a2 a3 a4 a5 b6"),
+    ]);
+
+    expect(problems).toEqual(["reservada-1 se parece a unidad-1 (similitud 0.60)"]);
+  });
+
+  it("la guarda calla por debajo del umbral, entre bancos del mismo tipo y entre certificaciones", () => {
+    const below = `${BASE.split(" ").slice(0, 12).join(" ")} x1 x2 x3`;
+
+    expect(
+      similarityProblems([quizOf("reservada-1", "reserved", BASE), quizOf("unidad-1", "unit", below)]),
+    ).toEqual([]);
+    expect(
+      similarityProblems([quizOf("reservada-1", "reserved", BASE), quizOf("reservada-2", "reserved", BASE)]),
+    ).toEqual([]);
+    expect(
+      similarityProblems([quizOf("unidad-1", "unit", BASE), quizOf("unidad-2", "unit", BASE)]),
+    ).toEqual([]);
+    expect(
+      similarityProblems([
+        quizOf("reservada-1", "reserved", BASE),
+        quizOf("unidad-1", "unit", BASE, "SAA-C03"),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("ninguna pregunta reservada de la ruta AWS se parece a una de unidad", () => {
+    const offenders = similarityProblems(similarityQuizzesOf(exercises));
+
+    expect(offenders, `Preguntas demasiado parecidas:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
