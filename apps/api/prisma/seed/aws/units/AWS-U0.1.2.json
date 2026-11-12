@@ -1,0 +1,1149 @@
+{
+  "code": "AWS-U0.1.2",
+  "lessons": [
+    {
+      "slug": "aws-u0-1-2-anatomia-de-una-pregunta-de-examen",
+      "title": "Anatomía de una pregunta de examen: escenario, restricción y calificador",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Una pregunta de examen de AWS no pide que recuerdes un dato suelto: pide que elijas la opción adecuada para una situación concreta. Casi todas se construyen con tres piezas. El escenario describe quién es el cliente y qué tiene. La restricción es la condición que la solución debe cumplir sí o sí («los datos no pueden salir de la región», «sin cambiar de motor»). El calificador es la expresión en mayúsculas que ordena las opciones que sí cumplen la restricción: «MOST cost-effective» en inglés, «la opción MÁS rentable» en español. Responder bien consiste en descartar con la restricción y desempatar con el calificador."
+        },
+        {
+          "type": "list",
+          "title": "Las tres piezas y su trabajo",
+          "items": [
+            "Escenario: da el contexto (qué se ejecuta, qué problema hay). Por sí solo no descarta ninguna opción.",
+            "Restricción: condición obligatoria. Una opción que la incumple queda fuera, aunque sea buena en todo lo demás.",
+            "Calificador: criterio de comparación (costo, sobrecarga operativa, seguridad, esfuerzo). Solo se aplica a las opciones que sobreviven a la restricción."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué dice la guía oficial del examen",
+          "text": "La guía de CLF-C02 describe dos tipos de pregunta. En la de opción múltiple hay una respuesta correcta y tres incorrectas, llamadas distractores. En la de respuesta múltiple hay dos o más respuestas correctas entre cinco o más opciones. Según la guía, los distractores son respuestas que elegiría alguien con conocimiento incompleto y suelen ser plausibles y del mismo ámbito. Las preguntas sin responder se puntúan como incorrectas y adivinar no se penaliza, así que conviene contestar siempre. La página de preparación de AWS ofrece series oficiales de preguntas de práctica para conocer el estilo del examen: úsalas para entrenar la lectura, no para memorizar respuestas."
+        },
+        {
+          "type": "list",
+          "title": "Calificadores que conviene saber leer",
+          "items": [
+            "MOST cost-effective: la opción MÁS rentable, es decir, la mejor relación entre costo y lo que exige el escenario entre las que cumplen la restricción.",
+            "LEAST operational overhead: la opción con MENOR sobrecarga operativa, la que deja menos tareas de administración al cliente. Con un servicio administrado, AWS asume más responsabilidades que con una instalación propia en EC2.",
+            "MOST secure: la opción MÁS segura entre las que cumplen el resto de condiciones.",
+            "LEAST effort: la opción que exige MENOS esfuerzo de configuración o de cambio para el equipo."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: una región completa deja de estar disponible",
+          "text": "Enunciado: «Una empresa ejecuta su aplicación en una región. Debe poder seguir operando si toda esa región deja de estar disponible. ¿Qué diseño cumple el requisito de la forma MÁS directa?». Opciones: a) usar varias zonas de disponibilidad de la misma región; b) desplegar también la aplicación en una segunda región; c) pasar a instancias EC2 de mayor tamaño; d) programar copias de seguridad diarias dentro de la misma región. Paso 1, lee la pregunta final: pide un diseño y el calificador es «MÁS directa». Paso 2, subraya la restricción: «si toda esa región deja de estar disponible». Paso 3, descarta: a) las zonas de disponibilidad pertenecen a la misma región, así que un fallo de toda la región también las afecta; c) un tamaño mayor no cambia dónde se ejecuta la aplicación; d) las copias en la misma región dejan de estar disponibles junto con ella. Paso 4: solo queda b, y la guía cita la recuperación ante desastres y la continuidad del negocio entre los motivos para usar varias regiones. Como queda una sola opción, el calificador no tuvo que desempatar."
+        },
+        {
+          "type": "mermaid",
+          "title": "Cómo se resuelve una pregunta de escenario",
+          "code": "flowchart TD\n  A[\"Lee la pregunta final y localiza el calificador\"] --> B[\"Subraya la restricción en el escenario\"]\n  B --> C[\"Descarta las opciones que incumplen la restricción\"]\n  C --> D{\"¿Queda más de una opción?\"}\n  D -- \"No\" --> E[\"Esa es la respuesta\"]\n  D -- \"Sí\" --> F[\"Compara las que quedan con el calificador\"]\n  F --> E"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el mismo escenario, otro calificador",
+          "text": "Un mismo escenario puede tener respuestas distintas según el calificador. Con una base de datos relacional en EC2, «MENOR sobrecarga operativa» apunta a un servicio administrado como Amazon RDS, mientras que «MAYOR control sobre el sistema operativo» apunta a mantenerla en EC2. Cambiar una palabra cambia la respuesta: léela antes de mirar las opciones y vuelve a ella antes de confirmar."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: leer solo el escenario y saltarse el calificador",
+          "text": "Causa: la prisa lleva a buscar «el servicio que resuelve el problema» sin leer cómo se compara. Consecuencia: eliges una opción que cumple la restricción pero no es la que el calificador pide, por ejemplo una base de datos instalada en EC2 cuando se pedía la MENOR sobrecarga operativa. Solución: lee primero la última frase de la pregunta, anota el calificador en el margen y comprueba tu elección contra él antes de confirmar."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: elegir por el nombre del servicio que más suena",
+          "text": "Causa: reconocer un servicio conocido y marcarlo sin comprobar la restricción. Consecuencia: caes en un distractor, que por diseño es un servicio real que resuelve un problema vecino (por ejemplo, Auto Scaling cuando la restricción exige sobrevivir a la caída de una zona). Solución: para cada opción escribe en una línea qué restricción la descarta o por qué la cumple; si no encuentras ninguna restricción que descarte dos opciones, relee el escenario antes de adivinar."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Descomponer una pregunta de examen en escenario, restricción y calificador, y justificar, opción por opción, qué restricción descarta cada distractor. Criterio: ante una pregunta nueva, nombras las tres piezas y explicas por qué cada opción incorrecta queda fuera, sin mirar la lección. Esta unidad no prepara un examen concreto: usa servicios de nivel CLF-C02 solo como material para practicar la lectura."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee el ejemplo de la región completa y rehazlo tapando la explicación: subraya la restricción, anota el calificador y descarta opciones en el orden del diagrama. Después responde de memoria: qué hace la restricción, qué hace el calificador y qué ocurre cuando dos opciones cumplen la restricción."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Un calificador vago en una pregunta de base de datos». Una pregunta escrita como objeto tiene un calificador que no dice qué se compara. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y el enunciado conserva la restricción y las opciones."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La clave de una pregunta de respuesta múltiple no cuadra». Compara la clave con lo que dice cada opción y con la instrucción «Selecciona DOS». Criterio de paso: la clave son exactamente las opciones que cumplen los requisitos y no has modificado el enunciado ni las opciones para que encajen."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un borrador de pregunta. Audítalo en «Auditar un borrador de pregunta generado por IA»: marca solo los defectos reales (restricción ausente, dos respuestas defendibles, distractor inverosímil, opciones prohibidas) y deja sin marcar lo que es correcto aunque parezca raro. Contrasta lo que afirme el borrador con la guía de CLF-C02 (leída el 2026-11-12) antes de aceptarlo, y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe en una línea la restricción y el calificador de cada una; al corregir, lee la explicación de cada opción y anota si fallaste por saltarte el calificador o por no aplicar la restricción. Criterio de paso: al menos 6 de 8 correctas y una restricción identificada por escrito en cada pregunta."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Escribe tú una pregunta nueva sobre un servicio que ya conozcas: escenario de dos a cuatro frases, una restricción, un calificador en mayúsculas, cuatro opciones con distractores reales y una explicación por opción. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero afirma que dos opciones de una pregunta son correctas; ¿qué revisas primero, si el escenario trae una restricción que descarte una de ellas o si el calificador las ordena?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 0,
+          "note": "Describe los tipos de pregunta, los distractores y la puntuación del examen."
+        },
+        {
+          "resourceSlug": "aws-certification-preparacion",
+          "order": 1,
+          "note": "Recursos oficiales de preparación, entre ellos series de preguntas de práctica."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Escenario: el contexto. Restricción: la condición obligatoria que descarta opciones. Calificador: el criterio en mayúsculas (MOST, LEAST…) que ordena las opciones que sí cumplen la restricción."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Las tres piezas de una pregunta",
+      "statement": "En una pregunta de examen, ¿qué función cumple cada una de las tres piezas: escenario, restricción y calificador?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "escenario",
+        "restricción",
+        "calificador"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Opción múltiple: una respuesta correcta y tres incorrectas (distractores). Respuesta múltiple: dos o más respuestas correctas entre cinco o más opciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los dos tipos de pregunta del examen",
+      "statement": "¿Qué dos tipos de pregunta describe la guía del examen CLF-C02?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "opción múltiple",
+        "respuesta múltiple"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una opción incorrecta que elegiría quien tiene conocimiento incompleto. Según la guía, suele ser plausible y del mismo ámbito: se descarta con una restricción del escenario, no por intuición."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué es un distractor",
+      "statement": "¿Qué es un distractor y cómo suele ser?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "distractor"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "No. La guía indica que las preguntas sin responder se puntúan como incorrectas y que adivinar no se penaliza. Descarta con la restricción y elige la opción más probable."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué hacer si dudas",
+      "statement": "Si no estás seguro de una respuesta, ¿conviene dejarla en blanco?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "puntuación",
+        "estrategia de examen"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La opción con MENOR sobrecarga operativa entre las que cumplen la restricción: la que deja menos tareas de administración al cliente. Con un servicio administrado, AWS asume más responsabilidades que con EC2."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: LEAST operational overhead",
+      "statement": "¿Qué pide el calificador «LEAST operational overhead»?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "sobrecarga operativa",
+        "responsabilidad compartida"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La opción MÁS rentable: la mejor relación entre costo y lo que exige el escenario. Una opción barata que incumple la restricción queda descartada antes de comparar costos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: MOST cost-effective",
+      "statement": "¿Qué pide el calificador «MOST cost-effective» y por qué no significa «lo más barato»?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "rentabilidad",
+        "calificador"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html",
+        "https://aws.amazon.com/certification/certification-prep/"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Borrador de una pregunta de examen escrita como objeto. Corrige su defecto principal.\nexport const pregunta = {\n  enunciado:\n    \"Una empresa ejecuta una base de datos relacional en Amazon EC2 y quiere dejar de administrar parches y copias de seguridad, sin cambiar a una base de datos NoSQL. ¿Cuál es la mejor opción?\",\n  restriccion: \"sin cambiar a una base de datos NoSQL\",\n  calificador: \"la mejor\",\n  opciones: [\n    { id: \"a\", texto: \"Migrar la base de datos a Amazon RDS.\" },\n    { id: \"b\", texto: \"Mantenerla en EC2 y escribir scripts de parches.\" },\n    { id: \"c\", texto: \"Migrarla a Amazon DynamoDB.\" },\n    { id: \"d\", texto: \"Moverla a Amazon ElastiCache.\" },\n  ],\n  correcta: \"a\",\n};\n",
+      "solution": {
+        "code": "export const pregunta = {\n  enunciado:\n    \"Una empresa ejecuta una base de datos relacional en Amazon EC2 y quiere dejar de administrar parches y copias de seguridad, sin cambiar a una base de datos NoSQL. ¿Qué opción tiene la MENOR sobrecarga operativa?\",\n  restriccion: \"sin cambiar a una base de datos NoSQL\",\n  calificador: \"MENOR sobrecarga operativa\",\n  opciones: [\n    { id: \"a\", texto: \"Migrar la base de datos a Amazon RDS.\" },\n    { id: \"b\", texto: \"Mantenerla en EC2 y escribir scripts de parches.\" },\n    { id: \"c\", texto: \"Migrarla a Amazon DynamoDB.\" },\n    { id: \"d\", texto: \"Moverla a Amazon ElastiCache.\" },\n  ],\n  correcta: \"a\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Un calificador sirve para ordenar las opciones que cumplen la restricción, así que debe decir en qué se compara: costo, sobrecarga operativa, seguridad… «La mejor» no dice nada."
+        },
+        {
+          "level": 2,
+          "text": "Sustituye «la mejor» por una expresión que empiece por una palabra en mayúsculas (MENOR, MÁS, MAYOR…) seguida de lo que se compara. El criterio de esta pregunta es la sobrecarga operativa. Cambia el campo `calificador` y la última frase del `enunciado`."
+        },
+        {
+          "level": 3,
+          "text": "Usa `calificador: \"MENOR sobrecarga operativa\"` y termina el enunciado con «¿Qué opción tiene la MENOR sobrecarga operativa?». No toques `restriccion`, `opciones` ni `correcta`."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el calificador está en mayúsculas y nombra lo que se compara",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.match(pregunta.calificador, /^(MENOR|MENOS|MÁS|MAYOR|MÍNIMO|MÁXIMO) \\p{Ll}+/u);"
+          }
+        },
+        {
+          "name": "el enunciado contiene el calificador tal cual",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(pregunta.enunciado.includes(pregunta.calificador), \"el enunciado debe repetir el calificador\");"
+          }
+        },
+        {
+          "name": "el enunciado ya no usa «mejor» en minúsculas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.doesNotMatch(pregunta.enunciado, /\\bmejor\\b/);"
+          }
+        },
+        {
+          "name": "se conserva la restricción dentro del enunciado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(pregunta.restriccion, \"sin cambiar a una base de datos NoSQL\");\nassert.ok(pregunta.enunciado.includes(pregunta.restriccion));"
+          }
+        },
+        {
+          "name": "se conservan las cuatro opciones y la respuesta correcta",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(pregunta.opciones.map((opcion) => opcion.id), [\"a\", \"b\", \"c\", \"d\"]);\nassert.strictEqual(pregunta.correcta, \"a\");\nassert.ok(pregunta.opciones[0]?.texto.includes(\"RDS\"));"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-debug-01",
+      "type": "DEBUG",
+      "title": "Un calificador vago en una pregunta de base de datos",
+      "statement": "El objeto `pregunta` representa una pregunta de examen cuya respuesta correcta es la opción a (Amazon RDS) con el criterio de menor sobrecarga operativa. Su defecto principal: el calificador es «la mejor», en minúsculas y sin decir qué se compara, de modo que el enunciado no fija un criterio de comparación. Corrígelo para que el calificador esté en MAYÚSCULAS, nombre lo que se compara y aparezca igual en el enunciado. Conserva la restricción, las cuatro opciones y la respuesta correcta, y mantén la forma del valor exportado (`export const pregunta = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "calificador",
+        "restricción",
+        "enunciado ambiguo"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Pregunta de respuesta múltiple escrita como objeto. Su clave tiene un defecto.\nexport const pregunta = {\n  enunciado:\n    \"Una aplicación debe seguir disponible si falla un centro de datos y sus datos no pueden salir de la región. Selecciona DOS acciones que cumplan ambos requisitos.\",\n  seleccionar: 2,\n  opciones: [\n    {\n      id: \"a\",\n      texto: \"Distribuir las instancias en varias zonas de disponibilidad de la región.\",\n      cumple: true,\n      explicacion: \"Cumple: las zonas no comparten puntos únicos de falla y los datos siguen en la región.\",\n    },\n    {\n      id: \"b\",\n      texto: \"Replicar la aplicación y los datos en otra región.\",\n      cumple: false,\n      explicacion: \"No cumple: la réplica saca los datos de la región, que es la restricción.\",\n    },\n    {\n      id: \"c\",\n      texto: \"Poner un balanceador de carga que reparta el tráfico entre instancias de zonas distintas.\",\n      cumple: true,\n      explicacion: \"Cumple: el tráfico sigue llegando a las instancias de otra zona si una falla.\",\n    },\n    {\n      id: \"d\",\n      texto: \"Usar instancias más grandes dentro de una sola zona de disponibilidad.\",\n      cumple: false,\n      explicacion: \"No cumple: sigue dependiendo de una sola zona, así que un fallo de la zona la detiene.\",\n    },\n    {\n      id: \"e\",\n      texto: \"Programar copias de seguridad semanales en la misma zona de disponibilidad.\",\n      cumple: false,\n      explicacion: \"No cumple: una copia en la misma zona no mantiene la aplicación en marcha si esa zona falla.\",\n    },\n  ],\n  correctas: [\"a\",\"c\",\"d\"],\n};\n",
+      "solution": {
+        "code": "export const pregunta = {\n  enunciado:\n    \"Una aplicación debe seguir disponible si falla un centro de datos y sus datos no pueden salir de la región. Selecciona DOS acciones que cumplan ambos requisitos.\",\n  seleccionar: 2,\n  opciones: [\n    {\n      id: \"a\",\n      texto: \"Distribuir las instancias en varias zonas de disponibilidad de la región.\",\n      cumple: true,\n      explicacion: \"Cumple: las zonas no comparten puntos únicos de falla y los datos siguen en la región.\",\n    },\n    {\n      id: \"b\",\n      texto: \"Replicar la aplicación y los datos en otra región.\",\n      cumple: false,\n      explicacion: \"No cumple: la réplica saca los datos de la región, que es la restricción.\",\n    },\n    {\n      id: \"c\",\n      texto: \"Poner un balanceador de carga que reparta el tráfico entre instancias de zonas distintas.\",\n      cumple: true,\n      explicacion: \"Cumple: el tráfico sigue llegando a las instancias de otra zona si una falla.\",\n    },\n    {\n      id: \"d\",\n      texto: \"Usar instancias más grandes dentro de una sola zona de disponibilidad.\",\n      cumple: false,\n      explicacion: \"No cumple: sigue dependiendo de una sola zona, así que un fallo de la zona la detiene.\",\n    },\n    {\n      id: \"e\",\n      texto: \"Programar copias de seguridad semanales en la misma zona de disponibilidad.\",\n      cumple: false,\n      explicacion: \"No cumple: una copia en la misma zona no mantiene la aplicación en marcha si esa zona falla.\",\n    },\n  ],\n  correctas: [\"a\",\"c\"],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la clave tiene tantas respuestas como pide el enunciado",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(pregunta.correctas.length, pregunta.seleccionar);"
+          }
+        },
+        {
+          "name": "todas las respuestas de la clave existen entre las opciones",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const ids = pregunta.opciones.map((opcion) => opcion.id);\nfor (const id of pregunta.correctas) {\n  assert.ok(ids.includes(id), id + \" no es una opción\");\n}"
+          }
+        },
+        {
+          "name": "la clave son exactamente las opciones que cumplen los requisitos",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const esperadas = pregunta.opciones.filter((opcion) => opcion.cumple).map((opcion) => opcion.id);\nassert.deepStrictEqual([...pregunta.correctas].sort(), esperadas);"
+          }
+        },
+        {
+          "name": "no se alteraron el enunciado ni las opciones para que encajen",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(pregunta.seleccionar, 2);\nassert.ok(pregunta.enunciado.includes(\"DOS\"));\nassert.deepStrictEqual(pregunta.opciones.map((opcion) => [opcion.id, opcion.cumple]), [[\"a\", true], [\"b\", false], [\"c\", true], [\"d\", false], [\"e\", false]]);"
+          }
+        },
+        {
+          "name": "la clave no repite respuestas",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(new Set(pregunta.correctas).size, pregunta.correctas.length);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-debug-02",
+      "type": "DEBUG",
+      "title": "La clave de una pregunta de respuesta múltiple no cuadra",
+      "statement": "El objeto `pregunta` describe una pregunta de respuesta múltiple («Selecciona DOS») con cinco opciones. Cada opción trae su campo `cumple` y una explicación que dice si cumple o no los requisitos del enunciado. La clave `correctas` no es coherente con el resto del objeto. Localiza el defecto y corrígelo sin cambiar el enunciado, las opciones ni sus explicaciones: la clave debe coincidir con lo que dicen las opciones. Mantén la forma del valor exportado (`export const pregunta = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "respuesta múltiple",
+        "clave de respuestas",
+        "restricción"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Pregunta 7 (borrador generado por un asistente)\nUna empresa ejecuta su aplicación en Amazon EC2 y quiere mejorar la disponibilidad.\n¿Cuál es la mejor solución?\na) Distribuir las instancias en varias zonas de disponibilidad de la misma región.\nb) Usar Amazon EC2 Auto Scaling.\nc) Desplegar también la aplicación en una segunda región.\nd) Comprar un servidor más grande y colocarlo en la oficina de la empresa.\ne) Ninguna de las anteriores.\nRespuesta correcta: a\nExplicación: la opción a es correcta porque las zonas de disponibilidad no comparten puntos únicos de falla."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              2,
+              3
+            ],
+            "label": "Enunciado: restricción y calificador",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "El enunciado no trae ninguna restricción que descarte opciones (de región, de costo, de esfuerzo) y «mejor» está en minúsculas sin decir qué se compara. Sin restricción ni criterio, varias opciones pueden defenderse."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              6
+            ],
+            "label": "Opciones a, b y c",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Dos opciones son defendibles: la guía de CLF-C02 cita tanto el uso de varias zonas de disponibilidad como el de varias regiones para ganar disponibilidad, y el enunciado no incluye nada que desempate. La pregunta debe reescribirse con una restricción."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Opción b",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es un distractor legítimo: Amazon EC2 Auto Scaling es un servicio real y vecino, y la guía lo asocia con la elasticidad. Que sea breve no lo convierte en un defecto."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Opción d",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Un servidor en la oficina de la empresa no es una opción de AWS y nadie con conocimiento incompleto la elegiría: no funciona como distractor plausible, que debe ser un servicio o configuración real."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Opción e",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "«Ninguna de las anteriores» está prohibida en las preguntas del banco. Además, una pregunta de opción múltiple tiene una respuesta correcta y tres distractores, es decir, cuatro opciones y no cinco."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              9,
+              10
+            ],
+            "label": "Clave y explicación",
+            "isDefect": true,
+            "severity": "low",
+            "explanation": "Solo se justifica la opción marcada. Cada opción necesita su explicación y debe nombrar la restricción que descarta a las incorrectas; aquí faltan b, c, d y e."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              10,
+              10
+            ],
+            "label": "Afirmación sobre las zonas de disponibilidad",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcta: la guía de CLF-C02 pide describir que las zonas de disponibilidad no comparten puntos únicos de falla. Que suene tajante no la hace falsa."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un borrador de pregunta generado por IA",
+      "statement": "Un asistente de IA redactó este borrador de pregunta para un banco de práctica. Audítalo contra las reglas de la unidad: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el borrador se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "calificador",
+        "distractor plausible",
+        "una sola respuesta defendible"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Migrar la base de datos a Amazon RDS, un servicio administrado en el que AWS asume más tareas de administración",
+            "explanation": "Cumple la restricción (sigue siendo relacional) y el calificador: en un servicio administrado, parte de las tareas que hoy hace el equipo pasan a AWS, así que la sobrecarga operativa baja."
+          },
+          {
+            "id": "b",
+            "text": "Mantener la base de datos en EC2 y automatizar los parches y las copias con scripts del propio equipo",
+            "explanation": "Cumple la restricción relacional, pero el equipo sigue siendo responsable del sistema operativo, del motor y de los scripts: no consigue la MENOR sobrecarga operativa, que es el calificador."
+          },
+          {
+            "id": "c",
+            "text": "Migrar los datos a Amazon DynamoDB, un servicio de base de datos NoSQL de AWS, y adaptar la aplicación",
+            "explanation": "Incumple la restricción: DynamoDB es una base de datos NoSQL y la empresa quiere conservar un motor relacional. El calificador solo ordena opciones que ya cumplen la restricción."
+          },
+          {
+            "id": "d",
+            "text": "Mover los datos a Amazon ElastiCache, un servicio de base de datos en memoria, y adaptar la aplicación",
+            "explanation": "Incumple la restricción: ElastiCache es una base de datos en memoria, no un motor relacional, así que queda descartada antes de comparar la sobrecarga operativa."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-quiz-01",
+      "type": "QUIZ",
+      "title": "Base de datos relacional con menos administración",
+      "statement": "Una empresa ejecuta una base de datos relacional en una instancia de Amazon EC2. Su equipo instala los parches del sistema operativo y del motor, programa las copias de seguridad y configura la recuperación ante fallos. La empresa quiere conservar un motor relacional, pero dedicar menos tiempo a esas tareas de administración. ¿Qué opción tiene la MENOR sobrecarga operativa?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "sobrecarga operativa",
+        "base de datos administrada",
+        "calificador"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Migrar la base de datos a Amazon RDS, un servicio administrado de bases de datos relacionales",
+            "explanation": "Cumple el tipo de motor, pero en un servicio administrado AWS asume más responsabilidades que en EC2 y el equipo cede control sobre el sistema: ofrece menos control, no el MAYOR."
+          },
+          {
+            "id": "b",
+            "text": "Migrar la base de datos a Amazon Aurora, un servicio administrado de bases de datos relacionales",
+            "explanation": "Aurora también es un servicio administrado: el equipo cede responsabilidades a AWS y, con ellas, parte del control sobre el servidor. El calificador pide el MAYOR control."
+          },
+          {
+            "id": "c",
+            "text": "Mantener la base de datos en la instancia EC2, donde el equipo administra el sistema operativo y el motor",
+            "explanation": "Es la opción que deja más responsabilidad en manos del equipo: en EC2 la empresa decide el sistema operativo, la versión del motor y los componentes instalados, que es lo que pide el calificador."
+          },
+          {
+            "id": "d",
+            "text": "Mover los datos a Amazon ElastiCache, un servicio administrado de base de datos en memoria",
+            "explanation": "Incumple la restricción: no es un motor relacional y, al ser un servicio administrado, tampoco deja al equipo decidir el sistema operativo del servidor."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-quiz-02",
+      "type": "QUIZ",
+      "title": "El mismo escenario, otro calificador",
+      "statement": "Una empresa ejecuta una base de datos relacional en una instancia de Amazon EC2. El proveedor de su software exige una versión concreta del sistema operativo y del motor, además de instalar componentes propios en el servidor. La empresa acepta asumir las tareas de administración que eso implique. ¿Qué opción ofrece el MAYOR control sobre la configuración del servidor?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "calificador",
+        "responsabilidad compartida",
+        "base de datos en EC2"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Desplegar una segunda copia de la aplicación y de los datos en otra región y repartir el tráfico entre ambas",
+            "explanation": "Incumple la restricción de soberanía de datos: una segunda región saca la aplicación y los datos de la región actual, aunque varias regiones sirvan para recuperarse de desastres."
+          },
+          {
+            "id": "b",
+            "text": "Distribuir las instancias en varias zonas de disponibilidad de la misma región, con un balanceador de carga delante",
+            "explanation": "Cumple las dos condiciones: las zonas no comparten puntos únicos de falla, así que la aplicación sigue en pie si una falla, y todo permanece dentro de la región."
+          },
+          {
+            "id": "c",
+            "text": "Cambiar a instancias de mayor tamaño, pero dentro de la misma zona de disponibilidad en la que ya están",
+            "explanation": "Incumple el requisito de continuidad: más tamaño no cambia que todas las instancias dependan de una sola zona, y si esa zona falla la aplicación deja de atender usuarios."
+          },
+          {
+            "id": "d",
+            "text": "Mantener una sola zona y activar Auto Scaling para sustituir las instancias que dejen de responder",
+            "explanation": "Auto Scaling aporta elasticidad, pero con todas las instancias en una zona un fallo de esa zona las afecta a todas a la vez: no cumple la condición de seguir atendiendo usuarios."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-quiz-03",
+      "type": "QUIZ",
+      "title": "Disponibilidad sin salir de la región",
+      "statement": "Una aplicación web se ejecuta en instancias de Amazon EC2 ubicadas en una sola zona de disponibilidad. La empresa debe seguir atendiendo usuarios si esa zona deja de estar disponible y, por requisitos de soberanía de datos, la aplicación no puede salir de su región actual. ¿Qué diseño cumple el requisito de la forma MÁS directa?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "zonas de disponibilidad",
+        "alta disponibilidad",
+        "restricción"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Entregar la contraseña solo al equipo de administración, que la guardará en un documento compartido",
+            "explanation": "Más personas con la contraseña amplían el riesgo y no añaden ninguna comprobación: la contraseña sigue dando acceso por sí sola, que es justo lo que la restricción quiere evitar."
+          },
+          {
+            "id": "b",
+            "text": "Crear claves de acceso para el usuario raíz y guardarlas en el repositorio del equipo de desarrollo",
+            "explanation": "Crea credenciales adicionales para el usuario raíz sin exigir un segundo factor: no impide que una credencial, por sí sola, dé acceso a la cuenta."
+          },
+          {
+            "id": "c",
+            "text": "Activar AWS CloudTrail para registrar la actividad del usuario raíz y revisarla cada semana",
+            "explanation": "CloudTrail sirve para auditar: registra lo que ocurre, pero no impide el acceso, y la contraseña seguiría dando acceso por sí sola. No cumple el verbo «evitar» de la restricción."
+          },
+          {
+            "id": "d",
+            "text": "Activar la autenticación multifactor (MFA) en el usuario raíz, de modo que se exija un segundo factor al iniciar sesión",
+            "explanation": "Con un segundo factor la contraseña ya no basta para iniciar sesión. La guía de CLF-C02 destaca la importancia de proteger el usuario raíz y cita MFA como método de autenticación."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-quiz-04",
+      "type": "QUIZ",
+      "title": "Proteger el usuario raíz",
+      "statement": "Una empresa acaba de crear su cuenta de AWS. Cualquier persona que conozca la contraseña del usuario raíz puede iniciar sesión con ella, sin ninguna otra comprobación. La empresa necesita evitar que la contraseña, por sí sola, dé acceso a la cuenta. ¿Qué medida es la MÁS eficaz para conseguirlo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "usuario raíz",
+        "autenticación multifactor",
+        "restricción"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Artifact, el recurso donde AWS pone a disposición de los clientes su información de cumplimiento",
+            "explanation": "Cumple la restricción: la guía de CLF-C02 cita AWS Artifact como lugar donde encontrar la información de cumplimiento de AWS, que es lo que pide el enunciado."
+          },
+          {
+            "id": "b",
+            "text": "AWS CloudTrail, que registra las acciones realizadas en la cuenta de la empresa",
+            "explanation": "CloudTrail sirve para auditar lo que ocurre en la cuenta de la empresa; incumple la restricción, porque la información que se pide la publica AWS sobre sus servicios."
+          },
+          {
+            "id": "c",
+            "text": "AWS Config, que permite auditar la configuración de los recursos de la cuenta de la empresa",
+            "explanation": "AWS Config también audita la cuenta de la empresa. El enunciado descarta esa tarea («no necesita auditar su cuenta») y pide información publicada por AWS."
+          },
+          {
+            "id": "d",
+            "text": "Amazon CloudWatch, que permite monitorizar las métricas y los registros de las aplicaciones",
+            "explanation": "CloudWatch sirve para monitorizar las cargas de la empresa; incumple la restricción, porque la información pedida es de cumplimiento y la publica AWS."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-quiz-05",
+      "type": "QUIZ",
+      "title": "Dónde obtener información de cumplimiento",
+      "statement": "Una persona auditora pide a una empresa la información de cumplimiento que AWS publica sobre sus propios servicios, para incluirla en un expediente de conformidad. La empresa no necesita auditar su cuenta: solo quiere saber dónde obtener esa información de AWS. ¿Qué recurso es la forma MÁS directa de conseguirla?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Artifact",
+        "cumplimiento",
+        "restricción"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Mantener siempre en ejecución las instancias necesarias para el pico de las campañas",
+            "explanation": "Incumple la restricción de no pagar capacidad ociosa: es un costo fijo permanente que se mantiene también cuando la carga es baja."
+          },
+          {
+            "id": "b",
+            "text": "Usar Amazon EC2 Auto Scaling para añadir y quitar instancias según la demanda",
+            "explanation": "Cumple todo: ajusta de forma automática el número de instancias a la demanda, y la guía de CLF-C02 señala que el escalado automático aporta elasticidad."
+          },
+          {
+            "id": "c",
+            "text": "Cambiar las instancias por un tipo optimizado para cómputo, con más CPU por instancia",
+            "explanation": "Cambia el perfil de cada instancia, no su número, y no reacciona sola a la demanda: incumple la restricción de ajuste automático."
+          },
+          {
+            "id": "d",
+            "text": "Lanzar y terminar instancias a mano antes y después de cada campaña",
+            "explanation": "Incumple la restricción de no intervención manual: depende de que alguien lo recuerde y no se adapta a picos imprevistos."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-quiz-06",
+      "type": "QUIZ",
+      "title": "Ajustar la capacidad a la demanda",
+      "statement": "Una tienda en línea recibe picos de tráfico durante sus campañas y muy poca carga el resto del tiempo. La empresa quiere que el número de instancias de Amazon EC2 se ajuste solo a la demanda, sin intervención manual y sin pagar capacidad ociosa de forma permanente. ¿Qué capacidad se ajusta MEJOR a la necesidad de adaptar la capacidad automáticamente a la demanda?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "elasticidad",
+        "Auto Scaling",
+        "calificador"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "«Una empresa guarda copias de seguridad en AWS»",
+            "explanation": "Es parte del escenario: da el contexto, pero no descarta ninguna opción por sí misma, porque no impone una condición que las soluciones deban cumplir."
+          },
+          {
+            "id": "b",
+            "text": "«con la MENOR sobrecarga operativa»",
+            "explanation": "Es el calificador: ordena las opciones que ya cumplen la restricción, pero no descarta las que la incumplen. Se aplica después de descartar, no antes."
+          },
+          {
+            "id": "c",
+            "text": "«Las copias no pueden salir de la región actual»",
+            "explanation": "Es la restricción: una condición obligatoria. Toda solución que saque las copias de la región queda descartada, aunque tuviera la menor sobrecarga operativa."
+          },
+          {
+            "id": "d",
+            "text": "«lleva varios años usando la nube»",
+            "explanation": "Es contexto sin efecto sobre la solución: no impone ninguna condición ni sirve para comparar opciones, así que no descarta ni ordena nada."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-quiz-07",
+      "type": "QUIZ",
+      "title": "Identificar la restricción de un enunciado",
+      "statement": "Lee este enunciado de examen: «Una empresa guarda copias de seguridad en AWS y lleva varios años usando la nube. Las copias no pueden salir de la región actual. ¿Qué solución las almacena con la MENOR sobrecarga operativa?». ¿Qué fragmento es la restricción que decide qué opciones se descartan?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "restricción",
+        "escenario",
+        "calificador"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Ofrecen cinco o más opciones de respuesta, y dos o más de ellas son correctas",
+            "explanation": "La guía describe la respuesta múltiple como una pregunta con dos o más respuestas correctas entre cinco o más opciones, así que esta afirmación sí está respaldada."
+          },
+          {
+            "id": "b",
+            "text": "Cada respuesta incorrecta resta puntos de la puntuación del candidato",
+            "explanation": "La guía indica que adivinar no se penaliza, así que una respuesta incorrecta no resta puntos: la afirmación contradice la restricción de que la guía la respalde."
+          },
+          {
+            "id": "c",
+            "text": "Una pregunta que se deja sin responder se puntúa como incorrecta",
+            "explanation": "La guía establece que las preguntas sin responder se puntúan como incorrectas, por lo que conviene contestar siempre; la afirmación está respaldada."
+          },
+          {
+            "id": "d",
+            "text": "Siempre ofrecen cuatro opciones, con una única correcta y tres distractores",
+            "explanation": "Esa descripción corresponde a la opción múltiple de respuesta única; la respuesta múltiple tiene cinco o más opciones y dos o más correctas, así que la guía no la respalda aquí."
+          },
+          {
+            "id": "e",
+            "text": "Sus distractores son opciones absurdas que se descartan sin conocer el tema",
+            "explanation": "La guía dice que los distractores suelen ser respuestas plausibles del mismo ámbito, las que elegiría quien tiene conocimiento incompleto; no son absurdos."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-quiz-08",
+      "type": "QUIZ",
+      "title": "Qué respalda la guía sobre la respuesta múltiple",
+      "statement": "Un candidato repasa la guía oficial del examen CLF-C02 para entender cómo se presentan las preguntas de respuesta múltiple. Selecciona DOS afirmaciones que la guía respalda.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "respuesta múltiple",
+        "puntuación",
+        "distractor"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "slug": "aws-u0-1-2-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: una decisión y el calificador que la sostiene",
+      "statement": "Elige una de las preguntas de esta unidad (por ejemplo, la de la base de datos en EC2 con el calificador «MENOR sobrecarga operativa») y escribe su respuesta como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué opción elegiste y qué restricción del escenario cumple.\n\n2) Alternativa descartada: una opción que descartaste y la restricción que la dejó fuera.\n\n3) Consecuencia: qué habrías elegido si el calificador hubiera sido otro (por ejemplo, «MAYOR control sobre el sistema operativo») y qué cambia para el equipo.\n\n4) Pilar: qué pilar del Well-Architected Framework sostiene ese calificador (excelencia operativa, seguridad, fiabilidad, eficiencia del rendimiento, optimización de costos o sostenibilidad).\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la restricción y el calificador. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo leíste el enunciado.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "restricción",
+        "calificador",
+        "Well-Architected"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 18
+    }
+  ]
+}
