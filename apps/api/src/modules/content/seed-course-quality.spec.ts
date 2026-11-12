@@ -11,6 +11,7 @@ import {
   examTaskBelongsToDomain,
   isExamDomainOf,
   mergeCourseSeed,
+  type ContentSeedLesson,
   type ContentSeedQuiz,
   type CourseSeedExam,
   type CourseSeedExercise,
@@ -867,5 +868,592 @@ describe("guarda de calidad de las preguntas tipo examen AWS", () => {
 
       expect(results.map((result) => result.passed)).toEqual([false]);
     });
+  });
+});
+
+/**
+ * Guarda de completitud del paquete de una unidad AWS de A0 y A1 (sprint 17,
+ * decisiones a, b y c). Se aplica a las unidades de las etapas 100 y 101 cuyo
+ * archivo ya tiene al menos un QUIZ, es decir, cuyo paquete ya se empezó.
+ */
+
+const PACKAGE_STAGE_IDS: readonly number[] = [100, 101];
+const A1_STAGE_ID = 101;
+const A1_CERTIFICATION = "CLF-C02";
+
+const MIN_QUIZZES = 8;
+const MIN_FLASHCARDS = 6;
+const MIN_DIAGNOSTIC_QUIZZES = 12;
+const MIN_PREPARATION_DOMAINS = 3;
+const MIN_COMMON_ERRORS = 2;
+
+/** Práctica que exige la unidad: arnés, excepción (b), diagnóstico o preparación. */
+type PracticeKind = "arnés" | "excepción" | "diagnóstico" | "preparación";
+
+interface PackageRule {
+  readonly practice: PracticeKind;
+  readonly memory: boolean;
+}
+
+/** Copia de las columnas «Práctica» y «MEMORY» de la tabla de unidades del sprint 17. */
+const PACKAGE_RULES: Readonly<Record<string, PackageRule>> = {
+  "AWS-U0.1.1": { practice: "excepción", memory: true },
+  "AWS-U0.1.2": { practice: "excepción", memory: false },
+  "AWS-U0.1.3": { practice: "excepción", memory: false },
+  "AWS-U0.1.4": { practice: "excepción", memory: false },
+  "AWS-U0.1.5": { practice: "diagnóstico", memory: false },
+  "AWS-U0.2.1": { practice: "excepción", memory: false },
+  "AWS-U0.2.2": { practice: "excepción", memory: false },
+  "AWS-U0.2.3": { practice: "excepción", memory: false },
+  "AWS-U0.2.4": { practice: "excepción", memory: false },
+  "AWS-U0.2.5": { practice: "excepción", memory: true },
+  "AWS-U0.3.1": { practice: "arnés", memory: false },
+  "AWS-U0.3.2": { practice: "excepción", memory: true },
+  "AWS-U0.3.3": { practice: "excepción", memory: false },
+  "AWS-U0.3.4": { practice: "excepción", memory: false },
+  "AWS-U0.3.5": { practice: "arnés", memory: false },
+  "AWS-U1.1.1": { practice: "excepción", memory: false },
+  "AWS-U1.1.2": { practice: "excepción", memory: true },
+  "AWS-U1.1.3": { practice: "excepción", memory: false },
+  "AWS-U1.1.4": { practice: "excepción", memory: false },
+  "AWS-U1.1.5": { practice: "excepción", memory: false },
+  "AWS-U1.2.1": { practice: "excepción", memory: false },
+  "AWS-U1.2.2": { practice: "arnés", memory: false },
+  "AWS-U1.2.3": { practice: "excepción", memory: true },
+  "AWS-U1.2.4": { practice: "arnés", memory: false },
+  "AWS-U1.2.5": { practice: "excepción", memory: false },
+  "AWS-U1.3.1": { practice: "arnés", memory: true },
+  "AWS-U1.3.2": { practice: "excepción", memory: true },
+  "AWS-U1.3.3": { practice: "arnés", memory: true },
+  "AWS-U1.3.4": { practice: "arnés", memory: true },
+  "AWS-U1.3.5": { practice: "arnés", memory: true },
+  "AWS-U1.3.6": { practice: "arnés", memory: true },
+  "AWS-U1.4.1": { practice: "arnés", memory: true },
+  "AWS-U1.4.2": { practice: "excepción", memory: false },
+  "AWS-U1.4.3": { practice: "excepción", memory: false },
+  "AWS-U1.5.1": { practice: "preparación", memory: false },
+};
+
+type PackageLesson = Pick<ContentSeedLesson, "slug" | "content" | "steps">;
+
+/** Una unidad con sus lecciones y sus ejercicios, tal como la fusiona la semilla. */
+interface PackageUnit {
+  readonly code: string;
+  readonly lessons: readonly PackageLesson[];
+  readonly exercises: readonly CourseSeedExercise[];
+}
+
+function countOf(unit: PackageUnit, type: CourseSeedExercise["type"]): number {
+  return unit.exercises.filter((exercise) => exercise.type === type).length;
+}
+
+/** Falta de cantidad mínima de ejercicios de un tipo, o nada. */
+function minimumProblem(
+  unit: PackageUnit,
+  type: CourseSeedExercise["type"],
+  minimum: number,
+): string[] {
+  const found = countOf(unit, type);
+
+  return found >= minimum
+    ? []
+    : [`${unit.code}: faltan ejercicios ${type} (hay ${found}, mínimo ${minimum})`];
+}
+
+function harnessLabProblems(unit: PackageUnit): string[] {
+  const hasLab = (ladder: CourseSeedExercise["ladder"]): boolean =>
+    unit.exercises.some(
+      (exercise) =>
+        exercise.type === "LAB" && exercise.ladder === ladder && exercise.harness === "aws",
+    );
+
+  return [
+    ...(hasLab("GUIDED") ? [] : [`${unit.code}: falta el LAB guiado con arnés aws`]),
+    ...(hasLab("AUTONOMOUS") ? [] : [`${unit.code}: falta el LAB autónomo con arnés aws`]),
+  ];
+}
+
+function preparationDomainProblems(unit: PackageUnit): string[] {
+  const domains = new Set(
+    unit.exercises.flatMap((exercise) =>
+      exercise.type === "QUIZ" && exercise.exam !== null ? [exercise.exam.domain] : [],
+    ),
+  );
+
+  return domains.size >= MIN_PREPARATION_DOMAINS
+    ? []
+    : [
+        `${unit.code}: los QUIZ de preparación cubren ${domains.size} dominios con exam (mínimo ${MIN_PREPARATION_DOMAINS})`,
+      ];
+}
+
+function memoryProblems(unit: PackageUnit): string[] {
+  const hasMatch = unit.exercises.some(
+    (exercise) => exercise.type === "MEMORY" && exercise.memory?.mode === "match",
+  );
+
+  return hasMatch ? [] : [`${unit.code}: falta el MEMORY en modo match`];
+}
+
+/** Ejercicios que exige cada práctica, además del paquete común. */
+function practiceProblems(unit: PackageUnit, practice: PracticeKind): string[] {
+  switch (practice) {
+    case "arnés":
+      return [
+        ...minimumProblem(unit, "QUIZ", MIN_QUIZZES),
+        ...minimumProblem(unit, "FLASHCARD", MIN_FLASHCARDS),
+        ...minimumProblem(unit, "REFLECT", 1),
+        ...minimumProblem(unit, "DEBUG", 1),
+        ...harnessLabProblems(unit),
+      ];
+    case "excepción":
+      return [
+        ...minimumProblem(unit, "QUIZ", MIN_QUIZZES),
+        ...minimumProblem(unit, "FLASHCARD", MIN_FLASHCARDS),
+        ...minimumProblem(unit, "REFLECT", 1),
+        ...minimumProblem(unit, "DEBUG", 2),
+        ...minimumProblem(unit, "AUDIT", 1),
+      ];
+    case "diagnóstico":
+      return [
+        ...minimumProblem(unit, "QUIZ", MIN_DIAGNOSTIC_QUIZZES),
+        ...minimumProblem(unit, "FLASHCARD", MIN_FLASHCARDS),
+        ...minimumProblem(unit, "REFLECT", 1),
+      ];
+    case "preparación":
+      return [
+        ...minimumProblem(unit, "QUIZ", MIN_QUIZZES),
+        ...preparationDomainProblems(unit),
+        ...minimumProblem(unit, "REFLECT", 1),
+      ];
+  }
+}
+
+function blockText(block: PackageLesson["content"][number]): string {
+  return [block.title ?? "", block.text ?? "", ...(block.items ?? [])].join("\n");
+}
+
+/** Reglas de lección AWS: diagrama mermaid, errores comunes y objetivo con la certificación. */
+function lessonPackageProblems(
+  unit: PackageUnit,
+  lesson: PackageLesson,
+  stageId: number,
+): string[] {
+  const label = `${unit.code} / ${lesson.slug}`;
+  const problems: string[] = [];
+
+  if (!lesson.content.some((block) => block.type === "mermaid")) {
+    problems.push(`${label}: la lección no tiene ningún bloque mermaid`);
+  }
+
+  const commonErrors = lesson.content
+    .map(blockText)
+    .filter((text) => /Error com[uú]n/i.test(text));
+  const incomplete = commonErrors.filter(
+    (text) => !/causa/i.test(text) || !/soluci[oó]n/i.test(text),
+  );
+
+  if (commonErrors.length < MIN_COMMON_ERRORS) {
+    problems.push(
+      `${label}: la lección tiene ${commonErrors.length} «Error común» (mínimo ${MIN_COMMON_ERRORS})`,
+    );
+  }
+  if (incomplete.length > 0) {
+    problems.push(`${label}: hay un «Error común» sin causa o sin solución`);
+  }
+
+  if (stageId === A1_STAGE_ID) {
+    const objective = lesson.steps.find((step) => step.kind === "objective")?.body ?? "";
+
+    if (!objective.includes(A1_CERTIFICATION)) {
+      problems.push(`${label}: el paso objective no cita ${A1_CERTIFICATION}`);
+    }
+  }
+
+  return problems;
+}
+
+/**
+ * Piezas que faltan al paquete de una unidad de A0 o A1. `exceptions` es la
+ * tabla de reglas por unidad (`PACKAGE_RULES`). Los mensajes nombran la unidad
+ * y la pieza que falta.
+ */
+function unitPackageProblems(
+  unit: PackageUnit,
+  stageId: number,
+  exceptions: Readonly<Record<string, PackageRule>>,
+): string[] {
+  const rule = exceptions[unit.code];
+
+  if (rule === undefined) {
+    return [`${unit.code}: la unidad no figura en la tabla de reglas del paquete`];
+  }
+
+  return [
+    ...(unit.lessons.length === 0 ? [`${unit.code}: falta la lección`] : []),
+    ...unit.lessons.flatMap((lesson) => lessonPackageProblems(unit, lesson, stageId)),
+    ...practiceProblems(unit, rule.practice),
+    ...(rule.memory ? memoryProblems(unit) : []),
+  ];
+}
+
+const packageUnits: { readonly unit: PackageUnit; readonly stageId: number }[] =
+  merged.seed.stages.flatMap((stage) =>
+    PACKAGE_STAGE_IDS.includes(stage.id)
+      ? stage.modules.flatMap((module) =>
+          module.units
+            .filter((unit) => unit.exercises.some((exercise) => exercise.type === "QUIZ"))
+            .map((unit) => ({ unit, stageId: stage.id })),
+        )
+      : [],
+  );
+
+function syntheticExercise(
+  type: CourseSeedExercise["type"],
+  index: number,
+  overrides: Partial<CourseSeedExercise> = {},
+): CourseSeedExercise {
+  return {
+    slug: `sintetico-${type.toLowerCase()}-${index}`,
+    type,
+    title: `Ejercicio ${type} ${index}`,
+    statement: "Enunciado sintético",
+    ladder: "SEMI",
+    difficulty: 2,
+    concepts: ["concepto"],
+    competencies: ["AWS-C1"],
+    estimatedMin: null,
+    language: null,
+    starterCode: null,
+    solution: null,
+    harness: null,
+    quiz: null,
+    flashcard: null,
+    memory: null,
+    audit: null,
+    cloudLab: null,
+    sources: ["https://docs.aws.amazon.com/"],
+    maxAttempts: null,
+    isPublished: false,
+    order: index,
+    hints: [],
+    tests: [],
+    exam: null,
+    ...overrides,
+  };
+}
+
+function repeated(type: CourseSeedExercise["type"], count: number): CourseSeedExercise[] {
+  return Array.from({ length: count }, (_, index) => syntheticExercise(type, index + 1));
+}
+
+function syntheticMemory(mode: "flip" | "match"): CourseSeedExercise {
+  return syntheticExercise("MEMORY", 1, {
+    memory: {
+      mode,
+      pairs: Array.from({ length: 6 }, (_, index) => ({
+        id: `par-${index + 1}`,
+        term: `Término ${index + 1}`,
+        definition: `Definición ${index + 1}`,
+      })),
+      intro: null,
+    },
+  });
+}
+
+function syntheticLab(
+  ladder: CourseSeedExercise["ladder"],
+  harness: CourseSeedExercise["harness"],
+): CourseSeedExercise {
+  return syntheticExercise("LAB", ladder === "GUIDED" ? 1 : 2, { ladder, harness });
+}
+
+function syntheticLesson(
+  options: { mermaid?: boolean; commonErrors?: number; objective?: string } = {},
+): PackageLesson {
+  const { mermaid = true, commonErrors = 2, objective = "Explicar el tema según CLF-C02." } =
+    options;
+
+  return {
+    slug: "leccion-sintetica",
+    content: [
+      { type: "paragraph", title: "Idea central", text: "Texto de la idea central." },
+      ...(mermaid ? [{ type: "mermaid" as const, title: "Diagrama", code: "graph TD; A-->B" }] : []),
+      ...Array.from({ length: commonErrors }, (_, index) => ({
+        type: "callout" as const,
+        title: `Error común ${index + 1}: confusión`,
+        text: "Causa: se confunden dos conceptos. Solución: contrastarlos con la documentación.",
+      })),
+    ],
+    steps: [
+      { kind: "objective", title: "Objetivo medible", body: objective },
+      { kind: "explanation", title: "Explicación", body: "Texto." },
+      { kind: "guided_practice", title: "Práctica guiada", body: "Texto." },
+      { kind: "independent_practice", title: "Práctica independiente", body: "Texto." },
+      { kind: "debug", title: "Depuración", body: "Texto." },
+      { kind: "assessment", title: "Evaluación", body: "Texto." },
+      { kind: "transfer", title: "Transferencia", body: "Texto." },
+    ],
+  };
+}
+
+function syntheticUnit(
+  code: string,
+  exercises: readonly CourseSeedExercise[],
+  lesson: PackageLesson = syntheticLesson(),
+): PackageUnit {
+  return { code, lessons: [lesson], exercises };
+}
+
+function examQuizzes(count: number, domains: readonly number[]): CourseSeedExercise[] {
+  return Array.from({ length: count }, (_, index) =>
+    syntheticExercise("QUIZ", index + 1, {
+      exam: {
+        certification: "CLF-C02",
+        domain: domains[index % domains.length] ?? 1,
+        task: null,
+        pool: "unit",
+      },
+    }),
+  );
+}
+
+const SYNTHETIC_RULES: Readonly<Record<string, PackageRule>> = {
+  "AWS-U0.9.1": { practice: "arnés", memory: true },
+  "AWS-U0.9.2": { practice: "excepción", memory: true },
+  "AWS-U0.9.3": { practice: "diagnóstico", memory: false },
+  "AWS-U1.9.1": { practice: "preparación", memory: false },
+};
+
+const harnessExercises = (): CourseSeedExercise[] => [
+  ...repeated("QUIZ", 8),
+  ...repeated("FLASHCARD", 6),
+  ...repeated("REFLECT", 1),
+  ...repeated("DEBUG", 1),
+  syntheticLab("GUIDED", "aws"),
+  syntheticLab("AUTONOMOUS", "aws"),
+  syntheticMemory("match"),
+];
+
+const exceptionExercises = (): CourseSeedExercise[] => [
+  ...repeated("QUIZ", 8),
+  ...repeated("FLASHCARD", 6),
+  ...repeated("REFLECT", 1),
+  ...repeated("DEBUG", 2),
+  ...repeated("AUDIT", 1),
+  syntheticMemory("match"),
+];
+
+const diagnosticExercises = (): CourseSeedExercise[] => [
+  ...repeated("QUIZ", 12),
+  ...repeated("FLASHCARD", 6),
+  ...repeated("REFLECT", 1),
+];
+
+const preparationExercises = (): CourseSeedExercise[] => [
+  ...examQuizzes(8, [1, 2, 3, 4]),
+  ...repeated("REFLECT", 1),
+];
+
+const without = (
+  exercises: readonly CourseSeedExercise[],
+  predicate: (exercise: CourseSeedExercise) => boolean,
+): CourseSeedExercise[] => exercises.filter((exercise) => !predicate(exercise));
+
+describe("guarda de completitud del paquete de las unidades AWS", () => {
+  it("la tabla PACKAGE_RULES tiene las 35 unidades de A0 y A1 del esqueleto", () => {
+    const skeletonCodes = skeleton.stages
+      .filter((stage) => PACKAGE_STAGE_IDS.includes(stage.id))
+      .flatMap((stage) => stage.modules.flatMap((module) => module.units.map((unit) => unit.code)));
+
+    expect(Object.keys(PACKAGE_RULES)).toHaveLength(35);
+    expect([...Object.keys(PACKAGE_RULES)].sort()).toEqual([...skeletonCodes].sort());
+  });
+
+  it("la tabla marca 12 unidades con MEMORY y reparte las prácticas como el sprint 17", () => {
+    const rules = Object.values(PACKAGE_RULES);
+    const count = (practice: PracticeKind): number =>
+      rules.filter((rule) => rule.practice === practice).length;
+
+    expect(rules.filter((rule) => rule.memory)).toHaveLength(12);
+    expect(count("diagnóstico")).toBe(1);
+    expect(count("preparación")).toBe(1);
+    expect(count("arnés")).toBe(10);
+    expect(count("excepción")).toBe(23);
+  });
+
+  it("una unidad de arnés completa no tiene problemas", () => {
+    const unit = syntheticUnit("AWS-U0.9.1", harnessExercises());
+
+    expect(unitPackageProblems(unit, 100, SYNTHETIC_RULES)).toEqual([]);
+  });
+
+  it("una unidad de excepción completa no tiene problemas", () => {
+    const unit = syntheticUnit("AWS-U0.9.2", exceptionExercises());
+
+    expect(unitPackageProblems(unit, 100, SYNTHETIC_RULES)).toEqual([]);
+  });
+
+  it("una unidad de diagnóstico completa no tiene problemas, sin DEBUG ni AUDIT", () => {
+    const unit = syntheticUnit("AWS-U0.9.3", diagnosticExercises());
+
+    expect(unitPackageProblems(unit, 100, SYNTHETIC_RULES)).toEqual([]);
+  });
+
+  it("una unidad de preparación completa no tiene problemas, sin LAB ni AUDIT", () => {
+    const unit = syntheticUnit("AWS-U1.9.1", preparationExercises());
+
+    expect(unitPackageProblems(unit, 101, SYNTHETIC_RULES)).toEqual([]);
+  });
+
+  it("el CLOUD_LAB opcional no se exige ni estorba", () => {
+    const unit = syntheticUnit("AWS-U0.9.2", [...exceptionExercises(), ...repeated("CLOUD_LAB", 1)]);
+
+    expect(unitPackageProblems(unit, 100, SYNTHETIC_RULES)).toEqual([]);
+  });
+
+  it("nombra la pieza que falta en una unidad de arnés", () => {
+    const check = (exercises: readonly CourseSeedExercise[]): string[] =>
+      unitPackageProblems(syntheticUnit("AWS-U0.9.1", exercises), 100, SYNTHETIC_RULES);
+    const base = harnessExercises();
+
+    expect(check([...without(base, (e) => e.type === "QUIZ"), ...repeated("QUIZ", 7)])).toEqual([
+      "AWS-U0.9.1: faltan ejercicios QUIZ (hay 7, mínimo 8)",
+    ]);
+    expect(check(without(base, (e) => e.type === "FLASHCARD"))).toEqual([
+      "AWS-U0.9.1: faltan ejercicios FLASHCARD (hay 0, mínimo 6)",
+    ]);
+    expect(check(without(base, (e) => e.type === "REFLECT"))).toEqual([
+      "AWS-U0.9.1: faltan ejercicios REFLECT (hay 0, mínimo 1)",
+    ]);
+    expect(check(without(base, (e) => e.type === "DEBUG"))).toEqual([
+      "AWS-U0.9.1: faltan ejercicios DEBUG (hay 0, mínimo 1)",
+    ]);
+    expect(check(without(base, (e) => e.type === "LAB" && e.ladder === "GUIDED"))).toEqual([
+      "AWS-U0.9.1: falta el LAB guiado con arnés aws",
+    ]);
+    expect(check(without(base, (e) => e.type === "LAB" && e.ladder === "AUTONOMOUS"))).toEqual([
+      "AWS-U0.9.1: falta el LAB autónomo con arnés aws",
+    ]);
+    expect(check(without(base, (e) => e.type === "MEMORY"))).toEqual([
+      "AWS-U0.9.1: falta el MEMORY en modo match",
+    ]);
+  });
+
+  it("un LAB sin arnés o un MEMORY en modo flip no cuentan", () => {
+    const noHarness = [
+      ...without(harnessExercises(), (e) => e.type === "LAB"),
+      syntheticLab("GUIDED", null),
+      syntheticLab("AUTONOMOUS", "aws"),
+    ];
+    const flip = [...without(harnessExercises(), (e) => e.type === "MEMORY"), syntheticMemory("flip")];
+
+    expect(unitPackageProblems(syntheticUnit("AWS-U0.9.1", noHarness), 100, SYNTHETIC_RULES)).toEqual([
+      "AWS-U0.9.1: falta el LAB guiado con arnés aws",
+    ]);
+    expect(unitPackageProblems(syntheticUnit("AWS-U0.9.1", flip), 100, SYNTHETIC_RULES)).toEqual([
+      "AWS-U0.9.1: falta el MEMORY en modo match",
+    ]);
+  });
+
+  it("nombra la pieza que falta en una unidad de excepción", () => {
+    const check = (exercises: readonly CourseSeedExercise[]): string[] =>
+      unitPackageProblems(syntheticUnit("AWS-U0.9.2", exercises), 100, SYNTHETIC_RULES);
+    const base = exceptionExercises();
+
+    expect(check(without(base, (e) => e.type === "AUDIT"))).toEqual([
+      "AWS-U0.9.2: faltan ejercicios AUDIT (hay 0, mínimo 1)",
+    ]);
+    expect(check([...without(base, (e) => e.type === "DEBUG"), ...repeated("DEBUG", 1)])).toEqual([
+      "AWS-U0.9.2: faltan ejercicios DEBUG (hay 1, mínimo 2)",
+    ]);
+    expect(check(without(base, (e) => e.type === "MEMORY"))).toEqual([
+      "AWS-U0.9.2: falta el MEMORY en modo match",
+    ]);
+  });
+
+  it("nombra la pieza que falta en el diagnóstico y en la preparación", () => {
+    const diagnostic = (exercises: readonly CourseSeedExercise[]): string[] =>
+      unitPackageProblems(syntheticUnit("AWS-U0.9.3", exercises), 100, SYNTHETIC_RULES);
+    const preparation = (exercises: readonly CourseSeedExercise[]): string[] =>
+      unitPackageProblems(syntheticUnit("AWS-U1.9.1", exercises), 101, SYNTHETIC_RULES);
+    const base = diagnosticExercises();
+
+    expect(diagnostic([...without(base, (e) => e.type === "QUIZ"), ...repeated("QUIZ", 11)])).toEqual([
+      "AWS-U0.9.3: faltan ejercicios QUIZ (hay 11, mínimo 12)",
+    ]);
+    expect(diagnostic(without(base, (e) => e.type === "REFLECT"))).toEqual([
+      "AWS-U0.9.3: faltan ejercicios REFLECT (hay 0, mínimo 1)",
+    ]);
+    expect(preparation([...examQuizzes(7, [1, 2, 3]), ...repeated("REFLECT", 1)])).toEqual([
+      "AWS-U1.9.1: faltan ejercicios QUIZ (hay 7, mínimo 8)",
+    ]);
+    expect(preparation([...examQuizzes(8, [1, 2]), ...repeated("REFLECT", 1)])).toEqual([
+      "AWS-U1.9.1: los QUIZ de preparación cubren 2 dominios con exam (mínimo 3)",
+    ]);
+    expect(preparation(examQuizzes(8, [1, 2, 3]))).toEqual([
+      "AWS-U1.9.1: faltan ejercicios REFLECT (hay 0, mínimo 1)",
+    ]);
+  });
+
+  it("nombra la pieza que falta en la lección", () => {
+    const check = (lesson: PackageLesson, stageId = 101): string[] =>
+      unitPackageProblems(
+        syntheticUnit("AWS-U0.9.2", exceptionExercises(), lesson),
+        stageId,
+        SYNTHETIC_RULES,
+      );
+
+    expect(check(syntheticLesson({ mermaid: false }))).toEqual([
+      "AWS-U0.9.2 / leccion-sintetica: la lección no tiene ningún bloque mermaid",
+    ]);
+    expect(check(syntheticLesson({ commonErrors: 1 }))).toEqual([
+      "AWS-U0.9.2 / leccion-sintetica: la lección tiene 1 «Error común» (mínimo 2)",
+    ]);
+    expect(check(syntheticLesson({ objective: "Explicar el tema." }))).toEqual([
+      "AWS-U0.9.2 / leccion-sintetica: el paso objective no cita CLF-C02",
+    ]);
+    expect(check(syntheticLesson({ objective: "Explicar el tema." }), 100)).toEqual([]);
+  });
+
+  it("un «Error común» sin causa o sin solución no cuenta como completo", () => {
+    const lesson = syntheticLesson();
+    const broken: PackageLesson = {
+      ...lesson,
+      content: [
+        ...lesson.content.slice(0, 3),
+        { type: "callout", title: "Error común 2: algo", text: "Solo se describe el fallo." },
+      ],
+    };
+
+    expect(
+      unitPackageProblems(syntheticUnit("AWS-U0.9.2", exceptionExercises(), broken), 101, SYNTHETIC_RULES),
+    ).toEqual(["AWS-U0.9.2 / leccion-sintetica: hay un «Error común» sin causa o sin solución"]);
+  });
+
+  it("una unidad sin lección o fuera de la tabla también se señala", () => {
+    const noLesson: PackageUnit = { code: "AWS-U0.9.2", lessons: [], exercises: exceptionExercises() };
+
+    expect(unitPackageProblems(noLesson, 100, SYNTHETIC_RULES)).toEqual([
+      "AWS-U0.9.2: falta la lección",
+    ]);
+    expect(unitPackageProblems(syntheticUnit("AWS-U9.9.9", []), 100, SYNTHETIC_RULES)).toEqual([
+      "AWS-U9.9.9: la unidad no figura en la tabla de reglas del paquete",
+    ]);
+  });
+
+  it("las unidades de A0 y A1 con algún QUIZ tienen el paquete completo", () => {
+    const offenders = packageUnits.flatMap(({ unit, stageId }) =>
+      unitPackageProblems(unit, stageId, PACKAGE_RULES),
+    );
+
+    expect(offenders, `Paquetes incompletos:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("los pilotos actuales, sin QUIZ, no se evalúan todavía", () => {
+    const evaluated = packageUnits.map(({ unit }) => unit.code);
+
+    expect(evaluated).not.toContain("AWS-U0.2.2");
+    expect(evaluated).not.toContain("AWS-U0.3.1");
   });
 });
