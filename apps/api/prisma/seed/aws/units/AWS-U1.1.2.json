@@ -1,0 +1,1275 @@
+{
+  "code": "AWS-U1.1.2",
+  "lessons": [
+    {
+      "slug": "aws-u1-1-2-modelos-de-servicio-y-de-despliegue",
+      "title": "Modelos de servicio y de despliegue",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "La computación en la nube permite a los desarrolladores y a los departamentos de TI centrarse en lo que más importa y evitar el trabajo indiferenciado, como la adquisición de recursos, el mantenimiento y la planificación de capacidad. Con su popularidad han surgido varios modelos y estrategias de despliegue para cubrir necesidades distintas, y cada tipo da un nivel diferente de control, flexibilidad y gestión. Conviene separar dos preguntas: el modelo de servicio dice cuánto gestionas tú y cuánto el proveedor (IaaS, PaaS, SaaS), y el modelo de despliegue dice dónde se ejecutan los recursos (nube, híbrido o local)."
+        },
+        {
+          "type": "list",
+          "title": "Los tres modelos de servicio",
+          "items": [
+            "IaaS (infraestructura como servicio): contiene los bloques básicos de TI en la nube y suele dar acceso a funciones de red, equipos (virtuales o de hardware dedicado) y espacio de almacenamiento de datos. Ofrece el mayor nivel de flexibilidad y de control de gestión sobre los recursos de TI y es el tipo más parecido a los recursos de TI que ya conocen muchos equipos.",
+            "PaaS (plataforma como servicio): elimina la necesidad de gestionar la infraestructura subyacente (normalmente hardware y sistemas operativos) y permite centrarse en el despliegue y la gestión de las aplicaciones. No hay que preocuparse de la adquisición de recursos, la planificación de capacidad, el mantenimiento del software ni los parches.",
+            "SaaS (software como servicio): el proveedor ejecuta y gestiona el software, normalmente aplicaciones de usuario final de terceros. Quien lo usa no se ocupa del mantenimiento del servicio ni de la infraestructura: solo piensa en cómo usarlo. Un ejemplo común es el correo web."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Control frente a trabajo",
+          "text": "Los tres modelos reparten de forma distinta el control y el trabajo. En IaaS ganas el mayor control de gestión y conservas el trabajo de gestionar esos recursos. En PaaS cedes la infraestructura subyacente y te quedas con tu aplicación. En SaaS cedes también el software y solo lo usas. AWS señala además que las definiciones varían de una empresa a otra y que se centra en soluciones a tus necesidades, que pueden abarcar varios tipos de servicio: los tres nombres son una agrupación tradicional para decidir qué conjunto encaja mejor."
+        },
+        {
+          "type": "mermaid",
+          "title": "Servicio frente a despliegue: dos preguntas distintas",
+          "code": "flowchart LR\n  subgraph SERV[\"Modelos de servicio: cuánto gestionas tú\"]\n    I[\"IaaS: bloques básicos de TI y mayor control de gestión\"] --> P[\"PaaS: sin gestionar la infraestructura subyacente\"]\n    P --> S[\"SaaS: el proveedor ejecuta y gestiona el software\"]\n  end\n  subgraph DESP[\"Modelos de despliegue: dónde viven los recursos\"]\n    N[\"Nube: todas las partes en la nube\"]\n    H[\"Híbrido: nube conectada con recursos fuera de ella\"]\n    L[\"Local o nube privada: virtualización en las instalaciones\"]\n  end"
+        },
+        {
+          "type": "list",
+          "title": "Los tres modelos de despliegue",
+          "items": [
+            "Nube: la aplicación está desplegada por completo en la nube y todas sus partes se ejecutan en ella. Pudo crearse en la nube o migrarse desde una infraestructura existente, y puede construirse sobre piezas de infraestructura de bajo nivel o sobre servicios de nivel superior que abstraen la gestión, la arquitectura y el escalado de la infraestructura.",
+            "Híbrido: conecta infraestructura y aplicaciones entre recursos en la nube y recursos que no están en ella. Lo más común es conectar la nube con la infraestructura existente en las instalaciones, para extenderla y hacerla crecer hacia la nube mientras se conectan los recursos de la nube con los sistemas internos.",
+            "Local o nube privada: desplegar recursos en las instalaciones con herramientas de virtualización y de gestión de recursos. No aporta muchos de los beneficios de la computación en la nube, pero a veces se busca por sus recursos dedicados. En la mayoría de los casos es el mismo modelo que la infraestructura de TI heredada, con técnicas de gestión y virtualización para aprovechar mejor los recursos."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres necesidades, tres respuestas",
+          "text": "Una empresa tiene tres necesidades. Necesidad 1: que sus empleados usen correo desde el navegador sin mantener servidores ni sistemas operativos. El proveedor ejecuta y gestiona el software y la empresa solo lo usa, así que es SaaS. Necesidad 2: que su equipo despliegue y gestione su propia aplicación sin gestionar hardware ni sistemas operativos subyacentes. Se elimina la infraestructura subyacente y se conserva la aplicación, así que es PaaS. Necesidad 3: conservar el mayor control de gestión sobre redes, equipos y almacenamiento, parecido a lo que ya hace con sus recursos de TI. Son los bloques básicos de TI, así que es IaaS. Hasta aquí todo son modelos de servicio. Ahora la empresa mantiene un sistema interno que no puede retirar y lo conecta con lo que ejecuta en la nube: eso ya es una pregunta de despliegue, y la respuesta es híbrido."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: mezclar servicio y despliegue",
+          "text": "Una pregunta puede ofrecerte como opciones tanto IaaS, PaaS y SaaS como nube, híbrido y local, aunque solo una familia responde a lo que se pide. Antes de elegir, decide si el enunciado habla de quién gestiona qué (modelo de servicio) o de dónde se ejecutan los recursos (modelo de despliegue), y descarta la otra familia. Si el enunciado pide el mayor control, piensa en IaaS; si pide quitar la infraestructura subyacente, en PaaS; si el usuario solo usa el software, en SaaS."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que el despliegue local o nube privada da los beneficios de la nube",
+          "text": "Causa: llamarlo «nube privada» y pensar que, por usar virtualización, aporta lo mismo que la computación en la nube. Consecuencia: se elige el despliegue local esperando ventajas que casi no ofrece, porque suele ser igual que la infraestructura de TI heredada y no da muchos de los beneficios de la nube. Solución: recuerda que se busca a veces por sus recursos dedicados, no por los beneficios de la nube, y compara sus ventajas con las del despliegue en la nube o híbrido antes de decidir."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir qué modelo gestiona la infraestructura subyacente",
+          "text": "Causa: memorizar los tres nombres sin asociar a cada uno lo que gestiona quien lo usa. Consecuencia: se atribuye a PaaS el mayor control de gestión, que es de IaaS, o se cree que en SaaS el cliente mantiene los servidores del software, cuando los ejecuta y gestiona el proveedor. Solución: ordénalos por lo que gestionas tú: en IaaS, los recursos de TI con el mayor control; en PaaS, tu aplicación sin la infraestructura subyacente; en SaaS, solo el uso del software."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Distinguir los modelos de servicio (IaaS, PaaS y SaaS) de los modelos de despliegue (nube, híbrido y local) y asignar a cada caso el modelo y la responsabilidad que le corresponden. Esta unidad prepara el examen CLF-C02, dominio 1 «Conceptos de la nube»; las tareas 1.1 a 1.4 de la guía no nombran estos modelos, por lo que las preguntas de la unidad no llevan tarea asignada. Criterio: ante un escenario nuevo, decides si habla de servicio o de despliegue, nombras el modelo y explicas por qué los distractores quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las tres necesidades tapando las respuestas: para cada una, decide si pregunta por servicio o por despliegue y nombra el modelo. Después responde de memoria: qué elimina PaaS, quién ejecuta el software en SaaS, qué da más control en IaaS y en qué se parecen el despliegue local y la infraestructura heredada."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una matriz de modelos de servicio con un responsable equivocado». Una matriz escrita como objeto asigna mal una tarea. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas las demás filas."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El modelo de servicio cambia según el orden de las comprobaciones». Una función clasifica mal a un equipo que gestiona infraestructura y aplicación a la vez. Criterio de paso: cada combinación de lo que gestiona el equipo devuelve su modelo, sea cual sea el orden de las llamadas."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre los modelos de la nube. Audítalo en «Auditar un informe de modelos de la nube generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales sobre los tipos de computación en la nube (leídas el 2026-11-13) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad y juega al emparejamiento de modelos y responsabilidades. Antes de elegir, escribe si la pregunta es de servicio o de despliegue y el calificador de cada una; al corregir, lee la explicación de cada opción y anota si fallaste por mezclar las dos familias o por asignar mal quién gestiona qué. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una aplicación que conozcas (una web con base de datos y correo para el equipo) y escribe qué modelo de servicio usarías para cada parte y qué modelo de despliegue para el conjunto. Después completa la reflexión de la unidad. Pregunta de cierre: un directivo dice que «una nube privada en nuestras instalaciones nos da todos los beneficios de la nube»; ¿qué le respondes y en qué parte de la documentación de AWS te apoyas?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-modelos-de-servicio-libro-blanco",
+          "order": 0,
+          "note": "Fuente de los modelos de despliegue (nube, nube privada local e híbrido) y de la idea de evitar el trabajo indiferenciado."
+        },
+        {
+          "resourceSlug": "aws-tipos-de-computacion-en-la-nube",
+          "order": 1,
+          "note": "Fuente de las definiciones de IaaS, PaaS y SaaS, del ejemplo del correo web y de los tres modelos de despliegue."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 2,
+          "note": "Guía de CLF-C02: el dominio 1 «Conceptos de la nube» enmarca esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Los bloques básicos de TI: funciones de red, equipos (virtuales o de hardware dedicado) y espacio de almacenamiento de datos. Da el mayor nivel de flexibilidad y de control de gestión y es el más parecido a los recursos de TI que ya conocen muchos equipos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Infraestructura como servicio (IaaS)",
+      "statement": "¿Qué ofrece el modelo IaaS y qué nivel de control da?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "IaaS",
+        "control de gestión"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Elimina la necesidad de gestionar la infraestructura subyacente (normalmente hardware y sistemas operativos). Permite centrarse en el despliegue y la gestión de las aplicaciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Plataforma como servicio (PaaS)",
+      "statement": "¿Qué elimina el modelo PaaS y en qué permite centrarse?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "PaaS",
+        "infraestructura subyacente"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El proveedor ejecuta y gestiona el software. Quien lo usa solo piensa cómo emplearlo, sin ocuparse del mantenimiento del servicio ni de la infraestructura. Un ejemplo común es el correo web."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Software como servicio (SaaS)",
+      "statement": "¿Quién ejecuta y gestiona el software en el modelo SaaS y qué debe pensar quien lo usa?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "SaaS",
+        "correo web"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cuando está desplegada por completo en la nube y todas sus partes se ejecutan en ella. Pudo crearse en la nube o migrarse desde una infraestructura existente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Despliegue en la nube",
+      "statement": "¿Cuándo se dice que una aplicación está desplegada en la nube?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "despliegue en la nube",
+        "migración"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Conecta infraestructura y aplicaciones entre recursos en la nube y recursos que no están en ella. Lo más común es conectar la nube con la infraestructura existente en las instalaciones, para ampliarla y hacerla crecer hacia la nube."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Despliegue híbrido",
+      "statement": "¿Qué conecta un despliegue híbrido y cuál es su forma más común?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "despliegue híbrido",
+        "instalaciones propias"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Desplegar recursos en las instalaciones con herramientas de virtualización y gestión de recursos. No aporta muchos de los beneficios de la nube, pero a veces se busca por sus recursos dedicados. Suele ser igual que la infraestructura de TI heredada."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Despliegue local o nube privada",
+      "statement": "¿Qué es el despliegue local (nube privada) y qué aporta o no aporta?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "despliegue local",
+        "nube privada"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Matriz de responsabilidades de los modelos de servicio de la nube. Corrige su defecto principal.\nexport const matriz = {\n  filas: [\n    { modelo: \"SaaS\", tarea: \"Ejecutar y mantener el software\", responsable: \"PROVEEDOR\" },\n    { modelo: \"SaaS\", tarea: \"Decidir cómo se usa el software\", responsable: \"CLIENTE\" },\n    { modelo: \"PaaS\", tarea: \"Gestionar el hardware y los sistemas operativos subyacentes\", responsable: \"CLIENTE\" },\n    { modelo: \"PaaS\", tarea: \"Desplegar y gestionar la aplicación\", responsable: \"CLIENTE\" },\n    { modelo: \"IaaS\", tarea: \"Gestionar las redes, los equipos y el almacenamiento contratados\", responsable: \"CLIENTE\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const matriz = {\n  filas: [\n    { modelo: \"SaaS\", tarea: \"Ejecutar y mantener el software\", responsable: \"PROVEEDOR\" },\n    { modelo: \"SaaS\", tarea: \"Decidir cómo se usa el software\", responsable: \"CLIENTE\" },\n    { modelo: \"PaaS\", tarea: \"Gestionar el hardware y los sistemas operativos subyacentes\", responsable: \"PROVEEDOR\" },\n    { modelo: \"PaaS\", tarea: \"Desplegar y gestionar la aplicación\", responsable: \"CLIENTE\" },\n    { modelo: \"IaaS\", tarea: \"Gestionar las redes, los equipos y el almacenamiento contratados\", responsable: \"CLIENTE\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "PaaS elimina la necesidad de gestionar la infraestructura subyacente, normalmente el hardware y los sistemas operativos. Pregúntate a quién le quita ese trabajo."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal. Compara cada tarea con lo que describe cada modelo: en SaaS el proveedor ejecuta el software; en PaaS el cliente se centra en su aplicación; en IaaS el cliente conserva el mayor control."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `responsable` de la fila de PaaS «Gestionar el hardware y los sistemas operativos subyacentes» de \"CLIENTE\" a \"PROVEEDOR\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el hardware y los sistemas operativos subyacentes de PaaS son del proveedor",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = matriz.filas.find((f) => f.tarea === \"Gestionar el hardware y los sistemas operativos subyacentes\");\nassert.ok(fila, \"debe existir la fila del hardware subyacente\");\nassert.strictEqual(fila.modelo, \"PaaS\");\nassert.strictEqual(fila.responsable, \"PROVEEDOR\");"
+          }
+        },
+        {
+          "name": "los responsables solo pueden ser PROVEEDOR o CLIENTE",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const fila of matriz.filas) {\n  assert.ok([\"PROVEEDOR\", \"CLIENTE\"].includes(fila.responsable), fila.tarea + \" tiene un responsable no válido\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su responsable",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Ejecutar y mantener el software\": \"PROVEEDOR\",\n  \"Decidir cómo se usa el software\": \"CLIENTE\",\n  \"Desplegar y gestionar la aplicación\": \"CLIENTE\",\n  \"Gestionar las redes, los equipos y el almacenamiento contratados\": \"CLIENTE\",\n};\nfor (const [tarea, responsable] of Object.entries(esperado)) {\n  const fila = matriz.filas.find((f) => f.tarea === tarea);\n  assert.ok(fila, tarea + \" debe seguir existiendo\");\n  assert.strictEqual(fila.responsable, responsable);\n}"
+          }
+        },
+        {
+          "name": "siguen las cinco filas con sus modelos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(matriz.filas.length, 5);\nassert.deepStrictEqual(matriz.filas.map((f) => f.modelo), [\"SaaS\", \"SaaS\", \"PaaS\", \"PaaS\", \"IaaS\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-debug-01",
+      "type": "DEBUG",
+      "title": "Una matriz de modelos de servicio con un responsable equivocado",
+      "statement": "El objeto `matriz` reparte entre el PROVEEDOR y el CLIENTE cinco tareas de los modelos de servicio de la nube. Una de las cinco filas asigna la tarea al responsable equivocado, de modo que la matriz contradice lo que describe AWS para ese modelo. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const matriz = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "PaaS",
+        "infraestructura subyacente",
+        "modelos de servicio"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Clasifica el modelo de servicio según lo que gestiona el equipo. Corrige su defecto principal.\nexport interface Necesidad {\n  gestionaInfraestructura: boolean;\n  gestionaAplicacion: boolean;\n}\n\nexport type Modelo = \"IaaS\" | \"PaaS\" | \"SaaS\";\n\nexport function modeloDeServicio(necesidad: Necesidad): Modelo {\n  if (necesidad.gestionaAplicacion) {\n    return \"PaaS\";\n  }\n  if (necesidad.gestionaInfraestructura) {\n    return \"IaaS\";\n  }\n  return \"SaaS\";\n}\n",
+      "solution": {
+        "code": "export interface Necesidad {\n  gestionaInfraestructura: boolean;\n  gestionaAplicacion: boolean;\n}\n\nexport type Modelo = \"IaaS\" | \"PaaS\" | \"SaaS\";\n\nexport function modeloDeServicio(necesidad: Necesidad): Modelo {\n  if (necesidad.gestionaInfraestructura) {\n    return \"IaaS\";\n  }\n  if (necesidad.gestionaAplicacion) {\n    return \"PaaS\";\n  }\n  return \"SaaS\";\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "quien gestiona infraestructura y aplicación usa IaaS",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(modeloDeServicio({ gestionaInfraestructura: true, gestionaAplicacion: true }), \"IaaS\");"
+          }
+        },
+        {
+          "name": "quien solo gestiona su aplicación usa PaaS",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(modeloDeServicio({ gestionaInfraestructura: false, gestionaAplicacion: true }), \"PaaS\");"
+          }
+        },
+        {
+          "name": "quien no gestiona nada solo usa el software: SaaS",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(modeloDeServicio({ gestionaInfraestructura: false, gestionaAplicacion: false }), \"SaaS\");"
+          }
+        },
+        {
+          "name": "quien solo gestiona la infraestructura sigue siendo IaaS",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(modeloDeServicio({ gestionaInfraestructura: true, gestionaAplicacion: false }), \"IaaS\");"
+          }
+        },
+        {
+          "name": "el resultado no depende del orden de las llamadas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const a = modeloDeServicio({ gestionaInfraestructura: false, gestionaAplicacion: true });\nconst b = modeloDeServicio({ gestionaInfraestructura: true, gestionaAplicacion: true });\nconst c = modeloDeServicio({ gestionaInfraestructura: false, gestionaAplicacion: true });\nassert.deepStrictEqual([a, b, c], [\"PaaS\", \"IaaS\", \"PaaS\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-debug-02",
+      "type": "DEBUG",
+      "title": "El modelo de servicio cambia según el orden de las comprobaciones",
+      "statement": "La función `modeloDeServicio` clasifica una necesidad como IaaS, PaaS o SaaS según lo que gestiona el equipo: la infraestructura (redes, equipos y almacenamiento), la aplicación, o ninguna de las dos. Quien la usa observa que un equipo que gestiona a la vez su infraestructura y su aplicación obtiene PaaS en lugar de IaaS. Localiza el defecto y corrígelo sin cambiar los tipos ni la firma de la función.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "IaaS",
+        "PaaS",
+        "SaaS"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de modelos de la nube (borrador generado por un asistente)\nContexto: una empresa compara opciones para su nueva aplicación.\n1. SaaS: el cliente gestiona los servidores y los sistemas operativos sobre los que se ejecuta el software.\n2. PaaS: el proveedor se ocupa de la infraestructura subyacente y el cliente se centra en desplegar y gestionar su aplicación.\n3. IaaS: es el modelo más parecido a los recursos de TI que ya conocen muchos equipos y el que da el mayor control de gestión.\n4. Despliegue local (nube privada): aporta todos los beneficios de la computación en la nube porque usa virtualización.\n5. Despliegue híbrido: conecta recursos en la nube con recursos que siguen fuera de ella, normalmente las instalaciones propias.\n6. Despliegue en la nube: solo cuenta si la aplicación se creó desde cero en la nube; una migrada no cuenta."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Responsable del software en SaaS",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "En SaaS el proveedor ejecuta y gestiona el software; quien lo usa no se ocupa del mantenimiento del servicio ni de gestionar los servidores y sistemas operativos."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Reparto en PaaS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: PaaS elimina la necesidad de gestionar la infraestructura subyacente y permite centrarse en el despliegue y la gestión de las aplicaciones."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Control en IaaS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto, aunque suene a exageración: AWS describe IaaS como el tipo que da el mayor nivel de flexibilidad y de control de gestión y el más parecido a los recursos de TI habituales."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Beneficios del despliegue local",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Desplegar en las instalaciones con virtualización no aporta muchos de los beneficios de la computación en la nube; se busca a veces por sus recursos dedicados."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Despliegue híbrido",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el híbrido conecta recursos en la nube con recursos que no están en ella, y lo más común es conectarla con la infraestructura existente en las instalaciones."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Origen de una aplicación en la nube",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Una aplicación en la nube pudo crearse allí o migrarse desde una infraestructura existente: ambas cuentan si todas sus partes se ejecutan en la nube."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de modelos de la nube generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre los modelos de servicio y de despliegue de la nube. Audítalo contra la documentación de AWS: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "modelos de servicio",
+        "modelos de despliegue",
+        "despliegue local"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "SaaS: aplicaciones que el proveedor ejecuta y gestiona para el usuario final",
+            "explanation": "Descartada: en SaaS el proveedor ejecuta y gestiona el software, así que la empresa gana comodidad y no control sobre los recursos de TI."
+          },
+          {
+            "id": "b",
+            "text": "IaaS: redes, equipos y almacenamiento de datos como bloques básicos de TI",
+            "explanation": "Es el modelo: IaaS da el mayor nivel de flexibilidad y de control de gestión y es el más parecido a los recursos de TI que ya conoce un equipo de TI."
+          },
+          {
+            "id": "c",
+            "text": "PaaS: infraestructura subyacente gestionada por el proveedor para centrarse en la aplicación",
+            "explanation": "Descartada: PaaS retira la gestión del hardware y de los sistemas operativos subyacentes, es decir, cede control que la empresa quiere conservar."
+          },
+          {
+            "id": "d",
+            "text": "Híbrido: recursos en la nube conectados con otros que siguen fuera de ella",
+            "explanation": "Descartada: es un modelo de despliegue, no de servicio, y la pregunta pide un modelo de servicio."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué modelo de servicio da el mayor control sobre los recursos de TI",
+      "statement": "Una empresa con un equipo de TI veterano quiere llevar a la nube lo que hoy hace con sus propios recursos de TI y conservar el MAYOR nivel de flexibilidad y de control de gestión posible. ¿Qué modelo de servicio de la nube encaja MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "IaaS",
+        "control de gestión"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "IaaS: bloques básicos de TI con redes, equipos y almacenamiento de datos",
+            "explanation": "Descartada: IaaS destaca por el mayor control de gestión sobre los recursos de TI y no es el modelo que retira la gestión de la infraestructura subyacente."
+          },
+          {
+            "id": "b",
+            "text": "SaaS: software de usuario final que el proveedor ejecuta y gestiona",
+            "explanation": "Descartada: en SaaS el proveedor gestiona el software completo, así que el equipo no desplegaría ni gestionaría su propia aplicación."
+          },
+          {
+            "id": "c",
+            "text": "Local: virtualización y herramientas de gestión en las instalaciones de la empresa",
+            "explanation": "Descartada: es un modelo de despliegue y suele ser igual que la infraestructura heredada, sin quitar el trabajo de adquisición ni de mantenimiento."
+          },
+          {
+            "id": "d",
+            "text": "PaaS: hardware y sistemas operativos subyacentes gestionados por el proveedor",
+            "explanation": "Es el modelo: PaaS elimina la gestión de la infraestructura subyacente y permite centrarse en desplegar y gestionar la aplicación."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué modelo deja gestionar la aplicación sin gestionar la infraestructura",
+      "statement": "Un equipo de desarrollo quiere seguir desplegando y gestionando su propia aplicación, pero sin preocuparse de la adquisición de recursos, la planificación de capacidad, el mantenimiento del software ni los parches. ¿Qué modelo de servicio describe MEJOR lo que busca?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "PaaS",
+        "infraestructura subyacente"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "SaaS: el proveedor ejecuta y gestiona el software y quien lo usa solo decide cómo emplearlo",
+            "explanation": "Es el modelo: el correo web es el ejemplo común de SaaS, porque el proveedor mantiene el software, los servidores y los sistemas operativos."
+          },
+          {
+            "id": "b",
+            "text": "PaaS: el proveedor gestiona la infraestructura subyacente y el cliente gestiona su aplicación",
+            "explanation": "Descartada: PaaS sirve para desplegar y gestionar una aplicación propia, y aquí los empleados solo usan un programa que ya existe."
+          },
+          {
+            "id": "c",
+            "text": "IaaS: el cliente recibe redes, equipos y almacenamiento de datos para construir su solución",
+            "explanation": "Descartada: IaaS ofrece bloques básicos de TI y no un programa de correo ya terminado que la empresa solo tenga que usar."
+          },
+          {
+            "id": "d",
+            "text": "En la nube: todas las partes de la aplicación se ejecutan en recursos de la nube",
+            "explanation": "Descartada: describe dónde se ejecuta la aplicación, no quién gestiona el software, así que no responde a un modelo de servicio."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué modelo de servicio es el correo web",
+      "statement": "Una empresa quiere que sus empleados envíen y reciban correo desde el navegador, sin gestionar nuevas funciones ni mantener los servidores y sistemas operativos del programa de correo. ¿Qué modelo de servicio describe MEJOR esa oferta?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SaaS",
+        "correo web"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "El proveedor ejecuta y mantiene aplicaciones pensadas para usuarios finales",
+            "explanation": "No cumple: eso describe SaaS, donde el proveedor ejecuta y gestiona el software."
+          },
+          {
+            "id": "b",
+            "text": "Da acceso a funciones de red, equipos virtuales o de hardware dedicado y espacio de datos",
+            "explanation": "Cumple: IaaS contiene los bloques básicos de TI e incluye red, equipos y almacenamiento de datos."
+          },
+          {
+            "id": "c",
+            "text": "Elimina la gestión del hardware y de los sistemas operativos para centrarse en la aplicación",
+            "explanation": "No cumple: eso describe PaaS, que retira la gestión de la infraestructura subyacente."
+          },
+          {
+            "id": "d",
+            "text": "Ofrece el mayor nivel de flexibilidad y de control de gestión sobre los recursos de TI",
+            "explanation": "Cumple: AWS lo describe como el tipo con más flexibilidad y control de gestión, el más parecido a los recursos de TI habituales."
+          },
+          {
+            "id": "e",
+            "text": "Evita que quien lo usa tenga que pensar en cómo se mantiene el servicio, solo en su uso",
+            "explanation": "No cumple: eso describe SaaS, donde solo hay que pensar en cómo usar el software."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-quiz-04",
+      "type": "QUIZ",
+      "title": "Selecciona las características de IaaS",
+      "statement": "Una empresa estudia contratar infraestructura como servicio (IaaS) para sus aplicaciones. Selecciona DOS características de ese modelo de servicio.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "IaaS",
+        "control de gestión"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Híbrido: recursos en la nube conectados con otros que siguen fuera de ella",
+            "explanation": "Descartada: el híbrido mantiene parte de los recursos fuera de la nube y la empresa ya no conserva ninguno."
+          },
+          {
+            "id": "b",
+            "text": "Local (nube privada): virtualización y gestión de recursos en sus propias instalaciones",
+            "explanation": "Descartada: el despliegue local se queda en las instalaciones de la empresa y su aplicación ya está en la nube."
+          },
+          {
+            "id": "c",
+            "text": "En la nube: todas las partes de la aplicación se ejecutan en recursos de la nube",
+            "explanation": "Es el modelo: una aplicación desplegada por completo en la nube puede haberse creado allí o migrado desde una infraestructura existente."
+          },
+          {
+            "id": "d",
+            "text": "IaaS: redes, equipos y almacenamiento de datos como bloques básicos de TI",
+            "explanation": "Descartada: IaaS es un modelo de servicio y la pregunta pide un modelo de despliegue."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué modelo de despliegue es una aplicación migrada por completo",
+      "statement": "Una empresa trasladó su aplicación desde su infraestructura anterior a la nube y ya no conserva ningún componente fuera de ella. ¿Qué modelo de despliegue describe MEJOR su situación?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "despliegue en la nube",
+        "migración"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Híbrido: infraestructura y aplicaciones conectadas entre recursos en la nube y recursos fuera de ella",
+            "explanation": "Es el modelo: el híbrido conecta la nube con la infraestructura existente en las instalaciones para ampliarla y hacerla crecer hacia la nube."
+          },
+          {
+            "id": "b",
+            "text": "En la nube: aplicación desplegada por completo, con todas sus partes ejecutándose en la nube",
+            "explanation": "Descartada: el banco conserva sistemas fuera de la nube, y el despliegue en la nube exige que todas las partes se ejecuten en ella."
+          },
+          {
+            "id": "c",
+            "text": "Local (nube privada): recursos dedicados con virtualización solo en las instalaciones propias",
+            "explanation": "Descartada: el banco quiere ampliar hacia la nube, y el despliegue local se queda en sus instalaciones sin conectar recursos de la nube."
+          },
+          {
+            "id": "d",
+            "text": "SaaS: software que el proveedor ejecuta y gestiona para el usuario final",
+            "explanation": "Descartada: SaaS es un modelo de servicio y la pregunta pide un modelo de despliegue."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué modelo de despliegue conecta la nube con sistemas internos",
+      "statement": "Un banco conserva sistemas en sus propias instalaciones que aún no puede retirar, pero quiere ampliar su infraestructura hacia la nube y conectarla con esos sistemas internos. ¿Qué modelo de despliegue describe MEJOR esa estrategia?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "despliegue híbrido",
+        "instalaciones propias"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "En la nube: aplicación desplegada por completo, con todas sus partes ejecutándose en la nube",
+            "explanation": "Descartada: la empresa mantiene su propia infraestructura y no ejecuta todas las partes de la aplicación en la nube."
+          },
+          {
+            "id": "b",
+            "text": "Híbrido: infraestructura conectada entre recursos en la nube y recursos fuera de ella",
+            "explanation": "Descartada: el enunciado no conecta recursos de la nube con los propios, así que no hay despliegue híbrido."
+          },
+          {
+            "id": "c",
+            "text": "PaaS: hardware y sistemas operativos subyacentes gestionados por el proveedor",
+            "explanation": "Descartada: PaaS es un modelo de servicio y cede la gestión de la infraestructura subyacente, justo lo que la empresa mantiene."
+          },
+          {
+            "id": "d",
+            "text": "Local (nube privada): recursos dedicados con virtualización en las instalaciones propias",
+            "explanation": "Es el modelo: se busca a veces por sus recursos dedicados, aunque no aporta muchos de los beneficios de la nube y suele ser igual que la infraestructura heredada."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-quiz-07",
+      "type": "QUIZ",
+      "title": "Qué modelo de despliegue da recursos dedicados con pocos beneficios de la nube",
+      "statement": "Una empresa necesita recursos dedicados y mantiene su propia infraestructura con virtualización y herramientas de gestión de recursos para aumentar su uso. Sabe que este enfoque aporta pocos de los beneficios de la nube. ¿Qué modelo de despliegue describe MEJOR su situación?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "despliegue local",
+        "nube privada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Mantiene parte de sus componentes en las instalaciones, conectados con los de la nube",
+            "explanation": "No cumple: eso describe el despliegue híbrido, y en el despliegue en la nube todas las partes se ejecutan en ella."
+          },
+          {
+            "id": "b",
+            "text": "Usa virtualización en las instalaciones para dar recursos dedicados, con pocos beneficios de la nube",
+            "explanation": "No cumple: eso describe el despliegue local (nube privada), no el despliegue en la nube."
+          },
+          {
+            "id": "c",
+            "text": "Puede haberse creado en la nube o migrado desde una infraestructura existente",
+            "explanation": "Cumple: una aplicación en la nube se creó allí o se migró desde una infraestructura existente para aprovechar sus beneficios."
+          },
+          {
+            "id": "d",
+            "text": "Se limita a aplicaciones de usuario final que el proveedor ejecuta y gestiona",
+            "explanation": "No cumple: eso describe SaaS, un modelo de servicio, y el despliegue en la nube no se limita a ese tipo de aplicaciones."
+          },
+          {
+            "id": "e",
+            "text": "Puede construirse con piezas de infraestructura de bajo nivel o con servicios de nivel superior",
+            "explanation": "Cumple: las aplicaciones en la nube pueden usar infraestructura de bajo nivel o servicios de nivel superior que abstraen su gestión."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre una aplicación en la nube",
+      "statement": "Un equipo describe su aplicación como completamente desplegada en la nube. Selecciona DOS afirmaciones correctas sobre ese modelo de despliegue.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "despliegue en la nube",
+        "servicios de nivel superior"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "iaas",
+            "term": "IaaS",
+            "definition": "Da los bloques básicos de TI y deja a quien lo usa el mayor control de gestión"
+          },
+          {
+            "id": "paas",
+            "term": "PaaS",
+            "definition": "El proveedor gestiona hardware y sistemas operativos; el cliente se centra en su aplicación"
+          },
+          {
+            "id": "saas",
+            "term": "SaaS",
+            "definition": "El proveedor ejecuta y gestiona el software; quien lo usa solo piensa cómo emplearlo"
+          },
+          {
+            "id": "correo-web",
+            "term": "Correo web",
+            "definition": "Ejemplo común de SaaS: se usa sin mantener sus servidores ni sus sistemas operativos"
+          },
+          {
+            "id": "nube",
+            "term": "Despliegue en la nube",
+            "definition": "Todas las partes de la aplicación se ejecutan en la nube, creada allí o migrada"
+          },
+          {
+            "id": "hibrido",
+            "term": "Despliegue híbrido",
+            "definition": "Conecta recursos de la nube con los que siguen fuera de ella, normalmente en las instalaciones"
+          },
+          {
+            "id": "local",
+            "term": "Despliegue local",
+            "definition": "Virtualización y gestión de recursos en las instalaciones: recursos dedicados, pocos beneficios de la nube"
+          },
+          {
+            "id": "indiferenciado",
+            "term": "Trabajo indiferenciado",
+            "definition": "Adquisición de recursos, mantenimiento y planificación de capacidad, que la nube ayuda a evitar"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada modelo con la responsabilidad que le corresponde. Si dudas entre dos, pregúntate primero si el término habla de qué consumes (modelo de servicio) o de dónde viven los recursos (modelo de despliegue), y después quién gestiona qué.",
+          "list": {
+            "title": "Las dos preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Modelo de servicio: cuánto gestionas tú y cuánto gestiona el proveedor (IaaS, PaaS, SaaS)",
+              "Modelo de despliegue: dónde se ejecutan los recursos (nube, híbrido o local)",
+              "Trabajo indiferenciado: lo que la nube permite dejar de hacer"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-memoria-01",
+      "type": "MEMORY",
+      "title": "Modelo y responsabilidad que le corresponde",
+      "statement": "Empareja cada modelo de servicio o de despliegue con la responsabilidad o el trabajo que lo caracteriza.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "modelos de servicio",
+        "modelos de despliegue",
+        "responsabilidad"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-2-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué modelo de servicio y de despliegue eliges",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una web con base de datos y correo para su equipo) y escribe tu elección de modelos como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué modelo de servicio (IaaS, PaaS o SaaS) usarías para cada parte y qué modelo de despliegue (nube, híbrido o local) para el conjunto.\n\n2) Alternativa descartada: otro modelo que te tentaba (por ejemplo, IaaS por el control, cuando PaaS te quitaba trabajo de infraestructura) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué trabajo asumes tú con tu elección (qué gestionas) y cuál deja de ser tuyo.\n\n4) Evidencia: qué parte de las páginas oficiales de AWS sobre los tipos de computación en la nube usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento distinga servicio de despliegue y nombre quién gestiona qué. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará por qué elegiste cada modelo.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "modelos de servicio",
+        "modelos de despliegue",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/types-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 19
+    }
+  ]
+}
