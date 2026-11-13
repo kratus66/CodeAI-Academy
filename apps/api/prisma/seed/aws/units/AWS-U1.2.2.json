@@ -1,0 +1,1285 @@
+{
+  "code": "AWS-U1.2.2",
+  "lessons": [
+    {
+      "slug": "aws-u1-2-2-iam-usuarios-grupos-roles-politicas",
+      "title": "IAM: usuarios, grupos, roles, políticas y mínimo privilegio",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "AWS Identity and Access Management (IAM) es el servicio web que controla quién se autentica (inicia sesión) y quién está autorizado (tiene permisos) para usar los recursos de AWS. Al crear una cuenta empiezas con una sola identidad de inicio de sesión, el usuario raíz de la cuenta, que tiene acceso completo a todos los servicios y recursos y que AWS recomienda no usar en las tareas diarias. Con IAM creas las demás identidades (administradores, analistas, desarrolladores) y les das acceso solo a los recursos que necesitan. La autenticación consiste en emparejar las credenciales con un principal de confianza de la cuenta (un usuario de IAM, un principal federado de AWS STS, un rol de IAM o una aplicación); la autorización llega después: el acceso se concede si el principal tiene permiso sobre el recurso."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas de IAM",
+          "items": [
+            "Usuario raíz: la identidad inicial de la cuenta, con acceso completo. No se le pueden adjuntar políticas de identidad ni establecer un límite de permisos.",
+            "Usuario de IAM: una identidad de la cuenta con sus credenciales. Si se permite acceso a la consola, inicia sesión con ellas; si se permite acceso programático, usa claves de acceso con la CLI o la API.",
+            "Grupo de usuarios: las políticas de identidad se adjuntan a usuarios, a grupos de usuarios o a roles, de modo que un permiso puede asignarse a un grupo en lugar de a cada persona.",
+            "Rol de IAM: una identidad con permisos específicos que no se asocia de forma única a una persona, sino que puede asumirla quien la necesite. No tiene contraseña ni claves de acceso estándar: al asumirlo se obtienen credenciales de seguridad temporales para la sesión del rol.",
+            "Política: un objeto de AWS que, asociado a una identidad o a un recurso, define sus permisos. AWS evalúa las políticas cuando un principal hace una petición y decide si se permite o se deniega. La mayoría se guarda como documentos JSON."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Usuarios o roles: credenciales temporales por defecto",
+          "text": "AWS recomienda que las personas accedan mediante federación con un proveedor de identidad, que les da credenciales temporales al asumir roles, y que para gestionar el acceso de forma centralizada se use AWS IAM Identity Center. Las cargas de trabajo deben usar roles de IAM: cuando se ejecutan en un servicio de cómputo como Amazon EC2 o AWS Lambda, AWS entrega las credenciales temporales del rol al recurso y las aplicaciones escritas con un SDK las descubren y las usan, sin distribuir credenciales de larga duración de un usuario IAM. Se recomienda crear usuarios IAM solo para los casos que la federación no cubre, por ejemplo cargas de trabajo que no pueden usar roles, clientes de terceros o el acceso de emergencia. En ese caso se exige MFA y se actualizan las claves de acceso cuando haga falta, como cuando un empleado deja la empresa."
+        },
+        {
+          "type": "mermaid",
+          "title": "Quién obtiene credenciales temporales y cómo",
+          "code": "flowchart LR\n  P[\"Persona de la plantilla\"] -->|\"Federación con su proveedor de identidad\"| R1[\"Rol de IAM\"]\n  A[\"Aplicación en EC2 o Lambda\"] -->|\"AWS entrega las credenciales del rol al recurso\"| R2[\"Rol de IAM\"]\n  R1 --> T[\"Credenciales temporales de la sesión\"]\n  R2 --> T\n  T --> S[\"Petición a un servicio de AWS\"]"
+        },
+        {
+          "type": "paragraph",
+          "title": "Tipos de política que debes distinguir",
+          "text": "Las políticas basadas en identidad se adjuntan a usuarios, grupos o roles y controlan qué acciones puede hacer esa identidad, sobre qué recursos y bajo qué condiciones. Pueden ser administradas (independientes, se adjuntan a varios usuarios, grupos y roles; las crea AWS o las crea el cliente) o en línea (se añaden directamente a una sola identidad en relación uno a uno y se eliminan con ella). Las políticas basadas en recursos se adjuntan al recurso, por ejemplo una política de bucket de Amazon S3, e indican el principal al que conceden permisos; una política de identidad no lleva el elemento Principal porque el principal es la identidad a la que se adjunta. Para delegar acceso con un rol, este lleva dos políticas: la política de permisos, que dice qué puede hacer quien lo asume, y la política de confianza, que dice quién puede asumirlo. Un límite de permisos y una política de control de servicios (SCP) fijan el máximo que otras políticas pueden conceder, pero no conceden permisos por sí mismos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Mínimo privilegio en la práctica",
+          "text": "El mínimo privilegio consiste en conceder solo los permisos necesarios para una tarea: acciones concretas sobre recursos concretos y, cuando procede, bajo condiciones. AWS indica que es más seguro empezar con un conjunto mínimo y añadir permisos cuando hagan falta que empezar con permisos demasiado amplios e intentar recortarlos después. Las políticas administradas por AWS sirven para empezar, pero pueden no dar el mínimo privilegio para tu caso porque están pensadas para todos los clientes: conviene pasar a políticas administradas por el cliente. Para refinar los permisos puedes usar los niveles de acceso (por ejemplo, acciones de los niveles List y Read para dar solo lectura), la información de último acceso para detectar permisos que no se usan y IAM Access Analyzer, que revisa los registros de AWS CloudTrail y genera una plantilla de política con los permisos que la identidad ha usado. Una condición permite que una sentencia solo tenga efecto si se cumple, por ejemplo si el usuario se autenticó con MFA."
+        },
+        {
+          "type": "mermaid",
+          "title": "Cómo se decide una petición con políticas de identidad",
+          "code": "flowchart TD\n  P[\"Petición de un principal\"] --> D{\"¿Alguna política tiene un Deny que aplique?\"}\n  D -- \"Sí\" --> E[\"Denegada: el Deny anula cualquier permiso\"]\n  D -- \"No\" --> A{\"¿Alguna sentencia Allow aplica, con su condición cumplida?\"}\n  A -- \"No\" --> I[\"Denegada: nadie la ha permitido\"]\n  A -- \"Sí\" --> OK[\"Permitida\"]"
+        },
+        {
+          "type": "code",
+          "title": "Una política de identidad mínima, como valor que evaluarás con aws.iam.evaluate",
+          "language": "typescript",
+          "code": "export const policy = {\n  Version: \"2012-10-17\",\n  Statement: {\n    Effect: \"Allow\",\n    Action: \"s3:ListBucket\",\n    Resource: \"arn:aws:s3:::amzn-s3-demo-bucket\",\n  },\n};"
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres necesidades, tres identidades",
+          "text": "Una empresa tiene tres necesidades. Necesidad 1: el equipo de contabilidad, que ya tiene identidades en el proveedor de identidad corporativo, debe leer informes en Amazon S3. Se federan las personas y se gestiona su acceso de forma centralizada con IAM Identity Center, de modo que trabajan con credenciales temporales y no con claves guardadas. Necesidad 2: una aplicación en Amazon EC2 debe guardar archivos en un bucket. Se le asocia un rol de IAM con permiso de escritura sobre ese bucket; AWS entrega al recurso las credenciales temporales y no se copia ninguna clave a las instancias. Necesidad 3: una herramienta de terceros que no admite roles ni IAM Identity Center necesita acceso programático. Es uno de los casos que justifican un usuario IAM con claves de acceso, con permisos mínimos y claves que se actualizan cuando cambia el personal. En los tres casos la política concede solo las acciones necesarias sobre los recursos concretos, y en ninguno se usa el usuario raíz."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: una aplicación en la nube necesita acceso, la respuesta no son claves",
+          "text": "Cuando una pregunta describe una carga de trabajo en Amazon EC2 o AWS Lambda que debe llamar a otro servicio, la respuesta es un rol de IAM, no un usuario IAM con claves de acceso guardadas en el código o en la instancia. Cuando describe a personas de la plantilla que acceden a varias cuentas, la respuesta apunta a federación e IAM Identity Center. Y si una opción propone usar el usuario raíz para el trabajo diario, es un distractor."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: empezar con permisos amplios y no recortarlos nunca",
+          "text": "Causa: escribir un Allow con todas las acciones sobre todos los recursos «para que funcione» y dejarlo así cuando la aplicación ya está en marcha. Consecuencia: la identidad puede hacer mucho más de lo que necesita, y una credencial filtrada o un error causa un daño mayor. Solución: empieza con el conjunto mínimo de acciones y de recursos y amplía cuando haga falta; si partiste de permisos amplios, usa la información de último acceso y la política generada por IAM Access Analyzer desde los registros de CloudTrail para quitar lo que no se usa."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: dar claves de acceso de un usuario IAM a una aplicación que corre en AWS",
+          "text": "Causa: pensar que toda aplicación necesita su propio usuario con claves, o copiar las claves de una persona a la instancia. Consecuencia: aparecen credenciales de larga duración repartidas por archivos y servidores, difíciles de actualizar y de retirar. Solución: asocia un rol de IAM al servicio de cómputo; AWS entrega las credenciales temporales del rol al recurso y el SDK las usa sin que tengas que distribuir nada."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: usar el usuario raíz para el trabajo diario",
+          "text": "Causa: creer que el acceso completo del usuario raíz lo hace la cuenta más cómoda para el despliegue. Consecuencia: toda tarea corre con acceso total y no se puede limitar con una política de identidad, porque no se le pueden adjuntar. Solución: crea identidades de IAM con permisos mínimos para el trabajo diario y reserva el usuario raíz para las tareas que exigen sus credenciales, protegiéndolas con MFA."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Distinguir usuarios, grupos, roles y políticas de IAM y escribir una política de identidad de mínimo privilegio cuyas peticiones permitidas y denegadas puedas predecir y comprobar con aws.iam.evaluate. Esta unidad prepara el examen CLF-C02, dominio 2 «Seguridad y cumplimiento», tarea 2.3 (capacidades de gestión de acceso de AWS). Criterio: ante un escenario nuevo eliges la identidad adecuada (usuario, grupo o rol) y el tipo de política, y justificas por qué los distractores quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las tres necesidades tapando las respuestas: para cada una, nombra la identidad, la política y el motivo. Después explica con tus palabras el diagrama «Cómo se decide una petición con políticas de identidad» y responde de memoria: qué diferencia a un rol de un usuario, qué dos políticas lleva un rol para delegar acceso y qué es el mínimo privilegio."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Mínimo privilegio para el rol de una aplicación de facturación». Empieza por listar en papel lo que el rol debe poder hacer, lo que no se le permite y la acción que debe quedar denegada de forma explícita. Usa las pistas por niveles solo si te atascas. Criterio de paso: las cuatro pruebas visibles pasan y la política no contiene ningún comodín que permita más de lo pedido."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Política de mínimo privilegio para una persona en prácticas con escritura bajo MFA». Parte solo de los criterios del enunciado y usa aws.iam.evaluate para comprobar tus propias peticiones antes de enviar: al menos tres permitidas, dos denegadas por omisión y una denegada de forma explícita. Criterio de paso: cada petición recibe el resultado previsto y puedes explicar qué sentencia lo produce."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó una política para exigir MFA al leer un bucket confidencial y la presenta como correcta. Resuelve «Una condición de MFA invertida en la política de contabilidad»: encuentra el defecto, corrígelo y contrasta la corrección con la página oficial de políticas y permisos de IAM (leída el 2026-11-13), que explica cuándo una condición hace que una sentencia tenga efecto. Escribe la evidencia antes de aceptar el cambio."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe qué identidad o política pide el escenario y cuál es el calificador; al corregir, lee la explicación de cada opción y anota si fallaste por confundir roles con usuarios, el tipo de política o el alcance del permiso. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una aplicación que conozcas (una web con documentos en almacenamiento) y escribe qué identidad usa cada persona y cada componente, y qué política mínima necesita cada uno. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero propone dar a una función de AWS Lambda las claves de un usuario administrador «para que no falle»; ¿qué le respondes y qué le propones en su lugar?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-iam-que-es",
+          "order": 0,
+          "note": "Fuente de qué es IAM, de las identidades, del usuario raíz y de la autenticación y la autorización."
+        },
+        {
+          "resourceSlug": "aws-iam-roles",
+          "order": 1,
+          "note": "Fuente de la definición de rol, de quién puede asumirlo, de la delegación y de las políticas de permisos y de confianza."
+        },
+        {
+          "resourceSlug": "aws-iam-politicas-y-permisos",
+          "order": 2,
+          "note": "Fuente de los tipos de política, de las políticas administradas y en línea, de la estructura JSON y del mínimo privilegio."
+        },
+        {
+          "resourceSlug": "aws-iam-buenas-practicas",
+          "order": 3,
+          "note": "Fuente de las buenas prácticas: federación, credenciales temporales, MFA, mínimo privilegio y revisión de permisos sin uso."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 4,
+          "note": "Guía de CLF-C02: la tarea 2.3 del dominio 2 cubre la gestión de acceso, el mínimo privilegio, los grupos, los usuarios y las políticas."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un rol no se asocia de forma única a una persona: lo asume quien lo necesita. No tiene contraseña ni claves de acceso estándar; al asumirlo se obtienen credenciales de seguridad temporales para la sesión."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Rol frente a usuario de IAM",
+      "statement": "¿En qué se diferencia un rol de IAM de un usuario de IAM?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "rol de IAM",
+        "usuario de IAM",
+        "credenciales temporales"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La de identidad se adjunta a un usuario, grupo o rol y concede permisos a esa identidad, sin elemento Principal. La de recurso se adjunta al recurso (por ejemplo, un bucket de S3) e indica el principal al que concede acceso."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Política de identidad frente a política de recurso",
+      "statement": "¿Qué distingue una política basada en identidad de una basada en recursos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "política de identidad",
+        "política de recurso",
+        "Principal"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La administrada es independiente y se adjunta a varios usuarios, grupos y roles; puede ser de AWS o del cliente. La en línea se añade a una sola identidad, en relación uno a uno, y se elimina con ella."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Política administrada frente a política en línea",
+      "statement": "¿Qué diferencia hay entre una política administrada y una política en línea?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "política administrada",
+        "política en línea"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Conceder solo los permisos necesarios para una tarea: acciones concretas sobre recursos concretos y, si procede, bajo condiciones. Es más seguro empezar con un conjunto mínimo y ampliarlo que partir de permisos amplios y recortar después."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Principio de mínimo privilegio",
+      "statement": "¿Qué es el mínimo privilegio y por dónde conviene empezar?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "mínimo privilegio"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una denegación explícita en cualquiera de las políticas que aplican anula el permiso: la petición se deniega aunque otra política la permita."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Un Allow y un Deny sobre la misma petición",
+      "statement": "Si una política permite una acción y otra la deniega de forma explícita, ¿qué ocurre?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "denegación explícita",
+        "Effect Deny"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Personas: federación con un proveedor de identidad y credenciales temporales, con IAM Identity Center para el acceso centralizado. Cargas de trabajo: roles de IAM, cuyas credenciales temporales entrega AWS al servicio de cómputo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Credenciales temporales para personas y cargas de trabajo",
+      "statement": "¿Qué recomienda AWS para el acceso de las personas y de las cargas de trabajo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "federación",
+        "IAM Identity Center",
+        "rol de IAM"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política de identidad de la usuaria contable: leer el bucket confidencial solo con MFA. Corrige su defecto principal.\nexport const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerConfidencialConMfa\",\n      Effect: \"Allow\",\n      Action: [\"s3:List*\", \"s3:Get*\"],\n      Resource: [\n        \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial\",\n        \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial/*\",\n      ],\n      Condition: { Bool: { \"aws:MultiFactorAuthPresent\": \"false\" } },\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "export const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerConfidencialConMfa\",\n      Effect: \"Allow\",\n      Action: [\"s3:List*\", \"s3:Get*\"],\n      Resource: [\n        \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial\",\n        \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial/*\",\n      ],\n      Condition: { Bool: { \"aws:MultiFactorAuthPresent\": \"true\" } },\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Una sentencia con Condition solo tiene efecto cuando la condición se evalúa como verdadera. Pregúntate cuándo se cumple hoy: con MFA o sin MFA."
+        },
+        {
+          "level": 2,
+          "text": "La condición Bool compara la clave aws:MultiFactorAuthPresent con un valor. La clave vale true cuando la persona se autenticó con MFA, y el valor escrito es \"false\", así que la sentencia solo aplica cuando no hay MFA."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el valor de la condición de \"false\" a \"true\". No toques las acciones, los recursos ni el Effect."
+        }
+      ],
+      "tests": [
+        {
+          "name": "con MFA la usuaria puede leer un informe confidencial",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/contable\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial/2026/balance.pdf\", { \"aws:MultiFactorAuthPresent\": true }), \"Allow\");"
+          }
+        },
+        {
+          "name": "sin MFA la lectura queda denegada de forma implícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/contable\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial/2026/balance.pdf\", { \"aws:MultiFactorAuthPresent\": false }), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "la política es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/contable\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.deepStrictEqual(aws.iam.validatePolicy(policy), []);"
+          }
+        },
+        {
+          "name": "sin la clave de MFA en el contexto, la lectura se deniega",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/contable\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial/2026/balance.pdf\"), \"ImplicitDeny\");\nassert.strictEqual(decide(\"s3:ListBucket\", \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial\"), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "con MFA también puede listar el bucket",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/contable\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:ListBucket\", \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial\", { \"aws:MultiFactorAuthPresent\": true }), \"Allow\");"
+          }
+        },
+        {
+          "name": "con MFA no puede escribir ni borrar, ni usar otro bucket",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/contable\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial/2026/balance.pdf\", { \"aws:MultiFactorAuthPresent\": true }), \"ImplicitDeny\");\nassert.strictEqual(decide(\"s3:DeleteObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-confidencial/2026/balance.pdf\", { \"aws:MultiFactorAuthPresent\": true }), \"ImplicitDeny\");\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro/2026/balance.pdf\", { \"aws:MultiFactorAuthPresent\": true }), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "la política conserva una sentencia Allow con la condición de MFA",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/contable\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nconst sentencias = Array.isArray(policy.Statement) ? policy.Statement : [policy.Statement];\nassert.strictEqual(sentencias.length, 1);\nassert.strictEqual(sentencias[0].Effect, \"Allow\");\nassert.ok(sentencias[0].Condition, \"la condición debe seguir existiendo\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-debug-01",
+      "type": "DEBUG",
+      "title": "Una condición de MFA invertida en la política de contabilidad",
+      "statement": "La política `policy` debe permitir a la usuaria contable listar y leer el bucket amzn-s3-demo-bucket-confidencial únicamente cuando inició sesión con MFA (clave de contexto aws:MultiFactorAuthPresent). Tal como está, una de sus condiciones hace justo lo contrario: la sentencia solo tiene efecto cuando NO hay MFA. Corrígela sin añadir acciones, sin ampliar los recursos y sin quitar la condición, y mantén la forma del valor exportado (`export const policy = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "condición Bool",
+        "MFA",
+        "mínimo privilegio"
+      ],
+      "estimatedMin": 12,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política de identidad del rol app-facturas: guardar y leer facturas, y nada más.\nexport const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"AccesoTotalS3\", Effect: \"Allow\", Action: \"s3:*\", Resource: \"*\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"GuardarYLeerFacturas\",\n      Effect: \"Allow\",\n      Action: [\"s3:GetObject\", \"s3:PutObject\"],\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion/facturas/*\",\n    },\n    {\n      Sid: \"NadieBorra\",\n      Effect: \"Deny\",\n      Action: \"s3:DeleteObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion/*\",\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Empieza por lo que sí necesita la aplicación: guardar y leer archivos del prefijo facturas/. Lo que ninguna sentencia permite queda denegado de forma implícita, así que no hace falta nombrarlo."
+        },
+        {
+          "level": 2,
+          "text": "Una sentencia Allow con las acciones s3:GetObject y s3:PutObject y el recurso arn:aws:s3:::amzn-s3-demo-bucket-facturacion/facturas/*, sin comodines sueltos. Todavía falta la excepción del borrado."
+        },
+        {
+          "level": 3,
+          "text": "Añade una segunda sentencia con Effect Deny, la acción s3:DeleteObject y el recurso arn:aws:s3:::amzn-s3-demo-bucket-facturacion/*. Una denegación explícita anula cualquier permiso, así que funciona aunque el Allow cambie."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la política es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:sts::123456789012:assumed-role/app-facturas/sesion\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.deepStrictEqual(aws.iam.validatePolicy(policy), []);"
+          }
+        },
+        {
+          "name": "la aplicación puede guardar una factura en facturas/",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:sts::123456789012:assumed-role/app-facturas/sesion\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion/facturas/2026/f-001.pdf\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "la aplicación puede leer una factura de facturas/",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:sts::123456789012:assumed-role/app-facturas/sesion\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion/facturas/2026/f-001.pdf\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "no puede guardar fuera de facturas/: denegación implícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:sts::123456789012:assumed-role/app-facturas/sesion\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion/borradores/f-002.pdf\"), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "borrar cualquier objeto recibe una denegación explícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:sts::123456789012:assumed-role/app-facturas/sesion\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nfor (const clave of [\"facturas/2026/f-001.pdf\", \"borradores/f-002.pdf\"]) {\n  assert.strictEqual(decide(\"s3:DeleteObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion/\" + clave), \"ExplicitDeny\", \"borrar \" + clave + \" debe denegarse de forma explícita\");\n}"
+          }
+        },
+        {
+          "name": "no puede leer fuera de facturas/",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:sts::123456789012:assumed-role/app-facturas/sesion\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion/borradores/f-002.pdf\"), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "el permiso no se extiende a otro bucket",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:sts::123456789012:assumed-role/app-facturas/sesion\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro/facturas/f-001.pdf\"), \"ImplicitDeny\");\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro/facturas/f-001.pdf\"), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "no puede listar el bucket ni usar otros servicios",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:sts::123456789012:assumed-role/app-facturas/sesion\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nconst casos: [string, string][] = [\n  [\"s3:ListBucket\", \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion\"],\n  [\"s3:PutBucketPolicy\", \"arn:aws:s3:::amzn-s3-demo-bucket-facturacion\"],\n  [\"iam:CreateUser\", \"arn:aws:iam::123456789012:user/nuevo\"],\n  [\"ec2:RunInstances\", \"arn:aws:ec2:eu-west-1:123456789012:instance/*\"],\n];\nfor (const [accion, recurso] of casos) {\n  assert.strictEqual(decide(accion, recurso), \"ImplicitDeny\", accion + \" debe quedar denegada por omisión\");\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-lab-guiado-01",
+      "type": "LAB",
+      "title": "Mínimo privilegio para el rol de una aplicación de facturación",
+      "statement": "La aplicación de facturación se ejecuta con el rol app-facturas (cuenta 123456789012). Debe poder guardar y leer los archivos del prefijo facturas/ del bucket amzn-s3-demo-bucket-facturacion, y nada más: ni otros prefijos, ni otros buckets, ni listar el bucket, ni otros servicios. Además, ningún objeto del bucket debe poder borrarse con s3:DeleteObject, ni aunque otra sentencia lo permita. Lo que ninguna sentencia permite queda en denegación implícita, y el borrado debe recibir una denegación explícita. El código inicial exporta una política demasiado amplia: corrígela sin cambiar la forma del valor exportado (`export const policy = { Version, Statement }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "mínimo privilegio",
+        "denegación explícita",
+        "denegación implícita",
+        "rol de IAM"
+      ],
+      "estimatedMin": 30,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política de identidad del usuario practicante.\nexport const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoPermitido\", Effect: \"Allow\", Action: \"*\", Resource: \"*\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"ListarBucket\",\n      Effect: \"Allow\",\n      Action: \"s3:ListBucket\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-formacion\",\n    },\n    {\n      Sid: \"LeerObjetos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-formacion/*\",\n    },\n    {\n      Sid: \"SubirEntregasConMfa\",\n      Effect: \"Allow\",\n      Action: \"s3:PutObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-formacion/entregas/*\",\n      Condition: { Bool: { \"aws:MultiFactorAuthPresent\": \"true\" } },\n    },\n    { Sid: \"SinIam\", Effect: \"Deny\", Action: \"iam:*\", Resource: \"*\" },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la política es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.deepStrictEqual(aws.iam.validatePolicy(policy), []);"
+          }
+        },
+        {
+          "name": "puede leer un objeto del bucket",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-formacion/material/guia.pdf\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "puede listar el bucket",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:ListBucket\", \"arn:aws:s3:::amzn-s3-demo-bucket-formacion\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "sin MFA no puede subir a entregas/: denegación implícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-formacion/entregas/practica-1.zip\", { \"aws:MultiFactorAuthPresent\": false }), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "con MFA puede subir a entregas/",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-formacion/entregas/practica-1.zip\", { \"aws:MultiFactorAuthPresent\": true }), \"Allow\");"
+          }
+        },
+        {
+          "name": "sin la clave de MFA en el contexto, subir también se deniega",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-formacion/entregas/practica-1.zip\"), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "con MFA no puede subir fuera de entregas/",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-formacion/material/guia.pdf\", { \"aws:MultiFactorAuthPresent\": true }), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "cualquier acción de IAM recibe una denegación explícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nfor (const accion of [\"iam:CreateAccessKey\", \"iam:AttachUserPolicy\", \"iam:ListUsers\"]) {\n  assert.strictEqual(decide(accion, \"arn:aws:iam::123456789012:user/practicante\", { \"aws:MultiFactorAuthPresent\": true }), \"ExplicitDeny\", accion + \" debe denegarse de forma explícita\");\n}"
+          }
+        },
+        {
+          "name": "no puede borrar objetos ni usar otro bucket",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, context?: Record<string, string | boolean>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/practicante\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context,\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:DeleteObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-formacion/entregas/practica-1.zip\", { \"aws:MultiFactorAuthPresent\": true }), \"ImplicitDeny\");\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro/guia.pdf\"), \"ImplicitDeny\");\nassert.strictEqual(decide(\"s3:ListBucket\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro\"), \"ImplicitDeny\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-lab-autonomo-01",
+      "type": "LAB",
+      "title": "Política de mínimo privilegio para una persona en prácticas con escritura bajo MFA",
+      "statement": "La persona en prácticas usa el usuario IAM practicante (cuenta 123456789012) con el bucket amzn-s3-demo-bucket-formacion. Escribe su política de identidad de mínimo privilegio con estos criterios: (1) puede listar el bucket y leer cualquiera de sus objetos; (2) puede subir objetos solo al prefijo entregas/ y solo si inició sesión con MFA (clave de contexto aws:MultiFactorAuthPresent); (3) no puede hacer nada más, ni en ese bucket ni en otros; (4) ninguna acción de IAM (iam:*) debe poder realizarse sobre ningún recurso, ni aunque otra sentencia la permitiera. Lo que ninguna sentencia permite queda en denegación implícita; las acciones de IAM deben recibir una denegación explícita. El código inicial exporta una política demasiado amplia: corrígela manteniendo la forma del valor exportado (`export const policy = { Version, Statement }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "mínimo privilegio",
+        "condición de MFA",
+        "denegación explícita",
+        "usuario de IAM"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear un usuario de IAM por empleado en cada cuenta y entregarle claves de acceso",
+            "explanation": "Descartada: las claves de acceso son credenciales de larga duración y se multiplican por empleado y cuenta, lo que contradice la restricción de usar credenciales temporales."
+          },
+          {
+            "id": "b",
+            "text": "Compartir un único usuario de IAM entre los empleados de cada departamento",
+            "explanation": "Descartada: no identifica a cada persona y sus credenciales son de larga duración, así que incumple la restricción de credenciales temporales y de gestión centralizada."
+          },
+          {
+            "id": "c",
+            "text": "Federar el proveedor de identidad y gestionar el acceso con AWS IAM Identity Center",
+            "explanation": "Es la recomendación de AWS: la federación da credenciales temporales al asumir roles, e IAM Identity Center centraliza el acceso a las cuentas y a sus permisos."
+          },
+          {
+            "id": "d",
+            "text": "Entregar a los administradores las credenciales del usuario raíz de cada cuenta",
+            "explanation": "Descartada: AWS recomienda no usar el usuario raíz en las tareas diarias, y compartirlo no da credenciales temporales ni gestión centralizada del acceso."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-quiz-01",
+      "type": "QUIZ",
+      "title": "Acceso centralizado para la plantilla",
+      "statement": "Una empresa con cientos de empleados, que ya tienen identidades en su proveedor de identidad corporativo, necesita que accedan a varias cuentas de AWS. El equipo de seguridad quiere gestionar el acceso desde un punto único y que las personas trabajen con credenciales temporales. ¿Qué enfoque recomienda AWS como el MEJOR para este caso?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "federación",
+        "IAM Identity Center",
+        "credenciales temporales"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un rol de IAM con permiso de lectura sobre el bucket, asociado a las instancias",
+            "explanation": "Es la opción recomendada: en un servicio de cómputo como EC2, AWS entrega al recurso las credenciales temporales del rol, y el SDK las usa sin distribuir claves."
+          },
+          {
+            "id": "b",
+            "text": "Un usuario de IAM con claves de acceso guardadas en un archivo de configuración de la instancia",
+            "explanation": "Descartada: las claves de acceso de un usuario IAM son credenciales de larga duración, justo lo que el equipo no quiere distribuir a las instancias."
+          },
+          {
+            "id": "c",
+            "text": "Las credenciales del usuario raíz de la cuenta, guardadas en variables de entorno",
+            "explanation": "Descartada: son credenciales de acceso completo y de larga duración, y AWS recomienda no usar el usuario raíz en el trabajo diario."
+          },
+          {
+            "id": "d",
+            "text": "Un usuario de IAM con contraseña de consola, compartida por el equipo de desarrollo",
+            "explanation": "Descartada: la contraseña es una credencial de larga duración asociada a una persona, no un mecanismo para que el cómputo obtenga credenciales temporales."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-quiz-02",
+      "type": "QUIZ",
+      "title": "Identidad de una aplicación en EC2",
+      "statement": "Una aplicación se ejecuta en instancias de Amazon EC2 y debe leer objetos de un bucket de Amazon S3. El equipo no quiere distribuir credenciales de larga duración a las instancias. ¿Qué opción cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "rol de IAM",
+        "carga de trabajo",
+        "credenciales temporales"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Permitir todas las acciones de Amazon S3 sobre todos los recursos y recortarlas más adelante",
+            "explanation": "Descartada: concede más de lo necesario desde el principio, y AWS indica que es más seguro empezar con un conjunto mínimo y ampliarlo que recortar después."
+          },
+          {
+            "id": "b",
+            "text": "Adjuntar una política administrada de uso general para Amazon S3 que cubre muchos casos",
+            "explanation": "Descartada: las políticas administradas por AWS están pensadas para todos los clientes y pueden no dar el mínimo privilegio para este caso concreto."
+          },
+          {
+            "id": "c",
+            "text": "Permitir lectura y escritura sobre el bucket para evitar futuras solicitudes de cambio",
+            "explanation": "Descartada: la escritura excede lo que la analista necesita, y el mínimo privilegio concede solo lo que la tarea requiere."
+          },
+          {
+            "id": "d",
+            "text": "Permitir solo la acción de lectura de objetos sobre los objetos de ese bucket",
+            "explanation": "Cumple el mínimo privilegio: concede únicamente la acción necesaria sobre los recursos concretos que la tarea exige, sin permisos de más."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué política respeta el mínimo privilegio",
+      "statement": "Una analista solo necesita leer objetos de un bucket de Amazon S3 concreto. El administrador compara cuatro formas de darle acceso. ¿Qué opción respeta el MÍNIMO privilegio?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "mínimo privilegio",
+        "política de identidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Escribir una política en línea distinta para cada desarrollador",
+            "explanation": "Descartada: una política en línea se añade a una sola identidad, así que habría que crear y mantener una por persona en lugar de un único lugar."
+          },
+          {
+            "id": "b",
+            "text": "Adjuntar una política administrada a un grupo de usuarios que reúna a los desarrolladores",
+            "explanation": "Es la que menos mantenimiento exige: la política administrada es independiente y se adjunta a grupos, de modo que los permisos viven en un solo sitio."
+          },
+          {
+            "id": "c",
+            "text": "Crear un único usuario de IAM y entregar sus claves a todo el equipo",
+            "explanation": "Descartada: comparte credenciales de larga duración entre veinte personas y no mantiene los permisos en un lugar que se pueda gestionar por persona."
+          },
+          {
+            "id": "d",
+            "text": "Adjuntar una política de identidad al usuario raíz de la cuenta",
+            "explanation": "Descartada: no se pueden adjuntar políticas de identidad al usuario raíz, así que esta opción no concede permisos al equipo."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-quiz-04",
+      "type": "QUIZ",
+      "title": "Permisos compartidos por un equipo",
+      "statement": "Un equipo de veinte desarrolladores necesita los mismos permisos sobre un conjunto de recursos y cada mes se incorporan personas nuevas. El administrador quiere mantener esos permisos en un único lugar. ¿Qué opción reduce MÁS el trabajo de mantenimiento?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "grupo de usuarios",
+        "política administrada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La política de permisos adjunta al rol",
+            "explanation": "Descartada: la política de permisos concede lo que puede hacer quien usa el rol, pero no indica quién puede asumirlo."
+          },
+          {
+            "id": "b",
+            "text": "El límite de permisos aplicado al rol",
+            "explanation": "Descartada: un límite de permisos fija el máximo que pueden conceder las políticas de identidad, no concede permisos por sí mismo ni decide quién asume el rol."
+          },
+          {
+            "id": "c",
+            "text": "La política de confianza adjunta al rol",
+            "explanation": "Es la correcta: la política de confianza es la política de recurso del rol y especifica qué principales, como cuentas, usuarios o servicios, pueden asumirlo."
+          },
+          {
+            "id": "d",
+            "text": "Una política de sesión pasada al asumir el rol",
+            "explanation": "Descartada: una política de sesión limita los permisos de una sesión ya creada; no determina quién puede asumir el rol."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué política decide quién asume un rol",
+      "statement": "Una empresa crea un rol de IAM en su cuenta para que usuarios de la cuenta de un socio accedan a un bucket. Para delegar ese acceso, el rol lleva dos políticas. ¿Qué política define ÚNICAMENTE quién puede asumir el rol?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "política de confianza",
+        "delegación",
+        "rol de IAM"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear otras identidades de IAM para el trabajo diario y reservar el usuario raíz para las tareas que exigen sus credenciales",
+            "explanation": "Es la recomendación de AWS: el usuario raíz no se usa en las tareas diarias y las demás identidades de IAM reciben solo el acceso que necesitan."
+          },
+          {
+            "id": "b",
+            "text": "Mantener el usuario raíz en los despliegues y adjuntarle una política de mínimo privilegio",
+            "explanation": "Descartada: no se pueden adjuntar políticas de identidad al usuario raíz, así que no se puede limitar de ese modo."
+          },
+          {
+            "id": "c",
+            "text": "Mantener el usuario raíz en los despliegues y activar MFA en lugar de crear otras identidades",
+            "explanation": "Descartada: MFA protege el inicio de sesión, pero AWS sigue recomendando no usar el usuario raíz en las tareas diarias."
+          },
+          {
+            "id": "d",
+            "text": "Compartir las credenciales del usuario raíz con el equipo de despliegue mediante un gestor de contraseñas",
+            "explanation": "Descartada: reparte un acceso completo entre varias personas, lo contrario de proteger esas credenciales y de dar solo el acceso necesario."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-quiz-06",
+      "type": "QUIZ",
+      "title": "El usuario raíz en las tareas diarias",
+      "statement": "Una empresa acaba de crear su cuenta de AWS. Un desarrollador propone hacer los despliegues diarios con el usuario raíz porque tiene acceso completo. ¿Qué respuesta del equipo de seguridad es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "usuario raíz",
+        "identidades de IAM"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "No tiene credenciales estándar de larga duración, como una contraseña o claves de acceso",
+            "explanation": "Es correcta: un rol no tiene credenciales de larga duración; al asumirlo se obtienen credenciales de seguridad temporales para la sesión."
+          },
+          {
+            "id": "b",
+            "text": "Se asocia de forma única a una sola persona, igual que un usuario",
+            "explanation": "Descartada: un rol está pensado para que lo asuma cualquiera que lo necesite, no para una persona concreta, así que la documentación no lo respalda."
+          },
+          {
+            "id": "c",
+            "text": "Puede ser asumido por servicios de AWS que ejecutan código, como Amazon EC2 o AWS Lambda",
+            "explanation": "Es correcta: los principales de servicio, como los servicios de cómputo que ejecutan código, pueden asumir un rol."
+          },
+          {
+            "id": "d",
+            "text": "Al asumirlo se obtienen claves de acceso de larga duración para la sesión",
+            "explanation": "Descartada: al asumir un rol se obtienen credenciales temporales para la sesión del rol, no claves de larga duración."
+          },
+          {
+            "id": "e",
+            "text": "Solo puede asumirlo un usuario de IAM de la misma cuenta que el rol",
+            "explanation": "Descartada: un rol también lo pueden asumir usuarios de otra cuenta, servicios y usuarios externos autenticados por un proveedor de identidad."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-quiz-07",
+      "type": "QUIZ",
+      "title": "Roles frente a usuarios de IAM: afirmaciones correctas",
+      "statement": "Una empresa revisa cómo se diferencia un rol de IAM de un usuario de IAM. Selecciona DOS afirmaciones que la documentación de IAM respalda.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "rol de IAM",
+        "usuario de IAM",
+        "credenciales temporales"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir un comodín a las acciones de la política para evitar errores de permiso",
+            "explanation": "Descartada: un comodín amplía los permisos, y refinar hacia el mínimo privilegio exige reducirlos, no ampliarlos."
+          },
+          {
+            "id": "b",
+            "text": "Consultar la información de último acceso para identificar los permisos que no se usan",
+            "explanation": "Es correcta: la información de último acceso ayuda a detectar permisos innecesarios y a refinar las políticas hacia el mínimo privilegio."
+          },
+          {
+            "id": "c",
+            "text": "Sustituir el rol por el usuario raíz en la carga de trabajo",
+            "explanation": "Descartada: el usuario raíz tiene acceso completo, y AWS recomienda no usarlo en las tareas diarias, lo que aleja del mínimo privilegio."
+          },
+          {
+            "id": "d",
+            "text": "Generar una política con IAM Access Analyzer a partir de la actividad registrada en AWS CloudTrail",
+            "explanation": "Es correcta: Access Analyzer revisa los registros de CloudTrail y genera una plantilla con los permisos que el rol ha usado."
+          },
+          {
+            "id": "e",
+            "text": "Adjuntar una política administrada de AWS más amplia, pensada para muchos casos de uso",
+            "explanation": "Descartada: las políticas administradas por AWS están pensadas para todos los clientes y pueden dar más permisos de los que este rol necesita."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-quiz-08",
+      "type": "QUIZ",
+      "title": "Refinar los permisos de un rol existente",
+      "statement": "Un administrador quiere acercar al mínimo privilegio la política de un rol que ya está en uso y sospecha que parte de los permisos concedidos no se usa. Selecciona DOS acciones que ayudan a refinar esos permisos.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "mínimo privilegio",
+        "IAM Access Analyzer",
+        "información de último acceso"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-2-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué identidad y qué permisos para cada componente",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una web en Amazon EC2 con documentos en Amazon S3 y un equipo que consulta informes) y escribe cómo darías acceso a cada parte como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué identidad usa cada persona y cada componente (usuario, grupo o rol) y qué política mínima recibe cada una.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, dar claves de acceso de un usuario a la aplicación, o un permiso sobre todos los recursos «para empezar») y la razón por la que la descartaste.\n\n3) Consecuencia: qué mantenimiento y qué riesgo trae tu decisión (por ejemplo, revisar los permisos sin uso o actualizar claves cuando alguien se va).\n\n4) Evidencia: qué parte de la documentación oficial de IAM (políticas y permisos, roles o buenas prácticas) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la identidad, el tipo de política y el alcance del permiso. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo aplicaste el mínimo privilegio.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "mínimo privilegio",
+        "rol de IAM",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html"
+      ],
+      "order": 18
+    }
+  ]
+}
