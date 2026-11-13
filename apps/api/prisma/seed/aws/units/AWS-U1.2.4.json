@@ -1,0 +1,1280 @@
+{
+  "code": "AWS-U1.2.4",
+  "lessons": [
+    {
+      "slug": "aws-u1-2-4-gobierno-organizations-scp-cloudtrail-config-artifact",
+      "title": "Gobierno y cumplimiento: Organizations, SCP, CloudTrail, Config y Artifact",
+      "estimatedMin": 55,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cuando una empresa crece, una sola cuenta de AWS deja de bastar: las cuentas son fronteras naturales de permisos, seguridad, costos y cargas de trabajo, y usar varias es una práctica recomendada. Gobernarlas exige responder cuatro preguntas distintas. ¿Cómo agrupo las cuentas y les fijo límites comunes? AWS Organizations, con sus políticas de control de servicios (SCP). ¿Quién hizo qué y cuándo? AWS CloudTrail. ¿Cómo estaba configurado un recurso y cumple mis reglas? AWS Config. ¿Dónde consigo las pruebas de cumplimiento de AWS para un auditor? AWS Artifact. El examen CLF-C02 (dominio 2, tarea 2.2) no pide configurarlos: pide reconocer cuál responde a cada pregunta."
+        },
+        {
+          "type": "list",
+          "title": "Qué servicio responde a qué pregunta",
+          "items": [
+            "AWS Organizations: administra y gobierna varias cuentas de forma central. Permite crear cuentas, agruparlas en unidades organizativas (UO), aplicar políticas y simplificar la facturación con un único método de pago para todas.",
+            "SCP: un tipo de política de la organización que fija el máximo de permisos disponible para los usuarios y roles de IAM de las cuentas miembro. No concede permisos.",
+            "AWS CloudTrail: registra como eventos las acciones de un usuario, un rol o un servicio de AWS, sea desde la consola, la CLI o los SDK y las API. Sirve para auditoría, gobierno y cumplimiento.",
+            "AWS Config: ofrece una vista detallada de la configuración de los recursos, de cómo se relacionan y de cómo estaban configurados en el pasado, y evalúa esa configuración con reglas.",
+            "AWS Artifact: ofrece descargas bajo demanda de documentos de seguridad y cumplimiento de AWS, como informes SOC, ISO y PCI, y permite revisar y aceptar acuerdos con AWS."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "AWS Organizations: cuentas, UO y políticas",
+          "text": "Con Organizations creas cuentas (también de forma programática, con la CLI, los SDK o las API), las agrupas en UO, por ejemplo una por aplicación o por entorno, y les aplicas políticas de la organización. Además de las SCP existen las políticas de control de recursos (RCP), que evitan el uso no intencionado de tus recursos, y las políticas de etiquetas. La organización también te da una factura consolidada y se integra con otros servicios: puedes activar CloudTrail en todas las cuentas, con un registro que las cuentas miembro no pueden desactivar ni modificar, y definir con AWS Config los ajustes de configuración recomendados para los recursos de varias cuentas y Regiones."
+        },
+        {
+          "type": "mermaid",
+          "title": "Cómo se decide una petición en una cuenta miembro con SCP",
+          "code": "flowchart TD\n  P[\"Petición de un usuario o rol de una cuenta miembro\"] --> D{\"¿Algún Deny aplica, en una SCP o en una política de IAM?\"}\n  D -- \"Sí\" --> E[\"Denegada: el Deny anula cualquier permiso\"]\n  D -- \"No\" --> S{\"¿Cada nivel por encima de la cuenta tiene un Allow en sus SCP?\"}\n  S -- \"No\" --> M[\"Denegada: la acción queda fuera del máximo permitido\"]\n  S -- \"Sí\" --> I{\"¿Una política de IAM concede la acción?\"}\n  I -- \"No\" --> N[\"Denegada: la SCP no concede permisos\"]\n  I -- \"Sí\" --> OK[\"Permitida\"]"
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué hace una SCP y qué no",
+          "text": "Una SCP ofrece control central sobre los permisos máximos disponibles para los usuarios y roles de IAM de tu organización, como un guardarraíl. No concede ningún permiso: para concederlos hacen falta políticas de identidad o de recurso, y los permisos efectivos son la intersección entre lo que permiten las SCP y lo que permiten esas políticas. Un usuario sin políticas de IAM no tiene acceso aunque las SCP permitan todas las acciones, y si una SCP no permite una acción (por no incluirla en un Allow) o la deniega de forma explícita, ni siquiera un usuario con la política AdministratorAccess puede usarla. Las SCP solo están disponibles en una organización con todas las funciones habilitadas, afectan solo a las cuentas miembro (nunca a la cuenta de administración), alcanzan también al usuario raíz de esas cuentas y no restringen los roles vinculados a servicios. Si hay un límite de permisos y una SCP, la acción debe estar permitida por ambos y por la política de identidad."
+        },
+        {
+          "type": "code",
+          "title": "Una SCP de lista de denegación, como valor que evaluarás con aws.iam.evaluate",
+          "language": "typescript",
+          "code": "export const scp = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"PermitirTodo\", Effect: \"Allow\", Action: \"*\", Resource: \"*\" },\n    { Sid: \"NadieDetieneElTrail\", Effect: \"Deny\", Action: \"cloudtrail:StopLogging\", Resource: \"*\" },\n  ],\n};"
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómo desplegar una SCP sin dejar a nadie fuera",
+          "text": "AWS recomienda no adjuntar SCP a la raíz de la organización sin probar a fondo su efecto. En su lugar, crea una UO a la que muevas las cuentas de una en una, o en grupos pequeños, para no bloquear sin querer el acceso a servicios clave; para saber si una cuenta usa un servicio puedes mirar los datos de último acceso a servicios de IAM o registrar el uso a nivel de API con CloudTrail. Además, la política FullAWSAccess no debe quitarse salvo que la modifiques o la sustituyas por otra con las acciones permitidas: si no, fallan todas las acciones de AWS de las cuentas miembro. Con la lista de denegación de arriba, FullAWSAccess (o un Allow equivalente) sigue permitiendo todo y la sentencia Deny recorta lo que no debe hacerse."
+        },
+        {
+          "type": "paragraph",
+          "title": "CloudTrail frente a Config: quién lo hizo y cómo estaba",
+          "text": "CloudTrail responde a quién o qué realizó cada acción, sobre qué recursos y cuándo. Ofrece tres formas de registrar eventos: el historial de eventos, que consultas, buscas y descargas desde que creas la cuenta; los trails, que entregan los eventos a un bucket de Amazon S3 (y, opcionalmente, a CloudWatch Logs y Amazon EventBridge) y pueden cubrir varias cuentas con Organizations; y CloudTrail Lake, un lago de datos administrado para analizar la actividad. AWS Config, en cambio, responde a cómo está y cómo estaba configurado un recurso: guarda la configuración y su historial, te avisa cuando un recurso se crea, modifica o elimina, y con reglas marca como no conforme el recurso que incumple una condición. Los agregadores reúnen los datos de configuración y cumplimiento de varias cuentas y Regiones en una sola."
+        },
+        {
+          "type": "mermaid",
+          "title": "Qué servicio consultar según la pregunta de gobierno",
+          "code": "flowchart TD\n  Q{\"¿Qué necesitas saber o hacer?\"}\n  Q -- \"Quién ejecutó una acción, cuándo y desde dónde\" --> CT[\"AWS CloudTrail\"]\n  Q -- \"Cómo está configurado un recurso o si cumple una regla\" --> CF[\"AWS Config\"]\n  Q -- \"Pruebas de cumplimiento de AWS para un auditor\" --> AR[\"AWS Artifact\"]\n  Q -- \"Límites comunes para muchas cuentas\" --> OR[\"AWS Organizations con SCP\"]"
+        },
+        {
+          "type": "paragraph",
+          "title": "AWS Artifact y la responsabilidad de tus propios documentos",
+          "text": "AWS Artifact es el lugar donde encuentras la información de cumplimiento de AWS: informes de conformidad con estándares como ISO y PCI, informes SOC y certificaciones de organismos de acreditación que validan sus controles de seguridad. Puedes entregarlos a tus auditores o reguladores como prueba de la seguridad y el cumplimiento de la infraestructura y los servicios de AWS que usas, y como guía para evaluar tu propia arquitectura. También sirve para revisar, aceptar y seguir el estado de los acuerdos con AWS de tu cuenta y de varias cuentas de tu organización. Ten presente que AWS Artifact documenta a AWS: la empresa cliente sigue siendo responsable de desarrollar u obtener los documentos que demuestren su propia seguridad y cumplimiento."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro necesidades, cuatro herramientas",
+          "text": "Una empresa con una cuenta por entorno tiene cuatro necesidades. Necesidad 1: que nadie de las cuentas de desarrollo pueda usar servicios fuera de una lista aprobada. Se agrupan las cuentas en una UO y se le adjunta una SCP; se prueba primero con pocas cuentas. Necesidad 2: averiguar qué rol borró una tabla ayer. Se consulta CloudTrail, que registra la acción con su origen. Necesidad 3: comprobar que ningún grupo de seguridad incumple la regla interna y poder ver cómo estaba el de ayer. Se usa AWS Config con una regla y su historial de configuración. Necesidad 4: entregar a un auditor el informe SOC de AWS. Se descarga de AWS Artifact. Ninguna herramienta sustituye a otra: una previene o limita, otra registra actividad, otra evalúa configuración y otra aporta evidencias."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: la SCP limita, no concede, y no es un registro",
+          "text": "Si una pregunta dice que un usuario con permisos amplios no puede hacer algo en una cuenta miembro, piensa en una SCP que no incluye esa acción. Si dice que alguien necesita permisos y la opción es una SCP, es un distractor: las SCP no conceden. Y si el escenario pide saber quién hizo algo, la respuesta es CloudTrail; si pide saber cómo estaba configurado o si cumple una regla, es Config; si pide un informe de cumplimiento de AWS, es Artifact."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que una SCP concede permisos",
+          "text": "Causa: pensar que adjuntar una SCP que permite un servicio equivale a dar acceso a las personas de la cuenta. Consecuencia: los usuarios siguen sin poder hacer nada y se busca el fallo en la SCP durante horas. Solución: recuerda que la SCP solo fija el máximo; concede los permisos con políticas de identidad o de recurso y comprueba que la acción esté dentro de ambos."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: quitar FullAWSAccess y dejar solo una sentencia Deny",
+          "text": "Causa: querer una lista de denegación y desasociar FullAWSAccess para que la nueva SCP sea la única, sin incluir ningún Allow. Consecuencia: ninguna acción tiene un Allow en ese nivel y fallan todas las acciones de AWS de las cuentas miembro afectadas. Solución: mantén FullAWSAccess o añade a tu SCP una sentencia Allow con las acciones permitidas, y deja el Deny solo para lo que debe bloquearse."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: adjuntar una SCP nueva a la raíz sin probarla",
+          "text": "Causa: aplicar el guardarraíl a toda la organización de golpe para ahorrar tiempo. Consecuencia: se puede bloquear sin querer el acceso a servicios clave en muchas cuentas a la vez. Solución: crea una UO de prueba, mueve las cuentas de una en una o en grupos pequeños, revisa los datos de último acceso o el uso registrado en CloudTrail y amplía el alcance cuando compruebes el efecto."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 4: confundir CloudTrail con Config",
+          "text": "Causa: creer que ambos servicios sirven para auditar lo mismo porque los dos guardan registros. Consecuencia: se consulta Config para saber quién borró un recurso, o CloudTrail para saber si un recurso cumple una regla, y no aparece la respuesta. Solución: usa CloudTrail para las acciones (quién, qué, cuándo) y Config para el estado y el historial de configuración y su evaluación con reglas."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Distinguir qué servicio de gobierno y cumplimiento responde a cada necesidad (Organizations, SCP, CloudTrail, Config y Artifact) y escribir una SCP cuyas peticiones permitidas y denegadas puedas predecir y comprobar con aws.iam.evaluate (campo scps). Esta unidad prepara el examen CLF-C02, dominio 2 «Seguridad y cumplimiento», tarea 2.2 (conceptos de seguridad, gobierno y cumplimiento en la nube de AWS). Criterio: ante un escenario nuevo eliges el servicio adecuado, predices el efecto de una SCP sobre un usuario con permisos amplios y justificas por qué los distractores quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cuatro necesidades tapando las respuestas: para cada una, nombra la herramienta y el motivo. Después explica con tus palabras el diagrama «Cómo se decide una petición en una cuenta miembro con SCP» y responde de memoria: qué diferencia a CloudTrail de Config, por qué una SCP no concede permisos y qué cuentas no alcanzan las SCP."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Guardarraíl de auditoría para la UO de producción». Empieza por escribir en papel qué acciones deben quedar bloqueadas, cuáles deben seguir permitidas y qué resultado esperas de cada petición. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y la SCP no bloquea nada más de lo pedido."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «SCP de lista de permitidos para la UO de laboratorio». Parte solo de los criterios del enunciado y usa aws.iam.evaluate para comprobar tus propias peticiones antes de enviar: al menos dos permitidas, dos denegadas por omisión y dos denegadas de forma explícita. Criterio de paso: cada petición recibe el resultado previsto y puedes explicar qué sentencia, o qué ausencia de sentencia, lo produce."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó una SCP de lista de denegación para una UO y la presenta como correcta, pero desde que se adjuntó fallan todas las acciones de las cuentas. Resuelve «Una SCP sin Allow que bloquea toda la UO»: encuentra el defecto, corrígelo y contrasta la corrección con la página oficial de SCP de AWS Organizations (leída el 2026-11-13), que advierte qué pasa si se quita FullAWSAccess sin sustituirla. Escribe la evidencia antes de aceptar el cambio."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe qué necesidad plantea el escenario (limitar, registrar actividad, evaluar configuración o aportar evidencias) y cuál es el calificador; al corregir, lee la explicación de cada opción y anota si fallaste por confundir CloudTrail con Config, por creer que la SCP concede permisos o por el alcance de las SCP. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una organización que conozcas (varios equipos o entornos) y escribe qué cuentas o UO tendría, qué guardarraíles pondrías con SCP y cómo obtendría un auditor las evidencias. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero propone dar a todos los desarrolladores la política AdministratorAccess porque «la SCP ya los limita»; ¿qué le respondes y qué compruebas antes de aceptar?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-organizations-que-es",
+          "order": 0,
+          "note": "Fuente de qué es Organizations, de las UO, de las políticas de la organización, de la facturación consolidada y de la integración con CloudTrail y Config."
+        },
+        {
+          "resourceSlug": "aws-scp",
+          "order": 1,
+          "note": "Fuente de qué hace y qué no hace una SCP, de su alcance, de FullAWSAccess y de cómo probarlas."
+        },
+        {
+          "resourceSlug": "aws-cloudtrail-que-es",
+          "order": 2,
+          "note": "Fuente de qué registra CloudTrail, del historial de eventos, los trails y CloudTrail Lake."
+        },
+        {
+          "resourceSlug": "aws-config-que-es",
+          "order": 3,
+          "note": "Fuente de qué es AWS Config, de las reglas, el historial de configuración y los agregadores."
+        },
+        {
+          "resourceSlug": "aws-artifact-que-es",
+          "order": 4,
+          "note": "Fuente de qué es AWS Artifact, de los informes de cumplimiento, los acuerdos y la responsabilidad del cliente."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 5,
+          "note": "Guía de CLF-C02: la tarea 2.2 del dominio 2 cubre dónde encontrar información de cumplimiento y los servicios de gobierno y auditoría."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Fija el máximo de permisos disponible para los usuarios y roles de IAM de las cuentas miembro, como un guardarraíl. No concede permisos: hacen falta políticas de identidad o de recurso, y el permiso efectivo es la intersección de ambas cosas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué hace una SCP",
+      "statement": "¿Qué hace una política de control de servicios (SCP) y qué no hace?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "SCP",
+        "permisos máximos",
+        "guardarraíl"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Afecta a los usuarios y roles de las cuentas miembro, incluido su usuario raíz. No afecta a la cuenta de administración, ni a los roles vinculados a servicios, ni a usuarios de cuentas fuera de la organización."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Alcance de una SCP",
+      "statement": "¿A quién alcanza una SCP y a quién no?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "SCP",
+        "cuenta de administración",
+        "usuario raíz"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para administrar y gobernar varias cuentas de forma central: crear cuentas, agruparlas en unidades organizativas, aplicarles políticas (como las SCP) y simplificar la facturación con un único método de pago."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Organizations",
+      "statement": "¿Para qué sirve AWS Organizations?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Organizations",
+        "unidad organizativa",
+        "facturación consolidada"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Registra como eventos las acciones de un usuario, un rol o un servicio de AWS, desde la consola, la CLI, los SDK y las API. Permite saber quién o qué hizo cada acción, sobre qué recurso y cuándo, para auditoría, gobierno y cumplimiento."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: CloudTrail",
+      "statement": "¿Qué registra AWS CloudTrail y para qué se usa?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "CloudTrail",
+        "auditoría",
+        "eventos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "AWS Config muestra cómo está y cómo estaba configurado un recurso y evalúa esa configuración con reglas, marcando los recursos no conformes. CloudTrail registra las acciones realizadas: quién hizo qué y cuándo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Config frente a CloudTrail",
+      "statement": "¿En qué se diferencia AWS Config de AWS CloudTrail?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Config",
+        "CloudTrail",
+        "reglas de configuración"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ofrece descargas bajo demanda de documentos de seguridad y cumplimiento de AWS (informes SOC, ISO y PCI, certificaciones) y la gestión de acuerdos con AWS. No sustituye los documentos propios de la empresa cliente, que debe desarrollar u obtener ella misma."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Artifact",
+      "statement": "¿Qué ofrece AWS Artifact y de qué documentos no se encarga?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Artifact",
+        "informes de cumplimiento",
+        "acuerdos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// SCP de la UO Sandbox. FullAWSAccess se desasoció de la UO y esta es la única SCP que queda adjunta en ese nivel.\nexport const scp = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"NadieDetieneElTrail\", Effect: \"Deny\", Action: [\"cloudtrail:StopLogging\", \"cloudtrail:DeleteTrail\"], Resource: \"*\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const scp = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"PermitirTodo\", Effect: \"Allow\", Action: \"*\", Resource: \"*\" },\n    { Sid: \"NadieDetieneElTrail\", Effect: \"Deny\", Action: [\"cloudtrail:StopLogging\", \"cloudtrail:DeleteTrail\"], Resource: \"*\" },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Prueba una petición cualquiera, por ejemplo s3:PutObject, y mira qué resultado da. Pregúntate qué necesita cada nivel por encima de la cuenta para que una acción no quede fuera del máximo permitido."
+        },
+        {
+          "level": 2,
+          "text": "En ese nivel de la UO solo existe una sentencia Deny. Un Deny no permite nada: sin un Allow que incluya la acción, la petición queda en denegación implícita para todas las acciones, también las que querías permitir."
+        },
+        {
+          "level": 3,
+          "text": "Añade a la SCP una sentencia Allow con Action \"*\" y Resource \"*\" (el equivalente de FullAWSAccess) y deja la sentencia Deny tal cual. No cambies las acciones denegadas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el resto de acciones sigue permitido",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::777788889999:role/admin-sandbox\", accountId: \"777788889999\" },\n      action,\n      resource: { arn: resource, accountId: \"777788889999\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-sandbox/datos.csv\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "detener el trail recibe una denegación explícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::777788889999:role/admin-sandbox\", accountId: \"777788889999\" },\n      action,\n      resource: { arn: resource, accountId: \"777788889999\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"cloudtrail:StopLogging\", \"arn:aws:cloudtrail:eu-west-1:777788889999:trail/auditoria\"), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "eliminar el trail también se deniega de forma explícita y lanzar instancias sigue permitido",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::777788889999:role/admin-sandbox\", accountId: \"777788889999\" },\n      action,\n      resource: { arn: resource, accountId: \"777788889999\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"cloudtrail:DeleteTrail\", \"arn:aws:cloudtrail:eu-west-1:777788889999:trail/auditoria\"), \"ExplicitDeny\");\nassert.strictEqual(decide(\"ec2:RunInstances\", \"arn:aws:ec2:eu-west-1:777788889999:instance/*\"), \"Allow\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-debug-01",
+      "type": "DEBUG",
+      "title": "Una SCP sin Allow que bloquea toda la UO",
+      "statement": "La SCP `scp` debe bloquear únicamente cloudtrail:StopLogging y cloudtrail:DeleteTrail en la UO Sandbox y dejar todo lo demás permitido (el rol admin-sandbox tiene AdministratorAccess en la cuenta 777788889999; la raíz y la cuenta conservan FullAWSAccess). Tal como está, desde que se adjuntó fallan todas las acciones. Corrígela sin quitar la denegación y sin cambiar las acciones denegadas, y mantén la forma del valor exportado (`export const scp = { Version, Statement }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "SCP",
+        "FullAWSAccess",
+        "lista de denegación"
+      ],
+      "estimatedMin": 12,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// SCP adicional de la UO Producción (FullAWSAccess sigue adjunta en la raíz, la UO y la cuenta).\nexport const scp = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"BloquearConsultaDeEventos\", Effect: \"Deny\", Action: \"cloudtrail:LookupEvents\", Resource: \"*\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const scp = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"NadieApagaLaAuditoria\",\n      Effect: \"Deny\",\n      Action: [\"cloudtrail:StopLogging\", \"cloudtrail:DeleteTrail\", \"config:StopConfigurationRecorder\"],\n      Resource: \"*\",\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "FullAWSAccess ya permite todo en cada nivel, así que tu SCP solo necesita recortar: una sentencia Deny con las acciones que apagan la auditoría. Lo que no nombres seguirá permitido."
+        },
+        {
+          "level": 2,
+          "text": "La sentencia Deny lleva tres acciones: cloudtrail:StopLogging, cloudtrail:DeleteTrail y config:StopConfigurationRecorder, con Resource \"*\". Revisa que no estés denegando acciones de lectura como cloudtrail:LookupEvents."
+        },
+        {
+          "level": 3,
+          "text": "Sustituye la acción del código inicial por la lista [\"cloudtrail:StopLogging\", \"cloudtrail:DeleteTrail\", \"config:StopConfigurationRecorder\"]. Un Deny anula incluso la política AdministratorAccess del rol, así que no hace falta nada más."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la SCP es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:role/admin-produccion\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [full, scp], [full]],\n  }).decision;\nassert.deepStrictEqual(aws.iam.validatePolicy(scp), []);"
+          }
+        },
+        {
+          "name": "el rol administrador no puede detener el trail: denegación explícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:role/admin-produccion\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [full, scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"cloudtrail:StopLogging\", \"arn:aws:cloudtrail:eu-west-1:111122223333:trail/auditoria-org\"), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "el rol administrador sigue pudiendo guardar objetos",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:role/admin-produccion\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [full, scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-produccion/datos.csv\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "el rol administrador puede consultar el historial de eventos",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:role/admin-produccion\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [full, scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"cloudtrail:LookupEvents\", \"arn:aws:cloudtrail:eu-west-1:111122223333:trail/auditoria-org\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "eliminar el trail se deniega de forma explícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:role/admin-produccion\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [full, scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"cloudtrail:DeleteTrail\", \"arn:aws:cloudtrail:eu-west-1:111122223333:trail/auditoria-org\"), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "parar el registrador de AWS Config se deniega de forma explícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:role/admin-produccion\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [full, scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"config:StopConfigurationRecorder\", \"arn:aws:config:eu-west-1:111122223333:config-recorder/default\"), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "un usuario de IAM con permisos amplios tampoco puede apagar la auditoría",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/operador\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [full, scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"cloudtrail:StopLogging\", \"arn:aws:cloudtrail:eu-west-1:111122223333:trail/auditoria-org\"), \"ExplicitDeny\");\nassert.strictEqual(decide(\"config:StopConfigurationRecorder\", \"arn:aws:config:eu-west-1:111122223333:config-recorder/default\"), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "el resto de acciones, incluidas las de lectura de la auditoría, sigue permitido",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:role/admin-produccion\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [full, scp], [full]],\n  }).decision;\nconst casos: [string, string][] = [\n  [\"cloudtrail:CreateTrail\", \"arn:aws:cloudtrail:eu-west-1:111122223333:trail/auditoria-org\"],\n  [\"cloudtrail:LookupEvents\", \"arn:aws:cloudtrail:eu-west-1:111122223333:trail/auditoria-org\"],\n  [\"config:PutConfigurationRecorder\", \"arn:aws:config:eu-west-1:111122223333:config-recorder/default\"],\n  [\"config:DescribeConfigurationRecorders\", \"arn:aws:config:eu-west-1:111122223333:config-recorder/default\"],\n  [\"ec2:RunInstances\", \"arn:aws:ec2:eu-west-1:111122223333:instance/*\"],\n  [\"iam:CreateUser\", \"arn:aws:iam::111122223333:user/nuevo\"],\n];\nfor (const [accion, recurso] of casos) {\n  assert.strictEqual(decide(accion, recurso), \"Allow\", accion + \" debe seguir permitida\");\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-lab-guiado-01",
+      "type": "LAB",
+      "title": "Guardarraíl de auditoría para la UO de producción",
+      "statement": "La UO Producción agrupa cuentas como la 111122223333, donde el rol admin-produccion tiene la política AdministratorAccess. FullAWSAccess sigue adjunta en la raíz, en la UO y en la cuenta y no debes tocarla: tú escribes `scp`, la SCP adicional de la UO. Debe impedir que nadie apague la auditoría: cloudtrail:StopLogging, cloudtrail:DeleteTrail y config:StopConfigurationRecorder deben recibir una denegación explícita, incluso para un administrador. Todo lo demás, también las acciones de lectura de CloudTrail y de Config, debe seguir permitido. El código inicial deniega una acción equivocada: corrígelo sin cambiar la forma del valor exportado (`export const scp = { Version, Statement }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "SCP",
+        "lista de denegación",
+        "denegación explícita",
+        "CloudTrail"
+      ],
+      "estimatedMin": 30,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// SCP de la UO Laboratorio. FullAWSAccess se sustituyó en la UO por esta política; la raíz y la cuenta conservan FullAWSAccess.\nexport const scp = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"AccesoTotal\", Effect: \"Allow\", Action: \"*\", Resource: \"*\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const scp = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"SoloS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" },\n    {\n      Sid: \"Ec2SoloEnIrlanda\",\n      Effect: \"Deny\",\n      Action: \"ec2:*\",\n      Resource: \"*\",\n      Condition: { StringNotEquals: { \"aws:RequestedRegion\": \"eu-west-1\" } },\n    },\n    { Sid: \"NadieSaleDeLaOrganizacion\", Effect: \"Deny\", Action: \"organizations:LeaveOrganization\", Resource: \"*\" },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la SCP es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::444455556666:role/desarrollo-lab\", accountId: \"444455556666\" },\n      action,\n      resource: { arn: resource, accountId: \"444455556666\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.deepStrictEqual(aws.iam.validatePolicy(scp), []);"
+          }
+        },
+        {
+          "name": "el rol de laboratorio puede guardar objetos en S3",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::444455556666:role/desarrollo-lab\", accountId: \"444455556666\" },\n      action,\n      resource: { arn: resource, accountId: \"444455556666\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-laboratorio/prueba.txt\", { \"aws:RequestedRegion\": \"eu-west-1\" }), \"Allow\");"
+          }
+        },
+        {
+          "name": "puede lanzar instancias de EC2 en eu-west-1",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::444455556666:role/desarrollo-lab\", accountId: \"444455556666\" },\n      action,\n      resource: { arn: resource, accountId: \"444455556666\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"ec2:RunInstances\", \"arn:aws:ec2:eu-west-1:444455556666:instance/i-0abc123\", { \"aws:RequestedRegion\": \"eu-west-1\" }), \"Allow\");"
+          }
+        },
+        {
+          "name": "un servicio fuera de la lista queda en denegación implícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::444455556666:role/desarrollo-lab\", accountId: \"444455556666\" },\n      action,\n      resource: { arn: resource, accountId: \"444455556666\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"iam:CreateUser\", \"arn:aws:iam::444455556666:user/nuevo\", { \"aws:RequestedRegion\": \"eu-west-1\" }), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "EC2 fuera de eu-west-1 recibe una denegación explícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::444455556666:role/desarrollo-lab\", accountId: \"444455556666\" },\n      action,\n      resource: { arn: resource, accountId: \"444455556666\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nfor (const region of [\"us-east-1\", \"ap-southeast-2\"]) {\n  assert.strictEqual(decide(\"ec2:RunInstances\", \"arn:aws:ec2:\" + region + \":444455556666:instance/i-0abc123\", { \"aws:RequestedRegion\": region }), \"ExplicitDeny\", \"ec2 en \" + region + \" debe denegarse de forma explícita\");\n}"
+          }
+        },
+        {
+          "name": "salir de la organización recibe una denegación explícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::444455556666:role/desarrollo-lab\", accountId: \"444455556666\" },\n      action,\n      resource: { arn: resource, accountId: \"444455556666\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"organizations:LeaveOrganization\", \"*\", { \"aws:RequestedRegion\": \"eu-west-1\" }), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "otros servicios quedan fuera del máximo permitido",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::444455556666:role/desarrollo-lab\", accountId: \"444455556666\" },\n      action,\n      resource: { arn: resource, accountId: \"444455556666\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nconst casos: [string, string][] = [\n  [\"rds:CreateDBInstance\", \"arn:aws:rds:eu-west-1:444455556666:db:base\"],\n  [\"lambda:InvokeFunction\", \"arn:aws:lambda:eu-west-1:444455556666:function:f\"],\n  [\"cloudtrail:StopLogging\", \"arn:aws:cloudtrail:eu-west-1:444455556666:trail/auditoria\"],\n];\nfor (const [accion, recurso] of casos) {\n  assert.strictEqual(decide(accion, recurso, { \"aws:RequestedRegion\": \"eu-west-1\" }), \"ImplicitDeny\", accion + \" debe quedar denegada por omisión\");\n}"
+          }
+        },
+        {
+          "name": "S3 y EC2 siguen permitidos en cualquier recurso permitido de eu-west-1",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const full = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst admin = { Version: \"2012-10-17\", Statement: { Effect: \"Allow\", Action: \"*\", Resource: \"*\" } };\nconst decide = (action: string, resource: string, context?: Record<string, string>) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::444455556666:role/desarrollo-lab\", accountId: \"444455556666\" },\n      action,\n      resource: { arn: resource, accountId: \"444455556666\" },\n      context,\n    },\n    identityPolicies: [admin],\n    scps: [[full], [scp], [full]],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro/guia.pdf\", { \"aws:RequestedRegion\": \"eu-west-1\" }), \"Allow\");\nassert.strictEqual(decide(\"ec2:DescribeInstances\", \"arn:aws:ec2:eu-west-1:444455556666:instance/i-0abc123\", { \"aws:RequestedRegion\": \"eu-west-1\" }), \"Allow\");\nassert.strictEqual(decide(\"ec2:StopInstances\", \"arn:aws:ec2:eu-west-1:444455556666:instance/i-0abc123\", { \"aws:RequestedRegion\": \"eu-west-1\" }), \"Allow\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-lab-autonomo-01",
+      "type": "LAB",
+      "title": "SCP de lista de permitidos para la UO de laboratorio",
+      "statement": "La UO Laboratorio agrupa cuentas como la 444455556666, donde el rol desarrollo-lab tiene la política AdministratorAccess. En esa UO se sustituyó FullAWSAccess por la SCP `scp` que debes escribir (la raíz y la cuenta conservan FullAWSAccess). Criterios: (1) solo se permiten las acciones de Amazon S3 y de Amazon EC2; cualquier otro servicio debe quedar en denegación implícita; (2) las acciones de EC2 solo pueden hacerse en la Región eu-west-1: en cualquier otra Región (clave de contexto aws:RequestedRegion) deben recibir una denegación explícita; (3) organizations:LeaveOrganization debe recibir una denegación explícita. Lo que ninguna sentencia permite queda en denegación implícita. El código inicial permite todo: corrígelo manteniendo la forma del valor exportado (`export const scp = { Version, Statement }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "SCP",
+        "lista de permitidos",
+        "denegación explícita",
+        "condición de Región"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Adjuntar la SCP a la raíz de la organización y corregirla cuando aparezcan incidencias",
+            "explanation": "Descartada: AWS recomienda no adjuntar SCP a la raíz sin probar a fondo su efecto, porque afecta a todas las cuentas a la vez y puede bloquear servicios clave; incumple el orden PRIMERO probar."
+          },
+          {
+            "id": "b",
+            "text": "Adjuntar la SCP a la cuenta de administración para observar cómo afecta a la organización",
+            "explanation": "Descartada: las SCP no afectan a los usuarios ni a los roles de la cuenta de administración, así que esa prueba no mostraría ningún efecto sobre las cuentas miembro."
+          },
+          {
+            "id": "c",
+            "text": "Crear una UO de prueba, mover a ella pocas cuentas y adjuntarle la SCP",
+            "explanation": "Es la recomendación de AWS: una UO donde mover las cuentas de una en una, o en grupos pequeños, permite comprobar el efecto antes de ampliar el alcance."
+          },
+          {
+            "id": "d",
+            "text": "Desasociar FullAWSAccess de la raíz para que la nueva SCP sea la única que se evalúe",
+            "explanation": "Descartada: si se quita FullAWSAccess sin sustituirla por otra política con acciones permitidas, fallan todas las acciones de AWS de las cuentas miembro."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-quiz-01",
+      "type": "QUIZ",
+      "title": "Cómo desplegar una SCP restrictiva",
+      "statement": "Una empresa tiene una organización con decenas de cuentas de producción. El equipo de seguridad ha redactado una SCP restrictiva y quiere aplicarla sin dejar sin acceso a servicios clave a las cargas de trabajo. ¿Qué debe hacer PRIMERO?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SCP",
+        "UO de prueba",
+        "FullAWSAccess"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La petición se deniega porque la SCP no incluye EC2 entre las acciones que permite",
+            "explanation": "Es lo que ocurre: la SCP fija el máximo de permisos y, si un nivel no permite la acción, el usuario no puede usarla aunque tenga AdministratorAccess."
+          },
+          {
+            "id": "b",
+            "text": "La petición se permite porque la política AdministratorAccess concede todas las acciones",
+            "explanation": "Descartada: los permisos efectivos son la intersección entre las SCP y las políticas de IAM, de modo que AdministratorAccess no supera el máximo que fija la SCP."
+          },
+          {
+            "id": "c",
+            "text": "La petición se permite porque las SCP solo limitan al usuario raíz de la cuenta",
+            "explanation": "Descartada: una SCP restringe a todos los usuarios y roles de IAM de la cuenta miembro, incluido su usuario raíz, no solo al usuario raíz."
+          },
+          {
+            "id": "d",
+            "text": "La petición se permite porque solo una denegación explícita de la SCP bloquea a un administrador",
+            "explanation": "Descartada: una acción que no figura en un Allow de la SCP queda bloqueada de forma implícita, aunque no haya ninguna sentencia Deny para ella."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-quiz-02",
+      "type": "QUIZ",
+      "title": "Un administrador frente a una SCP",
+      "statement": "En una cuenta miembro, la UO tiene adjunta una SCP que solo permite acciones de Amazon S3. Un usuario con la política de IAM AdministratorAccess intenta lanzar una instancia de Amazon EC2. ¿Cuál es el resultado MÁS probable?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SCP",
+        "AdministratorAccess",
+        "permisos máximos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Puede usar todos los servicios, porque las SCP permiten todas las acciones de la cuenta",
+            "explanation": "Descartada: una SCP no concede permisos a nadie; solo fija el máximo, y sin política de IAM el usuario no tiene permiso para ninguna acción."
+          },
+          {
+            "id": "b",
+            "text": "Puede usar los servicios de lectura, porque las SCP conceden un acceso básico a los usuarios",
+            "explanation": "Descartada: las SCP no conceden ningún permiso, ni siquiera de lectura; los permisos salen de las políticas de identidad o de recurso."
+          },
+          {
+            "id": "c",
+            "text": "Puede usar los servicios de la organización, porque su cuenta pertenece a una cuenta miembro",
+            "explanation": "Descartada: pertenecer a una cuenta miembro no da acceso; el usuario necesita una política de IAM que conceda cada acción dentro del máximo de las SCP."
+          },
+          {
+            "id": "d",
+            "text": "No puede usar ningún servicio, porque las SCP no conceden permisos y no tiene política de IAM",
+            "explanation": "Es lo correcto: un usuario sin políticas de IAM no tiene acceso aunque las SCP permitan todos los servicios y todas las acciones."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-quiz-03",
+      "type": "QUIZ",
+      "title": "Acceso con una SCP que permite todo",
+      "statement": "Una cuenta miembro tiene la política FullAWSAccess en todos los niveles de su organización. Una persona nueva dispone de un usuario de IAM sin ninguna política de permisos adjunta. ¿Qué afirmación describe MEJOR su acceso a los servicios de la cuenta?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SCP",
+        "políticas de identidad",
+        "FullAWSAccess"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Se aplica a todos los usuarios y roles de cada cuenta de la organización, incluida la cuenta de administración",
+            "explanation": "Descartada: las SCP no afectan a los usuarios ni a los roles de la cuenta de administración; solo afectan a las cuentas miembro."
+          },
+          {
+            "id": "b",
+            "text": "Se aplica a usuarios y roles de las cuentas miembro, incluido su usuario raíz, pero no a la cuenta de administración",
+            "explanation": "Es el alcance que describe AWS: las SCP restringen a las cuentas miembro, también a su usuario raíz, y nunca a la cuenta de administración."
+          },
+          {
+            "id": "c",
+            "text": "Se aplica a los usuarios de IAM de las cuentas miembro, pero no a sus roles ni a su usuario raíz",
+            "explanation": "Descartada: una SCP alcanza a los usuarios y a los roles de IAM de las cuentas miembro y también a su usuario raíz, sin excluir ninguno."
+          },
+          {
+            "id": "d",
+            "text": "Se aplica a las cuentas miembro y también a los usuarios de cuentas externas que acceden a sus recursos",
+            "explanation": "Descartada: las SCP no afectan a usuarios o roles de cuentas fuera de la organización, aunque una política de recurso les conceda acceso."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-quiz-04",
+      "type": "QUIZ",
+      "title": "Alcance de una SCP en la raíz",
+      "statement": "Una organización adjunta a su raíz una SCP que deniega el uso de varios servicios. El equipo quiere saber a qué identidades se aplicará. ¿Qué afirmación es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SCP",
+        "cuenta de administración",
+        "usuario raíz"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Config, que guarda la configuración de los recursos y sus cambios a lo largo del tiempo",
+            "explanation": "Descartada: Config muestra cómo estaba configurado un recurso, pero la pregunta pide quién ejecutó la acción y con qué herramienta, que es el registro de actividad."
+          },
+          {
+            "id": "b",
+            "text": "AWS Artifact, que ofrece descargas de documentos de seguridad y cumplimiento de AWS",
+            "explanation": "Descartada: Artifact aporta informes y acuerdos de AWS; no registra las acciones que realizan las identidades de tu cuenta."
+          },
+          {
+            "id": "c",
+            "text": "AWS CloudTrail, que registra las acciones de usuarios, roles y servicios como eventos",
+            "explanation": "Es el servicio de auditoría de actividad: registra quién o qué hizo cada acción, sobre qué recurso y cuándo, desde la consola, la CLI o los SDK."
+          },
+          {
+            "id": "d",
+            "text": "AWS Organizations, que agrupa las cuentas y les aplica políticas de forma central",
+            "explanation": "Descartada: Organizations gobierna y agrupa cuentas, pero no es el servicio que registra qué identidad realizó cada acción."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-quiz-05",
+      "type": "QUIZ",
+      "title": "Quién borró un bucket",
+      "statement": "Tras la eliminación inesperada de un bucket de Amazon S3, el equipo de auditoría necesita saber qué identidad ejecutó la acción, cuándo y desde qué herramienta (consola, CLI o SDK). ¿Qué servicio responde MEJOR a esa pregunta?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudTrail",
+        "auditoría",
+        "eventos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html",
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Config, que evalúa la configuración con reglas y marca los recursos no conformes",
+            "explanation": "Es la capacidad de Config: sus reglas evalúan de forma continua la configuración de los recursos, marcan los no conformes y envían una notificación."
+          },
+          {
+            "id": "b",
+            "text": "AWS CloudTrail, que registra las llamadas a la API y entrega los eventos a un bucket de Amazon S3",
+            "explanation": "Descartada: CloudTrail registra la actividad, pero no evalúa la configuración frente a reglas ni marca recursos como no conformes, así que exigiría desarrollo propio."
+          },
+          {
+            "id": "c",
+            "text": "AWS Artifact, que ofrece descargas de informes de cumplimiento y acuerdos con AWS",
+            "explanation": "Descartada: Artifact aporta documentos de AWS y no evalúa los recursos de tu cuenta ni envía avisos de incumplimiento."
+          },
+          {
+            "id": "d",
+            "text": "AWS Organizations, que aplica SCP a las cuentas para limitar sus permisos máximos",
+            "explanation": "Descartada: una SCP limita los permisos máximos de las identidades, pero no evalúa la configuración de los recursos ni señala los no conformes."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-quiz-06",
+      "type": "QUIZ",
+      "title": "Evaluar la configuración de los grupos de seguridad",
+      "statement": "Una empresa exige que todos sus grupos de seguridad cumplan una regla interna. Quiere evaluar de forma continua la configuración de los recursos, marcar los que no cumplan y recibir un aviso. ¿Qué servicio ofrece esa capacidad con MENOS desarrollo propio?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Config",
+        "reglas de configuración",
+        "grupos de seguridad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html",
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Obtener los documentos que demuestran el cumplimiento propio de la empresa como cliente",
+            "explanation": "No cumple: la empresa cliente es responsable de desarrollar u obtener sus propios documentos de seguridad y cumplimiento; Artifact documenta a AWS."
+          },
+          {
+            "id": "b",
+            "text": "Descargar informes de cumplimiento de AWS, como los de SOC, ISO y PCI",
+            "explanation": "Cumple: Artifact ofrece descargas bajo demanda de informes de seguridad y cumplimiento de AWS que se pueden entregar a los auditores."
+          },
+          {
+            "id": "c",
+            "text": "Evaluar de forma continua si los recursos cumplen las reglas de configuración",
+            "explanation": "No cumple: evaluar la configuración con reglas es una capacidad de AWS Config, no de Artifact, y no responde a las necesidades del escenario."
+          },
+          {
+            "id": "d",
+            "text": "Revisar, aceptar y seguir el estado de los acuerdos con AWS de varias cuentas",
+            "explanation": "Cumple: Artifact permite revisar, aceptar y hacer seguimiento de los acuerdos con AWS de una cuenta y de varias cuentas de la organización."
+          },
+          {
+            "id": "e",
+            "text": "Analizar la actividad de la API de la cuenta para detectar llamadas anómalas",
+            "explanation": "No cumple: analizar eventos de gestión en busca de comportamientos anómalos es una función de CloudTrail, no de Artifact."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-quiz-07",
+      "type": "QUIZ",
+      "title": "Capacidades de AWS Artifact",
+      "statement": "Una empresa va a someterse a una auditoría. Necesita documentación de AWS sobre seguridad y cumplimiento y, además, gestionar sus acuerdos con AWS en varias cuentas. Selecciona DOS capacidades de AWS Artifact que cubren esas necesidades.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Artifact",
+        "informes de cumplimiento",
+        "acuerdos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Agrupar las cuentas en unidades organizativas y aplicarles políticas, como las SCP",
+            "explanation": "Cumple: Organizations permite agrupar las cuentas en UO y aplicar políticas de la organización, entre ellas las SCP."
+          },
+          {
+            "id": "b",
+            "text": "Descargar los informes de cumplimiento SOC e ISO de AWS para los auditores",
+            "explanation": "No cumple: descargar informes de cumplimiento de AWS es una capacidad de AWS Artifact, no de Organizations."
+          },
+          {
+            "id": "c",
+            "text": "Conservar el historial de configuración de los recursos de cada cuenta",
+            "explanation": "No cumple: guardar la configuración de los recursos y su historial lo hace AWS Config, aunque Organizations pueda integrarse con él."
+          },
+          {
+            "id": "d",
+            "text": "Simplificar el pago con un único método de pago y una factura consolidada",
+            "explanation": "Cumple: Organizations simplifica la facturación con un único método de pago para todas las cuentas de la organización."
+          },
+          {
+            "id": "e",
+            "text": "Conceder permisos a los usuarios de IAM de todas las cuentas desde las SCP",
+            "explanation": "No cumple: las SCP no conceden permisos; solo fijan el máximo, y los permisos los dan las políticas de identidad o de recurso."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-quiz-08",
+      "type": "QUIZ",
+      "title": "Capacidades de AWS Organizations",
+      "statement": "Una empresa pasa de dos a cuarenta cuentas de AWS y quiere gobernarlas de forma central. Selecciona DOS capacidades que le ofrece AWS Organizations.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Organizations",
+        "unidad organizativa",
+        "facturación consolidada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html",
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
+        "https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-4-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué guardarraíl y qué evidencia para cada cuenta",
+      "statement": "Elige una organización que conozcas (por ejemplo, una empresa con una cuenta de desarrollo, otra de pruebas y otra de producción, y un equipo de auditoría) y escribe cómo gobernarías sus cuentas como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué grupos de cuentas o UO crearías, qué SCP adjuntarías a cada una y qué servicio usarías para saber quién hizo qué (CloudTrail), cómo están configurados los recursos (Config) y qué evidencias entregarías a un auditor (Artifact).\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, adjuntar una SCP nueva a la raíz sin probarla, o dar permisos solo con SCP) y la razón por la que la descartaste.\n\n3) Consecuencia: qué mantenimiento y qué riesgo trae tu decisión (por ejemplo, revisar los datos de último acceso para ajustar las SCP o recordar que no limitan a la cuenta de administración).\n\n4) Evidencia: qué parte de la documentación oficial (SCP, Organizations, CloudTrail, Config o Artifact) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la herramienta para cada necesidad y lo que cada SCP puede y no puede hacer. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo aplicaste el gobierno de varias cuentas.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "gobierno multicuenta",
+        "SCP",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
+        "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html"
+      ],
+      "order": 18
+    }
+  ]
+}
