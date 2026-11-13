@@ -1,0 +1,1193 @@
+{
+  "code": "AWS-U1.1.1",
+  "lessons": [
+    {
+      "slug": "aws-u1-1-1-beneficios-de-la-nube-y-economia-de-escala",
+      "title": "Beneficios de la nube y economía de escala",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Según AWS, la computación en la nube es la entrega bajo demanda de recursos de TI a través de Internet, con precios de pago por uso. En lugar de comprar, poseer y mantener centros de datos y servidores físicos, accedes a servicios como potencia de cómputo, almacenamiento y bases de datos cuando los necesitas, desde un proveedor como AWS. El libro blanco de AWS resume el valor de este cambio en seis ventajas: cambiar gasto fijo por gasto variable, aprovechar economías de escala masivas, dejar de adivinar la capacidad, ganar velocidad y agilidad, dejar de gastar dinero en operar y mantener centros de datos, y llegar al mundo entero en minutos."
+        },
+        {
+          "type": "list",
+          "title": "Las seis ventajas y la pregunta que responde cada una",
+          "items": [
+            "Cambiar gasto fijo por gasto variable: en lugar de invertir mucho en centros de datos y servidores antes de saber cómo los usarás, pagas solo cuando consumes recursos de cómputo y solo por lo que consumes. Responde a «¿cómo pago?».",
+            "Economías de escala masivas: al agregar el uso de muchos clientes, proveedores como AWS logran un coste variable menor que el que conseguirías por tu cuenta, y eso se traduce en precios de pago por uso más bajos. Responde a «¿por qué el precio por uso del proveedor es menor?».",
+            "Dejar de adivinar la capacidad: si decides la capacidad antes de desplegar, acabas con recursos caros sin usar o con capacidad limitada. En la nube accedes a la capacidad que necesites y la amplías o reduces según haga falta. Es la elasticidad. Responde a «¿cuánta capacidad necesito?».",
+            "Velocidad y agilidad: los recursos nuevos están a un clic, de modo que el tiempo para ponerlos a disposición de los desarrolladores baja de semanas a minutos, y experimentar cuesta mucho menos tiempo y dinero. Responde a «¿cuánto tardo en obtener recursos?».",
+            "Dejar de gastar dinero en operar y mantener centros de datos: te centras en los proyectos que diferencian a tu negocio y no en el trabajo pesado de montar, apilar y alimentar servidores. Responde a «¿en qué dedica su tiempo mi equipo?».",
+            "Alcance global en minutos: despliegas la aplicación en varias regiones del mundo con pocos clics, lo que reduce la latencia y mejora la experiencia de los clientes. Responde a «¿dónde están mis usuarios?»."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Del problema de la infraestructura propia al beneficio de la nube",
+          "code": "flowchart LR\n  subgraph PRO[\"Problema con infraestructura propia\"]\n    P1[\"Invertir por adelantado antes de conocer la demanda\"]\n    P2[\"Adivinar la capacidad: recursos ociosos o capacidad corta\"]\n    P3[\"Esperar semanas para obtener recursos nuevos\"]\n    P4[\"Operar y mantener servidores y centros de datos\"]\n    P5[\"Usuarios lejos de la infraestructura: más latencia\"]\n  end\n  subgraph NUBE[\"Beneficio en la nube\"]\n    B1[\"Gasto variable: pagas lo que consumes\"]\n    B2[\"Elasticidad: amplías o reduces la capacidad\"]\n    B3[\"Agilidad: recursos en minutos\"]\n    B4[\"Sin operar centros de datos propios\"]\n    B5[\"Alcance global: despliegue en varias regiones\"]\n  end\n  P1 --> B1\n  P2 --> B2\n  P3 --> B3\n  P4 --> B4\n  P5 --> B5\n  ESC[\"Economías de escala: el uso agregado de muchos clientes baja el precio por uso\"] -.-> B1"
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: una tienda en línea y cinco preocupaciones",
+          "text": "Una tienda en línea quiere dejar su centro de datos propio. Preocupación 1: la dirección no quiere comprar servidores antes de saber cuántos clientes tendrá. Es una cuestión de cómo se paga, así que el beneficio es el gasto variable. Preocupación 2: en las campañas la capacidad no alcanza y el resto del año los servidores están ociosos. Es una cuestión de cuánta capacidad hay, así que el beneficio es la elasticidad: se aprovisiona lo que se necesita y se amplía o se reduce cuando cambian las necesidades. Preocupación 3: el equipo espera semanas a que lleguen servidores para probar una idea. Es una cuestión de tiempo para obtener recursos, así que el beneficio es la agilidad. Preocupación 4: los clientes de otro continente notan lentitud. Es una cuestión de dónde está la aplicación, así que el beneficio es el alcance global, que acerca la aplicación a los usuarios y reduce la latencia. Preocupación 5: la dirección se pregunta por qué el precio por uso de AWS puede ser menor que su propio coste variable. Es una cuestión de por qué el proveedor cobra menos, así que el beneficio son las economías de escala. Cada preocupación se resolvió fijándose en la pregunta que hacía, no en la palabra «ahorro»."
+        },
+        {
+          "type": "list",
+          "title": "Cómo no confundir beneficios parecidos",
+          "items": [
+            "Gasto variable frente a economías de escala: el primero describe cómo pagas (por consumo); el segundo explica por qué el precio por uso del proveedor es menor que tu coste variable por tu cuenta.",
+            "Elasticidad frente a agilidad: la elasticidad ajusta la capacidad a los cambios de la demanda; la agilidad acorta el tiempo para tener recursos nuevos y reduce el coste y el tiempo de experimentar.",
+            "Alcance global frente a elasticidad: el alcance global coloca la aplicación en varias regiones para acercarla a los usuarios; la elasticidad no cambia dónde está, solo cuánta capacidad hay.",
+            "Sin centros de datos frente a gasto variable: el primero libera al equipo del trabajo físico de los servidores; el segundo cambia la forma de pagar los recursos."
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: la palabra clave decide el beneficio",
+          "text": "Varias opciones de una pregunta serán beneficios reales de la nube, y todas parecerán «ahorrar». Subraya qué problema describe el enunciado: forma de pago, capacidad, tiempo para obtener recursos, ubicación de los usuarios, trabajo del equipo o motivo del precio. Ese problema señala el beneficio. Una opción puede ser cierta en general y aun así no responder a lo que se pregunta."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: confundir elasticidad con agilidad",
+          "text": "Causa: ambas hablan de «recursos rápidos» y se memorizan como sinónimos. Consecuencia: ante un pico de demanda respondes agilidad, o ante un equipo que espera recursos nuevos respondes elasticidad, y la respuesta queda en el distractor. Solución: pregunta si el problema es cuánta capacidad hay cuando cambia la demanda (elasticidad) o cuánto se tarda en conseguir recursos para empezar o experimentar (agilidad)."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: tratar el gasto variable y las economías de escala como lo mismo",
+          "text": "Causa: las dos ventajas se asocian con «pagar menos». Consecuencia: eliges gasto variable cuando preguntan por qué el precio por uso de AWS es menor, o economías de escala cuando preguntan por no invertir por adelantado. Solución: el gasto variable responde a cómo pagas; las economías de escala responden a por qué el precio por uso del proveedor baja al agregar el consumo de muchos clientes."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Identificar qué beneficio de la nube resuelve cada situación de una empresa: gasto variable, economías de escala, elasticidad, agilidad, ausencia de centros de datos propios o alcance global. Esta unidad prepara el examen CLF-C02, dominio 1 «Conceptos de la nube», tareas 1.1 (definir los beneficios de la nube de AWS) y 1.4 (conceptos de economía de la nube). Criterio: ante un escenario nuevo, nombras el problema que describe, el beneficio que lo resuelve y por qué los otros beneficios quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cinco preocupaciones tapando las respuestas: para cada una, escribe qué pregunta hace (cómo pago, cuánta capacidad, cuánto tardo, dónde están los usuarios, por qué baja el precio) y qué beneficio la resuelve. Después responde de memoria cuáles son las seis ventajas y qué diferencia la elasticidad de la agilidad."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una matriz de beneficios de la nube con una fila mal asignada». Una matriz escrita como objeto asocia mal un escenario con su beneficio. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas las demás filas."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La nube también arroja capacidad ociosa». Una función calcula la capacidad sin usar de dos modelos y da lo mismo para ambos. Criterio de paso: el centro de datos propio conserva su capacidad ociosa, la nube no tiene, y la función no modifica su entrada."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe de beneficios para una tienda que migra a la nube. Audítalo en «Auditar un informe de beneficios de la nube generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con la página oficial de las seis ventajas (leída el 2026-11-13) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe qué problema describe el enunciado y cuál es el calificador; al corregir, lee la explicación de cada opción y anota si fallaste por confundir dos beneficios parecidos. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una carga de trabajo que conozcas (una web con picos de visitas) y escribe qué beneficios de la nube le aportarían más y por qué. Después completa la reflexión de la unidad. Pregunta de cierre: una directora afirma que «la nube solo sirve para ahorrar dinero»; ¿qué otros beneficios le explicas y con qué ejemplo de su negocio?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-beneficios-de-la-nube-libro-blanco",
+          "order": 0,
+          "note": "Fuente de las seis ventajas de la nube: gasto variable, economías de escala, capacidad, agilidad, centros de datos y alcance global."
+        },
+        {
+          "resourceSlug": "aws-que-es-la-computacion-en-la-nube",
+          "order": 1,
+          "note": "Fuente de la definición de computación en la nube y de los beneficios de agilidad, elasticidad, ahorro de costes y despliegue global."
+        },
+        {
+          "resourceSlug": "aws-tipos-de-computacion-en-la-nube",
+          "order": 2,
+          "note": "Fuente del contraste con la infraestructura propia (despliegue on premises) y de la ausencia del trabajo pesado indiferenciado."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 3,
+          "note": "Guía de CLF-C02: el dominio 1 incluye definir los beneficios de la nube (tarea 1.1) y los conceptos de economía de la nube (tarea 1.4)."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es la entrega bajo demanda de recursos de TI a través de Internet con precios de pago por uso. En lugar de comprar, poseer y mantener centros de datos y servidores físicos, accedes a cómputo, almacenamiento y bases de datos cuando los necesitas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué es la computación en la nube",
+      "statement": "¿Qué es la computación en la nube según AWS?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "computación en la nube",
+        "pago por uso"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En lugar de invertir mucho en centros de datos y servidores antes de saber cómo los usarás, pagas solo cuando consumes recursos y solo por lo que consumes."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Gasto fijo y gasto variable",
+      "statement": "¿Qué significa cambiar gasto fijo por gasto variable?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "gasto fijo",
+        "gasto variable"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Porque se agrega el uso de muchos clientes y el proveedor logra un coste variable menor que el que lograrías por tu cuenta. Eso se traduce en precios de pago por uso más bajos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Economías de escala",
+      "statement": "¿Por qué las economías de escala de AWS bajan el precio por uso?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "economías de escala",
+        "precio por uso"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Sobredimensionar los recursos por adelantado para el pico de actividad. Aprovisionas lo que necesitas y amplías o reduces la capacidad cuando cambian las necesidades."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Elasticidad",
+      "statement": "¿Qué te evita la elasticidad de la nube?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "elasticidad",
+        "capacidad"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Los recursos nuevos están a un clic: el tiempo para ponerlos a disposición de los desarrolladores baja de semanas a minutos, y experimentar cuesta mucho menos tiempo y dinero."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Agilidad",
+      "statement": "¿Qué aporta la agilidad de la nube?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "agilidad",
+        "experimentar"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Desplegar la aplicación en varias regiones del mundo con pocos clics. Al acercarla a los usuarios se reduce la latencia y mejora su experiencia."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Alcance global",
+      "statement": "¿Qué permite el alcance global en minutos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "alcance global",
+        "latencia"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Matriz de beneficios de la nube de una tienda en línea. Corrige su defecto principal.\nexport const matriz = {\n  empresa: \"Tienda en línea\",\n  filas: [\n    { escenario: \"Comprar servidores para el pico de ventas y dejarlos ociosos el resto del año\", beneficio: \"ELASTICIDAD\" },\n    { escenario: \"Esperar semanas a que lleguen servidores para probar una idea\", beneficio: \"AGILIDAD\" },\n    { escenario: \"Acercar la aplicación a clientes de otro continente para reducir la latencia\", beneficio: \"ALCANCE_GLOBAL\" },\n    { escenario: \"Invertir en servidores antes de conocer cuántos clientes habrá\", beneficio: \"ECONOMIA_DE_ESCALA\" },\n    { escenario: \"Dedicar al equipo a montar y alimentar servidores propios\", beneficio: \"SIN_CENTROS_DE_DATOS\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const matriz = {\n  empresa: \"Tienda en línea\",\n  filas: [\n    { escenario: \"Comprar servidores para el pico de ventas y dejarlos ociosos el resto del año\", beneficio: \"ELASTICIDAD\" },\n    { escenario: \"Esperar semanas a que lleguen servidores para probar una idea\", beneficio: \"AGILIDAD\" },\n    { escenario: \"Acercar la aplicación a clientes de otro continente para reducir la latencia\", beneficio: \"ALCANCE_GLOBAL\" },\n    { escenario: \"Invertir en servidores antes de conocer cuántos clientes habrá\", beneficio: \"GASTO_VARIABLE\" },\n    { escenario: \"Dedicar al equipo a montar y alimentar servidores propios\", beneficio: \"SIN_CENTROS_DE_DATOS\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Solo una fila tiene un beneficio que no responde a su escenario. Pregunta qué problema describe cada escenario: forma de pago, capacidad, tiempo, ubicación o trabajo del equipo."
+        },
+        {
+          "level": 2,
+          "text": "Compara cada escenario con la pregunta que hace. Las economías de escala explican por qué el precio por uso del proveedor es menor; no describen cómo se paga. Revisa la fila de invertir antes de conocer la demanda."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `beneficio` de la fila «Invertir en servidores antes de conocer cuántos clientes habrá» de \"ECONOMIA_DE_ESCALA\" a \"GASTO_VARIABLE\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "invertir antes de conocer la demanda se resuelve con gasto variable",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = matriz.filas.find((f) => f.escenario === \"Invertir en servidores antes de conocer cuántos clientes habrá\");\nassert.ok(fila, \"debe existir la fila de inversión por adelantado\");\nassert.strictEqual(fila.beneficio, \"GASTO_VARIABLE\");"
+          }
+        },
+        {
+          "name": "los beneficios solo pueden ser de la lista conocida",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const validos = [\"GASTO_VARIABLE\", \"ECONOMIA_DE_ESCALA\", \"ELASTICIDAD\", \"AGILIDAD\", \"SIN_CENTROS_DE_DATOS\", \"ALCANCE_GLOBAL\"];\nfor (const fila of matriz.filas) {\n  assert.ok(validos.includes(fila.beneficio), fila.escenario + \" tiene un beneficio no válido\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su beneficio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Comprar servidores para el pico de ventas y dejarlos ociosos el resto del año\": \"ELASTICIDAD\",\n  \"Esperar semanas a que lleguen servidores para probar una idea\": \"AGILIDAD\",\n  \"Acercar la aplicación a clientes de otro continente para reducir la latencia\": \"ALCANCE_GLOBAL\",\n  \"Dedicar al equipo a montar y alimentar servidores propios\": \"SIN_CENTROS_DE_DATOS\",\n};\nfor (const [escenario, beneficio] of Object.entries(esperado)) {\n  const fila = matriz.filas.find((f) => f.escenario === escenario);\n  assert.ok(fila, escenario + \" debe seguir existiendo\");\n  assert.strictEqual(fila.beneficio, beneficio);\n}"
+          }
+        },
+        {
+          "name": "siguen las cinco filas y la empresa",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(matriz.empresa, \"Tienda en línea\");\nassert.strictEqual(matriz.filas.length, 5);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-debug-01",
+      "type": "DEBUG",
+      "title": "Una matriz de beneficios de la nube con una fila mal asignada",
+      "statement": "El objeto `matriz` asocia cada escenario de una tienda en línea con el beneficio de la nube que lo resuelve. Una de las cinco filas asigna un beneficio que no responde a su escenario, de modo que la matriz contradice las ventajas descritas por AWS. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const matriz = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "gasto variable",
+        "economías de escala",
+        "beneficios de la nube"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Capacidad sin usar de una carga de trabajo según el modelo de infraestructura. Corrige su defecto principal.\nexport type Modelo = \"centro-de-datos-propio\" | \"nube\";\n\nexport function capacidadOciosa(demanda: number[], modelo: Modelo): number {\n  const pico = Math.max(...demanda);\n  const aprovisionada = demanda.map(() => pico);\n  return aprovisionada.reduce((suma, capacidad, hora) => suma + (capacidad - demanda[hora]), 0);\n}\n",
+      "solution": {
+        "code": "export type Modelo = \"centro-de-datos-propio\" | \"nube\";\n\nexport function capacidadOciosa(demanda: number[], modelo: Modelo): number {\n  const pico = Math.max(...demanda);\n  const aprovisionada = modelo === \"nube\" ? [...demanda] : demanda.map(() => pico);\n  return aprovisionada.reduce((suma, capacidad, hora) => suma + (capacidad - demanda[hora]), 0);\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el centro de datos propio aprovisiona el pico en todas las horas",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(capacidadOciosa([2, 8, 4], \"centro-de-datos-propio\"), 10);"
+          }
+        },
+        {
+          "name": "la nube sigue la demanda y no deja capacidad ociosa",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(capacidadOciosa([2, 8, 4], \"nube\"), 0);"
+          }
+        },
+        {
+          "name": "con demanda constante ningún modelo tiene capacidad ociosa",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(capacidadOciosa([5, 5, 5], \"centro-de-datos-propio\"), 0);\nassert.strictEqual(capacidadOciosa([5, 5, 5], \"nube\"), 0);"
+          }
+        },
+        {
+          "name": "el resultado de la nube no depende de las llamadas anteriores",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "capacidadOciosa([1, 9, 3], \"centro-de-datos-propio\");\nassert.strictEqual(capacidadOciosa([6, 2, 7], \"nube\"), 0);\nassert.strictEqual(capacidadOciosa([6, 2, 7], \"centro-de-datos-propio\"), 6);"
+          }
+        },
+        {
+          "name": "la función no modifica la demanda recibida",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const demanda = [3, 9, 1];\ncapacidadOciosa(demanda, \"nube\");\ncapacidadOciosa(demanda, \"centro-de-datos-propio\");\nassert.deepStrictEqual(demanda, [3, 9, 1]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-debug-02",
+      "type": "DEBUG",
+      "title": "La nube también arroja capacidad ociosa",
+      "statement": "La función `capacidadOciosa` suma, hora a hora, la capacidad aprovisionada que no se usa, y recibe el modelo de infraestructura. Quien la usa observa que la nube devuelve exactamente el mismo resultado que el centro de datos propio, cuando la nube permite aprovisionar la capacidad que se necesita y ampliarla o reducirla según cambia la demanda. Localiza el defecto y corrígelo sin cambiar la firma de la función ni el tipo `Modelo`.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "elasticidad",
+        "capacidad",
+        "sobredimensionar"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de beneficios de la nube (borrador generado por un asistente)\nCaso: una tienda en línea que migra su sitio desde un centro de datos propio a AWS.\n1. Gasto variable: la empresa paga solo por los recursos que consume, en lugar de invertir por adelantado en servidores.\n2. Elasticidad: la empresa debe aprovisionar por adelantado la capacidad del pico de ventas para no quedarse corta.\n3. Economías de escala: AWS agrega el uso de muchos clientes y eso permite precios de pago por uso más bajos.\n4. Agilidad: obtener recursos nuevos pasa a tardar semanas, frente a los minutos del centro de datos propio.\n5. Alcance global: la tienda puede desplegar su aplicación en varias regiones en minutos para reducir la latencia de sus clientes.\n6. Centros de datos: tras migrar, el equipo de TI sigue dedicado a montar, apilar y alimentar los servidores donde se ejecuta la tienda."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Gasto variable",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el gasto variable consiste en pagar solo por los recursos que se consumen, en lugar de invertir mucho antes de saber cómo se usarán."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Elasticidad",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es lo contrario de la elasticidad: con la nube no hace falta sobredimensionar los recursos por adelantado para el pico. Se aprovisiona lo que se necesita y se amplía o reduce la capacidad cuando cambian las necesidades."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Economías de escala",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: al agregar el uso de muchos clientes, AWS logra economías de escala mayores y eso se traduce en precios de pago por uso más bajos."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Agilidad",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Está invertido: la agilidad reduce de semanas a minutos el tiempo para poner los recursos a disposición de los desarrolladores. Que tarden semanas es el problema de la infraestructura propia."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Alcance global",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca ambicioso: la nube permite desplegar en varias regiones del mundo en minutos, y acercar la aplicación a los usuarios reduce la latencia."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Centros de datos",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Una de las ventajas es dejar de gastar dinero en operar y mantener centros de datos: el equipo se centra en proyectos que diferencian al negocio, no en montar, apilar y alimentar servidores."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de beneficios de la nube generado por IA",
+      "statement": "Un asistente de IA redactó este informe de beneficios de la nube para una tienda en línea que migra desde un centro de datos propio. Audítalo contra las seis ventajas de la nube descritas por AWS: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "elasticidad",
+        "agilidad",
+        "centros de datos"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Alcance global: la aplicación se despliega en varias regiones del mundo con pocos clics",
+            "explanation": "Descartada: el alcance global reduce la latencia de usuarios lejanos, pero no cambia la forma de pagar la infraestructura, que es la preferencia de la dirección."
+          },
+          {
+            "id": "b",
+            "text": "Agilidad: los recursos nuevos llegan a los desarrolladores en minutos",
+            "explanation": "Descartada: la agilidad acorta el tiempo para obtener recursos, pero no sustituye la inversión inicial por un coste que depende del consumo."
+          },
+          {
+            "id": "c",
+            "text": "Gasto variable: se paga por los recursos que se consumen y no se compra infraestructura antes",
+            "explanation": "Es el beneficio que responde a la preferencia: se cambia el gasto fijo en infraestructura por un gasto variable, y se paga solo por lo que se consume."
+          },
+          {
+            "id": "d",
+            "text": "Elasticidad: la capacidad se amplía o se reduce cuando cambia la demanda",
+            "explanation": "Descartada: la elasticidad ajusta la capacidad a la demanda, pero la preferencia de la dirección es sobre la forma de pagar, no sobre cuánta capacidad hay."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué beneficio sustituye la inversión inicial en servidores",
+      "statement": "Una startup va a lanzar un servicio, pero no sabe cuántos clientes lo usarán. Su dirección no quiere comprar servidores ni montar un centro de datos antes de conocer la demanda, y prefiere que el coste de la infraestructura dependa de su consumo. ¿Qué beneficio de la nube responde MEJOR a esa preferencia?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "gasto variable",
+        "gasto fijo"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Economías de escala: el proveedor agrega el consumo de muchos clientes y reduce sus costes",
+            "explanation": "Es la explicación: al agregar el uso de muchos clientes, AWS logra un coste variable inferior al que conseguiría la empresa por su cuenta, y eso baja los precios por uso."
+          },
+          {
+            "id": "b",
+            "text": "Agilidad: los recursos nuevos llegan a los desarrolladores en minutos",
+            "explanation": "Descartada: la agilidad acelera la obtención de recursos, pero no explica por qué el precio por uso del proveedor es menor que el coste propio."
+          },
+          {
+            "id": "c",
+            "text": "Gasto variable: se paga por los recursos que se consumen y no se compra infraestructura antes",
+            "explanation": "Descartada: el gasto variable describe cómo se paga (por consumo), no por qué el precio por uso del proveedor es menor que el coste propio."
+          },
+          {
+            "id": "d",
+            "text": "Alcance global: la aplicación se despliega en varias regiones del mundo con pocos clics",
+            "explanation": "Descartada: desplegar en varias regiones mejora la experiencia de los clientes, pero no explica el motivo de que el precio por uso del proveedor sea menor."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-quiz-02",
+      "type": "QUIZ",
+      "title": "Por qué el precio por uso del proveedor puede ser menor",
+      "statement": "La dirección de una empresa compara el precio de pago por uso de AWS con el coste variable que lograría operando su propia infraestructura. Quiere entender por qué el precio por uso del proveedor puede ser MENOR que ese coste propio. ¿Qué beneficio lo explica?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "economías de escala",
+        "precio por uso"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Alcance global: la aplicación se despliega en varias regiones del mundo con pocos clics",
+            "explanation": "Descartada: el alcance global coloca la aplicación en varias regiones, pero no ajusta cuánta capacidad hay cuando cambia la demanda."
+          },
+          {
+            "id": "b",
+            "text": "Agilidad: los recursos nuevos llegan a los desarrolladores en minutos",
+            "explanation": "Descartada: la agilidad reduce el tiempo para obtener recursos nuevos, pero el problema descrito es la capacidad que sobra o falta según la demanda."
+          },
+          {
+            "id": "c",
+            "text": "Economías de escala: el proveedor agrega el consumo de muchos clientes y reduce sus costes",
+            "explanation": "Descartada: las economías de escala explican por qué baja el precio por uso del proveedor, pero no ajustan la capacidad a las campañas."
+          },
+          {
+            "id": "d",
+            "text": "Elasticidad: la capacidad se amplía o se reduce cuando cambia la demanda",
+            "explanation": "Resuelve el problema: se aprovisiona la capacidad necesaria, sin sobredimensionar para el pico, y se amplía o reduce cuando cambia la demanda."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué beneficio resuelve el problema de adivinar la capacidad",
+      "statement": "Una tienda en línea tiene picos de visitas en campañas puntuales. Hoy compra servidores para el pico y el resto del año quedan ociosos; en otras campañas, la capacidad no alcanza. Quiere dejar de adivinar cuánta capacidad necesitará. ¿Qué beneficio de la nube resuelve MEJOR ese problema?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "elasticidad",
+        "capacidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Economías de escala: el proveedor agrega el consumo de muchos clientes y reduce sus costes",
+            "explanation": "Descartada: las economías de escala bajan el precio por uso, pero no reducen el tiempo que el equipo espera para obtener recursos."
+          },
+          {
+            "id": "b",
+            "text": "Agilidad: los recursos nuevos llegan a los desarrolladores en minutos",
+            "explanation": "Es el beneficio que ayuda: los recursos nuevos están a un clic, y el tiempo para obtenerlos baja de semanas a minutos, lo que facilita experimentar."
+          },
+          {
+            "id": "c",
+            "text": "Alcance global: la aplicación se despliega en varias regiones del mundo con pocos clics",
+            "explanation": "Descartada: el alcance global acerca la aplicación a los usuarios, pero no acorta la espera del equipo para conseguir recursos."
+          },
+          {
+            "id": "d",
+            "text": "Elasticidad: la capacidad se amplía o se reduce cuando cambia la demanda",
+            "explanation": "Descartada: la elasticidad ajusta la capacidad a los cambios de la demanda, pero el equipo no tiene un problema de demanda sino de tiempo de espera."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-quiz-04",
+      "type": "QUIZ",
+      "title": "Qué beneficio acorta la espera de recursos para experimentar",
+      "statement": "Un equipo de desarrollo quiere probar una idea para un producto nuevo, pero hoy espera semanas a que se compren e instalen los servidores. Quiere empezar a experimentar sin esperar. ¿Qué beneficio de la nube ayuda MÁS a ese equipo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "agilidad",
+        "experimentar"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Agilidad: los recursos nuevos llegan a los desarrolladores en minutos",
+            "explanation": "Descartada: la agilidad acorta el tiempo para obtener recursos, pero no cambia la distancia entre la aplicación y los jugadores."
+          },
+          {
+            "id": "b",
+            "text": "Elasticidad: la capacidad se amplía o se reduce cuando cambia la demanda",
+            "explanation": "Descartada: la elasticidad ajusta la capacidad a la demanda, pero la aplicación seguiría en la misma ubicación y la latencia no bajaría."
+          },
+          {
+            "id": "c",
+            "text": "Alcance global: la aplicación se despliega en varias regiones del mundo con pocos clics",
+            "explanation": "Es el beneficio que aprovecha: se despliega la aplicación en varias regiones con pocos clics, y al acercarla a los usuarios se reduce la latencia."
+          },
+          {
+            "id": "d",
+            "text": "Gasto variable: se paga por los recursos que se consumen y no se compra infraestructura antes",
+            "explanation": "Descartada: el gasto variable describe cómo se paga la infraestructura, pero no coloca la aplicación más cerca de los jugadores."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué beneficio reduce la latencia de usuarios lejanos",
+      "statement": "Una empresa de videojuegos con jugadores en varios continentes recibe quejas de latencia de los usuarios más alejados de su única ubicación. Quiere acercar la aplicación a ellos con el MÍNIMO esfuerzo. ¿Qué beneficio de la nube aprovecha?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "alcance global",
+        "latencia"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Sin operar centros de datos: el equipo deja de ocuparse de la infraestructura física",
+            "explanation": "Aborda la situación: el equipo deja de gastar tiempo y dinero en operar y mantener centros de datos y puede centrarse en lo que diferencia al negocio."
+          },
+          {
+            "id": "b",
+            "text": "Elasticidad: la capacidad se amplía o se reduce cuando cambia la demanda",
+            "explanation": "Descartada: la elasticidad ajusta la capacidad a la demanda, pero no libera al equipo del trabajo físico de montar y alimentar servidores."
+          },
+          {
+            "id": "c",
+            "text": "Alcance global: la aplicación se despliega en varias regiones del mundo con pocos clics",
+            "explanation": "Descartada: el alcance global acerca la aplicación a los usuarios, pero no cambia en qué dedica su tiempo el equipo de TI."
+          },
+          {
+            "id": "d",
+            "text": "Agilidad: los recursos nuevos llegan a los desarrolladores en minutos",
+            "explanation": "Descartada: la agilidad acorta el tiempo para obtener recursos, pero no es la ventaja que libera al equipo del trabajo con los servidores."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué beneficio libera al equipo del trabajo con servidores",
+      "statement": "El equipo de TI de una empresa dedica la mayor parte de su tiempo a montar, apilar y alimentar servidores en su propio centro de datos, en lugar de trabajar en proyectos que diferencian al negocio. ¿Qué beneficio de la nube aborda MEJOR esa situación?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "centros de datos",
+        "trabajo indiferenciado"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Dejar de invertir en montar y mantener servidores físicos propios",
+            "explanation": "Cumple: dejar de gastar dinero en operar y mantener centros de datos es una de las ventajas de la nube."
+          },
+          {
+            "id": "b",
+            "text": "Reservar por adelantado la capacidad máxima para atender los picos",
+            "explanation": "No cumple: es el sobredimensionamiento que la nube evita; la capacidad se amplía o se reduce según la demanda."
+          },
+          {
+            "id": "c",
+            "text": "Pagar los recursos de TI según su consumo en lugar de comprarlos antes",
+            "explanation": "Cumple: cambiar gasto fijo por gasto variable significa pagar solo cuando se consumen recursos y solo por lo que se consume."
+          },
+          {
+            "id": "d",
+            "text": "Disponer de recursos dedicados bajo su propio control físico",
+            "explanation": "No cumple: los recursos dedicados son un rasgo de la infraestructura propia (on premises), no un beneficio de la nube."
+          },
+          {
+            "id": "e",
+            "text": "Mejorar el uso de los recursos con sus propias herramientas de virtualización",
+            "explanation": "No cumple: usar virtualización en la infraestructura propia no ofrece muchos de los beneficios de la nube, según AWS."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-quiz-07",
+      "type": "QUIZ",
+      "title": "Dos beneficios de dejar el centro de datos propio",
+      "statement": "Una empresa evalúa cerrar su centro de datos propio y pasar sus aplicaciones a la nube. Selecciona DOS beneficios que obtendría con el cambio.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "gasto variable",
+        "centros de datos",
+        "on premises"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/",
+        "https://aws.amazon.com/types-of-cloud-computing/"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Ampliar o reducir la capacidad cuando cambia la demanda del negocio",
+            "explanation": "No cumple: ajustar la capacidad a la demanda es la elasticidad, un beneficio distinto de la agilidad."
+          },
+          {
+            "id": "b",
+            "text": "Poner recursos a disposición de los desarrolladores en minutos y no en semanas",
+            "explanation": "Cumple: la agilidad reduce el tiempo para tener recursos de semanas a minutos, porque los recursos nuevos están a un clic."
+          },
+          {
+            "id": "c",
+            "text": "Bajar el precio por uso al agregar el consumo de muchos clientes",
+            "explanation": "No cumple: bajar el precio por uso es el efecto de las economías de escala, no de la agilidad."
+          },
+          {
+            "id": "d",
+            "text": "Reducir el coste y el tiempo que supone experimentar y desarrollar",
+            "explanation": "Cumple: con recursos nuevos a un clic, el coste y el tiempo de experimentar y desarrollar son mucho menores."
+          },
+          {
+            "id": "e",
+            "text": "Acercar la aplicación a usuarios de otros continentes para bajar la latencia",
+            "explanation": "No cumple: acercar la aplicación a los usuarios y bajar la latencia es el alcance global, no la agilidad."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-quiz-08",
+      "type": "QUIZ",
+      "title": "Dos resultados de la agilidad de la nube",
+      "statement": "Un equipo quiere entender qué aporta específicamente la AGILIDAD de la nube a su organización. Selecciona DOS resultados que corresponden a la agilidad.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "agilidad",
+        "elasticidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html",
+        "https://aws.amazon.com/what-is-cloud-computing/"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-1-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué beneficio de la nube necesita tu carga",
+      "statement": "Elige una carga de trabajo que conozcas (por ejemplo, una tienda en línea con picos de visitas) y escribe tu análisis de beneficios como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: cuáles de las seis ventajas de la nube le aportarían más y qué problema concreto de esa carga resuelve cada una.\n\n2) Alternativa descartada: un beneficio tentador pero que no responde al problema (por ejemplo, responder «economías de escala» cuando el problema es cuánta capacidad hay) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué cambia para tu equipo y para la forma de pagar si la carga pasa de infraestructura propia a la nube.\n\n4) Evidencia: qué parte de la página oficial de las seis ventajas de la nube usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el problema y el beneficio. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo distinguiste beneficios parecidos.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "beneficios de la nube",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html"
+      ],
+      "order": 18
+    }
+  ]
+}
