@@ -1,0 +1,1317 @@
+{
+  "code": "AWS-U1.3.2",
+  "lessons": [
+    {
+      "slug": "aws-u1-3-2-computo-ec2-contenedores-lambda",
+      "title": "Cómputo: EC2, contenedores (ECS, EKS, Fargate) y Lambda",
+      "estimatedMin": 50,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon EC2 ofrece capacidad de cómputo escalable y bajo demanda en la nube de AWS: puedes lanzar tantos servidores virtuales como necesites, configurar su seguridad y su red, y gestionar su almacenamiento. Cuando el tipo de carga cambia, cambia también la herramienta. Si la aplicación está empaquetada en contenedores, AWS ofrece Amazon ECS y Amazon EKS para orquestarlos y AWS Fargate para ejecutarlos sin gestionar servidores. Si lo que tienes es código que responde a eventos, AWS Lambda lo ejecuta sin que aprovisiones ni gestiones servidores. Elegir bien depende de cuánto control quieres sobre el servidor y de cuánta administración quieres evitar."
+        },
+        {
+          "type": "list",
+          "title": "Qué ofrece cada opción de cómputo",
+          "items": [
+            "Amazon EC2: servidores virtuales llamados instancias. El tipo de instancia que eliges determina el hardware disponible, con un equilibrio distinto de CPU, memoria, red y almacenamiento. Una AMI es la plantilla preconfigurada con el sistema operativo y el software; los grupos de seguridad actúan como cortafuegos virtual.",
+            "Amazon ECS: servicio totalmente administrado de orquestación de contenedores para desplegar, gestionar y escalar aplicaciones en contenedores, sin la complejidad de gestionar un plano de control.",
+            "Amazon EKS: servicio de Kubernetes totalmente administrado. En el modo estándar, AWS gestiona el plano de control de Kubernetes; está certificado como conforme con Kubernetes, así que las aplicaciones compatibles se despliegan sin refactorizarlas.",
+            "AWS Fargate: tecnología para ejecutar contenedores con Amazon ECS sin gestionar servidores ni clústeres de instancias EC2. No eliges tipos de servidor ni decides cuándo escalar el clúster: indicas la CPU y la memoria que necesita la aplicación.",
+            "AWS Lambda: servicio de cómputo sin servidor. Ejecutas código sin aprovisionar ni gestionar servidores, y Lambda se encarga del mantenimiento de la infraestructura, la capacidad y el escalado. Se activa mediante disparadores como Amazon S3, Amazon SQS, Amazon EventBridge o API Gateway."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Elegir el cómputo según la carga",
+          "code": "flowchart TB\n  N[\"Necesitas ejecutar una carga de cómputo\"] --> Q1{\"¿Quieres elegir y gestionar el servidor?\"}\n  Q1 -->|\"Sí\"| EC2[\"Amazon EC2: instancias, tipo de instancia y AMI\"]\n  Q1 -->|\"No\"| Q2{\"¿Es código que responde a eventos?\"}\n  Q2 -->|\"Sí\"| LAM[\"AWS Lambda: código sin servidores\"]\n  Q2 -->|\"No, son contenedores\"| Q3{\"¿Usas Kubernetes?\"}\n  Q3 -->|\"Sí\"| EKS[\"Amazon EKS: Kubernetes administrado\"]\n  Q3 -->|\"No\"| ECS[\"Amazon ECS: orquestador de contenedores\"]\n  ECS --> Q4{\"¿Quién gestiona la capacidad?\"}\n  Q4 -->|\"AWS\"| FAR[\"AWS Fargate: sin gestionar servidores\"]\n  Q4 -->|\"El equipo\"| INS[\"Instancias de Amazon EC2 del clúster\"]"
+        },
+        {
+          "type": "list",
+          "title": "Amazon ECS en tres ideas",
+          "items": [
+            "Capacidad: es la infraestructura donde corren los contenedores. Puede ser Fargate (sin servidor), instancias de Amazon EC2 (tú eliges el tipo y el número y gestionas la capacidad), Amazon ECS Managed Instances (AWS gestiona aprovisionamiento, parcheo y escalado) o servidores locales registrados con Amazon ECS Anywhere.",
+            "Piezas: la definición de tarea es el plano de la aplicación; el clúster es la infraestructura donde se ejecuta; una tarea es una aplicación que hace su trabajo y se detiene, como un trabajo por lotes; un servicio es una aplicación sin estado que se mantiene en ejecución.",
+            "Escalado: Service Auto Scaling aumenta o reduce automáticamente el número deseado de tareas de un servicio."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro necesidades, cuatro opciones",
+          "text": "Una empresa tiene cuatro necesidades. Necesidad 1: una aplicación heredada que exige un sistema operativo concreto y software instalado por el propio equipo, que decide el tipo de servidor. Es un servidor virtual con control sobre el hardware elegido y su configuración: Amazon EC2, con una AMI preparada por el equipo. Necesidad 2: procesar cada archivo que llega a un bucket de Amazon S3, solo cuando llega y sin mantener servidores. Es código activado por un evento: AWS Lambda. Necesidad 3: ejecutar una aplicación ya empaquetada en contenedores sin elegir tipos de servidor ni decidir cuándo escalar un clúster: Amazon ECS con AWS Fargate. Necesidad 4: llevar a AWS aplicaciones descritas con manifiestos de Kubernetes sin refactorizarlas: Amazon EKS. Observa que las necesidades 2 y 3 evitan gestionar servidores, pero Lambda ejecuta código activado por eventos y Fargate ejecuta contenedores."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: «sin servidor» no significa «Lambda»",
+          "text": "Una pregunta puede describir una carga que no debe gestionar servidores para empujarte hacia AWS Lambda. Fargate también te libera de gestionar servidores, pero ejecuta contenedores dentro de Amazon ECS. Antes de responder, identifica el formato de la carga (código que responde a eventos, contenedores o servidor virtual) y luego cuánta administración de infraestructura quiere evitar la empresa."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: elegir Amazon EC2 para todo",
+          "text": "Causa: EC2 es el servicio de cómputo más conocido y se usa por costumbre, incluso cuando la carga es código que solo responde a un evento. Consecuencia: el equipo lanza instancias, elige su tipo y gestiona su capacidad para una tarea que Lambda ejecutaría sin servidores, y asume una administración que la empresa quería evitar. Solución: antes de elegir, pregunta si el equipo necesita decidir el servidor; si la carga es código activado por eventos y no quiere gestionar servidores, la opción es Lambda."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir ECS, EKS y Fargate",
+          "text": "Causa: los tres nombres aparecen juntos en el contexto de los contenedores y se tratan como alternativas del mismo nivel. Consecuencia: se responde Fargate cuando la pregunta habla de Kubernetes, o se descarta ECS porque la capacidad no es Fargate. Solución: recuerda que ECS es el orquestador de contenedores propio de AWS, EKS es Kubernetes administrado y Fargate es una opción de capacidad que ejecuta contenedores sin gestionar servidores; ECS también puede usar instancias de Amazon EC2 como capacidad."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre Amazon EC2, contenedores (Amazon ECS, Amazon EKS y AWS Fargate) y AWS Lambda según el tipo de carga y la administración de infraestructura que la empresa quiere evitar. Esta unidad prepara el examen CLF-C02, dominio 3 «Tecnología y servicios en la nube», tarea 3.3 (identificar los servicios de cómputo de AWS). Criterio: ante un escenario nuevo, nombras el formato de la carga, la restricción que decide y el servicio, y explicas por qué los distractores quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cuatro necesidades tapando las respuestas: para cada una, nombra el formato de la carga, la restricción y el servicio. Después responde de memoria: qué elige el cliente en EC2, qué cambia con Fargate, qué hace distinto EKS de ECS y qué ejecuta Lambda."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una guía de cómputo con una necesidad asignada al servicio equivocado». Un objeto escrito en TypeScript asigna mal una de sus filas. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas las demás filas."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El dimensionado de instancias se queda corto». Una función calcula cuántas instancias hacen falta para una carga y devuelve menos de las necesarias en ciertos casos. Criterio de paso: la función cubre siempre la carga y respeta el mínimo, también en los casos límite."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe de elección de cómputo para una carga con servidores web, un procesador de archivos y una aplicación de Kubernetes. Audítalo en «Auditar un informe de elección de cómputo generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de EC2, Lambda, ECS, EKS y Fargate (leídas el 2026-11-13) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe el formato de la carga, la restricción y el calificador de cada una; al corregir, lee la explicación de cada opción y anota si fallaste por confundir dos servicios de contenedores o por no distinguir qué administra AWS y qué el equipo. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una aplicación que conozcas (una web con un proceso en segundo plano) y escribe qué parte ejecutarías en EC2, en contenedores o en Lambda, y por qué. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero propone usar Fargate «porque es lo mismo que Lambda»; ¿qué le respondes y qué diferencia señalas?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-ec2-que-es",
+          "order": 0,
+          "note": "Qué es Amazon EC2: instancias, tipos de instancia, AMI, volúmenes, grupos de seguridad, Auto Scaling y Elastic Load Balancing."
+        },
+        {
+          "resourceSlug": "aws-lambda-que-es",
+          "order": 1,
+          "note": "Qué es AWS Lambda: cómputo sin servidor, código activado por eventos y administración de la infraestructura a cargo de AWS."
+        },
+        {
+          "resourceSlug": "aws-ecs-que-es",
+          "order": 2,
+          "note": "Qué es Amazon ECS: orquestación de contenedores, opciones de capacidad, tareas y servicios."
+        },
+        {
+          "resourceSlug": "aws-eks-que-es",
+          "order": 3,
+          "note": "Qué es Amazon EKS: Kubernetes administrado, plano de control y conformidad con Kubernetes."
+        },
+        {
+          "resourceSlug": "aws-fargate-que-es",
+          "order": 4,
+          "note": "AWS Fargate: ejecutar contenedores con Amazon ECS sin gestionar servidores ni clústeres de instancias EC2."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 5,
+          "note": "Guía de CLF-C02: la tarea 3.3 del dominio 3 trata la identificación de los servicios de cómputo de AWS."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Capacidad de cómputo escalable y bajo demanda: servidores virtuales (instancias) en los que configuras la seguridad y la red y gestionas el almacenamiento. El tipo de instancia determina el hardware disponible, con un equilibrio distinto de cómputo, memoria, red y almacenamiento."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon EC2",
+      "statement": "¿Qué ofrece Amazon EC2 y qué determina el tipo de instancia?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "EC2",
+        "tipo de instancia"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una plantilla preconfigurada para tus instancias que empaqueta los componentes que necesita el servidor, incluidos el sistema operativo y el software adicional."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AMI",
+      "statement": "¿Qué es una AMI de Amazon EC2?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AMI",
+        "plantilla de instancia"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un servicio totalmente administrado de orquestación de contenedores para desplegar, gestionar y escalar aplicaciones en contenedores. La capacidad puede ser AWS Fargate, instancias de Amazon EC2 que gestionas tú o servidores locales con ECS Anywhere."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon ECS",
+      "statement": "¿Qué es Amazon ECS y qué capacidad admite?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "ECS",
+        "orquestación de contenedores"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un servicio de Kubernetes totalmente administrado: en el modo estándar, AWS gestiona el plano de control. Está certificado como conforme con Kubernetes, así que las aplicaciones compatibles se despliegan sin refactorizarlas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon EKS",
+      "statement": "¿Qué ofrece Amazon EKS y qué ventaja da si ya usas Kubernetes?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "EKS",
+        "Kubernetes"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ejecutar contenedores con Amazon ECS sin gestionar servidores ni clústeres de instancias EC2: no eliges tipos de servidor ni decides cuándo escalar el clúster. Empaquetas la aplicación en contenedores e indicas la CPU y la memoria que necesita."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Fargate",
+      "statement": "¿Qué te evita AWS Fargate y qué indicas al usarlo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Fargate",
+        "contenedores sin servidor"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un servicio de cómputo sin servidor: ejecutas código sin aprovisionar ni gestionar servidores, y Lambda se encarga del mantenimiento, la capacidad y el escalado. El código se activa en respuesta a eventos de disparadores como Amazon S3, Amazon SQS, Amazon EventBridge o API Gateway."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Lambda",
+      "statement": "¿Qué hace AWS Lambda y cómo se activa el código?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Lambda",
+        "sin servidor"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Guía de qué servicio de cómputo cubre cada necesidad. Corrige su defecto principal.\nexport const guia = {\n  filas: [\n    { necesidad: \"Servidor virtual con el sistema operativo y el software que elige el equipo\", servicio: \"Amazon EC2\" },\n    { necesidad: \"Código que responde a un evento de un bucket sin gestionar servidores\", servicio: \"Amazon EC2\" },\n    { necesidad: \"Orquestación de contenedores totalmente administrada de AWS\", servicio: \"Amazon ECS\" },\n    { necesidad: \"Aplicaciones de Kubernetes que se despliegan sin refactorizarlas\", servicio: \"Amazon EKS\" },\n    { necesidad: \"Contenedores sin gestionar servidores ni clústeres de instancias EC2\", servicio: \"AWS Fargate\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const guia = {\n  filas: [\n    { necesidad: \"Servidor virtual con el sistema operativo y el software que elige el equipo\", servicio: \"Amazon EC2\" },\n    { necesidad: \"Código que responde a un evento de un bucket sin gestionar servidores\", servicio: \"AWS Lambda\" },\n    { necesidad: \"Orquestación de contenedores totalmente administrada de AWS\", servicio: \"Amazon ECS\" },\n    { necesidad: \"Aplicaciones de Kubernetes que se despliegan sin refactorizarlas\", servicio: \"Amazon EKS\" },\n    { necesidad: \"Contenedores sin gestionar servidores ni clústeres de instancias EC2\", servicio: \"AWS Fargate\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Una fila asigna a un servicio la necesidad que corresponde a otro: busca qué servicio ejecuta código cuando llega un evento sin que el equipo gestione servidores."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal: la del código que responde a un evento de un bucket. El servicio que figura en ella ya aparece en la fila del servidor virtual."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `servicio` de la fila «Código que responde a un evento de un bucket sin gestionar servidores» de \"Amazon EC2\" a \"AWS Lambda\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el código activado por un evento lo ejecuta AWS Lambda",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = guia.filas.find((f) => f.necesidad.startsWith(\"Código que responde\"));\nassert.ok(fila, \"debe existir la fila del código que responde a un evento\");\nassert.strictEqual(fila.servicio, \"AWS Lambda\");"
+          }
+        },
+        {
+          "name": "los servicios solo pueden ser los cinco de la unidad",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const validos = [\"Amazon EC2\", \"AWS Lambda\", \"Amazon ECS\", \"Amazon EKS\", \"AWS Fargate\"];\nfor (const fila of guia.filas) {\n  assert.ok(validos.includes(fila.servicio), fila.necesidad + \" tiene un servicio no válido\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su servicio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Servidor virtual con el sistema operativo y el software que elige el equipo\": \"Amazon EC2\",\n  \"Orquestación de contenedores totalmente administrada de AWS\": \"Amazon ECS\",\n  \"Aplicaciones de Kubernetes que se despliegan sin refactorizarlas\": \"Amazon EKS\",\n  \"Contenedores sin gestionar servidores ni clústeres de instancias EC2\": \"AWS Fargate\",\n};\nfor (const [necesidad, servicio] of Object.entries(esperado)) {\n  const fila = guia.filas.find((f) => f.necesidad === necesidad);\n  assert.ok(fila, necesidad + \" debe seguir existiendo\");\n  assert.strictEqual(fila.servicio, servicio);\n}"
+          }
+        },
+        {
+          "name": "siguen las cinco filas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(guia.filas.length, 5);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-debug-01",
+      "type": "DEBUG",
+      "title": "Una guía de cómputo con una necesidad asignada al servicio equivocado",
+      "statement": "El objeto `guia` asigna a cada necesidad de cómputo el servicio de AWS que la cubre. Una de las cinco filas apunta al servicio equivocado, de modo que la guía confunde un servidor virtual con el cómputo sin servidor. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const guia = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "EC2",
+        "Lambda",
+        "mapa necesidad-servicio"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Calcula cuántas instancias hacen falta para atender una carga. Corrige su defecto principal.\nexport function instanciasNecesarias(carga: number, capacidadPorInstancia: number, minimo: number): number {\n  return Math.max(minimo, Math.floor(carga / capacidadPorInstancia));\n}\n",
+      "solution": {
+        "code": "export function instanciasNecesarias(carga: number, capacidadPorInstancia: number, minimo: number): number {\n  return Math.max(minimo, Math.ceil(carga / capacidadPorInstancia));\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "una carga que no es múltiplo de la capacidad necesita una instancia más",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(instanciasNecesarias(250, 100, 1), 3);"
+          }
+        },
+        {
+          "name": "una carga múltiplo exacto de la capacidad no añade instancias",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(instanciasNecesarias(200, 100, 1), 2);"
+          }
+        },
+        {
+          "name": "una carga mínima sigue necesitando una instancia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(instanciasNecesarias(1, 100, 1), 1);\nassert.strictEqual(instanciasNecesarias(101, 100, 1), 2);"
+          }
+        },
+        {
+          "name": "el mínimo se respeta aunque la carga sea menor",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(instanciasNecesarias(150, 100, 4), 4);\nassert.strictEqual(instanciasNecesarias(0, 100, 2), 2);"
+          }
+        },
+        {
+          "name": "una carga grande cubre siempre la demanda",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "for (const carga of [999, 1000, 1001, 4321]) {\n  const n = instanciasNecesarias(carga, 100, 1);\n  assert.ok(n * 100 >= carga, \"las instancias deben cubrir la carga \" + carga);\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-debug-02",
+      "type": "DEBUG",
+      "title": "El dimensionado de instancias se queda corto",
+      "statement": "La función `instanciasNecesarias` calcula cuántas instancias de Amazon EC2 hacen falta para atender una carga, dada la capacidad de cada instancia y un número mínimo de instancias. Quien la usa observa que, cuando la carga no es múltiplo de la capacidad, la flota resultante no cubre toda la demanda. Localiza el defecto y corrígelo sin cambiar la firma de la función.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "EC2",
+        "dimensionado",
+        "redondeo"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de elección de cómputo (borrador generado por un asistente)\nCarga de trabajo: tienda en línea con servidores web, un procesador de archivos y una aplicación descrita con manifiestos de Kubernetes.\n1. Amazon EC2: ofrece servidores virtuales; el tipo de instancia que se elige determina el hardware disponible, con un equilibrio distinto de CPU, memoria, red y almacenamiento.\n2. AWS Lambda: ejecuta código en respuesta a eventos, pero el equipo debe aprovisionar y mantener los servidores que lo ejecutan.\n3. Amazon ECS: además de ejecutarse en la nube, puede ejecutar contenedores en servidores locales que se registran en el clúster con ECS Anywhere.\n4. Amazon EKS: obliga a reescribir las aplicaciones de Kubernetes con definiciones de tarea propias de AWS antes de desplegarlas.\n5. AWS Fargate: elimina la elección de tipos de servidor, pero exige que el equipo decida cuándo escalar el clúster de instancias EC2 que aloja los contenedores.\n6. Amazon EC2 Auto Scaling: ayuda a tener el número correcto de instancias para la carga, y Elastic Load Balancing reparte el tráfico entre varias instancias."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Tipo de instancia en EC2",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el tipo de instancia que especificas determina el hardware disponible, y cada tipo ofrece un equilibrio distinto de cómputo, memoria, red y almacenamiento."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Servidores en Lambda",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Lambda es cómputo sin servidor: ejecutas código sin aprovisionar ni gestionar servidores, y el servicio se encarga del mantenimiento, la capacidad y el escalado de la infraestructura."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "ECS en servidores locales",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Amazon ECS Anywhere permite registrar en el clúster de ECS un servidor local o una máquina virtual externa, así que ECS no se limita a la nube de AWS."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "EKS y la refactorización",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "EKS está certificado como conforme con Kubernetes, así que las aplicaciones compatibles con Kubernetes se despliegan sin refactorizarlas. Las definiciones de tarea son un concepto de Amazon ECS."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Escalado del clúster con Fargate",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Con Fargate no tienes que aprovisionar, configurar ni escalar clústeres de máquinas virtuales para ejecutar contenedores: eso es justo lo que el servicio elimina."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Auto Scaling y balanceo de carga",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: EC2 Auto Scaling ayuda a que haya el número correcto de instancias para la carga, y Elastic Load Balancing distribuye el tráfico entrante entre varias instancias."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de elección de cómputo generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre la elección de cómputo de una tienda en línea. Audítalo contra las páginas oficiales de cada servicio: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "Lambda",
+        "EKS",
+        "Fargate",
+        "ECS Anywhere"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "ec2",
+            "term": "Amazon EC2",
+            "definition": "Servidores virtuales en los que eliges el tipo de instancia y gestionas seguridad, red y almacenamiento"
+          },
+          {
+            "id": "lambda",
+            "term": "AWS Lambda",
+            "definition": "Ejecuta código en respuesta a eventos sin aprovisionar ni gestionar servidores"
+          },
+          {
+            "id": "ecs",
+            "term": "Amazon ECS",
+            "definition": "Orquesta de forma administrada el despliegue y el escalado de aplicaciones en contenedores"
+          },
+          {
+            "id": "eks",
+            "term": "Amazon EKS",
+            "definition": "Kubernetes administrado: aplicaciones compatibles con Kubernetes sin refactorizarlas"
+          },
+          {
+            "id": "fargate",
+            "term": "AWS Fargate",
+            "definition": "Ejecuta contenedores sin gestionar servidores ni clústeres de instancias EC2"
+          },
+          {
+            "id": "ami",
+            "term": "AMI",
+            "definition": "Plantilla preconfigurada con el sistema operativo y el software para lanzar instancias"
+          },
+          {
+            "id": "auto-scaling",
+            "term": "Amazon EC2 Auto Scaling",
+            "definition": "Ayuda a tener el número correcto de instancias disponibles para atender la carga"
+          },
+          {
+            "id": "elb",
+            "term": "Elastic Load Balancing",
+            "definition": "Distribuye de forma automática el tráfico entrante entre varias instancias"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio con el caso de cómputo que cubre. Si dudas entre dos, pregúntate qué formato tiene la carga (servidor, contenedores o código) y cuánta administración quiere evitar la empresa.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Formato: EC2 es un servidor, ECS y EKS orquestan contenedores y Lambda ejecuta código por eventos",
+              "Administración: Fargate no gestiona servidores; en EC2 el equipo elige el tipo de instancia",
+              "Apoyo de EC2: la AMI es la plantilla, Auto Scaling ajusta instancias y ELB reparte tráfico"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-memoria-01",
+      "type": "MEMORY",
+      "title": "Servicio y caso de cómputo",
+      "statement": "Empareja cada servicio de cómputo de AWS con el caso que cubre.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "servicios de cómputo",
+        "contenedores",
+        "serverless"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias de Amazon EC2 con un proceso que revisa el bucket de forma periódica",
+            "explanation": "Descartada: el equipo lanza las instancias y gestiona su capacidad, justo lo que quiere evitar; además no hay un disparador que ejecute el código solo al llegar un archivo."
+          },
+          {
+            "id": "b",
+            "text": "Una función de AWS Lambda activada por los archivos nuevos del bucket",
+            "explanation": "Es la opción correcta: Lambda ejecuta código en respuesta a eventos, con Amazon S3 como disparador, y administra el mantenimiento, la capacidad y el escalado de la infraestructura."
+          },
+          {
+            "id": "c",
+            "text": "Un servicio de Amazon ECS que ejecuta contenedores sobre instancias EC2 del equipo",
+            "explanation": "Descartada: ECS orquesta contenedores, pero con instancias EC2 propias el equipo elige el tipo y el número y gestiona la capacidad, así que sigue administrando servidores."
+          },
+          {
+            "id": "d",
+            "text": "Un clúster de Amazon EKS con nodos de Amazon EC2 dimensionados por el equipo",
+            "explanation": "Descartada: EKS administra el plano de control de Kubernetes, pero el equipo dimensiona los nodos de EC2 y no es una función activada por un evento."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué opción procesa archivos nuevos sin gestionar servidores",
+      "statement": "Una empresa quiere procesar cada archivo que sus clientes suben a un bucket de Amazon S3. El procesamiento es un fragmento de código que solo debe ejecutarse cuando llega un archivo, y el equipo no quiere aprovisionar ni mantener servidores. ¿Qué opción requiere la MENOR administración de servidores?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Lambda",
+        "disparadores",
+        "sin servidor"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon ECS, con una definición de tarea propia de AWS para cada aplicación",
+            "explanation": "Descartada: ECS usa sus propias definiciones de tarea como plano de la aplicación, así que las aplicaciones habría que adaptarlas y se incumple «sin refactorizarlas»."
+          },
+          {
+            "id": "b",
+            "text": "AWS Lambda, con una función de AWS por cada componente de las aplicaciones",
+            "explanation": "Descartada: Lambda ejecuta código como funciones activadas por eventos; no ejecuta aplicaciones descritas con manifiestos de Kubernetes y exigiría reescribirlas."
+          },
+          {
+            "id": "c",
+            "text": "Amazon EC2, con Kubernetes instalado y operado por el equipo en sus instancias",
+            "explanation": "Descartada: el equipo tendría que operar el plano de control de Kubernetes, que es justo la segunda restricción que quiere evitar."
+          },
+          {
+            "id": "d",
+            "text": "Amazon EKS, con un clúster de Kubernetes creado en la nube de AWS",
+            "explanation": "Es la opción correcta: EKS es un servicio de Kubernetes certificado como conforme, que permite desplegar aplicaciones compatibles sin refactorizarlas y en el que AWS gestiona el plano de control."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-quiz-02",
+      "type": "QUIZ",
+      "title": "Dónde ejecutar aplicaciones descritas con manifiestos de Kubernetes",
+      "statement": "Un equipo ya describe sus aplicaciones con manifiestos de Kubernetes y quiere ejecutarlas en AWS sin refactorizarlas y sin operar por su cuenta el plano de control de Kubernetes. ¿Qué servicio es la MEJOR opción?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "EKS",
+        "Kubernetes",
+        "plano de control"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Fargate, con la CPU y la memoria que necesita cada tarea",
+            "explanation": "Es la opción correcta: Fargate ejecuta contenedores sin gestionar servidores ni clústeres de instancias EC2; no eliges tipos de servidor ni decides cuándo escalar."
+          },
+          {
+            "id": "b",
+            "text": "Instancias de Amazon EC2 registradas por el equipo en un clúster de Amazon ECS",
+            "explanation": "Descartada: con capacidad de instancias EC2 el equipo elige el tipo y el número de instancias y gestiona la capacidad, lo que la restricción pide evitar."
+          },
+          {
+            "id": "c",
+            "text": "Servidores locales registrados en un clúster de ECS mediante Amazon ECS Anywhere",
+            "explanation": "Descartada: son servidores propios del equipo que se registran en el clúster, de modo que sigue administrando la capacidad y el servidor."
+          },
+          {
+            "id": "d",
+            "text": "Un clúster de Amazon EKS con nodos de Amazon EC2 propios del equipo",
+            "explanation": "Descartada: en EKS en modo estándar AWS gestiona el plano de control, pero el equipo mantiene los nodos de EC2 donde corren los contenedores."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué capacidad para contenedores exige menos administración",
+      "statement": "Un equipo empaqueta su aplicación en contenedores. No quiere elegir tipos de servidor, ni decidir cuándo escalar un clúster de instancias, ni gestionar la capacidad; solo quiere indicar la CPU y la memoria que necesita. ¿Qué opción requiere MENOS administración de infraestructura?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Fargate",
+        "capacidad",
+        "contenedores"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "En un volumen de almacén de instancias de la propia instancia",
+            "explanation": "Descartada: los volúmenes de almacén de instancias guardan datos temporales y se eliminan al detener, hibernar o terminar la instancia."
+          },
+          {
+            "id": "b",
+            "text": "En una AMI preconfigurada con el sistema operativo de la instancia",
+            "explanation": "Descartada: una AMI es una plantilla para lanzar instancias con su sistema operativo y su software, no el lugar donde una instancia en marcha guarda sus datos."
+          },
+          {
+            "id": "c",
+            "text": "En un volumen de Amazon EBS conectado a la instancia",
+            "explanation": "Es la opción correcta: los volúmenes de Amazon EBS ofrecen almacenamiento persistente para tus datos, así que siguen ahí cuando detienes y vuelves a iniciar la instancia."
+          },
+          {
+            "id": "d",
+            "text": "En el par de claves que se usa para iniciar sesión en la instancia",
+            "explanation": "Descartada: el par de claves es la información de inicio de sesión segura de la instancia y no sirve para guardar archivos."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.6",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-quiz-04",
+      "type": "QUIZ",
+      "title": "Dónde guardar archivos que sobreviven a una parada de la instancia",
+      "statement": "Una aplicación que se ejecuta en una instancia de Amazon EC2 genera archivos de clientes que deben seguir disponibles después de detener la instancia y volver a iniciarla. ¿Dónde se guardan MEJOR esos archivos?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "EBS",
+        "almacén de instancias",
+        "persistencia"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Elastic Load Balancing, que distribuye el tráfico entrante entre varias instancias",
+            "explanation": "Descartada: reparte el tráfico entre las instancias que ya existen, pero no decide cuántas instancias hay en ejecución, que es lo que pide la restricción."
+          },
+          {
+            "id": "b",
+            "text": "Amazon EC2 Auto Scaling, que gestiona cuántas instancias hay en ejecución",
+            "explanation": "Es la opción correcta: Auto Scaling ayuda a tener el número correcto de instancias de EC2 disponibles para atender la carga, de modo que el ajuste no es manual."
+          },
+          {
+            "id": "c",
+            "text": "Amazon CloudWatch, que supervisa las instancias y los volúmenes asociados",
+            "explanation": "Descartada: supervisa las instancias y los volúmenes, pero no es el servicio que ajusta el número de instancias en ejecución a la carga."
+          },
+          {
+            "id": "d",
+            "text": "AWS Backup, que automatiza las copias de seguridad de las instancias",
+            "explanation": "Descartada: automatiza las copias de seguridad de las instancias y de sus volúmenes; no tiene relación con ajustar la capacidad al tráfico."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué servicio ajusta el número de instancias a la carga",
+      "statement": "Una tienda en línea ejecuta su sitio en instancias de Amazon EC2. El tráfico sube durante las campañas y baja el resto del tiempo, y la empresa quiere que el número de instancias disponibles se ajuste a la carga sin intervención manual. ¿Qué servicio es el MEJOR para ese ajuste?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Auto Scaling",
+        "elasticidad",
+        "EC2"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS administra la infraestructura subyacente, incluidos el mantenimiento de los servidores y la capacidad",
+            "explanation": "Cumple: Lambda gestiona de forma automática la infraestructura, con el mantenimiento de servidores, la capacidad, el escalado y el parcheo, para que el equipo se centre en su código."
+          },
+          {
+            "id": "b",
+            "text": "El equipo elige el tipo de instancia que determina el hardware de cada ejecución",
+            "explanation": "No cumple: elegir el tipo de instancia es propio de Amazon EC2; en Lambda no aprovisionas ni gestionas servidores."
+          },
+          {
+            "id": "c",
+            "text": "El equipo configura los grupos de seguridad de cada servidor que ejecuta la función",
+            "explanation": "No cumple: los grupos de seguridad de cada servidor son una función de las instancias de EC2; Lambda ofrece redes administradas por el servicio."
+          },
+          {
+            "id": "d",
+            "text": "Se paga solo por los recursos que se usan, sin compromisos iniciales",
+            "explanation": "Cumple: Lambda se factura por uso, sin compromisos iniciales, y solo pagas por los recursos que se usan."
+          },
+          {
+            "id": "e",
+            "text": "El estado de una ejecución se conserva siempre entre invocaciones en el mismo servidor",
+            "explanation": "No cumple: cada invocación se ejecuta de forma independiente y el estado puede no persistir entre invocaciones, aunque los entornos se reutilicen."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-quiz-06",
+      "type": "QUIZ",
+      "title": "Selecciona las ventajas de usar AWS Lambda",
+      "statement": "Una empresa evalúa AWS Lambda para ejecutar el código de un servicio que solo responde a eventos. Selecciona DOS características de Lambda que le dan una ventaja frente a administrar sus propios servidores.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Lambda",
+        "sin servidor",
+        "pago por uso"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Funciones de AWS Lambda con un entorno de ejecución que administra el servicio",
+            "explanation": "Descartada: Lambda ejecuta código sin que aprovisiones ni gestiones servidores, así que el equipo no controla el sistema operativo ni el tipo de servidor."
+          },
+          {
+            "id": "b",
+            "text": "Tareas de AWS Fargate dentro de un clúster de Amazon ECS administrado por AWS",
+            "explanation": "Descartada: Fargate evita gestionar servidores y elegir tipos de servidor, justo la decisión que la empresa quiere conservar."
+          },
+          {
+            "id": "c",
+            "text": "Instancias de Amazon EC2 lanzadas desde una AMI preparada por el equipo",
+            "explanation": "Es la opción correcta: EC2 ofrece servidores virtuales en los que eliges el tipo de instancia, configuras seguridad y red, y partes de una AMI con el sistema operativo y el software."
+          },
+          {
+            "id": "d",
+            "text": "Un clúster de Amazon EKS que usa el modo automático de EKS",
+            "explanation": "Descartada: EKS Auto Mode gestiona también los nodos, aprovisiona la infraestructura y selecciona las instancias, de modo que el equipo cede el control del servidor."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-quiz-07",
+      "type": "QUIZ",
+      "title": "Qué opción da más control sobre el servidor",
+      "statement": "Una empresa migra a AWS una aplicación heredada que necesita un sistema operativo concreto y software instalado por el propio equipo. El equipo quiere decidir el tipo de servidor y configurar su seguridad y su red. ¿Qué opción ofrece el MAYOR control sobre el servidor?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "EC2",
+        "AMI",
+        "control del servidor"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Es un servicio de Kubernetes administrado y exige describir las aplicaciones con manifiestos de Kubernetes",
+            "explanation": "No cumple: el servicio de Kubernetes administrado de AWS es Amazon EKS; en ECS el plano de la aplicación es la definición de tarea."
+          },
+          {
+            "id": "b",
+            "text": "Es un servicio de orquestación de contenedores totalmente administrado para desplegar, gestionar y escalar aplicaciones",
+            "explanation": "Cumple: ECS es un servicio totalmente administrado de orquestación de contenedores que ayuda a desplegar, gestionar y escalar aplicaciones en contenedores."
+          },
+          {
+            "id": "c",
+            "text": "Solo puede ejecutar contenedores en servidores de la nube de AWS, nunca en servidores locales",
+            "explanation": "No cumple: con Amazon ECS Anywhere se registra en el clúster un servidor local o una máquina virtual externa."
+          },
+          {
+            "id": "d",
+            "text": "Obliga a usar AWS Fargate como capacidad, porque no admite instancias de Amazon EC2",
+            "explanation": "No cumple: la capacidad de ECS puede ser Fargate, instancias de Amazon EC2 que gestiona el equipo, ECS Managed Instances o servidores locales."
+          },
+          {
+            "id": "e",
+            "text": "Permite que la capacidad sean instancias de Amazon EC2 elegidas por el equipo o AWS Fargate",
+            "explanation": "Cumple: entre las opciones de capacidad figuran las instancias de EC2, donde el equipo elige el tipo y el número, y Fargate, que es serverless."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre Amazon ECS",
+      "statement": "Un equipo estudia Amazon ECS para sus aplicaciones en contenedores. Selecciona DOS afirmaciones correctas sobre ECS.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "ECS",
+        "capacidad",
+        "orquestación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u1-3-2-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué cómputo para cada carga",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una web con un proceso que trata archivos subidos por los usuarios) y escribe tu elección de cómputo como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué ejecutarías en Amazon EC2, en contenedores (Amazon ECS, Amazon EKS o AWS Fargate) o en AWS Lambda para cada parte de la aplicación.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, usar EC2 para código que solo responde a eventos, o Fargate para una aplicación de Kubernetes) y la razón por la que la descartaste.\n\n3) Consecuencia: qué administración asume tu equipo con tu elección y qué administración deja en manos de AWS.\n\n4) Evidencia: qué página oficial de cada servicio usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el formato de la carga y la administración que se quiere evitar. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo elegiste el cómputo.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "servicios de cómputo",
+        "decisión",
+        "administración de infraestructura"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html"
+      ],
+      "order": 19
+    }
+  ]
+}
