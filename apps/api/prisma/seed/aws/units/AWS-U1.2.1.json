@@ -1,0 +1,1179 @@
+{
+  "code": "AWS-U1.2.1",
+  "lessons": [
+    {
+      "slug": "aws-u1-2-1-modelo-de-responsabilidad-compartida",
+      "title": "Modelo de responsabilidad compartida",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "La seguridad y el cumplimiento son una responsabilidad compartida entre AWS y el cliente. Según AWS, este reparto puede aliviar la carga operativa del cliente, porque AWS opera, gestiona y controla los componentes desde el sistema operativo del host y la capa de virtualización hasta la seguridad física de las instalaciones donde funciona el servicio. Cuando el cliente usa Amazon EC2, asume el sistema operativo invitado (con sus actualizaciones y parches), el resto del software de aplicación y la configuración del grupo de seguridad, el firewall que ofrece AWS. Esta diferencia se resume como seguridad «de» la nube (AWS) frente a seguridad «en» la nube (cliente)."
+        },
+        {
+          "type": "list",
+          "title": "Quién protege qué",
+          "items": [
+            "AWS, seguridad «de» la nube: protege la infraestructura que ejecuta todos los servicios, formada por hardware, software, redes e instalaciones.",
+            "Cliente, seguridad «en» la nube: su responsabilidad la determinan los servicios que elige, y eso fija cuánto trabajo de configuración de seguridad debe hacer.",
+            "El reparto no es una lista fija: varía según los servicios elegidos, cómo se integran en el entorno de TI del cliente, las Regiones y las leyes y normas aplicables."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "La responsabilidad cambia con el servicio",
+          "text": "AWS categoriza Amazon EC2 como infraestructura como servicio (IaaS), así que el cliente realiza todas las tareas de configuración y gestión de seguridad necesarias. Quien lanza una instancia gestiona el sistema operativo invitado (incluidas las actualizaciones y los parches de seguridad), el software o las utilidades que instala y la configuración del grupo de seguridad de cada instancia. En los servicios abstractos, como Amazon S3 y Amazon DynamoDB, AWS opera la capa de infraestructura, el sistema operativo y las plataformas, y el cliente accede a los endpoints para guardar y recuperar datos. Aun así, el cliente gestiona sus datos (incluidas las opciones de cifrado), clasifica sus activos y usa las herramientas de IAM para aplicar los permisos adecuados."
+        },
+        {
+          "type": "mermaid",
+          "title": "Capas del reparto de responsabilidades",
+          "code": "flowchart TB\n  subgraph AWS[\"AWS: seguridad DE la nube\"]\n    A1[\"Instalaciones físicas\"] --> A2[\"Hardware, software y redes de la infraestructura\"]\n    A2 --> A3[\"Sistema operativo del host y capa de virtualización\"]\n  end\n  subgraph CLI[\"Cliente: seguridad EN la nube\"]\n    C1[\"Sistema operativo invitado y parches (EC2)\"]\n    C2[\"Aplicaciones y utilidades instaladas (EC2)\"]\n    C3[\"Grupo de seguridad (EC2)\"]\n    C4[\"Datos, opciones de cifrado, clasificación y permisos IAM\"]\n  end\n  A3 --> C1\n  C1 --> C2\n  A3 --> C3\n  A3 --> C4"
+        },
+        {
+          "type": "list",
+          "title": "Los tres tipos de control",
+          "items": [
+            "Heredados: el cliente los hereda por completo de AWS. Ejemplo: los controles físicos y ambientales.",
+            "Compartidos: aplican a la capa de infraestructura y a la del cliente, pero en contextos distintos; AWS da los requisitos de la infraestructura y el cliente implementa su propio control al usar los servicios. Ejemplos: gestión de parches (AWS parchea la infraestructura; el cliente, su sistema operativo invitado y sus aplicaciones), gestión de la configuración y concienciación y formación (AWS forma a su personal; el cliente, al suyo).",
+            "Específicos del cliente: dependen solo de la aplicación que el cliente despliega. Ejemplo: zonificar o enrutar los datos entre entornos de seguridad propios.",
+            "Para determinar qué controles se heredan y cuáles quedan por implementar, la página del modelo propone revisar los documentos de atestación de auditorías de terceros."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: un mismo verbo, dos dueños",
+          "text": "Una empresa tiene su sitio web en instancias de Amazon EC2 y los documentos de sus clientes en Amazon S3. Se pregunta quién se encarga de cuatro tareas. Tarea 1, parchear el sistema operativo de las instancias: EC2 es IaaS y el cliente gestiona el sistema operativo invitado, así que es del cliente. Tarea 2, parchear el sistema operativo de los servidores que sostienen S3: S3 es un servicio abstracto y AWS opera el sistema operativo, así que es de AWS. Tarea 3, decidir quién puede leer los objetos de un bucket: es aplicar permisos con herramientas de IAM, así que es del cliente. Tarea 4, proteger físicamente el centro de datos: es un control heredado, así que es de AWS. El verbo «parchear» tuvo dueño distinto en las tareas 1 y 2 porque cambió el servicio."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: «parches» no siempre significa «lo hace AWS»",
+          "text": "Una pregunta puede mencionar parches, configuración o formación para empujarte a elegir «AWS» o «el cliente» sin más. Son controles compartidos: cada parte cubre su capa. Antes de responder, identifica el servicio (EC2 o abstracto) y la capa de la que habla la tarea (infraestructura, sistema operativo invitado, datos o permisos)."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que AWS se encarga de toda la seguridad",
+          "text": "Causa: leer «responsabilidad compartida» como «AWS protege todo» porque AWS opera la infraestructura. Consecuencia: se deja sin gestionar lo que es del cliente, por ejemplo los parches del sistema operativo invitado de EC2, la configuración del grupo de seguridad o los permisos de los datos. Solución: ante cada tarea, pregunta si pertenece a la infraestructura (AWS) o a lo que el cliente despliega y configura sobre ella, y repasa la lista de responsabilidades del cliente para el servicio concreto."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: aplicar la misma lista de responsabilidades a todos los servicios",
+          "text": "Causa: memorizar un único reparto, normalmente el de EC2, y usarlo en todo. Consecuencia: respondes que el cliente parchea el sistema operativo de S3 o DynamoDB, cuando en los servicios abstractos lo opera AWS, o das por perdidas responsabilidades como los permisos y las opciones de cifrado de los datos. Solución: antes de asignar la tarea, clasifica el servicio como IaaS (EC2) o abstracto (S3, DynamoDB) y recuerda que los datos y los permisos IAM siguen siendo del cliente en ambos."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Asignar cada responsabilidad de seguridad al cliente, a AWS o a ambos, distinguiendo Amazon EC2 de los servicios abstractos como Amazon S3 y Amazon DynamoDB. Esta unidad prepara el examen CLF-C02, dominio 2 «Seguridad y cumplimiento», tarea 2.1 (el modelo de responsabilidad compartida). Criterio: ante un escenario nuevo, nombras el servicio, la capa de la tarea y su responsable, y explicas por qué los distractores quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cuatro tareas tapando las respuestas: para cada tarea, nombra el servicio, la capa y el responsable. Después responde de memoria: qué administra el cliente en EC2, qué cambia en S3 y DynamoDB, y cuáles son los tres tipos de control."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una matriz de responsabilidades de EC2 con un responsable equivocado». Una matriz escrita como objeto asigna mal una tarea. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas las demás filas."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Las tareas del cliente cambian según las llamadas anteriores». Una función devuelve resultados distintos según el orden en que la llamas. Criterio de paso: cada servicio devuelve siempre sus propias tareas, también tras varias llamadas."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe de responsabilidades para una carga de trabajo con EC2, S3 y DynamoDB. Audítalo en «Auditar un informe de responsabilidades generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con la página oficial del modelo de responsabilidad compartida (leída el 2026-11-13) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe el servicio, la capa de la tarea y el calificador de cada una; al corregir, lee la explicación de cada opción y anota si fallaste por aplicar el reparto de otro servicio o por confundir el tipo de control. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una carga de trabajo que conozcas (una web con base de datos y archivos) y escribe quién es responsable de cada capa si usa EC2 y si usa servicios abstractos. Después completa la reflexión de la unidad. Pregunta de cierre: un cliente asegura que «como el servicio es de AWS, los permisos de sus datos también lo son»; ¿qué le respondes y en qué parte del modelo te apoyas?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-responsabilidad-compartida",
+          "order": 0,
+          "note": "Fuente del reparto de responsabilidades, de los servicios abstractos y de los tipos de control."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 1,
+          "note": "Guía de CLF-C02: el modelo de responsabilidad compartida figura entre las capacidades que valida el examen."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "«De» la nube: AWS protege la infraestructura (hardware, software, redes e instalaciones) que ejecuta los servicios. «En» la nube: el cliente asume lo que depende de los servicios que elige."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Seguridad de la nube y en la nube",
+      "statement": "¿Qué significa seguridad «de» la nube frente a seguridad «en» la nube?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "seguridad de la nube",
+        "seguridad en la nube"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El sistema operativo invitado (con actualizaciones y parches), el software de aplicación y las utilidades que instala y la configuración del grupo de seguridad de cada instancia."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Responsabilidades del cliente en EC2",
+      "statement": "En Amazon EC2, que AWS categoriza como IaaS, ¿qué administra el cliente?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "EC2",
+        "IaaS",
+        "sistema operativo invitado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "AWS opera la infraestructura, el sistema operativo y las plataformas. El cliente gestiona sus datos (incluidas las opciones de cifrado), clasifica sus activos y aplica permisos con IAM."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Servicios abstractos",
+      "statement": "En servicios abstractos como Amazon S3 y Amazon DynamoDB, ¿qué opera AWS y qué sigue siendo del cliente?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "servicio abstracto",
+        "S3",
+        "DynamoDB",
+        "IAM"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Desde el sistema operativo del host y la capa de virtualización hasta la seguridad física de las instalaciones donde funciona el servicio."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Hasta dónde llega AWS",
+      "statement": "¿Qué componentes opera, gestiona y controla AWS según el modelo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "capa de virtualización",
+        "seguridad física"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Heredados (controles físicos y ambientales), compartidos (parches, configuración, formación) y específicos del cliente (zonificar datos entre entornos de seguridad propios)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Tipos de control",
+      "statement": "¿Qué tres tipos de control distingue el modelo y qué ejemplo da de cada uno?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "control heredado",
+        "control compartido",
+        "control específico del cliente"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Varía según los servicios que elige, cómo los integra en su entorno de TI, las Regiones y las leyes y normas aplicables. No es una lista fija."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: De qué depende el reparto",
+      "statement": "¿De qué depende la responsabilidad del cliente?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "responsabilidad variable",
+        "servicios elegidos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Matriz de responsabilidades de una carga de trabajo en Amazon EC2. Corrige su defecto principal.\nexport const matriz = {\n  servicio: \"Amazon EC2\",\n  filas: [\n    { tarea: \"Seguridad física de las instalaciones\", responsable: \"AWS\" },\n    { tarea: \"Hardware y capa de virtualización\", responsable: \"AWS\" },\n    { tarea: \"Parches del sistema operativo invitado\", responsable: \"AWS\" },\n    { tarea: \"Software de aplicación instalado en las instancias\", responsable: \"CLIENTE\" },\n    { tarea: \"Configuración del grupo de seguridad\", responsable: \"CLIENTE\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const matriz = {\n  servicio: \"Amazon EC2\",\n  filas: [\n    { tarea: \"Seguridad física de las instalaciones\", responsable: \"AWS\" },\n    { tarea: \"Hardware y capa de virtualización\", responsable: \"AWS\" },\n    { tarea: \"Parches del sistema operativo invitado\", responsable: \"CLIENTE\" },\n    { tarea: \"Software de aplicación instalado en las instancias\", responsable: \"CLIENTE\" },\n    { tarea: \"Configuración del grupo de seguridad\", responsable: \"CLIENTE\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Amazon EC2 está categorizado como IaaS: pregúntate quién administra el sistema operativo invitado y sus parches, no el host ni la virtualización."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal. Compara cada tarea con la capa que la sostiene: las instalaciones y la virtualización son de la infraestructura; el sistema operativo invitado es de quien lanza la instancia."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `responsable` de la fila «Parches del sistema operativo invitado» de \"AWS\" a \"CLIENTE\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "los parches del sistema operativo invitado son del cliente",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = matriz.filas.find((f) => f.tarea === \"Parches del sistema operativo invitado\");\nassert.ok(fila, \"debe existir la fila de parches\");\nassert.strictEqual(fila.responsable, \"CLIENTE\");"
+          }
+        },
+        {
+          "name": "los responsables solo pueden ser AWS o CLIENTE",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const fila of matriz.filas) {\n  assert.ok([\"AWS\", \"CLIENTE\"].includes(fila.responsable), fila.tarea + \" tiene un responsable no válido\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su responsable",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Seguridad física de las instalaciones\": \"AWS\",\n  \"Hardware y capa de virtualización\": \"AWS\",\n  \"Software de aplicación instalado en las instancias\": \"CLIENTE\",\n  \"Configuración del grupo de seguridad\": \"CLIENTE\",\n};\nfor (const [tarea, responsable] of Object.entries(esperado)) {\n  const fila = matriz.filas.find((f) => f.tarea === tarea);\n  assert.ok(fila, tarea + \" debe seguir existiendo\");\n  assert.strictEqual(fila.responsable, responsable);\n}"
+          }
+        },
+        {
+          "name": "siguen las cinco filas y el servicio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(matriz.servicio, \"Amazon EC2\");\nassert.strictEqual(matriz.filas.length, 5);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-debug-01",
+      "type": "DEBUG",
+      "title": "Una matriz de responsabilidades de EC2 con un responsable equivocado",
+      "statement": "El objeto `matriz` reparte entre AWS y el CLIENTE las tareas de seguridad de una carga de trabajo en Amazon EC2. Una de las cinco filas asigna la tarea al responsable equivocado, de modo que la matriz contradice el modelo de responsabilidad compartida. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const matriz = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "EC2",
+        "sistema operativo invitado",
+        "responsabilidad compartida"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Devuelve las tareas de seguridad del cliente según el servicio. Corrige su defecto principal.\nexport type Servicio = \"Amazon EC2\" | \"Amazon S3\" | \"Amazon DynamoDB\";\n\nconst TAREAS_COMUNES: string[] = [\n  \"Gestionar los datos y sus opciones de cifrado\",\n  \"Clasificar los activos\",\n  \"Aplicar permisos con IAM\",\n];\n\nconst TAREAS_DE_EC2: string[] = [\n  \"Administrar el sistema operativo invitado y sus parches\",\n  \"Administrar el software de aplicación instalado\",\n  \"Configurar el grupo de seguridad\",\n];\n\nexport function tareasDelCliente(servicio: Servicio): string[] {\n  const tareas = TAREAS_COMUNES;\n  if (servicio === \"Amazon EC2\") {\n    tareas.push(...TAREAS_DE_EC2);\n  }\n  return tareas;\n}\n",
+      "solution": {
+        "code": "export type Servicio = \"Amazon EC2\" | \"Amazon S3\" | \"Amazon DynamoDB\";\n\nconst TAREAS_COMUNES: string[] = [\n  \"Gestionar los datos y sus opciones de cifrado\",\n  \"Clasificar los activos\",\n  \"Aplicar permisos con IAM\",\n];\n\nconst TAREAS_DE_EC2: string[] = [\n  \"Administrar el sistema operativo invitado y sus parches\",\n  \"Administrar el software de aplicación instalado\",\n  \"Configurar el grupo de seguridad\",\n];\n\nexport function tareasDelCliente(servicio: Servicio): string[] {\n  const tareas = [...TAREAS_COMUNES];\n  if (servicio === \"Amazon EC2\") {\n    tareas.push(...TAREAS_DE_EC2);\n  }\n  return tareas;\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "un servicio abstracto solo devuelve las tareas comunes, también tras consultar EC2",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "tareasDelCliente(\"Amazon EC2\");\nassert.deepStrictEqual(tareasDelCliente(\"Amazon S3\"), [\n  \"Gestionar los datos y sus opciones de cifrado\",\n  \"Clasificar los activos\",\n  \"Aplicar permisos con IAM\",\n]);"
+          }
+        },
+        {
+          "name": "EC2 añade las tareas de IaaS a las comunes",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const tareas = tareasDelCliente(\"Amazon EC2\");\nassert.strictEqual(tareas.length, 6);\nassert.ok(tareas.includes(\"Configurar el grupo de seguridad\"));"
+          }
+        },
+        {
+          "name": "consultar EC2 antes no contamina a S3 ni a DynamoDB",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "tareasDelCliente(\"Amazon EC2\");\nassert.strictEqual(tareasDelCliente(\"Amazon S3\").length, 3);\nassert.strictEqual(tareasDelCliente(\"Amazon DynamoDB\").length, 3);"
+          }
+        },
+        {
+          "name": "llamar varias veces a EC2 no acumula tareas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "tareasDelCliente(\"Amazon EC2\");\ntareasDelCliente(\"Amazon EC2\");\nassert.strictEqual(tareasDelCliente(\"Amazon EC2\").length, 6);"
+          }
+        },
+        {
+          "name": "S3 no incluye el sistema operativo invitado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "tareasDelCliente(\"Amazon EC2\");\nassert.ok(!tareasDelCliente(\"Amazon S3\").some((t) => t.includes(\"sistema operativo\")));"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-debug-02",
+      "type": "DEBUG",
+      "title": "Las tareas del cliente cambian según las llamadas anteriores",
+      "statement": "La función `tareasDelCliente` devuelve las tareas de seguridad que le tocan al cliente según el servicio. Quien la usa observa que, después de consultar Amazon EC2, las consultas de Amazon S3 y Amazon DynamoDB devuelven también tareas propias de EC2, y que la propia EC2 va acumulando tareas repetidas. Localiza el defecto y corrígelo sin cambiar los datos ni la firma de la función.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "servicio abstracto",
+        "EC2",
+        "estado compartido"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de responsabilidades (borrador generado por un asistente)\nCarga de trabajo: aplicación web en Amazon EC2, documentos en Amazon S3 y tabla en Amazon DynamoDB.\n1. Amazon EC2: AWS instala los parches de seguridad del sistema operativo invitado de las instancias.\n2. Amazon EC2: el cliente configura el grupo de seguridad de cada instancia.\n3. Amazon S3: al ser un servicio abstracto, AWS opera la infraestructura, el sistema operativo y las plataformas.\n4. Amazon S3 y Amazon DynamoDB: el cliente deja de ser responsable de clasificar sus datos y de decidir su cifrado.\n5. Gestión de parches: es un control compartido; AWS parchea la infraestructura y el cliente, su sistema operativo invitado y sus aplicaciones.\n6. Seguridad física de las instalaciones donde funcionan los servicios: la asume el cliente."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Parches en EC2",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "En EC2, categorizado como IaaS, el cliente gestiona el sistema operativo invitado, incluidas las actualizaciones y los parches de seguridad. AWS parchea la infraestructura, no el sistema operativo invitado."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Grupo de seguridad",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: aunque el grupo de seguridad es un firewall que ofrece AWS, su configuración en cada instancia es responsabilidad del cliente."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Servicio abstracto",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: en los servicios abstractos, como Amazon S3 y Amazon DynamoDB, AWS opera la infraestructura, el sistema operativo y las plataformas. Que el cliente no parchee ahí no es un olvido."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Datos y cifrado",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "En los servicios abstractos el cliente sigue gestionando sus datos (incluidas las opciones de cifrado), clasificando sus activos y aplicando permisos con IAM. Que AWS opere el servicio no traslada esa responsabilidad."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Gestión de parches",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la gestión de parches es un control compartido. AWS parchea y corrige fallos de la infraestructura y el cliente parchea su sistema operativo invitado y sus aplicaciones."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Seguridad física",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "La seguridad física de las instalaciones es responsabilidad de AWS: opera y controla los componentes hasta las instalaciones donde funciona el servicio. Los controles físicos y ambientales son un control heredado."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de responsabilidades generado por IA",
+      "statement": "Un asistente de IA redactó este informe de responsabilidades para una carga de trabajo con Amazon EC2, Amazon S3 y Amazon DynamoDB. Audítalo contra el modelo de responsabilidad compartida: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "control compartido",
+        "control heredado",
+        "servicio abstracto"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Proteger el acceso físico a las instalaciones donde se ejecutan las instancias",
+            "explanation": "Descartada: la seguridad física de las instalaciones la gestiona AWS, que opera y controla el servicio hasta ese nivel, así que no le corresponde a la empresa."
+          },
+          {
+            "id": "b",
+            "text": "Instalar los parches de seguridad del sistema operativo invitado de las instancias",
+            "explanation": "Es la tarea de la empresa: EC2 se categoriza como IaaS y el cliente administra el sistema operativo invitado, incluidas las actualizaciones y los parches."
+          },
+          {
+            "id": "c",
+            "text": "Mantener la capa de virtualización sobre la que se ejecutan las instancias",
+            "explanation": "Descartada: AWS opera y controla el sistema operativo del host y la capa de virtualización, por lo que no es una tarea de la empresa."
+          },
+          {
+            "id": "d",
+            "text": "Operar el hardware y la red que sostienen el servicio de cómputo",
+            "explanation": "Descartada: el hardware, el software y las redes de la infraestructura son seguridad «de» la nube, responsabilidad de AWS y no de la empresa."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué tarea de una instancia EC2 es del cliente",
+      "statement": "Una empresa ejecuta su tienda en línea en instancias de Amazon EC2. El equipo de seguridad prepara una auditoría y quiere saber qué tarea de seguridad de esas instancias le corresponde a la EMPRESA y no a AWS. ¿Qué tarea es responsabilidad ÚNICAMENTE de la empresa?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "EC2",
+        "sistema operativo invitado",
+        "responsabilidad del cliente"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Aplicar los parches de seguridad al sistema operativo de los servidores de la base de datos",
+            "explanation": "Descartada: en un servicio abstracto AWS opera el sistema operativo, así que el cliente no parchea esos servidores."
+          },
+          {
+            "id": "b",
+            "text": "Mantener el hardware y las instalaciones donde se almacenan las tablas",
+            "explanation": "Descartada: el hardware y las instalaciones forman parte de la infraestructura que protege AWS, no de lo que gestiona el cliente."
+          },
+          {
+            "id": "c",
+            "text": "Administrar las plataformas de software sobre las que se ejecuta el servicio",
+            "explanation": "Descartada: en los servicios abstractos AWS opera también las plataformas; el cliente solo accede a los endpoints para guardar y recuperar datos."
+          },
+          {
+            "id": "d",
+            "text": "Clasificar los activos de datos que almacena en las tablas del servicio",
+            "explanation": "Es la tarea del cliente: aunque AWS opere el servicio, el cliente gestiona sus datos, clasifica sus activos y aplica los permisos con IAM."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué le queda al cliente con DynamoDB",
+      "statement": "Una aseguradora guarda datos de clientes en Amazon DynamoDB, un servicio abstracto cuya infraestructura, sistema operativo y plataformas opera AWS. El equipo quiere saber qué sigue correspondiendo al CLIENTE con este servicio. ¿Qué tarea es ÚNICAMENTE del cliente?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "servicio abstracto",
+        "DynamoDB",
+        "clasificación de activos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Deja de gestionar el sistema operativo y las plataformas, y conserva la gestión de sus datos y de sus permisos",
+            "explanation": "Es correcto: en un servicio abstracto AWS opera el sistema operativo y las plataformas, y el cliente conserva sus datos (con las opciones de cifrado) y los permisos con IAM."
+          },
+          {
+            "id": "b",
+            "text": "Deja de gestionar el sistema operativo y las plataformas, y también deja de ser responsable de sus datos",
+            "explanation": "Descartada: con servicios abstractos el cliente sigue gestionando sus datos, incluidas las opciones de cifrado, y clasificando sus activos."
+          },
+          {
+            "id": "c",
+            "text": "Sigue gestionando el sistema operativo y las plataformas, igual que en EC2, y conserva sus datos y permisos",
+            "explanation": "Descartada: la responsabilidad del cliente varía con el servicio; en un servicio abstracto el sistema operativo y las plataformas los opera AWS."
+          },
+          {
+            "id": "d",
+            "text": "Deja de gestionar los permisos de acceso, y asume la capa de virtualización y el hardware del servicio",
+            "explanation": "Descartada: invierte el reparto, porque la virtualización y el hardware los opera AWS y los permisos con IAM siguen siendo del cliente."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-quiz-03",
+      "type": "QUIZ",
+      "title": "Cómo cambia la carga de seguridad al pasar de EC2 a S3",
+      "statement": "Un equipo ejecuta hoy un servidor de archivos en instancias de Amazon EC2 y estudia pasarlo a Amazon S3. Quiere entender cómo cambia su carga de seguridad con esa migración. ¿Qué enunciado describe MEJOR el cambio?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "EC2",
+        "S3",
+        "responsabilidad variable"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Configurar el grupo de seguridad que actúa como firewall de cada instancia",
+            "explanation": "Cumple: la configuración del grupo de seguridad de cada instancia es responsabilidad del cliente en EC2."
+          },
+          {
+            "id": "b",
+            "text": "Mantener la capa de virtualización sobre la que se ejecutan las instancias",
+            "explanation": "No cumple: la capa de virtualización la opera AWS, que es responsable del sistema operativo del host hacia abajo."
+          },
+          {
+            "id": "c",
+            "text": "Administrar el software de aplicación y las utilidades que el equipo instaló en ellas",
+            "explanation": "Cumple: el cliente gestiona el software de aplicación y las utilidades que instala en sus instancias."
+          },
+          {
+            "id": "d",
+            "text": "Controlar el acceso físico a las instalaciones donde está el hardware",
+            "explanation": "No cumple: la seguridad física de las instalaciones es de AWS y es un control heredado por el cliente."
+          },
+          {
+            "id": "e",
+            "text": "Operar el sistema operativo del host que aloja las instancias",
+            "explanation": "No cumple: AWS opera y controla el sistema operativo del host; el cliente solo gestiona el sistema operativo invitado."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-quiz-04",
+      "type": "QUIZ",
+      "title": "Selecciona las tareas del cliente en una carga de trabajo con EC2",
+      "statement": "Una empresa lanza una aplicación en Amazon EC2 y documenta el reparto de responsabilidades de seguridad. Selecciona DOS tareas que le corresponden al CLIENTE.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "EC2",
+        "grupo de seguridad",
+        "software de aplicación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Es un control heredado: la empresa lo hereda por completo de AWS y no parchea ninguna capa",
+            "explanation": "Descartada: un control heredado es el que el cliente hereda por completo, como los físicos y ambientales; en los parches el cliente tiene su propia capa."
+          },
+          {
+            "id": "b",
+            "text": "Es un control específico del cliente: AWS no parchea ninguna parte de la infraestructura",
+            "explanation": "Descartada: AWS parchea y corrige fallos de la infraestructura, así que no es un control solo del cliente."
+          },
+          {
+            "id": "c",
+            "text": "Es un control compartido: AWS parchea la infraestructura y la empresa, su sistema operativo invitado y sus aplicaciones",
+            "explanation": "Es correcto: aplica a ambas capas en contextos distintos, con AWS en la infraestructura y el cliente en el sistema operativo invitado y las aplicaciones."
+          },
+          {
+            "id": "d",
+            "text": "Es un control compartido: AWS parchea el sistema operativo invitado de la empresa y esta parchea la infraestructura",
+            "explanation": "Descartada: clasifica bien el control, pero invierte las capas, porque el cliente parchea su sistema operativo invitado y AWS la infraestructura."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-quiz-05",
+      "type": "QUIZ",
+      "title": "Cómo se clasifica la gestión de parches",
+      "statement": "Un auditor revisa los controles de una empresa que ejecuta sistemas en AWS. Pregunta cómo se clasifica la gestión de parches y quién cubre cada parte. ¿Qué respuesta describe MEJOR la clasificación?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "control compartido",
+        "gestión de parches"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La formación en seguridad de los empleados de la propia empresa",
+            "explanation": "Descartada: es un control compartido; AWS forma a sus empleados, pero el cliente debe formar a los suyos."
+          },
+          {
+            "id": "b",
+            "text": "Los controles físicos y ambientales de los centros donde se ejecutan sus cargas",
+            "explanation": "Es el control heredado: AWS gestiona los controles de la infraestructura física y el cliente los hereda por completo."
+          },
+          {
+            "id": "c",
+            "text": "La configuración de sus sistemas operativos invitados, bases de datos y aplicaciones",
+            "explanation": "Descartada: la gestión de la configuración es un control compartido; el cliente configura su propio sistema operativo invitado, sus bases de datos y sus aplicaciones."
+          },
+          {
+            "id": "d",
+            "text": "La zonificación y el enrutamiento de sus datos entre entornos de seguridad propios",
+            "explanation": "Descartada: es un control específico del cliente, que depende solo de la aplicación que despliega y no se hereda."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué control hereda el cliente por completo",
+      "statement": "Una empresa regulada quiere reducir su carga de auditoría aprovechando lo que AWS gestiona por ella. Necesita identificar qué control HEREDA por completo de AWS, sin implementar nada por su cuenta. ¿Cuál es el MEJOR ejemplo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "control heredado",
+        "controles físicos y ambientales"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Revisar los documentos de atestación de auditorías de terceros de AWS",
+            "explanation": "Es la acción propuesta: esos documentos permiten determinar los controles heredados y los que quedan por implementar."
+          },
+          {
+            "id": "b",
+            "text": "Realizar una revisión Well-Architected de sus cargas de trabajo",
+            "explanation": "Descartada: sirve para evaluar la implementación de buenas prácticas de seguridad, fiabilidad y rendimiento, no para determinar qué controles se heredan."
+          },
+          {
+            "id": "c",
+            "text": "Consultar marcos del sector como el NIST Cybersecurity Framework y las normas ISO",
+            "explanation": "Descartada: ayudan a determinar los requisitos y objetivos de cumplimiento, pero no indican qué controles hereda el cliente de AWS."
+          },
+          {
+            "id": "d",
+            "text": "Leer los capítulos de seguridad de la documentación de cada servicio de AWS",
+            "explanation": "Descartada: describen la funcionalidad y las opciones de configuración de seguridad de cada servicio, no los controles heredados."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-quiz-07",
+      "type": "QUIZ",
+      "title": "Cómo determinar los controles heredados",
+      "statement": "Antes de una auditoría, una empresa necesita determinar qué controles hereda de AWS y cuáles le quedan por implementar en su entorno. ¿Qué acción sirve MEJOR para determinar los controles heredados?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "control heredado",
+        "auditoría de terceros"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Mantener el hardware de almacenamiento y los centros de datos donde residen los objetos",
+            "explanation": "No cumple: el hardware y las instalaciones son parte de la infraestructura que protege AWS."
+          },
+          {
+            "id": "b",
+            "text": "Aplicar los permisos adecuados a los datos con herramientas de IAM",
+            "explanation": "Cumple: en los servicios abstractos el cliente usa IAM para aplicar los permisos adecuados sobre sus datos."
+          },
+          {
+            "id": "c",
+            "text": "Administrar el sistema operativo y las plataformas sobre los que se ejecuta el servicio",
+            "explanation": "No cumple: el enunciado dice que AWS opera el sistema operativo y las plataformas del servicio."
+          },
+          {
+            "id": "d",
+            "text": "Decidir las opciones de cifrado que se aplican a los datos almacenados",
+            "explanation": "Cumple: el cliente es responsable de gestionar sus datos, incluidas las opciones de cifrado."
+          },
+          {
+            "id": "e",
+            "text": "Operar la capa de virtualización y la infraestructura de red del servicio",
+            "explanation": "No cumple: la infraestructura y la virtualización las opera AWS, no el cliente."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las tareas del cliente en una carga de trabajo con S3",
+      "statement": "Una empresa guarda documentos en Amazon S3. AWS opera la infraestructura, el sistema operativo y las plataformas del servicio. Selecciona DOS tareas que siguen siendo responsabilidad del CLIENTE.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "S3",
+        "cifrado",
+        "permisos IAM"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-2-1-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: quién responde de cada capa",
+      "statement": "Elige una carga de trabajo que conozcas (por ejemplo, una web en Amazon EC2 con documentos en Amazon S3) y escribe su reparto de responsabilidades como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué responsabilidades asumes tú y cuáles recaen en AWS, capa por capa, y qué servicio lo determina.\n\n2) Alternativa descartada: una asignación tentadora pero incorrecta (por ejemplo, creer que AWS parchea el sistema operativo invitado de EC2) y la razón por la que la descartaste.\n\n3) Consecuencia: qué cambia para tu equipo si pasas esa carga de EC2 a un servicio abstracto.\n\n4) Evidencia: qué parte de la página oficial del modelo de responsabilidad compartida usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el servicio y la capa. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo asignaste cada responsabilidad.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "responsabilidad compartida",
+        "servicio abstracto",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://aws.amazon.com/compliance/shared-responsibility-model/"
+      ],
+      "order": 18
+    }
+  ]
+}
