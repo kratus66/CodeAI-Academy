@@ -1,0 +1,1257 @@
+{
+  "code": "AWS-U0.3.5",
+  "lessons": [
+    {
+      "slug": "aws-u0-3-5-json-y-yaml-politicas-y-plantillas",
+      "title": "JSON y YAML: los formatos de políticas y plantillas",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Una política de IAM y una plantilla de CloudFormation son texto estructurado: cada una describe un recurso o un permiso con claves, valores y listas, y AWS la lee por máquina. Las políticas de IAM se escriben en JSON. Las plantillas de CloudFormation se pueden escribir en JSON o en YAML: los dos formatos sirven para lo mismo y se diferencian en cómo se escribe la estructura. JSON usa llaves { } y corchetes [ ] explícitos; YAML marca el anidamiento con sangría. Saber leer ambos es lo que te permite corregir un documento que AWS rechaza."
+        },
+        {
+          "type": "list",
+          "title": "Reglas básicas de JSON que usan las políticas",
+          "items": [
+            "Los valores van entre comillas; en los números y los booleanos las comillas son opcionales.",
+            "Un valor que admite varios elementos se escribe como una lista entre corchetes, con los elementos separados por comas: \"Action\": [\"ec2:Describe*\", \"ec2:List*\"].",
+            "Si solo hay un valor, los corchetes son opcionales y no sobra ninguna coma al final.",
+            "Se permiten espacios y saltos de línea entre los elementos.",
+            "Un mismo elemento no puede repetir una clave: no puedes escribir Effect dos veces en la misma sentencia."
+          ]
+        },
+        {
+          "type": "code",
+          "title": "Una política de IAM mínima en JSON",
+          "language": "json",
+          "code": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"LeerInformes\",\n      \"Effect\": \"Allow\",\n      \"Action\": \"s3:GetObject\",\n      \"Resource\": \"arn:aws:s3:::amzn-s3-demo-bucket/*\",\n      \"Condition\": {\n        \"Bool\": { \"aws:SecureTransport\": \"true\" }\n      }\n    }\n  ]\n}"
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómo se lee una política",
+          "text": "El documento tiene tres elementos de primer nivel: Version, que vale \"2008-10-17\" o \"2012-10-17\"; Id, opcional; y Statement, con una o más sentencias. Cada sentencia lleva Effect (\"Allow\" o \"Deny\"), una acción con la forma servicio:acción (por ejemplo, s3:GetObject, con comodines si hace falta) y un recurso, normalmente un ARN. Sid y Condition son opcionales. El Sid de una política de IAM solo admite letras y números. Principal solo aparece en las políticas de recurso y en las de confianza de un rol, y no debe incluirse en las políticas de identidad. El orden de los elementos dentro de una sentencia no importa."
+        },
+        {
+          "type": "paragraph",
+          "title": "Elementos que se excluyen entre sí",
+          "text": "Action y NotAction no pueden usarse a la vez en la misma sentencia, y lo mismo ocurre con Principal y NotPrincipal y con Resource y NotResource. Si una sentencia mezcla las dos formas de un par, no cumple la gramática y hay que quedarse con una."
+        },
+        {
+          "type": "code",
+          "title": "Una plantilla de CloudFormation en YAML, con comentarios",
+          "language": "yaml",
+          "code": "AWSTemplateFormatVersion: 2010-09-09\nDescription: Plantilla mínima con un bucket de informes\n# Resources es la única sección que no puede faltar\nResources:\n  Informes:\n    Type: AWS::S3::Bucket"
+        },
+        {
+          "type": "code",
+          "title": "La misma plantilla en JSON",
+          "language": "json",
+          "code": "{\n  \"AWSTemplateFormatVersion\": \"2010-09-09\",\n  \"Description\": \"Plantilla mínima con un bucket de informes\",\n  \"Resources\": {\n    \"Informes\": {\n      \"Type\": \"AWS::S3::Bucket\"\n    }\n  }\n}"
+        },
+        {
+          "type": "paragraph",
+          "title": "JSON frente a YAML en CloudFormation",
+          "text": "En JSON la plantilla es más extensa pero cada elemento se declara de forma explícita; JSON no tiene sintaxis para comentarios, y si necesitas notas puedes guardarlas en Metadata. En YAML la plantilla es más corta y legible, admite comentarios con el símbolo # y delimita la jerarquía con sangría, así que una sangría inconsistente provoca errores. CloudFormation admite YAML 1.1 con excepciones: no admite las etiquetas binary, omap, pairs, set y timestamp, ni los alias, ni las fusiones de claves."
+        },
+        {
+          "type": "paragraph",
+          "title": "Las secciones de una plantilla",
+          "text": "Resources es la única sección obligatoria: declara los recursos de la pila, cada uno con un ID lógico único, un tipo y su configuración. Parameters es opcional y recibe valores en el momento de crear o actualizar la pila; sus valores se pueden usar en Resources y en Outputs. Outputs, también opcional, devuelve valores como identificadores de recursos. Mappings funciona como una tabla de consulta con Fn::FindInMap. Metadata, Rules, Conditions y Transform completan la lista, junto con la versión de formato y la descripción. No repitas las secciones principales: una plantilla con dos secciones Resources puede ser aceptada, pero su comportamiento queda sin definir."
+        },
+        {
+          "type": "mermaid",
+          "title": "Del documento de texto al servicio que lo lee",
+          "code": "flowchart TD\n  Doc[\"Documento de texto estructurado\"] --> J[\"JSON\"]\n  Doc --> Y[\"YAML\"]\n  J --> P[\"Política de IAM\"]\n  J --> T1[\"Plantilla de CloudFormation\"]\n  Y --> T2[\"Plantilla de CloudFormation\"]\n  P --> V[\"Version, Statement, Effect, Action, Resource\"]\n  T1 --> R[\"Resources (obligatoria)\"]\n  T2 --> R"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica: comentarios en una plantilla JSON",
+          "text": "Si una plantilla JSON necesita notas, no uses // ni #: JSON no admite comentarios. Guarda la información en Metadata o cambia la plantilla a YAML, donde el comentario empieza por #."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: mezclar Action y NotAction",
+          "text": "Causa: escribir en la misma sentencia Action y NotAction, o Resource y NotResource, creyendo que se suman. Consecuencia: la política no cumple la gramática y IAM la rechaza. Solución: elige uno solo de cada par y deja en él todos los valores que necesitas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: un Sid o una acción con el formato equivocado",
+          "text": "Causa: escribir un Sid con guiones o espacios, o una acción sin espacio de nombres como GetObject, o varias acciones en una sola cadena separadas por comas. Consecuencia: el documento no es una política válida. Solución: Sid solo con letras y números, cada acción con la forma servicio:acción y varias acciones en una lista entre corchetes."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: una sección mal escrita en la plantilla",
+          "text": "Causa: escribir Resource en lugar de Resources o repetir una sección principal. Consecuencia: falta la única sección obligatoria o el comportamiento queda sin definir. Solución: usa los nombres exactos de las secciones y declara cada una una sola vez."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Al terminar podrás escribir una política de IAM en JSON y una plantilla de CloudFormation en JSON o YAML con una estructura válida, y corregir los defectos de formato más frecuentes: elementos que se excluyen, valores con el formato equivocado y secciones mal escritas. Es una unidad de nivelación del nivel A0: no tiene tarea de examen asociada, y prepara las unidades de IAM e infraestructura como código de la ruta."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la política de ejemplo y nombra, sin mirar el texto, qué hace cada elemento: Version, Statement, Sid, Effect, Action, Resource y Condition. Después compara la plantilla YAML con la plantilla JSON y localiza dónde quedó el comentario que empieza por # en el segundo documento. Anota qué cambia al pasar de un formato a otro y qué no cambia."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Una política de IAM y una plantilla de CloudFormation válidas». Empieza por el validador: ejecútalo sobre el código inicial y lee el mensaje de cada problema antes de editar. Usa las pistas por niveles solo si te atascas. Criterio de paso: las cuatro pruebas visibles pasan y los dos validadores del arnés no devuelven ningún problema."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve el laboratorio «Política y plantilla del entorno de soporte, sin pistas». Parte de los criterios de aceptación del enunciado, comprueba cada documento con aws.iam.validatePolicy y aws.cfn.validateTemplate y revisa que la política decide lo que pide el enunciado con aws.iam.evaluate. Criterio de paso: ambos documentos válidos y la política concede y deniega justo lo que se pide."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Te damos una política generada por un asistente para el equipo de publicaciones: concede dos acciones de S3 en una sola cadena separada por una coma. Anota qué regla del formato incumple y audita la respuesta contra la gramática del lenguaje de políticas de IAM (con la fecha de consulta) antes de aceptarla. Escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué valores admite Version y Effect; qué pares de elementos no pueden usarse a la vez; qué caracteres admite el Sid de IAM; cuál es la única sección obligatoria de una plantilla de CloudFormation y cómo se escribe un comentario en YAML. Criterio de paso: cuatro de cinco respuestas correctas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: convierte a YAML la plantilla del laboratorio guiado sin perder ninguna sección y añade un comentario que explique para qué sirve cada parámetro. Pregunta de cierre: un compañero pega una política en la consola y la herramienta la rechaza sin explicar por qué; ¿qué tres elementos del documento revisas primero?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-iam-gramatica-de-politicas",
+          "order": 0,
+          "note": "Gramática formal de las políticas JSON de IAM: Version, Statement, Effect, Action, Resource, Condition y las notas sobre Sid, Principal y listas."
+        },
+        {
+          "resourceSlug": "aws-iam-elementos-de-politicas",
+          "order": 1,
+          "note": "Referencia de los elementos de una política de IAM: el orden no importa y los pares Action/NotAction, Principal/NotPrincipal y Resource/NotResource son excluyentes."
+        },
+        {
+          "resourceSlug": "aws-cloudformation-secciones-de-plantilla",
+          "order": 2,
+          "note": "Las secciones de una plantilla de CloudFormation: Resources es obligatoria y las demás son opcionales."
+        },
+        {
+          "resourceSlug": "aws-cloudformation-formato-de-plantilla",
+          "order": 3,
+          "note": "Formatos JSON y YAML de las plantillas, comentarios, secciones duplicadas y características de YAML que CloudFormation no admite."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": "typescript",
+      "starterCode": "// Política de identidad del analista y plantilla del bucket de informes.\nexport const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"Leer-Informes\",\n      Effect: \"allow\",\n      Action: \"GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-informes/*\",\n    },\n  ],\n};\n\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Bucket de informes\",\n  Parameters: {\n    Entorno: { Type: \"String\" },\n  },\n  Resource: {\n    Informes: {\n      Type: \"AWS::S3::Bucket\",\n      Properties: {\n        Tags: [{ Key: \"entorno\", Value: { Ref: \"Entorno\" } }],\n      },\n    },\n  },\n};\n",
+      "solution": {
+        "code": "export const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerInformes\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-informes/*\",\n    },\n  ],\n};\n\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Bucket de informes\",\n  Parameters: {\n    Entorno: { Type: \"String\" },\n  },\n  Resources: {\n    Informes: {\n      Type: \"AWS::S3::Bucket\",\n      Properties: {\n        Tags: [{ Key: \"entorno\", Value: { Ref: \"Entorno\" } }],\n      },\n    },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Compara cada sentencia con la gramática: Effect solo admite los valores literales «Allow» y «Deny», la acción tiene la forma servicio:acción y el Sid solo admite letras y números. En la plantilla, ejecuta `aws.cfn.validateTemplate(template)` y lee el mensaje."
+        },
+        {
+          "level": 2,
+          "text": "La política incumple tres reglas: el Sid lleva un guion, el Effect no es uno de los dos valores literales y la acción no lleva el espacio de nombres del servicio. En la plantilla, la sección obligatoria se llama Resources y el código inicial la escribe de otra forma."
+        },
+        {
+          "level": 3,
+          "text": "Escribe `Sid: \"LeerInformes\"`, `Effect: \"Allow\"` y `Action: \"s3:GetObject\"`. En la plantilla, cambia el nombre de la sección Resource por Resources y deja intactos el parámetro Entorno y su referencia."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la política es válida según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.iam.validatePolicy(policy), []);"
+          }
+        },
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "el analista puede leer un informe",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/analista\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-informes/2026/ventas.csv\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "la plantilla declara recursos y se puede ordenar",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null && orden.length >= 1, \"La plantilla no declara ningún recurso ordenable\");"
+          }
+        },
+        {
+          "name": "el analista no puede borrar informes",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/analista\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.notStrictEqual(decide(\"s3:DeleteObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-informes/2026/ventas.csv\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "el analista no puede leer objetos de otro bucket",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/analista\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.notStrictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro/2026/ventas.csv\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "ninguna sentencia de la política lleva Principal",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const sentencias = Array.isArray(policy.Statement) ? policy.Statement : [policy.Statement];\nfor (const sentencia of sentencias) {\n  assert.ok(!(\"Principal\" in sentencia), \"Una política de identidad no debe incluir Principal\");\n}"
+          }
+        },
+        {
+          "name": "la plantilla conserva el parámetro Entorno y lo usa en una referencia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(Object.keys(template.Parameters).includes(\"Entorno\"), \"Falta el parámetro Entorno\");\nassert.ok(JSON.stringify(template).includes('{\"Ref\":\"Entorno\"}'), \"Ningún valor usa Ref hacia Entorno\");"
+          }
+        },
+        {
+          "name": "la plantilla crea un bucket de S3",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(JSON.stringify(template).includes('\"Type\":\"AWS::S3::Bucket\"'), \"La plantilla no declara un bucket de S3\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2",
+        "AWS-C8"
+      ],
+      "slug": "aws-u0-3-5-politica-y-plantilla-guiado",
+      "type": "LAB",
+      "title": "Una política de IAM y una plantilla de CloudFormation válidas",
+      "statement": "Escribe dos documentos como datos de TypeScript. El primero, `policy`, es la política de identidad de un analista: debe permitirle leer los objetos del bucket amzn-s3-demo-bucket-informes y nada más. El segundo, `template`, es una plantilla de CloudFormation que crea un bucket de S3 con un parámetro Entorno de tipo String que se usa en una etiqueta del bucket. El código inicial exporta los dos documentos con varios defectos de formato: corrígelos con ayuda de los validadores del arnés (`aws.iam.validatePolicy` y `aws.cfn.validateTemplate`) sin cambiar los nombres de los valores exportados (`export const policy = { … }` y `export const template = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "política de IAM",
+        "plantilla de CloudFormation",
+        "formato JSON",
+        "validación"
+      ],
+      "estimatedMin": 30,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política de identidad del equipo de soporte y plantilla del bucket de soporte.\nexport const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerObjetos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-soporte/*\",\n    },\n    {\n      Sid: \"ListarBucket\",\n      Effect: \"Allow\",\n      Action: \"s3:ListBucket\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-soporte\",\n    },\n    {\n      Sid: \"Exigir-TLS\",\n      Effect: \"Deny\",\n      Action: \"s3:*\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-soporte/*\",\n      Condition: { Bool: \"aws:SecureTransport\" },\n    },\n  ],\n};\n\nexport const template = {\n  AWSTemplateFormatVersion: \"2012-10-17\",\n  Description: \"Bucket de soporte\",\n  Parameters: {\n    Entorno: { Type: \"String\" },\n  },\n  Resources: {\n    SoporteBucket: {\n      Type: \"AWS::S3::Bucket\",\n      Properties: {\n        Tags: [{ Key: \"entorno\", Value: { Ref: \"Entorno\" } }],\n      },\n    },\n  },\n  Outputs: {\n    NombreBucket: { Value: { Ref: \"Bucket\" } },\n    ArnBucket: { Value: { \"Fn::GetAtt\": \"SoporteBucket.Arn\" } },\n  },\n};\n",
+      "solution": {
+        "code": "export const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerObjetos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-soporte/*\",\n    },\n    {\n      Sid: \"ListarBucket\",\n      Effect: \"Allow\",\n      Action: \"s3:ListBucket\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-soporte\",\n    },\n    {\n      Sid: \"ExigirTLS\",\n      Effect: \"Deny\",\n      Action: \"s3:*\",\n      Resource: [\n        \"arn:aws:s3:::amzn-s3-demo-bucket-soporte\",\n        \"arn:aws:s3:::amzn-s3-demo-bucket-soporte/*\",\n      ],\n      Condition: { Bool: { \"aws:SecureTransport\": \"false\" } },\n    },\n  ],\n};\n\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Bucket de soporte\",\n  Parameters: {\n    Entorno: { Type: \"String\" },\n  },\n  Resources: {\n    SoporteBucket: {\n      Type: \"AWS::S3::Bucket\",\n      Properties: {\n        PublicAccessBlockConfiguration: {\n          BlockPublicAcls: true,\n          BlockPublicPolicy: true,\n          IgnorePublicAcls: true,\n          RestrictPublicBuckets: true,\n        },\n        Tags: [{ Key: \"entorno\", Value: { Ref: \"Entorno\" } }],\n      },\n    },\n  },\n  Outputs: {\n    NombreBucket: { Value: { Ref: \"SoporteBucket\" } },\n    ArnBucket: { Value: { \"Fn::GetAtt\": [\"SoporteBucket\", \"Arn\"] } },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la política es válida según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.iam.validatePolicy(policy), []);"
+          }
+        },
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "el equipo puede leer un objeto usando TLS",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, tls: boolean) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/soporte\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context: { \"aws:SecureTransport\": tls },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-soporte/casos/42.txt\", true), \"Allow\");"
+          }
+        },
+        {
+          "name": "sin TLS se deniega de forma explícita la lectura de objetos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, tls: boolean) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/soporte\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context: { \"aws:SecureTransport\": tls },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-soporte/casos/42.txt\", false), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "sin TLS se deniega de forma explícita el listado del bucket",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, tls: boolean) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/soporte\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context: { \"aws:SecureTransport\": tls },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:ListBucket\", \"arn:aws:s3:::amzn-s3-demo-bucket-soporte\", false), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "con TLS el equipo puede listar el bucket",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, tls: boolean) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/soporte\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context: { \"aws:SecureTransport\": tls },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:ListBucket\", \"arn:aws:s3:::amzn-s3-demo-bucket-soporte\", true), \"Allow\");"
+          }
+        },
+        {
+          "name": "ninguna otra acción ni otro bucket quedan permitidos",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string, tls: boolean) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/soporte\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n      context: { \"aws:SecureTransport\": tls },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.notStrictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-soporte/casos/42.txt\", true), \"Allow\");\nassert.notStrictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro/casos/42.txt\", true), \"Allow\");"
+          }
+        },
+        {
+          "name": "el bucket de la plantilla bloquea el acceso público con las cuatro opciones",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.securityIssues(template, [{ type: \"s3-no-public-access-block\", requireAll: true }]), []);"
+          }
+        },
+        {
+          "name": "las salidas devuelven el nombre y el ARN del bucket",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(template.Outputs.NombreBucket.Value, { Ref: \"SoporteBucket\" });\nassert.deepStrictEqual(template.Outputs.ArnBucket.Value, { \"Fn::GetAtt\": [\"SoporteBucket\", \"Arn\"] });"
+          }
+        },
+        {
+          "name": "la etiqueta del bucket usa el parámetro Entorno y ninguna sentencia lleva Principal",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(JSON.stringify(template).includes('{\"Ref\":\"Entorno\"}'), \"Ningún valor usa Ref hacia Entorno\");\nconst sentencias = Array.isArray(policy.Statement) ? policy.Statement : [policy.Statement];\nfor (const sentencia of sentencias) {\n  assert.ok(!(\"Principal\" in sentencia), \"Una política de identidad no debe incluir Principal\");\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2",
+        "AWS-C8"
+      ],
+      "slug": "aws-u0-3-5-politica-y-plantilla-autonomo",
+      "type": "LAB",
+      "title": "Política y plantilla del entorno de soporte, sin pistas",
+      "statement": "Escribe la política de identidad `policy` y la plantilla `template` del entorno de soporte. Política: versión 2012-10-17; el equipo puede leer los objetos y listar el contenido del bucket amzn-s3-demo-bucket-soporte; toda acción de S3 sobre ese bucket y sus objetos queda denegada cuando la petición no usa TLS (condición aws:SecureTransport con el valor false); ninguna otra acción queda permitida; cada Sid solo lleva letras y números y ninguna sentencia lleva Principal. Plantilla: versión de formato 2010-09-09 y un parámetro Entorno de tipo String; un bucket de S3 con el ID lógico SoporteBucket que declara PublicAccessBlockConfiguration con BlockPublicAcls, BlockPublicPolicy, IgnorePublicAcls y RestrictPublicBuckets en true y una etiqueta cuyo valor usa el parámetro Entorno; y dos salidas: NombreBucket, con el nombre del bucket, y ArnBucket, con su ARN. El código inicial exporta los dos documentos con varios defectos: corrígelo sin cambiar los nombres de los valores exportados (`export const policy = { … }` y `export const template = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "política de IAM",
+        "plantilla de CloudFormation",
+        "condición",
+        "salidas y referencias"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En JSON o en YAML. JSON usa llaves y corchetes explícitos para cada elemento; YAML marca el anidamiento con sangría, y por eso una sangría inconsistente provoca errores."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: los dos formatos de una plantilla",
+      "statement": "¿En qué formatos puede escribirse una plantilla de CloudFormation y cómo se marca la estructura en cada uno?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "json",
+        "yaml"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "JSON no tiene sintaxis para comentarios: se puede guardar la información en Metadata. YAML admite comentarios en línea con el símbolo #."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: los comentarios en una plantilla",
+      "statement": "¿Cómo se añaden notas explicativas a una plantilla de CloudFormation en JSON y en YAML?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "comentarios",
+        "metadata"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Version, Id opcional y Statement con una o varias sentencias. Cada sentencia lleva Effect, Action (o NotAction) y Resource (o NotResource). Sid y Condition son opcionales; Principal no debe aparecer en una política de identidad."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: la estructura de una política de IAM",
+      "statement": "¿Qué elementos forman una política de IAM y cuáles son opcionales en una política de identidad?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "política de iam",
+        "sentencia"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Version vale \"2008-10-17\" o \"2012-10-17\". Effect vale \"Allow\" o \"Deny\". En una política de IAM, el Sid solo admite letras y números."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: valores literales de Version, Effect y Sid",
+      "statement": "¿Qué valores admiten Version y Effect en una política de IAM y qué caracteres admite el Sid?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "version",
+        "effect",
+        "sid"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Action y NotAction, Principal y NotPrincipal, Resource y NotResource. El orden de los elementos de una sentencia no importa."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: elementos que se excluyen entre sí",
+      "statement": "¿Qué pares de elementos de una sentencia no pueden usarse a la vez y importa el orden de los elementos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "action",
+        "notaction",
+        "elementos excluyentes"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Resources es la obligatoria. Parameters recibe valores al crear o actualizar la pila y se usa en Resources y Outputs; Outputs devuelve valores como identificadores de recursos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: las secciones de una plantilla",
+      "statement": "¿Qué sección de una plantilla de CloudFormation es obligatoria y para qué sirven Parameters y Outputs?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "resources",
+        "parameters",
+        "outputs"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Escribir cada nota en una línea que empieza por //",
+            "explanation": "JSON, por diseño, no incluye una sintaxis para comentarios: una línea con // no es JSON válido y la plantilla dejaría de ser válida."
+          },
+          {
+            "id": "b",
+            "text": "Escribir cada nota en una línea que empieza por #",
+            "explanation": "El símbolo # introduce comentarios en YAML, pero en una plantilla JSON es texto inválido, y el equipo no quiere cambiar de formato."
+          },
+          {
+            "id": "c",
+            "text": "Guardar cada nota como dato dentro de Metadata",
+            "explanation": "La documentación indica que JSON no admite comentarios y que, para incluir notas o documentación, se puede usar Metadata: así se conserva el formato JSON."
+          },
+          {
+            "id": "d",
+            "text": "Rodear cada nota con los símbolos /* y */",
+            "explanation": "JSON no define comentarios de bloque, así que esos símbolos no son una forma válida de añadir notas a la plantilla."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-quiz-01",
+      "type": "QUIZ",
+      "title": "Notas explicativas en una plantilla JSON",
+      "statement": "Un equipo mantiene sus plantillas de CloudFormation en formato JSON y no quiere cambiar de formato. Necesita dejar notas explicativas dentro de una plantilla sin invalidarla. ¿Qué opción es la MEJOR para guardar esas notas?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "comentarios",
+        "json",
+        "metadata"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dejar los dos elementos y escribir NotAction antes de Action",
+            "explanation": "El orden de los elementos no importa, y Action y NotAction no pueden usarse a la vez en la misma sentencia: seguiría incumpliendo la gramática."
+          },
+          {
+            "id": "b",
+            "text": "Quitar NotAction y dejar Action con s3:GetObject",
+            "explanation": "Action y NotAction son mutuamente excluyentes. Con solo Action la sentencia es válida y la acción concedida es la lectura de objetos que se pedía."
+          },
+          {
+            "id": "c",
+            "text": "Repetir el elemento Effect, uno para cada elemento de acción",
+            "explanation": "Un elemento no puede repetir una clave: no se puede incluir Effect dos veces en la misma sentencia, así que esta opción crea otro defecto."
+          },
+          {
+            "id": "d",
+            "text": "Escribir s3:GetObject y s3:DeleteObject en una sola cadena de Action",
+            "explanation": "Un valor de Action es un único nombre de acción con su espacio de nombres; varios valores van en una lista entre corchetes, y esa cadena además incluiría el borrado."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-quiz-02",
+      "type": "QUIZ",
+      "title": "Action y NotAction en la misma sentencia",
+      "statement": "Una sentencia de una política de identidad de IAM declara Action con el valor s3:GetObject y, además, NotAction con el valor s3:DeleteObject. La intención es conceder solo la lectura de objetos. ¿Qué corrección es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "action",
+        "notaction",
+        "elementos excluyentes"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Reutilizar un bloque repetido con un alias y su ancla",
+            "explanation": "Los alias figuran entre las características de YAML que CloudFormation no admite, así que no sirven para reutilizar bloques."
+          },
+          {
+            "id": "b",
+            "text": "Combinar dos mapas con una fusión de claves",
+            "explanation": "Las fusiones de claves (hash merges) no están admitidas por CloudFormation, aunque YAML las defina."
+          },
+          {
+            "id": "c",
+            "text": "Declarar una fecha con la etiqueta timestamp",
+            "explanation": "La etiqueta timestamp está entre las etiquetas que CloudFormation no admite, junto con binary, omap, pairs y set."
+          },
+          {
+            "id": "d",
+            "text": "Anotar una línea con un comentario que empieza por #",
+            "explanation": "Las plantillas en YAML admiten comentarios en línea con el símbolo #, como muestra el ejemplo de la documentación de CloudFormation."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-quiz-03",
+      "type": "QUIZ",
+      "title": "Característica de YAML admitida en una plantilla",
+      "statement": "Un equipo convierte una plantilla de CloudFormation de JSON a YAML y quiere aprovechar características del lenguaje YAML. Según la documentación de CloudFormation, ¿qué característica puede usar? ÚNICAMENTE una de las opciones está admitida.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "yaml",
+        "comentarios",
+        "características no admitidas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Resources, con los recursos que formarán la pila",
+            "explanation": "Resources es obligatoria en toda plantilla: declara los recursos de la pila, cada uno con un ID lógico único, un tipo y su configuración."
+          },
+          {
+            "id": "b",
+            "text": "Mappings, con una tabla de valores por entorno",
+            "explanation": "Mappings es opcional: funciona como tabla de consulta con Fn::FindInMap y no declara los recursos de la pila."
+          },
+          {
+            "id": "c",
+            "text": "Conditions, con una condición por tipo de entorno",
+            "explanation": "Conditions es opcional: controla si ciertos recursos se crean o si una propiedad toma un valor, pero no sustituye a Resources."
+          },
+          {
+            "id": "d",
+            "text": "Transform, con la versión de AWS SAM que se usará",
+            "explanation": "Transform es opcional: aplica macros durante el procesamiento de la plantilla, y los recursos se siguen declarando en Resources."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-quiz-04",
+      "type": "QUIZ",
+      "title": "La sección que no puede faltar",
+      "statement": "Un ingeniero prepara una plantilla de CloudFormation con las secciones Description, Parameters y Outputs, pero todavía no declara qué recursos crear. ¿Qué sección es lo MÍNIMO que debe añadir para que la plantilla tenga la estructura que CloudFormation exige?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "resources",
+        "secciones de plantilla"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Leer_Informes",
+            "explanation": "El guion bajo no es una letra ni un número: en las políticas de IAM, el Sid solo admite caracteres alfanuméricos básicos (A-Z, a-z, 0-9)."
+          },
+          {
+            "id": "b",
+            "text": "LeerInformes",
+            "explanation": "Solo lleva letras, que son caracteres alfanuméricos básicos: cumple la regla de IAM para el Sid y conserva el nombre legible."
+          },
+          {
+            "id": "c",
+            "text": "Leer.Informes",
+            "explanation": "El punto no es una letra ni un número, así que el Sid incumple la regla de caracteres de las políticas de IAM."
+          },
+          {
+            "id": "d",
+            "text": "Leer-Informes",
+            "explanation": "El guion no es una letra ni un número, así que el Sid incumple la regla de caracteres de las políticas de IAM."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-quiz-05",
+      "type": "QUIZ",
+      "title": "El Sid de una sentencia de IAM",
+      "statement": "Un administrador escribe el Sid «Leer Informes» en una sentencia de una política de identidad de IAM y quiere conservar un identificador legible para la sentencia. IAM solo admite determinados caracteres en ese valor. ¿Qué valor de Sid es el MÁS adecuado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "sid",
+        "política de iam"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Eliminar el elemento Principal de la sentencia",
+            "explanation": "Principal es obligatorio en las políticas de recurso y en las de confianza de un rol, pero no debe incluirse en una política de identidad."
+          },
+          {
+            "id": "b",
+            "text": "Sustituir Principal por NotPrincipal con el mismo valor",
+            "explanation": "NotPrincipal es la alternativa de Principal y tampoco debe incluirse en una política de identidad: el defecto seguiría ahí."
+          },
+          {
+            "id": "c",
+            "text": "Mover Principal al nivel superior del documento, junto a Version",
+            "explanation": "El nivel superior de una política solo contiene Version, Id y Statement: Principal no es un elemento de ese nivel."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar el valor * por el ARN del usuario al que se adjunta",
+            "explanation": "Cambiar el valor no corrige nada: Principal, con cualquier valor, no debe aparecer en una política de identidad."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-quiz-06",
+      "type": "QUIZ",
+      "title": "Principal en una política de identidad",
+      "statement": "Una política de identidad que se adjunta a un usuario de IAM incluye en su sentencia el elemento \"Principal\": \"*\". El equipo quiere que la política cumpla la gramática de IAM con el MENOR cambio posible. ¿Qué debe hacer?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "principal",
+        "política de identidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "options": [
+          {
+            "id": "a",
+            "text": "Cambiar Effect de Allow a Deny",
+            "explanation": "Effect ya admitía el valor Allow: cambiarlo invierte el efecto de la sentencia y no corrige ni el Sid ni la acción."
+          },
+          {
+            "id": "b",
+            "text": "Cambiar el Sid a LeerTodo",
+            "explanation": "El Sid de una política de IAM solo admite letras y números, y LeerTodo cumple esa regla."
+          },
+          {
+            "id": "c",
+            "text": "Añadir el elemento Principal con la cuenta del usuario",
+            "explanation": "Principal no debe incluirse en una política de identidad, así que añadirlo crea un defecto nuevo."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar el Sid a «Leer Todo», con un espacio",
+            "explanation": "El espacio no es una letra ni un número: el Sid seguiría incumpliendo la regla de caracteres de IAM."
+          },
+          {
+            "id": "e",
+            "text": "Cambiar Action a s3:GetObject",
+            "explanation": "Una acción se escribe como espacio de nombres del servicio, dos puntos y nombre de la acción; s3:GetObject tiene esa forma."
+          },
+          {
+            "id": "f",
+            "text": "Cambiar Action a s3-GetObject",
+            "explanation": "Sin los dos puntos entre el espacio de nombres y el nombre, el valor no tiene la forma servicio:acción."
+          }
+        ],
+        "correctOptionIds": [
+          "b",
+          "e"
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-quiz-07",
+      "type": "QUIZ",
+      "title": "Dos correcciones para una sentencia de IAM",
+      "statement": "Una política de identidad adjunta a un usuario de IAM contiene una sentencia con \"Sid\": \"Leer-Todo\", \"Effect\": \"Allow\", \"Action\": \"GetObject\" y un Resource con un ARN correcto. Selecciona DOS cambios que dejan la sentencia conforme con la gramática de IAM.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "sid",
+        "action",
+        "política de iam"
+      ],
+      "estimatedMin": 4,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "options": [
+          {
+            "id": "a",
+            "text": "YAML marca el anidamiento con sangría en lugar de llaves y corchetes",
+            "explanation": "YAML usa la sangría para indicar la jerarquía de recursos y parámetros, mientras que JSON usa llaves y corchetes."
+          },
+          {
+            "id": "b",
+            "text": "JSON permite comentarios con el símbolo # al final de una línea",
+            "explanation": "El símbolo # introduce comentarios en YAML; JSON no incluye sintaxis para comentarios."
+          },
+          {
+            "id": "c",
+            "text": "CloudFormation solo acepta plantillas escritas en JSON",
+            "explanation": "CloudFormation admite plantillas en JSON y en YAML, con el mismo propósito en los dos formatos."
+          },
+          {
+            "id": "d",
+            "text": "Una sangría inconsistente en YAML puede provocar errores en la plantilla",
+            "explanation": "La documentación advierte de que, como YAML depende de la sangría, un espaciado inconsistente produce errores."
+          },
+          {
+            "id": "e",
+            "text": "Una plantilla puede repetir la sección Resources para dividir sus recursos",
+            "explanation": "No se deben usar secciones principales duplicadas: CloudFormation puede aceptar la plantilla, pero su comportamiento queda sin definir."
+          },
+          {
+            "id": "f",
+            "text": "Una plantilla YAML usa secciones distintas de las de una plantilla JSON",
+            "explanation": "Las secciones son las mismas en los dos formatos: Resources, Parameters, Outputs, Mappings, Metadata, Rules, Conditions y Transform."
+          }
+        ],
+        "correctOptionIds": [
+          "a",
+          "d"
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-quiz-08",
+      "type": "QUIZ",
+      "title": "Dos diferencias entre JSON y YAML en plantillas",
+      "statement": "Un equipo elige el formato de sus plantillas de CloudFormation y compara JSON con YAML. Selecciona DOS afirmaciones correctas según la documentación de CloudFormation.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "json",
+        "yaml",
+        "secciones de plantilla"
+      ],
+      "estimatedMin": 4,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política de identidad del equipo de publicaciones, redactada por un asistente.\nexport const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"EscribirInformes\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject, s3:PutObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-publicaciones/*\",\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "export const policy = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"EscribirInformes\",\n      Effect: \"Allow\",\n      Action: [\"s3:GetObject\", \"s3:PutObject\"],\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-publicaciones/*\",\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Un valor de Action es un único nombre de acción con la forma servicio:acción. Mira el valor actual: contiene en una misma cadena dos acciones, una coma y un espacio."
+        },
+        {
+          "level": 2,
+          "text": "Cuando un elemento admite varios valores, se escribe una lista entre corchetes con los valores entre comillas y separados por comas. Cada acción va en su propia cadena."
+        },
+        {
+          "level": 3,
+          "text": "Escribe `Action: [\"s3:GetObject\", \"s3:PutObject\"]` y deja sin cambios el Sid, el Effect y el Resource."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la política es válida según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.iam.validatePolicy(policy), []);"
+          }
+        },
+        {
+          "name": "el equipo puede leer un informe",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/publicaciones\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-publicaciones/2026/resumen.pdf\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "el equipo puede escribir un informe",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/publicaciones\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-publicaciones/2026/resumen.pdf\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "el equipo no puede borrar informes",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const decide = (action: string, resource: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::123456789012:user/publicaciones\", accountId: \"123456789012\" },\n      action,\n      resource: { arn: resource, accountId: \"123456789012\" },\n    },\n    identityPolicies: [policy],\n  }).decision;\nassert.notStrictEqual(decide(\"s3:DeleteObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-publicaciones/2026/resumen.pdf\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "se conserva el recurso del enunciado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const sentencias = Array.isArray(policy.Statement) ? policy.Statement : [policy.Statement];\nassert.strictEqual(sentencias.length, 1);\nassert.strictEqual(sentencias[0]?.Resource, \"arn:aws:s3:::amzn-s3-demo-bucket-publicaciones/*\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u0-3-5-debug-01",
+      "type": "DEBUG",
+      "title": "Dos acciones escritas en una sola cadena",
+      "statement": "Este objeto es la política de identidad del equipo de publicaciones y la redactó un asistente. Su defecto principal: concede dos acciones de S3 escribiéndolas en una sola cadena de Action separadas por una coma, y esa cadena no tiene la forma de una acción. El lenguaje de políticas de IAM escribe varios valores como una lista entre corchetes. Corrige el defecto sin ampliar los permisos ni cambiar el recurso, y mantén la forma del valor exportado (`export const policy = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "action",
+        "listas en json",
+        "estimación de un asistente"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_grammar.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u0-3-5-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: el formato de las plantillas del equipo",
+      "statement": "Tu equipo va a escribir sus plantillas de CloudFormation y tiene que elegir entre JSON y YAML. Escribe en 4 a 6 líneas un registro breve de decisión:\n\n1) Decisión: qué formato eliges para las plantillas y qué restricción o necesidad del equipo lo decide (por ejemplo, poder dejar comentarios en el propio archivo).\n\n2) Alternativa descartada: el otro formato y la razón concreta por la que lo descartaste.\n\n3) Consecuencia: qué cuidado nuevo tendrá que tener el equipo con el formato elegido (por ejemplo, la sangría en YAML o la falta de comentarios en JSON) y cómo lo comprobarías antes de desplegar.\n\n4) Pilar: qué pilar del Well-Architected Framework sostiene tu decisión (excelencia operativa, seguridad, fiabilidad, eficiencia del rendimiento, optimización de costos o sostenibilidad).\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la restricción que decidió el formato y una consecuencia real de esa elección.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "json",
+        "yaml",
+        "restricción",
+        "Well-Architected"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html"
+      ],
+      "order": 18
+    }
+  ]
+}
