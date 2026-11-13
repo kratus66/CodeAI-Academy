@@ -1,0 +1,1167 @@
+{
+  "code": "AWS-U0.3.4",
+  "lessons": [
+    {
+      "slug": "aws-u0-3-4-linux-minimo-para-servidores",
+      "title": "Linux mínimo para servidores: SSH, permisos, procesos y logs",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Un servidor Linux en AWS, por ejemplo una instancia de Amazon EC2, se opera casi siempre a distancia. Para entrar se usa SSH (Secure Shell) con una orden como «ssh -i clave.pem usuario@nombre-dns-publico»: hacen falta el archivo de clave privada (.pem), el nombre de usuario de la instancia y su nombre DNS público o su dirección IPv6. Cuando algo falla, el mensaje de error indica qué capa mirar. Un «Connection timed out» apunta a la red (security group, tabla de rutas, NACL) o a una instancia sobrecargada. «Unprotected private key file» apunta a los permisos de la clave en tu equipo. «Permission denied (publickey)» apunta al usuario, al archivo de clave o a los permisos en el servidor. «Host key verification failed» apunta a la huella guardada en known_hosts. Esta unidad enseña a leer esos mensajes, a razonar sobre permisos de archivos y a centralizar los registros (logs) en Amazon CloudWatch Logs para no depender de entrar a cada servidor."
+        },
+        {
+          "type": "list",
+          "title": "Qué comprobar antes de conectar",
+          "items": [
+            "Instancia lista: debe estar en estado running y haber superado sus comprobaciones de estado; puede tardar unos minutos en aceptar conexiones.",
+            "Security group: debe permitir el tráfico SSH entrante desde tu dirección IP. El security group por defecto de la VPC no lo permite; el que crea el asistente de lanzamiento sí.",
+            "Clave privada: localiza el archivo .pem del par de claves que elegiste al lanzar la instancia y ajusta sus permisos.",
+            "Usuario: depende de la AMI. En Amazon Linux es ec2-user, en Ubuntu es ubuntu y en Debian es admin.",
+            "Cliente SSH: escribe «ssh» en una terminal para comprobar que está instalado; si tu equipo no reconoce la orden, instálalo."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Permisos de archivos que SSH exige",
+          "text": "SSH se niega a usar una clave privada que otros usuarios puedan leer o escribir. Si pasa, ignora la clave y muestra «WARNING: UNPROTECTED PRIVATE KEY FILE!»; el ejemplo de la guía usa el modo 0777, que permite a cualquiera leer o escribir el archivo. En Linux o macOS se corrige con «chmod 0400» sobre el archivo de clave. En el servidor ocurre algo parecido: si antes conectabas y ahora recibes «Permission denied (publickey)» sin haber cambiado de usuario ni de clave, los permisos del directorio personal de la instancia pueden haber cambiado, y el archivo authorized_keys debe quedar limitado al dueño. La guía lo ajusta con «chmod 600» sobre authorized_keys y «chmod 700» sobre la carpeta .ssh y sobre el directorio personal. Para ver los permisos de un archivo se usa «ls -l», y «sudo» ejecuta una orden con privilegios cuando tu usuario no puede editar el archivo."
+        },
+        {
+          "type": "paragraph",
+          "title": "Procesos y carga del servidor",
+          "text": "Un servidor que no responde a SSH no siempre tiene un problema de red o de claves: puede estar sobrecargado. Entre las causas de un «Connection timed out», la guía de solución de problemas de EC2 incluye revisar la carga de CPU de la instancia con las métricas de Amazon CloudWatch y su estado. Si la carga es variable, la guía propone Auto Scaling y Elastic Load Balancing; si crece de forma sostenida, pasar a un tipo de instancia mayor. Las fuentes de esta unidad no describen las órdenes para listar o detener procesos, así que la lección se limita a la carga medida desde fuera, con CloudWatch."
+        },
+        {
+          "type": "paragraph",
+          "title": "Registros (logs) con Amazon CloudWatch Logs",
+          "text": "Amazon CloudWatch Logs permite monitorizar, almacenar y consultar archivos de registro de instancias EC2, AWS CloudTrail, Route 53 y otras fuentes. Centraliza los registros de todos tus sistemas, aplicaciones y servicios de AWS en un único servicio: puedes verlos, buscar códigos de error o patrones, filtrarlos por campos o archivarlos. El agente de CloudWatch Logs envía fuera del host tanto los registros rotados como los no rotados. Por defecto los registros se conservan de forma indefinida, y puedes ajustar la retención de cada grupo de registros. CloudWatch Logs también puede contar las apariciones de un término literal en los registros de una aplicación (por ejemplo, «404» en un registro de acceso de Apache) y enviarlas a una métrica de CloudWatch, con notificación si el ritmo supera un umbral y sin cambios en el código."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: ayer entraba y hoy «Permission denied (publickey)»",
+          "text": "Enunciado: «Una persona entraba por SSH a una instancia de Amazon Linux. Hoy recibe Permission denied (publickey) con el mismo usuario y la misma clave». Paso 1, lee el mensaje: no es un tiempo de espera agotado, así que no es un problema de red, y no es «Unprotected private key file», así que no son los permisos de la clave local. Paso 2, comprueba lo que la guía pide primero: que el usuario sea el de la AMI (ec2-user en Amazon Linux) y que el archivo de clave sea el del par de claves de la instancia, cuyo nombre aparece en la pestaña de detalles de la instancia en la consola. Paso 3, si ambos son correctos y antes conectabas, sospecha de los permisos del directorio personal de la instancia. La guía propone parar la instancia, separar su volumen raíz, montarlo en una instancia temporal y ajustar allí authorized_keys a 600, la carpeta .ssh a 700 y el directorio personal a 700; después se vuelve a conectar el volumen a la instancia original. Con la opción «-vvv», ssh muestra información de depuración detallada que ayuda a ver en qué punto falla la autenticación."
+        },
+        {
+          "type": "mermaid",
+          "title": "Cómo se diagnostica una conexión SSH que falla",
+          "code": "flowchart TD\n  A[\"ssh -i clave.pem usuario@dns-publico\"] --> B{\"¿Qué mensaje devuelve?\"}\n  B -- \"Connection timed out\" --> C[\"Revisa security group, tabla de rutas, NACL, IPv4 pública y carga de CPU\"]\n  B -- \"Unprotected private key file\" --> D[\"Limita al dueño los permisos del archivo de clave\"]\n  B -- \"Permission denied (publickey)\" --> E[\"Revisa usuario de la AMI, archivo de clave y permisos de authorized_keys\"]\n  B -- \"Host key verification failed\" --> F[\"Confirma que el cambio de IP era esperado y verifica la huella\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el mismo «no puedo entrar», otra capa",
+          "text": "Un tiempo de espera agotado y un «Permission denied (publickey)» no se arreglan igual: el primero apunta a la red o a la carga del servidor, el segundo a la autenticación (usuario, archivo de clave y permisos). Cambiar el par de claves cuando el síntoma es de red, o abrir reglas de red cuando el síntoma es de autenticación, no resuelve nada. Lee el mensaje exacto antes de tocar la configuración."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: abrir los permisos de la clave para que SSH «funcione»",
+          "text": "Causa: ante un fallo de conexión se prueba chmod 777 sobre el archivo .pem pensando que así SSH podrá leerlo. Consecuencia: con permisos tan abiertos SSH ignora la clave y devuelve «Unprotected private key file», con lo que el problema empeora. Solución: deja la clave limitada a tu usuario con chmod 0400 y revisa el mensaje completo antes de cambiar nada más."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: crear un par de claves nuevo ante cualquier fallo",
+          "text": "Causa: se interpreta cualquier «no entra» como una clave dañada. Consecuencia: se pierde tiempo y se reemplaza una clave que estaba bien, mientras el fallo real (una regla de red, el usuario equivocado o los permisos de authorized_keys) sigue ahí. Solución: crea un par nuevo solo cuando el mensaje lo justifique, como «unable to load key» o la pérdida de la clave, y en el resto de casos sigue el diagnóstico por mensaje de error."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: fijar en el security group una IP que cambia",
+          "text": "Causa: la regla de entrada SSH apunta a una única dirección IP, pero el equipo del administrador está en una red corporativa, usa un proveedor de internet o tiene una IP dinámica. Consecuencia: tras reiniciar o cambiar de red la IP ya no coincide con la regla y SSH da «Connection timed out» aunque nada haya cambiado en la instancia. Solución: comprueba el campo de origen de la regla y especifica el rango de direcciones IP que usan tus equipos cliente en lugar de una sola dirección."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Diagnosticar por qué falla una conexión SSH a una instancia Linux a partir de su mensaje de error, corregir los permisos de las claves y de authorized_keys y localizar los registros de una aplicación con Amazon CloudWatch Logs. Criterio: ante un caso nuevo, nombras la capa que falla (red, clave, usuario, permisos o huella) y la corrección, sin mirar la lección. Esta unidad no prepara un examen concreto: es el nivel mínimo de Linux que hace falta para seguir la ruta."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee el ejemplo de «Permission denied (publickey)» y rehazlo tapando la explicación: para cada mensaje del diagrama, di qué capa mira y qué compruebas primero. Después responde de memoria: qué modo pide la guía para la clave local, cuáles para authorized_keys, .ssh y el directorio personal, y qué hace CloudWatch Logs con los registros de varias instancias."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El directorio personal con permisos abiertos». El objeto describe los permisos del servidor y uno de ellos deja el directorio personal abierto a más usuarios que el dueño. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y las rutas y los otros modos siguen intactos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Un plan que actúa antes de confirmar el cambio». Un plan para «Host key verification failed» tiene un orden de pasos que contradice la guía de solución de problemas de EC2. Criterio de paso: el plan conserva los mismos cuatro pasos, empieza confirmando que el cambio era esperado y verifica la huella antes de conectar."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un procedimiento para un SSH que da «Connection timed out». Audítalo en «Auditar un procedimiento de SSH generado por IA»: marca solo los defectos reales (por ejemplo, un permiso inseguro o un remedio que no corresponde al síntoma) y deja sin marcar lo que es correcto aunque parezca sospechoso. Contrasta lo que afirme con las guías de EC2 sobre conexión y solución de problemas (leídas el 2026-11-12) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe en una línea el síntoma exacto y la restricción de cada una; al corregir, lee la explicación de cada opción y anota si fallaste por confundir la capa del problema o por no leer el calificador. Criterio de paso: al menos 6 de 8 correctas y un síntoma identificado por escrito en cada pregunta."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Escribe un mini procedimiento propio, de cinco líneas, para recuperar el acceso SSH a un servidor, ordenado por el mensaje de error. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero entra bien desde su casa, pero desde la oficina recibe «Connection timed out» con el mismo usuario y la misma clave; ¿qué revisas primero, el origen autorizado en la regla SSH del security group o los permisos del archivo de clave?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-ec2-conectar-linux-ssh",
+          "order": 0,
+          "note": "Requisitos previos y pasos para conectar a una instancia Linux con un cliente SSH."
+        },
+        {
+          "resourceSlug": "aws-ec2-solucionar-conexion-linux",
+          "order": 1,
+          "note": "Causas y soluciones de los errores de conexión: tiempo de espera, clave, permisos, usuario y huella."
+        },
+        {
+          "resourceSlug": "aws-cloudwatch-logs-que-es",
+          "order": 2,
+          "note": "Qué es CloudWatch Logs: centralizar, buscar, retener y medir registros."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El archivo de clave privada (.pem) del par de claves, el nombre de usuario de la instancia y su nombre DNS público o su dirección IPv6. La orden tiene la forma ssh -i clave.pem usuario@dns-publico."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: La orden ssh y sus tres datos",
+      "statement": "¿Qué tres datos necesitas para conectar por SSH a una instancia Linux de Amazon EC2 con un cliente SSH?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "SSH",
+        "clave privada",
+        "usuario"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-ssh.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La instancia debe haber superado sus comprobaciones de estado, el security group debe permitir el SSH entrante desde tu IP, debes localizar la clave privada y ajustar sus permisos, y tener un cliente SSH instalado."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Requisitos previos de una conexión SSH",
+      "statement": "Antes de conectar por SSH a una instancia Linux recién lanzada, ¿qué debes tener listo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "requisitos previos",
+        "security group",
+        "comprobaciones de estado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-ssh.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Los del directorio personal del usuario. authorized_keys debe quedar limitado al dueño: la guía lo ajusta con chmod 600 sobre authorized_keys y chmod 700 sobre la carpeta .ssh y sobre el directorio personal."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Permisos de authorized_keys",
+      "statement": "Entrabas por SSH y ahora recibes «Permission denied (publickey)» sin haber cambiado de usuario ni de clave. ¿Qué permisos pueden haber cambiado en la instancia y cuáles pide la guía?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "authorized_keys",
+        "chmod",
+        "permisos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La huella guardada en known_hosts no coincide con la que presenta la instancia; puede ocurrir al cambiar su IP pública. Confirma que el cambio era esperado, verifica la huella y después retira la huella antigua de known_hosts."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Host key verification failed",
+      "statement": "El cliente SSH responde «Host key verification failed» tras asociar una Elastic IP a la instancia. ¿Qué significa y qué haces?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "known_hosts",
+        "huella del host",
+        "Elastic IP"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Muestra información de depuración muy detallada mientras conectas. En la guía permite ver, por ejemplo, que el servidor no reconoce la clave y que la conexión termina en «Permission denied (publickey)»."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: ssh -vvv",
+      "statement": "¿Para qué sirve añadir -vvv a la orden ssh cuando una conexión falla?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "ssh -vvv",
+        "depuración"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Centraliza los registros de instancias EC2, CloudTrail, Route 53 y otras fuentes en un solo servicio, donde puedes verlos, buscarlos por códigos de error o patrones y archivarlos. Por defecto se conservan indefinidamente; la retención se ajusta por grupo de registros."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: CloudWatch Logs y los registros",
+      "statement": "¿Qué ventaja da Amazon CloudWatch Logs sobre entrar por SSH a cada servidor para leer sus registros?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "CloudWatch Logs",
+        "registros centralizados",
+        "retención"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Permisos que SSH comprueba en el servidor para el usuario ec2-user. Corrige el defecto principal.\nexport const permisosServidor = {\n  usuario: \"ec2-user\",\n  directorioPersonal: { ruta: \"/home/ec2-user\", modo: \"777\" },\n  carpetaSsh: { ruta: \"/home/ec2-user/.ssh\", modo: \"700\" },\n  authorizedKeys: { ruta: \"/home/ec2-user/.ssh/authorized_keys\", modo: \"600\" },\n};\n",
+      "solution": {
+        "code": "export const permisosServidor = {\n  usuario: \"ec2-user\",\n  directorioPersonal: { ruta: \"/home/ec2-user\", modo: \"700\" },\n  carpetaSsh: { ruta: \"/home/ec2-user/.ssh\", modo: \"700\" },\n  authorizedKeys: { ruta: \"/home/ec2-user/.ssh/authorized_keys\", modo: \"600\" },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "La guía pide que authorized_keys, la carpeta .ssh y el directorio personal queden limitados a su dueño. Compara el modo de las tres rutas: ¿cuál da acceso a más gente que el dueño?"
+        },
+        {
+          "level": 2,
+          "text": "El defecto está en `directorioPersonal.modo`: «777» permite a cualquier usuario leer y escribir. Las otras dos rutas ya están limitadas al dueño."
+        },
+        {
+          "level": 3,
+          "text": "Cambia `directorioPersonal.modo` a «700», como en la guía (chmod 700 sobre el directorio personal). No toques las rutas, el usuario ni los otros dos modos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el directorio personal queda limitado al dueño",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(permisosServidor.directorioPersonal.modo, \"700\");"
+          }
+        },
+        {
+          "name": "ninguna ruta da permisos a grupo ni a otros usuarios",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "for (const ruta of [permisosServidor.directorioPersonal, permisosServidor.carpetaSsh, permisosServidor.authorizedKeys]) {\n  assert.match(ruta.modo, /^[0-7]00$/, ruta.ruta + \" debe quedar limitada al dueño\");\n}"
+          }
+        },
+        {
+          "name": "se conservan los modos de .ssh y de authorized_keys",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(permisosServidor.carpetaSsh.modo, \"700\");\nassert.strictEqual(permisosServidor.authorizedKeys.modo, \"600\");"
+          }
+        },
+        {
+          "name": "se conservan el usuario y las rutas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(permisosServidor.usuario, \"ec2-user\");\nassert.strictEqual(permisosServidor.directorioPersonal.ruta, \"/home/ec2-user\");\nassert.strictEqual(permisosServidor.carpetaSsh.ruta, \"/home/ec2-user/.ssh\");\nassert.strictEqual(permisosServidor.authorizedKeys.ruta, \"/home/ec2-user/.ssh/authorized_keys\");"
+          }
+        },
+        {
+          "name": "los modos siguen siendo cadenas de tres dígitos",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "for (const ruta of [permisosServidor.directorioPersonal, permisosServidor.carpetaSsh, permisosServidor.authorizedKeys]) {\n  assert.strictEqual(typeof ruta.modo, \"string\");\n  assert.match(ruta.modo, /^[0-7]{3}$/);\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-debug-01",
+      "type": "DEBUG",
+      "title": "El directorio personal con permisos abiertos",
+      "statement": "El objeto `permisosServidor` describe los modos de permisos que tienen el directorio personal, la carpeta .ssh y el archivo authorized_keys de un usuario en una instancia Linux. Según la guía de solución de problemas de EC2, estos tres elementos deben quedar limitados al dueño para que SSH acepte la clave, pero uno de los modos deja el acceso abierto a más usuarios. Localiza el defecto y corrígelo sin cambiar el usuario, las rutas ni los otros modos, y mantén la forma del valor exportado (`export const permisosServidor = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "permisos",
+        "authorized_keys",
+        "chmod"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de actuación ante «Host key verification failed» tras cambiar la IP pública. Corrige su defecto principal.\nexport const plan = {\n  error: \"Host key verification failed\",\n  causa: \"La huella guardada en known_hosts no coincide con la que presenta la instancia tras cambiar su IP pública.\",\n  pasos: [\"actualizar-known-hosts\", \"confirmar-cambio\", \"verificar-huella\", \"conectar\"],\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  error: \"Host key verification failed\",\n  causa: \"La huella guardada en known_hosts no coincide con la que presenta la instancia tras cambiar su IP pública.\",\n  pasos: [\"confirmar-cambio\", \"verificar-huella\", \"actualizar-known-hosts\", \"conectar\"],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el primer paso confirma que el cambio era esperado",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.pasos[0], \"confirmar-cambio\");"
+          }
+        },
+        {
+          "name": "la huella se verifica antes de conectar",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const verificar = plan.pasos.indexOf(\"verificar-huella\");\nassert.ok(verificar >= 0, \"falta verificar la huella\");\nassert.ok(verificar < plan.pasos.indexOf(\"conectar\"), \"la huella debe verificarse antes de conectar\");"
+          }
+        },
+        {
+          "name": "no se pierde ni se añade ningún paso",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual([...plan.pasos].sort(), [\"actualizar-known-hosts\", \"conectar\", \"confirmar-cambio\", \"verificar-huella\"]);"
+          }
+        },
+        {
+          "name": "conectar sigue siendo el último paso",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.pasos[plan.pasos.length - 1], \"conectar\");"
+          }
+        },
+        {
+          "name": "se conservan el error y la causa",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(plan.error, \"Host key verification failed\");\nassert.ok(plan.causa.includes(\"known_hosts\"));"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-debug-02",
+      "type": "DEBUG",
+      "title": "Un plan que actúa antes de confirmar el cambio",
+      "statement": "El objeto `plan` describe, en el orden de `pasos`, qué hace un equipo cuando su cliente SSH responde «Host key verification failed» tras asociar una Elastic IP a una instancia. El orden tiene un defecto: el plan toca la huella guardada antes de comprobar que el cambio de dirección era legítimo, algo que la guía de solución de problemas de EC2 pide hacer primero. Corrige el orden sin añadir ni quitar pasos y sin cambiar `error` ni `causa`. Mantén la forma del valor exportado (`export const plan = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "known_hosts",
+        "huella del host",
+        "orden de comprobaciones"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Procedimiento (borrador de un asistente): SSH a una instancia Linux da «Connection timed out»\n1. Abrir el puerto 22 del security group a 0.0.0.0/0 para descartar un problema de firewall.\n2. Si aparece «Unprotected private key file», ejecutar chmod 777 sobre el archivo .pem.\n3. Si la conexión sigue agotando el tiempo de espera, crear un par de claves nuevo y reemplazar el anterior.\n4. Si aparece «Host key verification failed» tras asociar una Elastic IP, desactivar la verificación de huellas del cliente SSH.\n5. Con una AMI de Amazon Linux, conectar con el usuario ec2-user; con una de Ubuntu, con ubuntu.\n6. Revisar que la subred tenga una ruta 0.0.0.0/0 hacia el internet gateway de la VPC.\nConclusión: el procedimiento está completo y se puede publicar tal cual."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              2,
+              2
+            ],
+            "label": "Paso 1: abrir el puerto 22 a cualquier origen",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "La guía pide una regla de entrada SSH desde tu dirección IP o, si esta cambia, desde el rango de direcciones de tus equipos cliente. Abrir el 22 a 0.0.0.0/0 no es lo que la guía propone y deja el SSH expuesto a cualquier origen."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Paso 2: chmod 777 sobre la clave",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "El modo 0777 permite a cualquiera leer y escribir el archivo, y por eso SSH ignora la clave y muestra «Unprotected private key file». La guía corrige el error con chmod 0400, no con permisos abiertos."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Paso 3: crear un par de claves nuevo ante un tiempo de espera",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Un «Connection timed out» se investiga en el security group, la tabla de rutas, la NACL, la IPv4 pública y la carga de la instancia. La guía reserva el par de claves nuevo para casos como «unable to load key» o la pérdida de la clave."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Paso 4: desactivar la verificación de huellas",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Para «Host key verification failed» la guía pide confirmar que el cambio de IP o de huella era esperado y, si se quiere, verificar la huella antes de conectar. Desactivar la verificación elimina justo esa protección frente a un posible ataque de intermediario."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Paso 5: usuario según la AMI",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la guía indica ec2-user para Amazon Linux y ubuntu para Ubuntu. Que el usuario varíe según la AMI no es un defecto del paso."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Paso 6: ruta hacia el internet gateway",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: para un tiempo de espera agotado la guía pide comprobar que la subred tenga una ruta con destino 0.0.0.0/0 y como destino el internet gateway de la VPC."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Conclusión: «completo y publicable»",
+            "isDefect": true,
+            "severity": "low",
+            "explanation": "El borrador omite comprobaciones que la guía incluye para un tiempo de espera agotado: el estado de la instancia, la NACL de la subred, que la instancia tenga una IPv4 pública y su carga de CPU. Por eso no puede darse por completo."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un procedimiento de SSH generado por IA",
+      "statement": "Un asistente de IA redactó este procedimiento para recuperar el acceso SSH a una instancia Linux. Audítalo contra las guías de EC2 de la unidad: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el procedimiento se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "SSH",
+        "permisos",
+        "diagnóstico por mensaje de error"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-ssh.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear un par de claves nuevo y sustituir el anterior en la instancia afectada",
+            "explanation": "La clave no es el problema: es el mismo archivo que funcionaba. La guía reserva el par nuevo para errores como «unable to load key» o la pérdida de la clave, y no corrige permisos del servidor."
+          },
+          {
+            "id": "b",
+            "text": "Añadir una regla de entrada SSH en el security group desde la IP del administrador",
+            "explanation": "El security group no ha cambiado y el error no es un tiempo de espera agotado, que sería el síntoma de una regla de red que falta. Una regla nueva no arregla permisos."
+          },
+          {
+            "id": "c",
+            "text": "Limitar al dueño authorized_keys, la carpeta .ssh y el directorio personal de ese usuario",
+            "explanation": "Es lo que pide la guía cuando los permisos del directorio personal cambiaron: authorized_keys debe quedar limitado al dueño, con chmod 600 sobre el archivo y chmod 700 sobre .ssh y el directorio personal."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar el usuario de conexión por root para saltarse esos permisos del servidor",
+            "explanation": "El enunciado dice que el usuario sigue siendo el mismo que funcionaba. La guía pide el usuario predeterminado de la AMI, y cambiarlo no repara los permisos del directorio personal."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-quiz-01",
+      "type": "QUIZ",
+      "title": "Una clave que dejó de funcionar sin tocar la clave",
+      "statement": "Un administrador entraba sin problemas por SSH a una instancia de Amazon EC2 con Amazon Linux. Hoy recibe «Permission denied (publickey)» con el mismo usuario y el mismo archivo de clave. El security group no ha cambiado, y alguien modificó los permisos del directorio personal de ese usuario dentro de la instancia. ¿Qué corrección es la MÁS directa?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "authorized_keys",
+        "permisos",
+        "Permission denied (publickey)"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Confirmar que el cambio de IP era esperado y verificar la huella del host antes de conectar",
+            "explanation": "Es lo que pide la guía: el error indica que la huella guardada no coincide, algo que ocurre al cambiar la IP, y lo primero es confirmar que el cambio es el esperado y verificar la huella."
+          },
+          {
+            "id": "b",
+            "text": "Crear un par de claves nuevo y sustituirlo en la instancia mediante un volumen temporal",
+            "explanation": "La clave es correcta según el enunciado. El error compara huellas del host en known_hosts, no la clave del usuario, y la guía reserva el par nuevo para otros casos."
+          },
+          {
+            "id": "c",
+            "text": "Añadir una regla en el security group que permita el puerto 22 desde cualquier origen",
+            "explanation": "No es un bloqueo de red: el cliente llega a comparar la huella, y un bloqueo de red se vería como un tiempo de espera agotado. Abrir el 22 tampoco arreglaría el desajuste."
+          },
+          {
+            "id": "d",
+            "text": "Aplicar chmod 0400 al archivo de clave privada del equipo del administrador",
+            "explanation": "Ese ajuste corrige «Unprotected private key file», un error distinto. Aquí el mensaje habla de la huella del host y la clave ya es válida."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-quiz-02",
+      "type": "QUIZ",
+      "title": "La huella que ya no coincide tras cambiar la IP",
+      "statement": "Un equipo conectaba por SSH a una instancia de Amazon EC2 usando su dirección IP pública. Tras asociar una Elastic IP a la instancia, el cliente SSH responde «Host key verification failed» al usar la nueva dirección. El usuario y la clave privada son correctos. ¿Qué debe hacer el equipo PRIMERO?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "known_hosts",
+        "huella del host",
+        "Elastic IP"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cambiar el tipo de instancia por otro con más CPU y reintentar después la conexión SSH",
+            "explanation": "La carga de CPU se revisa ante un tiempo de espera agotado, y aquí el mensaje es de autenticación. Cambiar de tipo no indica qué archivo de clave corresponde a la instancia."
+          },
+          {
+            "id": "b",
+            "text": "Añadir una regla de entrada para el puerto 22 en la NACL de la subred de la instancia",
+            "explanation": "Una regla de red que falta produce un tiempo de espera, no «Permission denied (publickey)», que solo aparece cuando la conexión llega y falla la autenticación."
+          },
+          {
+            "id": "c",
+            "text": "Borrar la entrada de la instancia en el archivo known_hosts del equipo local del usuario",
+            "explanation": "known_hosts guarda huellas de host y su desajuste da «Host key verification failed», otro error. No identifica cuál de los archivos .pem corresponde a la instancia."
+          },
+          {
+            "id": "d",
+            "text": "Comparar el nombre del par de claves de la consola de EC2 con el archivo .pem usado",
+            "explanation": "Cumple la guía: pide confirmar que el archivo de clave es el del par que se eligió al lanzar la instancia, cuyo nombre figura en la pestaña de detalles de la instancia."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-quiz-03",
+      "type": "QUIZ",
+      "title": "El archivo de clave que no es el del par de claves",
+      "statement": "Una persona intenta entrar por SSH a una instancia Linux y recibe «Permission denied (publickey)». Usa el usuario correcto para la AMI y los permisos de su archivo de clave son los adecuados, pero en su carpeta tiene varios archivos .pem de proyectos distintos y no está segura de cuál usa. ¿Qué comprobación resuelve la duda de la forma MÁS directa?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "par de claves",
+        "archivo .pem",
+        "Permission denied (publickey)"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Asociar a la instancia un rol de IAM con permisos de administrador",
+            "explanation": "No figura entre los requisitos previos de la guía para conectar por SSH: la conexión se prepara con la instancia, el security group, la clave privada y el cliente SSH."
+          },
+          {
+            "id": "b",
+            "text": "Comprobar que la instancia ha superado sus comprobaciones de estado",
+            "explanation": "Sí figura en la guía: puede tardar unos minutos en aceptar conexiones, así que hay que comprobar que la instancia está lista antes de conectar."
+          },
+          {
+            "id": "c",
+            "text": "Crear un NAT Gateway en una subred pública de la VPC de la instancia",
+            "explanation": "No figura entre los requisitos previos de la guía. Para entrar por SSH desde tu equipo la guía pide permitir el tráfico en el security group, no crear un NAT Gateway."
+          },
+          {
+            "id": "d",
+            "text": "Permitir en el security group el tráfico SSH entrante desde tu dirección IP",
+            "explanation": "Sí figura en la guía: el security group asociado a la instancia debe permitir el tráfico SSH entrante desde tu dirección IP."
+          },
+          {
+            "id": "e",
+            "text": "Instalar el agente de CloudWatch Logs en el equipo desde el que te conectas",
+            "explanation": "No figura entre los requisitos previos de la guía. El agente envía registros de un host a CloudWatch Logs y no es necesario para abrir una sesión SSH."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-quiz-04",
+      "type": "QUIZ",
+      "title": "Requisitos previos antes de conectar por SSH",
+      "statement": "Un equipo va a conectarse por primera vez por SSH a una instancia Linux recién lanzada en Amazon EC2. Según la guía de Amazon EC2 para conectar con un cliente SSH, selecciona DOS tareas que debe completar antes de conectar.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "requisitos previos de SSH",
+        "security group",
+        "comprobaciones de estado"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-ssh.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS CloudTrail, que registra las llamadas a la API realizadas en la cuenta",
+            "explanation": "CloudTrail registra llamadas a la API de la cuenta, no los errores que la aplicación escribe en sus archivos de registro, así que no cumple la restricción de buscar esos errores."
+          },
+          {
+            "id": "b",
+            "text": "Amazon CloudWatch Logs, con el agente de registros enviando los archivos de cada instancia",
+            "explanation": "Centraliza en un solo servicio los registros de las instancias EC2, donde se pueden buscar códigos de error, y el agente envía fuera del host los registros: no hace falta entrar a cada servidor."
+          },
+          {
+            "id": "c",
+            "text": "El registro de consultas DNS de Amazon Route 53, que guarda las consultas que recibe el servicio",
+            "explanation": "Ese registro solo cubre consultas DNS de Route 53, no los errores de la aplicación que escriben las instancias, así que no cumple la restricción."
+          },
+          {
+            "id": "d",
+            "text": "Copiar a mano los archivos de registro de cada instancia a un único equipo y buscar allí",
+            "explanation": "Cumple la restricción de reunir los registros, pero exige repetir el trabajo manual en cada instancia, lo contrario del MENOR esfuerzo manual que pide el calificador."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-quiz-05",
+      "type": "QUIZ",
+      "title": "Buscar un error en los registros de varias instancias",
+      "statement": "Una aplicación se ejecuta en cinco instancias de Amazon EC2 con Linux y escribe sus errores en archivos de registro locales. Para investigar un fallo, el equipo entra por SSH a cada instancia y abre los archivos uno por uno. Quiere buscar un código de error en los registros de todas las instancias desde un solo lugar. ¿Qué opción requiere el MENOR esfuerzo manual?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudWatch Logs",
+        "registros centralizados",
+        "esfuerzo manual"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dejar la configuración actual, porque los registros caducan solos al cabo de un tiempo",
+            "explanation": "Es falso: por defecto los registros se conservan de forma indefinida y nunca caducan, así que sin configurar nada no se cumple la restricción de eliminarlos."
+          },
+          {
+            "id": "b",
+            "text": "Borrar a mano los eventos antiguos del grupo de registros cada cierto tiempo",
+            "explanation": "Cumple el fin, pero exige una tarea manual recurrente y es fácil de olvidar: incumple el calificador del MENOR esfuerzo frente a una configuración automática."
+          },
+          {
+            "id": "c",
+            "text": "Activar la protección contra eliminación del grupo de registros para conservarlos",
+            "explanation": "La protección bloquea las operaciones de eliminación hasta que se desactive; hace lo contrario de lo que pide la política, que exige eliminar los registros antiguos."
+          },
+          {
+            "id": "d",
+            "text": "Definir una política de retención en el grupo de registros con el periodo exigido",
+            "explanation": "CloudWatch Logs permite ajustar la retención de cada grupo, y así los registros se eliminan al cumplir el periodo sin tareas manuales."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-quiz-06",
+      "type": "QUIZ",
+      "title": "Eliminar registros antiguos de forma automática",
+      "statement": "Un equipo envía los registros de sus servidores Linux a un grupo de registros de Amazon CloudWatch Logs. Por una política interna, los registros del grupo deben eliminarse automáticamente pasado un periodo de conservación concreto. Hoy no hay ninguna retención configurada. ¿Qué medida cumple el requisito con el MENOR esfuerzo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "retención de registros",
+        "grupo de registros",
+        "CloudWatch Logs"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Enviar los registros a CloudWatch Logs y configurar que cuente el término en una métrica",
+            "explanation": "CloudWatch Logs puede contar las apariciones de un término literal, reportarlas a una métrica y notificar al superar un umbral, sin cambios en el código de la aplicación."
+          },
+          {
+            "id": "b",
+            "text": "Modificar la aplicación para que publique una métrica propia cada vez que captura el error",
+            "explanation": "Cumple el fin, pero exige cambiar el código de la aplicación, que es justo lo que la restricción excluye: CloudWatch Logs hace lo mismo sin tocar el código."
+          },
+          {
+            "id": "c",
+            "text": "Abrir Live Tail y vigilar los eventos nuevos hasta que aparezca el error que se busca",
+            "explanation": "Live Tail muestra en casi tiempo real los eventos que se van recibiendo, pero no cuenta apariciones ni envía notificaciones: incumple la parte de la métrica y de la alerta."
+          },
+          {
+            "id": "d",
+            "text": "Activar una política de protección de datos para enmascarar el término en los registros",
+            "explanation": "Estas políticas auditan y enmascaran datos sensibles de los registros; no cuentan apariciones de un término ni notifican, así que no cubren el requisito."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-quiz-07",
+      "type": "QUIZ",
+      "title": "Una cuenta de errores sin tocar el código",
+      "statement": "Una aplicación que se ejecuta en instancias de Amazon EC2 con Linux escribe en sus registros el término literal «NullReferenceException» cada vez que falla. El equipo quiere contar cuántas veces aparece ese término y recibir una notificación si el número supera un umbral, sin modificar el código de la aplicación. ¿Qué opción tiene el MENOR esfuerzo de cambio?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudWatch Logs",
+        "métrica a partir de registros",
+        "alertas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Regenerar el archivo de clave privada con ssh-keygen -m PEM y probar de nuevo",
+            "explanation": "El formato PEM de la clave es un asunto de otro error; un problema de clave no produce un tiempo de espera agotado, y el enunciado ya descarta los fallos de red."
+          },
+          {
+            "id": "b",
+            "text": "Cambiar el usuario de conexión por el usuario predeterminado de otra AMI distinta",
+            "explanation": "Un usuario equivocado produce «Permission denied», no un tiempo de espera agotado, y el síntoma aparece solo con más tráfico, no siempre."
+          },
+          {
+            "id": "c",
+            "text": "La carga de CPU de la instancia en las métricas de CloudWatch, por si está sobrecargada",
+            "explanation": "Con la red ya verificada, la guía añade la sobrecarga del servidor como causa de un tiempo de espera agotado, y la carga se mide con las métricas de CloudWatch."
+          },
+          {
+            "id": "d",
+            "text": "Los permisos del archivo authorized_keys en el directorio personal del usuario",
+            "explanation": "Esos permisos explican un «Permission denied (publickey)», un error de autenticación, no un tiempo de espera agotado que aparece a ratos."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-quiz-08",
+      "type": "QUIZ",
+      "title": "Un SSH que se corta cuando sube el tráfico",
+      "statement": "Una persona administra una instancia Linux de Amazon EC2 con IP pública. Su cliente SSH da «Connection timed out» a ratos, sobre todo en las horas de más tráfico. El security group permite el puerto 22 desde su IP, la subred tiene ruta al internet gateway, la NACL permite el SSH y la instancia está en ejecución. ¿Qué debe comprobar PRIMERO?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "carga de CPU",
+        "CloudWatch",
+        "Connection timed out"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-4-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: un diagnóstico de SSH y su primera comprobación",
+      "statement": "Elige una de las preguntas de esta unidad (por ejemplo, la de la huella que ya no coincide o la del SSH que se corta cuando sube el tráfico) y escribe su respuesta como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Síntoma: qué mensaje o comportamiento exacto había y qué capa señala (red, clave, usuario, permisos, huella o carga).\n\n2) Decisión: qué comprobaste o corregiste primero y por qué esa capa.\n\n3) Alternativa descartada: una corrección que habría sido tentador aplicar y el síntoma que la habría justificado en otro caso.\n\n4) Consecuencia: qué cambiaría si el mensaje hubiera sido «Connection timed out» en lugar de «Permission denied (publickey)», o al revés.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento parta del mensaje de error exacto y nombre la capa. Escríbelo con tus palabras; releerlo antes de abrir una incidencia te recordará en qué orden mirar.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "diagnóstico por mensaje de error",
+        "SSH",
+        "registros"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-ssh.html"
+      ],
+      "order": 18
+    }
+  ]
+}
