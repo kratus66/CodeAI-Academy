@@ -1,0 +1,1218 @@
+{
+  "code": "AWS-U1.1.3",
+  "lessons": [
+    {
+      "slug": "aws-u1-1-3-infraestructura-global",
+      "title": "Infraestructura global: regiones, zonas de disponibilidad, ubicaciones de borde y Local Zones",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "La infraestructura global de AWS se organiza en capas que responden a preguntas distintas. Una Región es una ubicación física del mundo donde AWS agrupa centros de datos, y es el área geográfica que eliges al lanzar tus recursos. Dentro de cada Región hay varias zonas de disponibilidad: ubicaciones aisladas con las que construyes tolerancia a fallos. Además, AWS ofrece formas de acercarse a los usuarios: las ubicaciones de borde, que entregan contenido, y las Local Zones, que ejecutan cómputo y almacenamiento cerca de ellos. Para el examen CLF-C02 importa saber qué ventaja aporta cada capa: alcance global, rapidez de despliegue y alta disponibilidad."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas de la infraestructura global",
+          "items": [
+            "Región: ubicación física del mundo donde AWS agrupa centros de datos. Cada Región está diseñada para estar aislada de las demás, lo que logra la mayor tolerancia a fallos y estabilidad posibles.",
+            "Zona de disponibilidad (AZ): uno o más centros de datos discretos, con energía, redes y conectividad redundantes, dentro de una Región. Cada zona tiene energía, refrigeración y seguridad física independientes, y todas las de una Región se conectan con redes redundantes de latencia muy baja.",
+            "Ubicaciones de borde (puntos de presencia): AWS cuenta con puntos de presencia además de Regiones y zonas de disponibilidad. Amazon CloudFront entrega contenido de forma segura, con baja latencia y alta velocidad de transferencia, a través de ellos.",
+            "Local Zones: extensión de una Región en proximidad geográfica a los usuarios. Permiten ejecutar servicios como cómputo y almacenamiento cerca de ellos, con conexiones propias a internet y compatibilidad con Direct Connect, y con acceso a los servicios de la Región mediante las mismas API y herramientas.",
+            "Otras ubicaciones que conviene reconocer: las Wavelength Zones llevan servicios de cómputo y almacenamiento estándar de AWS al borde de las redes 5G de los operadores, y AWS Outposts extiende la infraestructura, los servicios y las API de AWS a las instalaciones del cliente."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómo se elige una Región",
+          "text": "Al lanzar una instancia se elige una Región que la ponga cerca de clientes concretos o que cumpla los requisitos legales o de otro tipo que tengas, y se pueden usar varias Regiones. Como las Regiones están aisladas entre sí, solo ves los recursos de la Región que indicaste y AWS no replica los recursos entre Regiones de forma automática. Si trabajas con la línea de comandos o con la API, debes especificar el punto de enlace regional del servicio. AWS abre Regiones nuevas con rapidez, pero no todos los servicios llegan a la vez: unos se lanzan con la Región y otros llegan después, así que conviene comprobar que la Región que elijas ofrece lo que necesitas."
+        },
+        {
+          "type": "paragraph",
+          "title": "Zonas de disponibilidad y alta disponibilidad",
+          "text": "El código de una zona de disponibilidad es el de su Región seguido de una letra, por ejemplo us-east-1a. Si lanzas instancias de EC2 en varias zonas, proteges tu aplicación del fallo de una sola ubicación de la Región: si una instancia falla, otra instancia en otra zona puede atender las peticiones. Una aplicación repartida entre zonas queda más aislada de problemas como cortes de energía, rayos, tornados o terremotos, porque las zonas están separadas físicamente por una distancia significativa. Para lanzar una instancia eliges una Región y una VPC, y después una subred de una de sus zonas; una zona sin subredes no admite lanzar instancias. En las primeras instancias AWS recomienda dejar que elija la zona según la salud del sistema y la capacidad disponible; especifica una solo si las nuevas instancias deben estar cerca de las existentes o separadas de ellas."
+        },
+        {
+          "type": "mermaid",
+          "title": "Región, zonas, Local Zone y ubicaciones de borde",
+          "code": "flowchart TB\n  subgraph REG[\"Región: área geográfica aislada de las demás Regiones\"]\n    AZA[\"Zona de disponibilidad A: energía, refrigeración y seguridad física propias\"]\n    AZB[\"Zona de disponibilidad B: energía, refrigeración y seguridad física propias\"]\n    AZC[\"Zona de disponibilidad C: energía, refrigeración y seguridad física propias\"]\n    AZA <-->|redes redundantes de baja latencia| AZB\n    AZB <-->|redes redundantes de baja latencia| AZC\n  end\n  LOC[\"Local Zone: extensión de la Región cerca de los usuarios\"]\n  EDGE[\"Ubicaciones de borde: entregan contenido con baja latencia mediante Amazon CloudFront\"]\n  USR[\"Usuarios\"]\n  REG --- LOC\n  LOC --> USR\n  REG --> EDGE\n  EDGE --> USR"
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro necesidades, cuatro respuestas",
+          "text": "Una empresa tiene cuatro necesidades. Necesidad 1: lanzar su tienda para clientes de un solo país cumpliendo los requisitos legales que le aplican. Se elige la Región por su cercanía a los clientes y por los requisitos legales: la respuesta es una Región. Necesidad 2: que la tienda siga disponible si falla una ubicación de la Región. Se reparten las instancias entre varias zonas de disponibilidad. Necesidad 3: un juego en tiempo real con jugadores en una ciudad alejada de la Región, con instancias y volúmenes lo más cerca posible de ellos. Se necesita cómputo y almacenamiento cerca de los usuarios: la respuesta es una Local Zone. Necesidad 4: entregar vídeos ya grabados a espectadores de muchos países con baja latencia. Se trata de entregar contenido, no de ejecutar la aplicación: la respuesta son las ubicaciones de borde con Amazon CloudFront."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir la capa equivocada",
+          "text": "Las preguntas ofrecen a la vez Regiones, zonas de disponibilidad, ubicaciones de borde, Local Zones, Wavelength y Outposts, y cada una responde a una necesidad distinta. Antes de elegir, localiza la palabra que decide: cercanía a clientes o requisitos legales apunta a la Región, fallo de una sola ubicación apunta a varias zonas de disponibilidad, entregar contenido apunta al borde, y ejecutar cómputo y almacenamiento cerca de los usuarios apunta a una Local Zone. Si el enunciado habla de dispositivos 5G, piensa en Wavelength; si habla de las instalaciones del cliente, en Outposts."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que los recursos de una Región existen también en otra",
+          "text": "Causa: pensar que, como AWS es global, lo que creas en una Región se replica solo en las demás. Consecuencia: la aplicación no aparece al cambiar de Región o se cree protegida frente a la pérdida de una Región cuando no lo está, porque los recursos pertenecen a la Región donde se crean y AWS no los replica de forma automática. Solución: comprueba siempre en qué Región estás trabajando y, si necesitas la aplicación en más de una, decide tú qué recursos se crean en cada una."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir las ubicaciones de borde con las Local Zones",
+          "text": "Causa: asociar las dos con «estar cerca del usuario» y tratarlas como si fueran lo mismo. Consecuencia: se elige una ubicación de borde para ejecutar instancias y volúmenes cerca de los usuarios, o una Local Zone para repartir contenido por todo el mundo, y la respuesta no encaja con la necesidad. Solución: pregunta qué hay que acercar: si es la entrega de contenido, ubicaciones de borde con Amazon CloudFront; si es el cómputo y el almacenamiento de la aplicación, una Local Zone."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: poner todas las instancias en una sola zona de disponibilidad",
+          "text": "Causa: dar por hecho que una Región ya es resistente por sí sola y no repartir las instancias. Consecuencia: aunque es poco frecuente, un fallo que afecte a una ubicación deja todas las instancias sin disponibilidad a la vez. Solución: reparte las instancias entre varias zonas de disponibilidad de la Región, para que otra instancia en otra zona pueda atender las peticiones si una falla."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Explicar la infraestructura global de AWS: distinguir Regiones, zonas de disponibilidad, ubicaciones de borde y Local Zones y elegir la que resuelve cada necesidad (cercanía a los clientes, requisitos legales, tolerancia a fallos, entrega de contenido o baja latencia). Esta unidad prepara el examen CLF-C02, dominio 1 «Conceptos de la nube», tarea 1.1 (definir los beneficios de la nube de AWS), cuya guía incluye entender los beneficios de la infraestructura global, como el alcance global y la alta disponibilidad. Criterio: ante un escenario nuevo, nombras la capa que lo resuelve y explicas por qué las otras quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cuatro necesidades tapando las respuestas: para cada una, nombra la capa y la palabra del enunciado que la decide. Después responde de memoria: qué aísla a una Región de las demás, qué tiene propio cada zona de disponibilidad, qué entrega una ubicación de borde y qué ejecuta una Local Zone cerca de los usuarios."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Un despliegue con todas las instancias en la misma zona de disponibilidad». Un objeto describe un despliegue cuyas instancias comparten una sola zona. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la Región y los nombres de las instancias."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Un código de Local Zone que se clasifica como Región». Una función clasifica mal un código de ubicación de AWS. Criterio de paso: cada código de Región, de zona de disponibilidad y de Local Zone devuelve su tipo."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre la infraestructura global de AWS. Audítalo en «Auditar un informe de infraestructura global generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de la infraestructura global y de EC2 sobre Regiones y zonas (leídas el 2026-11-13) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe la necesidad que describe el enunciado y el calificador; al corregir, lee la explicación de cada opción y anota si fallaste por confundir dos capas (por ejemplo, borde y Local Zone) o por olvidar que las Regiones no se replican solas. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una aplicación que conozcas (una web con base de datos y contenido multimedia) y decide en qué Región la alojarías, cómo repartirías sus instancias y si necesitas ubicaciones de borde o una Local Zone. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero dice que «con poner la aplicación en una Región ya está replicada por todo el mundo»; ¿qué le respondes y en qué parte de la documentación de AWS te apoyas?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-infraestructura-global",
+          "order": 0,
+          "note": "Fuente de las capas de la infraestructura global: Regiones, zonas de disponibilidad, puntos de presencia, Local Zones, Wavelength y Outposts."
+        },
+        {
+          "resourceSlug": "aws-regiones-y-zonas",
+          "order": 1,
+          "note": "Fuente de la definición de Región y de zona de disponibilidad, del aislamiento y de los casos de uso de las Local Zones."
+        },
+        {
+          "resourceSlug": "aws-local-zones",
+          "order": 2,
+          "note": "Fuente de qué son las Local Zones y de los usos de baja latencia y residencia de datos."
+        },
+        {
+          "resourceSlug": "aws-regiones-y-zonas-de-disponibilidad-ec2",
+          "order": 3,
+          "note": "Fuente de la elección de Región, de la ausencia de replicación automática entre Regiones y de los códigos y subredes de las zonas."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 4,
+          "note": "Guía de CLF-C02: la tarea 1.1 del dominio 1 incluye entender los beneficios de la infraestructura global."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una ubicación física del mundo donde AWS agrupa centros de datos. Cada Región está diseñada para estar aislada de las demás, lo que logra la mayor tolerancia a fallos y estabilidad posibles. Se elige cerca de clientes concretos o según los requisitos legales o de otro tipo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Región de AWS",
+      "statement": "¿Qué es una Región de AWS y por qué importa al elegirla?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Región",
+        "aislamiento"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Uno o más centros de datos discretos de una Región, con energía, refrigeración, seguridad física y redes redundantes independientes, conectados entre sí por redes de baja latencia. Repartir las instancias entre varias zonas protege la aplicación del fallo de una sola ubicación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Zona de disponibilidad",
+      "statement": "¿Qué es una zona de disponibilidad y qué ventaja da repartir una aplicación entre varias?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "zona de disponibilidad",
+        "alta disponibilidad"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una extensión de una Región en proximidad geográfica a los usuarios. Ejecuta servicios como cómputo y almacenamiento cerca de ellos para aplicaciones de latencia muy baja, como el juego en tiempo real, o para residencia de datos, con acceso a la Región mediante las mismas API."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Local Zone",
+      "statement": "¿Qué es una Local Zone y para qué se usa?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Local Zone",
+        "baja latencia"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/localzones/",
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Contenido, no la aplicación. AWS cuenta con puntos de presencia además de Regiones y zonas, y Amazon CloudFront entrega contenido de forma segura, con baja latencia y alta velocidad de transferencia, a través de ellos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Ubicaciones de borde",
+      "statement": "¿Qué entregan las ubicaciones de borde (puntos de presencia) de AWS?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "ubicación de borde",
+        "CloudFront"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "No. Las Regiones están aisladas entre sí y AWS no replica los recursos entre ellas de forma automática. Al ver tus recursos solo aparecen los de la Región que indicaste."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Recursos entre Regiones",
+      "statement": "¿Se replican automáticamente los recursos de una Región a las demás?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "aislamiento de Regiones",
+        "replicación"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El de una zona de disponibilidad es el código de su Región seguido de una letra, como us-east-1a. El de una Local Zone es el código de su Región seguido de un identificador de su ubicación física, como us-west-2-lax-1 en Los Ángeles."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Códigos de zona",
+      "statement": "¿Cómo se forma el código de una zona de disponibilidad y el de una Local Zone?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "código de zona",
+        "Local Zone"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Despliegue de una tienda en EC2. Corrige su defecto principal.\nexport const despliegue = {\n  region: \"us-east-1\",\n  instancias: [\n    { nombre: \"web-1\", zona: \"us-east-1a\" },\n    { nombre: \"web-2\", zona: \"us-east-1a\" },\n    { nombre: \"web-3\", zona: \"us-east-1a\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const despliegue = {\n  region: \"us-east-1\",\n  instancias: [\n    { nombre: \"web-1\", zona: \"us-east-1a\" },\n    { nombre: \"web-2\", zona: \"us-east-1b\" },\n    { nombre: \"web-3\", zona: \"us-east-1a\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Cada zona de disponibilidad es una ubicación aislada dentro de la Región. Pregúntate qué le pasa a la tienda si falla la ubicación donde están todas las instancias."
+        },
+        {
+          "level": 2,
+          "text": "Las tres instancias comparten la misma zona. Una zona de disponibilidad es el código de la Región seguido de una letra, y la misma Región tiene otras zonas donde lanzar instancias."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `zona` de al menos una instancia a otra zona de la misma Región, por ejemplo \"us-east-1b\" en web-2. No cambies la región ni los nombres de las instancias."
+        }
+      ],
+      "tests": [
+        {
+          "name": "las instancias usan al menos dos zonas de disponibilidad",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const zonas = new Set(despliegue.instancias.map((i) => i.zona));\nassert.ok(zonas.size >= 2, \"las instancias deben repartirse entre varias zonas\");"
+          }
+        },
+        {
+          "name": "cada zona pertenece a la Región del despliegue",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const instancia of despliegue.instancias) {\n  assert.ok(instancia.zona.startsWith(despliegue.region), instancia.nombre + \" debe estar en una zona de \" + despliegue.region);\n}"
+          }
+        },
+        {
+          "name": "las zonas son la Región seguida de una letra",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "for (const instancia of despliegue.instancias) {\n  assert.ok(/^us-east-1[a-z]$/.test(instancia.zona), instancia.zona + \" no es un código de zona válido\");\n}"
+          }
+        },
+        {
+          "name": "siguen las tres instancias con sus nombres",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(despliegue.instancias.map((i) => i.nombre), [\"web-1\", \"web-2\", \"web-3\"]);"
+          }
+        },
+        {
+          "name": "la Región no cambia",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(despliegue.region, \"us-east-1\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-debug-01",
+      "type": "DEBUG",
+      "title": "Un despliegue con todas las instancias en la misma zona de disponibilidad",
+      "statement": "El objeto `despliegue` describe las instancias de EC2 de una tienda en línea y la zona de disponibilidad de cada una. Un fallo que afecte a una sola ubicación de la Región dejaría la tienda sin ninguna instancia, porque el reparto de zonas no protege frente a ese fallo. Corrígelo sin añadir ni quitar instancias, sin cambiar la Región y manteniendo la forma del valor exportado (`export const despliegue = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "zona de disponibilidad",
+        "alta disponibilidad",
+        "EC2"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Clasifica un código de ubicación de AWS. Corrige su defecto principal.\nexport type TipoUbicacion = \"REGION\" | \"ZONA_DE_DISPONIBILIDAD\" | \"LOCAL_ZONE\";\n\nexport function tipoDeUbicacion(codigo: string): TipoUbicacion {\n  if (/\\d$/.test(codigo)) {\n    return \"REGION\";\n  }\n  if (/^[a-z]{2}-[a-z]+-\\d[a-z]$/.test(codigo)) {\n    return \"ZONA_DE_DISPONIBILIDAD\";\n  }\n  return \"LOCAL_ZONE\";\n}\n",
+      "solution": {
+        "code": "export type TipoUbicacion = \"REGION\" | \"ZONA_DE_DISPONIBILIDAD\" | \"LOCAL_ZONE\";\n\nexport function tipoDeUbicacion(codigo: string): TipoUbicacion {\n  if (/^[a-z]{2}-[a-z]+-\\d$/.test(codigo)) {\n    return \"REGION\";\n  }\n  if (/^[a-z]{2}-[a-z]+-\\d[a-z]$/.test(codigo)) {\n    return \"ZONA_DE_DISPONIBILIDAD\";\n  }\n  return \"LOCAL_ZONE\";\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el código de una Región se clasifica como Región",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(tipoDeUbicacion(\"us-east-1\"), \"REGION\");"
+          }
+        },
+        {
+          "name": "la Región seguida de una letra es una zona de disponibilidad",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(tipoDeUbicacion(\"us-east-1a\"), \"ZONA_DE_DISPONIBILIDAD\");"
+          }
+        },
+        {
+          "name": "la Región seguida de un identificador de ubicación es una Local Zone",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(tipoDeUbicacion(\"us-west-2-lax-1\"), \"LOCAL_ZONE\");"
+          }
+        },
+        {
+          "name": "otro identificador de ubicación sigue siendo una Local Zone",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(tipoDeUbicacion(\"us-west-2-abc-1\"), \"LOCAL_ZONE\");"
+          }
+        },
+        {
+          "name": "otra Región y otra zona se clasifican igual",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(tipoDeUbicacion(\"us-west-2\"), \"REGION\");\nassert.strictEqual(tipoDeUbicacion(\"us-west-2b\"), \"ZONA_DE_DISPONIBILIDAD\");"
+          }
+        },
+        {
+          "name": "el resultado no depende del orden de las llamadas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const a = tipoDeUbicacion(\"us-west-2-lax-1\");\nconst b = tipoDeUbicacion(\"us-east-1\");\nconst c = tipoDeUbicacion(\"us-west-2-lax-1\");\nassert.deepStrictEqual([a, b, c], [\"LOCAL_ZONE\", \"REGION\", \"LOCAL_ZONE\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-debug-02",
+      "type": "DEBUG",
+      "title": "Un código de Local Zone que se clasifica como Región",
+      "statement": "La función `tipoDeUbicacion` clasifica un código de ubicación de AWS como Región, zona de disponibilidad o Local Zone. El código de una zona de disponibilidad es el de su Región seguido de una letra, y el de una Local Zone es el de su Región seguido de un identificador de ubicación, como `us-west-2-lax-1`. Quien la usa observa que ese código de Local Zone se devuelve como Región. Localiza el defecto y corrígelo sin cambiar los tipos ni la firma de la función.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "Región",
+        "zona de disponibilidad",
+        "Local Zone"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de infraestructura global de AWS (borrador generado por un asistente)\nContexto: una empresa prepara el despliegue de una aplicación para clientes de varias zonas del mundo.\n1. Cada Región está diseñada para estar aislada de las demás, y eso da la mayor tolerancia a fallos y estabilidad posibles.\n2. Los recursos que se crean en una Región se replican de forma automática a las demás Regiones para protegerlos.\n3. Las zonas de una Región están separadas físicamente por una distancia significativa y, aun así, se conectan entre sí con redes redundantes de baja latencia.\n4. Lanzar todas las instancias en una sola zona de disponibilidad protege la aplicación del fallo de una ubicación de la Región.\n5. Una Local Zone extiende una Región cerca de los usuarios y da acceso a los servicios de la Región con las mismas API y herramientas.\n6. Las ubicaciones de borde sirven para ejecutar instancias de EC2 y volúmenes de EBS en una ciudad cercana a los usuarios."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Aislamiento entre Regiones",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: cada Región está diseñada para estar aislada de las demás, lo que logra la mayor tolerancia a fallos y estabilidad posibles."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Replicación automática entre Regiones",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Las Regiones están aisladas entre sí y AWS no replica los recursos entre ellas de forma automática; el cliente decide qué crea en cada Región."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Separación y conexión de las zonas",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto, aunque parezca contradictorio: las zonas están separadas por una distancia significativa y a la vez conectadas con redes redundantes de baja latencia."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Una sola zona de disponibilidad",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Con todas las instancias en una zona, un fallo que afecte a esa ubicación las deja a todas sin disponibilidad; hay que repartirlas entre varias zonas."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Descripción de una Local Zone",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: una Local Zone es una extensión de una Región en proximidad geográfica a los usuarios, con acceso a los servicios de la Región mediante las mismas API y herramientas."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Función de las ubicaciones de borde",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Las ubicaciones de borde entregan contenido con baja latencia (por ejemplo con Amazon CloudFront); ejecutar cómputo y almacenamiento cerca de los usuarios es la función de las Local Zones."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de infraestructura global generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre la infraestructura global de AWS. Audítalo contra la documentación oficial: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "Regiones",
+        "zonas de disponibilidad",
+        "ubicaciones de borde"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
+        "https://aws.amazon.com/about-aws/global-infrastructure/"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una zona de disponibilidad, que es una ubicación aislada dentro de una Región",
+            "explanation": "Descartada: una zona de disponibilidad pertenece a una Región, así que primero se elige la Región y después la subred de una de sus zonas."
+          },
+          {
+            "id": "b",
+            "text": "Una Región, que es un área geográfica separada de las demás Regiones",
+            "explanation": "Es lo primero que se elige: la Región se escoge según la cercanía a los clientes o los requisitos legales, y después la subred de una de sus zonas."
+          },
+          {
+            "id": "c",
+            "text": "Una ubicación de borde, que es un punto de presencia para entregar contenido",
+            "explanation": "Descartada: las ubicaciones de borde entregan contenido y no figuran entre los lugares donde se aloja Amazon EC2, como las Regiones o las zonas."
+          },
+          {
+            "id": "d",
+            "text": "Una Wavelength Zone, que es una zona en el borde de la red 5G de un operador",
+            "explanation": "Descartada: una Wavelength Zone sirve a aplicaciones de latencia ultrabaja para dispositivos 5G y está ligada a una Región, que sigue siendo lo primero que se elige."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué elegir primero al lanzar instancias",
+      "statement": "Una empresa lanzará instancias de Amazon EC2 para clientes concentrados en un solo país, y las normas legales que le aplican condicionan dónde puede alojar la carga. ¿Qué elemento de la infraestructura global debe elegir PRIMERO al lanzar las instancias?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Región",
+        "requisitos legales"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir más instancias dentro de la misma zona de disponibilidad",
+            "explanation": "Descartada: más instancias en la misma zona siguen compartiendo una única ubicación, así que el mismo fallo las afecta a todas."
+          },
+          {
+            "id": "b",
+            "text": "Confiar en que AWS replica los recursos entre Regiones de forma automática",
+            "explanation": "Descartada: las Regiones están aisladas y AWS no replica los recursos entre ellas de forma automática, así que no hay protección que esperar."
+          },
+          {
+            "id": "c",
+            "text": "Pasar la aplicación a otra Región manteniéndola en una sola zona",
+            "explanation": "Descartada: cambiar de Región no quita el problema, porque la aplicación seguiría en una única ubicación y un fallo en ella la dejaría sin servicio."
+          },
+          {
+            "id": "d",
+            "text": "Repartir las instancias entre varias zonas de disponibilidad de la Región",
+            "explanation": "Es la mayor protección: si falla una ubicación, una instancia en otra zona de disponibilidad puede atender las peticiones."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-quiz-02",
+      "type": "QUIZ",
+      "title": "Cómo protegerse del fallo de una ubicación",
+      "statement": "Una tienda en línea ejecuta todas sus instancias de EC2 en una sola zona de disponibilidad. Aunque es poco habitual, un fallo podría afectar a las instancias de esa misma ubicación y la tienda dejaría de estar disponible. ¿Qué cambio ofrece la MAYOR protección frente a ese fallo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "zonas de disponibilidad",
+        "alta disponibilidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una Local Zone, que extiende la Región cerca de los usuarios",
+            "explanation": "Es la que encaja: una Local Zone ejecuta cómputo y almacenamiento cerca de los usuarios y da acceso a los servicios de la Región con las mismas API."
+          },
+          {
+            "id": "b",
+            "text": "Una ubicación de borde, que entrega contenido con baja latencia",
+            "explanation": "Descartada: las ubicaciones de borde entregan contenido; no son el lugar donde se ejecutan las instancias y los volúmenes de la aplicación."
+          },
+          {
+            "id": "c",
+            "text": "Otra zona de disponibilidad, que es una ubicación aislada de la Región",
+            "explanation": "Descartada: las zonas de disponibilidad están dentro de la Región y no acercan los recursos a los jugadores de una ciudad lejana."
+          },
+          {
+            "id": "d",
+            "text": "AWS Outposts, que lleva infraestructura de AWS a las instalaciones del cliente",
+            "explanation": "Descartada: Outposts instala infraestructura en las instalaciones del cliente y el enunciado excluye instalar equipos propios."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-quiz-03",
+      "type": "QUIZ",
+      "title": "Cómputo cerca de jugadores en una ciudad lejana",
+      "statement": "Un estudio de videojuegos tiene jugadores concentrados en una gran ciudad alejada de su Región. Necesita ejecutar instancias de EC2 y volúmenes de EBS lo más cerca posible de ellos, con las mismas API que ya usa en la Región y sin instalar equipos en sus propias instalaciones. ¿Qué opción encaja MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Local Zone",
+        "baja latencia"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/localzones/",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Local Zones en cada ciudad, que ejecutan cómputo y almacenamiento cerca de los usuarios",
+            "explanation": "Descartada: las Local Zones ejecutan la aplicación cerca de los usuarios, y el enunciado dice que no quiere ejecutarla en cada país."
+          },
+          {
+            "id": "b",
+            "text": "Wavelength Zones en cada país, en el borde de las redes 5G de los operadores",
+            "explanation": "Descartada: Wavelength está pensada para aplicaciones de latencia ultrabaja en dispositivos 5G, no para repartir vídeos por todo el mundo."
+          },
+          {
+            "id": "c",
+            "text": "Ubicaciones de borde con Amazon CloudFront, que entregan el contenido con baja latencia",
+            "explanation": "Es la que encaja: CloudFront entrega contenido de forma segura, con baja latencia y alta velocidad de transferencia, a través de los puntos de presencia."
+          },
+          {
+            "id": "d",
+            "text": "Una Región por país, aisladas entre sí para lograr mayor tolerancia a fallos",
+            "explanation": "Descartada: las Regiones son áreas geográficas para alojar recursos; no son la pieza que entrega contenido con baja latencia a los espectadores."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-quiz-04",
+      "type": "QUIZ",
+      "title": "Entregar vídeos con baja latencia a todo el mundo",
+      "statement": "Una productora distribuye vídeos ya grabados a espectadores de muchos países. Quiere entregar ese contenido de forma segura, con baja latencia y alta velocidad de transferencia, sin ejecutar su aplicación en cada país. ¿Qué opción encaja MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "ubicación de borde",
+        "CloudFront"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Tiene energía, refrigeración y seguridad física independientes de las demás zonas",
+            "explanation": "Cumple: cada zona tiene energía, refrigeración y seguridad física independientes, por eso un problema en una no afecta a las otras."
+          },
+          {
+            "id": "b",
+            "text": "Es un área geográfica separada y aislada de las demás Regiones",
+            "explanation": "No cumple: eso describe a una Región, no a una zona de disponibilidad, que es una ubicación aislada dentro de una Región."
+          },
+          {
+            "id": "c",
+            "text": "Replica de forma automática sus recursos hacia otra Región",
+            "explanation": "No cumple: AWS no replica los recursos entre Regiones de forma automática, y menos aún como rasgo de una zona de disponibilidad."
+          },
+          {
+            "id": "d",
+            "text": "Se conecta con las demás zonas de la Región mediante redes redundantes de baja latencia",
+            "explanation": "Cumple: todas las zonas de una Región se conectan con redes redundantes de latencia muy baja y alto ancho de banda."
+          },
+          {
+            "id": "e",
+            "text": "Lleva la infraestructura de AWS a las instalaciones del cliente",
+            "explanation": "No cumple: eso lo hace AWS Outposts; una zona de disponibilidad está dentro de una Región de AWS y no en las instalaciones del cliente."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-quiz-05",
+      "type": "QUIZ",
+      "title": "Dos características de una zona de disponibilidad",
+      "statement": "Una empresa estudia las zonas de disponibilidad de una Región para repartir su aplicación. Selecciona DOS características de una zona de disponibilidad.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "zona de disponibilidad",
+        "energía independiente"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Distribuir contenido a usuarios de todo el mundo mediante puntos de presencia",
+            "explanation": "No cumple: distribuir contenido con baja latencia es el papel de las ubicaciones de borde con Amazon CloudFront, no el de una Local Zone."
+          },
+          {
+            "id": "b",
+            "text": "Cumplir requisitos de residencia de datos en un país, estado o municipio concretos",
+            "explanation": "Cumple: con una Local Zone se controla dónde se ejecutan las cargas y dónde residen los datos cuando deben quedarse en un lugar concreto."
+          },
+          {
+            "id": "c",
+            "text": "Dar latencia ultrabaja a dispositivos 5G desde la red de un operador",
+            "explanation": "No cumple: llevar servicios de AWS al borde de las redes 5G de los operadores es lo que hace una Wavelength Zone."
+          },
+          {
+            "id": "d",
+            "text": "Ejecutar servicios de AWS dentro del centro de datos propio de la empresa",
+            "explanation": "No cumple: llevar la infraestructura de AWS a las instalaciones del cliente es lo que hace AWS Outposts, no una Local Zone."
+          },
+          {
+            "id": "e",
+            "text": "Ejecutar aplicaciones de baja latencia, como juegos en tiempo real, cerca de los usuarios",
+            "explanation": "Cumple: las Local Zones sirven para aplicaciones exigentes con latencias de un solo dígito de milisegundos, como el juego en tiempo real."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-quiz-06",
+      "type": "QUIZ",
+      "title": "Dos usos de una Local Zone",
+      "statement": "Una empresa evalúa las Local Zones para varias cargas de trabajo. Selecciona DOS usos para los que sirve una Local Zone.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Local Zone",
+        "residencia de datos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/localzones/",
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/",
+        "https://aws.amazon.com/about-aws/global-infrastructure/"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Las instancias se detienen cuando se consulta otra Región desde la consola",
+            "explanation": "Descartada: consultar otra Región no detiene nada; las instancias siguen ejecutándose en la Región donde se lanzaron."
+          },
+          {
+            "id": "b",
+            "text": "Cada recurso pertenece a la Región donde se creó y AWS no lo replica a otra",
+            "explanation": "Es la explicación: las Regiones están aisladas y solo se ven los recursos de la Región indicada, porque no se replican automáticamente entre ellas."
+          },
+          {
+            "id": "c",
+            "text": "Las instancias se copiaron a la otra Región pero aún no terminaron de replicarse",
+            "explanation": "Descartada: no hay copia en marcha, porque AWS no replica los recursos entre Regiones de forma automática."
+          },
+          {
+            "id": "d",
+            "text": "Solo se muestran las instancias de la zona de disponibilidad que eligió el sistema",
+            "explanation": "Descartada: lo que limita la lista es la Región indicada, no una zona de disponibilidad elegida por el sistema."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-quiz-07",
+      "type": "QUIZ",
+      "title": "Instancias que no aparecen al cambiar de Región",
+      "statement": "Un equipo lanzó instancias de EC2 en una Región y, al cambiar la consola a otra Región, no las ve en la lista. ¿Qué explica MEJOR lo que ocurre?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "aislamiento de Regiones",
+        "replicación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una Local Zone habilitada en la misma Región",
+            "explanation": "Descartada: una Local Zone es otra ubicación, y habilitarla no permite lanzar instancias en una zona de disponibilidad."
+          },
+          {
+            "id": "b",
+            "text": "Una ubicación de borde asociada a la zona",
+            "explanation": "Descartada: las ubicaciones de borde entregan contenido y no son un requisito para lanzar instancias de EC2 en una zona."
+          },
+          {
+            "id": "c",
+            "text": "Una subred de su VPC en esa zona de disponibilidad",
+            "explanation": "Es el mínimo: las instancias se lanzan en una subred de una zona, y una zona sin subredes no admite lanzar instancias."
+          },
+          {
+            "id": "d",
+            "text": "Una segunda Región conectada con la primera",
+            "explanation": "Descartada: lanzar en una zona solo depende de la Región y la VPC elegidas y de la subred, no de una segunda Región."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-quiz-08",
+      "type": "QUIZ",
+      "title": "Qué necesita una zona para lanzar una instancia",
+      "statement": "Un equipo quiere lanzar una instancia de EC2 en una zona de disponibilidad concreta de una Región. Ya eligió la Región y su VPC. ¿Qué debe existir como MÍNIMO en esa zona de disponibilidad para poder lanzar la instancia?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "subred",
+        "zona de disponibilidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-3-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: dónde y cómo despliegas una aplicación",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una web con base de datos y vídeos para sus usuarios) y escribe tu decisión de ubicación como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: en qué Región la alojas y por qué, cómo repartes las instancias entre zonas de disponibilidad y si añades ubicaciones de borde o una Local Zone.\n\n2) Alternativa descartada: otra opción que te tentaba (por ejemplo, dejar todas las instancias en una sola zona por simplicidad) y la razón por la que la descartaste.\n\n3) Consecuencia: qué cambia para tu equipo con tu elección (qué recursos debes crear en cada Región o zona y qué ventaja de la infraestructura global obtienes).\n\n4) Evidencia: qué parte de las páginas oficiales de AWS sobre la infraestructura global y sobre Regiones y zonas usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento distinga Región, zona de disponibilidad, borde y Local Zone y nombre la necesidad que resuelve cada una. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará por qué elegiste cada capa.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "infraestructura global",
+        "alta disponibilidad",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://aws.amazon.com/about-aws/global-infrastructure/",
+        "https://aws.amazon.com/about-aws/global-infrastructure/regions_az/",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html"
+      ],
+      "order": 18
+    }
+  ]
+}
