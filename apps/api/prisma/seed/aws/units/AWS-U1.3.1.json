@@ -1,0 +1,1314 @@
+{
+  "code": "AWS-U1.3.1",
+  "lessons": [
+    {
+      "slug": "aws-u1-3-1-formas-de-usar-aws",
+      "title": "Formas de usar AWS: consola, CLI, SDK e infraestructura como código",
+      "estimatedMin": 50,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Puedes usar AWS por varias vías y cada una encaja con un tipo de tarea. La Consola de administración es una aplicación web con acceso centralizado a las consolas de cada servicio. La AWS CLI es una herramienta de código abierto que interactúa con los servicios mediante comandos en tu shell y da acceso directo a las API públicas. Los SDK son la tercera vía programática: la guía de CLF-C02 agrupa API, SDK y CLI como acceso programático. Y CloudFormation describe los recursos en una plantilla y los crea por ti, que es lo que la guía llama infraestructura como código (IaC). La tarea 3.1 del examen pide decidir entre estas opciones y evaluar si una tarea es una operación puntual o un proceso repetible."
+        },
+        {
+          "type": "list",
+          "title": "Las vías de acceso y para qué sirven",
+          "items": [
+            "Consola de administración: interfaz web con búsqueda unificada de servicios y funciones, ajustes como el idioma y la Región predeterminada, y acceso a notificaciones. Encaja con explorar y con operaciones puntuales.",
+            "AWS CLI: comandos en un shell de Linux, macOS o Windows (símbolo del sistema o PowerShell), o de forma remota en instancias EC2. Sirve para desarrollar scripts de shell que gestionen recursos.",
+            "API y SDK: la CLI da acceso directo a las API públicas de los servicios. La página de la CLI remite a la guía de SDK y herramientas para el mantenimiento de los SDK, y la de CloudFormation cita los SDK de AWS entre sus vías de acceso.",
+            "CloudFormation (IaC): describes en una plantilla todos los recursos que quieres, por ejemplo instancias de Amazon EC2 o de Amazon RDS, y el servicio los aprovisiona y los configura. No tienes que averiguar qué depende de qué.",
+            "CloudShell: se accede directamente desde la consola y permite ejecutar comandos de la CLI contra tus servicios favoritos."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Elegir la vía según la tarea",
+          "code": "flowchart TD\n  N[\"Necesidad\"] --> Q1{\"¿Operación puntual o exploración?\"}\n  Q1 -- \"Sí\" --> C[\"Consola de administración\"]\n  Q1 -- \"No, se repite\" --> Q2{\"¿Una tarea suelta o un entorno completo?\"}\n  Q2 -- \"Tarea suelta o script\" --> L[\"AWS CLI o SDK\"]\n  Q2 -- \"Entorno completo\" --> T[\"Plantilla de CloudFormation\"]\n  T --> S[\"Stack\"]\n  S --> R[\"Recursos creados y configurados\"]\n  C -.-> CS[\"CloudShell: comandos de la CLI desde la consola\"]"
+        },
+        {
+          "type": "list",
+          "title": "CloudFormation en tres ideas",
+          "items": [
+            "Plantilla y stack: la plantilla describe todos los recursos y sus propiedades; al crear un stack a partir de ella, CloudFormation aprovisiona los recursos. Al eliminar el stack se eliminan todos sus recursos, así que gestionas el conjunto como una unidad.",
+            "Repetible: reutilizas la plantilla para crear los mismos recursos de forma coherente y repetible en varias Regiones.",
+            "Rastreable: la plantilla es un archivo de texto, así que puedes comparar versiones con un sistema de control de versiones y, si un cambio sale mal, volver a una versión anterior."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres necesidades, tres vías",
+          "text": "Una empresa tiene tres necesidades. Necesidad 1: mirar una vez cómo está configurado un servicio. Es una exploración puntual, así que basta la consola. Necesidad 2: ejecutar cada noche un script que gestione recursos desde servidores Linux. Pide comandos en un shell, así que usa la CLI. Necesidad 3: crear el mismo entorno de pruebas en dos Regiones y borrarlo al terminar. Pide describir los recursos una vez, repetirlos y eliminarlos juntos, así que usa una plantilla: se crea un stack en cada Región y, al acabar, se elimina cada stack. Las tres vías podrían crear una misma instancia; lo que cambia es si la tarea es puntual o repetible y si hay que gestionar el conjunto."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: «automatizar» no siempre significa infraestructura como código",
+          "text": "Un script de la CLI automatiza comandos, pero es la plantilla de CloudFormation la que describe el entorno completo y se ocupa de las dependencias entre recursos. Si el enunciado pide describir una vez, replicar en varias Regiones, volver a una versión anterior o eliminar todo junto, piensa en plantilla y stack; si pide ejecutar comandos desde un shell, piensa en la CLI; si pide explorar con interfaz web, piensa en la consola."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: crear a mano en la consola lo que debe repetirse",
+          "text": "Causa: aprender AWS solo con clics en la consola y usarla para todo. Consecuencia: el mismo entorno se rehace a mano en cada Región, sin garantía de que quede igual y sin un archivo cuyos cambios puedas comparar o revertir. Solución: antes de empezar, pregunta si la tarea es puntual o se va a repetir; si se repite, describe los recursos en una plantilla y crea un stack."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir la plantilla con el stack",
+          "text": "Causa: pensar que la plantilla es el entorno, cuando es el archivo de texto que lo describe. Consecuencia: crees que borrar el archivo elimina los recursos, o que cambiarlo cambia por sí solo lo ya creado. Solución: recuerda que los recursos nacen de un stack y que eliminar el stack elimina todos sus recursos; la plantilla solo describe lo que se creará."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre la consola, la CLI, los SDK y la infraestructura como código según la tarea, y exportar una plantilla de CloudFormation válida. Esta unidad prepara el examen CLF-C02, dominio 3 «Tecnología y servicios en la nube», tarea 3.1 (métodos de despliegue y operación en AWS). Criterio: ante un escenario nuevo, decides si la tarea es puntual o repetible, nombras la vía adecuada y descartas las demás con una razón, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las tres necesidades tapando las respuestas: para cada una, di si es puntual o repetible y qué vía encaja. Después responde de memoria qué es un stack, qué ocurre al eliminarlo y qué aporta CloudShell a la consola."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Una plantilla de CloudFormation válida para un entorno de pruebas». Ejecuta primero aws.cfn.validateTemplate sobre el código inicial y lee el mensaje de cada problema antes de editar. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y el validador no devuelve ningún problema."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve el laboratorio «Plantilla del entorno regional, sin pistas». Parte de los criterios del enunciado, comprueba la plantilla con aws.cfn.validateTemplate, calcula el orden de creación con aws.cfn.dependencyOrder y revisa las reglas de seguridad con aws.cfn.securityIssues. Criterio de paso: plantilla válida, ordenable y sin el ingreso abierto que el enunciado prohíbe."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente propuso qué vía usar en cuatro escenarios y una de sus elecciones es la que acabaría rehaciendo el entorno a mano. Resuelve «Una elección de vía de acceso con un escenario mal asignado»: corrige solo la fila equivocada y contrasta cada elección con las páginas oficiales de la consola, la CLI y CloudFormation (leídas el 2026-11-13)."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe si la tarea es puntual o repetible y qué vía encaja; al corregir, lee la explicación de cada opción y anota si fallaste por confundir la CLI con la plantilla o la plantilla con el stack. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Piensa en un entorno que montarías dos veces (por ejemplo, uno de pruebas y otro de producción) y escribe cómo lo crearías con cada vía y cuál elegirías. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero dice que con la consola basta porque «todo se puede hacer con clics»; ¿qué le respondes y qué le propones para el próximo entorno?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-consola-de-administracion",
+          "order": 0,
+          "note": "Qué es la Consola de administración: acceso centralizado a las consolas de cada servicio, búsqueda unificada, ajustes y CloudShell."
+        },
+        {
+          "resourceSlug": "aws-cli-que-es",
+          "order": 1,
+          "note": "Qué es la AWS CLI: herramienta de código abierto con acceso directo a las API públicas y base de los scripts de shell."
+        },
+        {
+          "resourceSlug": "aws-cloudformation-que-es",
+          "order": 2,
+          "note": "Qué es CloudFormation: plantillas, stacks, recursos repetibles en varias Regiones y vías de acceso (consola, API, CLI y SDK)."
+        },
+        {
+          "resourceSlug": "aws-cloudformation-secciones-de-plantilla",
+          "order": 3,
+          "note": "Secciones de una plantilla: Resources es obligatoria; Parameters y Outputs son opcionales."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 4,
+          "note": "Guía de CLF-C02: el dominio 3, tarea 3.1, trata los métodos de despliegue y operación en AWS."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": "typescript",
+      "starterCode": "// Plantilla de un entorno de pruebas: un grupo de seguridad y una instancia.\nexport const template = {\n  AWSTemplateFormatVersion: \"2012-10-17\",\n  Description: \"Entorno de pruebas repetible\",\n  Parameters: {\n    Entorno: { Type: \"String\" },\n  },\n  Resources: {\n    GrupoWeb: {\n      Type: \"AWS::EC2::SecurityGroup\",\n      Properties: {\n        GroupDescription: \"Acceso web del entorno de pruebas\",\n      },\n    },\n    InstanciaWeb: {\n      Type: \"AWS::EC2::Instance\",\n      Properties: {\n        SecurityGroupIds: [{ Ref: \"GrupoWebb\" }],\n        Tags: [{ Key: \"entorno\", Value: { Ref: \"Entorno\" } }],\n      },\n    },\n  },\n  Outputs: {\n    IdGrupo: { Value: { \"Fn::GetAtt\": \"GrupoWeb.GroupId\" } },\n    IdInstancia: { Value: { Ref: \"InstanciaWeb\" } },\n  },\n};\n",
+      "solution": {
+        "code": "// Plantilla de un entorno de pruebas: un grupo de seguridad y una instancia.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Entorno de pruebas repetible\",\n  Parameters: {\n    Entorno: { Type: \"String\" },\n  },\n  Resources: {\n    GrupoWeb: {\n      Type: \"AWS::EC2::SecurityGroup\",\n      Properties: {\n        GroupDescription: \"Acceso web del entorno de pruebas\",\n      },\n    },\n    InstanciaWeb: {\n      Type: \"AWS::EC2::Instance\",\n      Properties: {\n        SecurityGroupIds: [{ Ref: \"GrupoWeb\" }],\n        Tags: [{ Key: \"entorno\", Value: { Ref: \"Entorno\" } }],\n      },\n    },\n  },\n  Outputs: {\n    IdGrupo: { Value: { \"Fn::GetAtt\": [\"GrupoWeb\", \"GroupId\"] } },\n    IdInstancia: { Value: { Ref: \"InstanciaWeb\" } },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta `aws.cfn.validateTemplate(template)` sobre el código inicial y lee el mensaje de cada problema: indica la ruta del fallo. Piensa en el valor de la versión de formato, en el nombre lógico al que apunta cada Ref y en la forma de Fn::GetAtt."
+        },
+        {
+          "level": 2,
+          "text": "Hay tres problemas. La versión de formato no es la única válida; un Ref de la instancia apunta a un nombre lógico que no existe en Resources; y Fn::GetAtt debe ser una lista de dos elementos, el recurso y el atributo, no una cadena con un punto."
+        },
+        {
+          "level": 3,
+          "text": "Escribe `AWSTemplateFormatVersion: \"2010-09-09\"`, cambia el Ref de SecurityGroupIds por `GrupoWeb` y escribe `\"Fn::GetAtt\": [\"GrupoWeb\", \"GroupId\"]`. Deja intactos el parámetro Entorno y su etiqueta."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "la plantilla se puede ordenar y declara al menos dos recursos",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null && orden.length >= 2, \"La plantilla no declara dos recursos ordenables\");"
+          }
+        },
+        {
+          "name": "la plantilla conserva el parámetro Entorno",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(Object.keys(template.Parameters).includes(\"Entorno\"), \"Falta el parámetro Entorno\");"
+          }
+        },
+        {
+          "name": "el grupo de seguridad se crea antes que la instancia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla no tiene un orden de creación\");\nassert.ok(orden.indexOf(\"GrupoWeb\") < orden.indexOf(\"InstanciaWeb\"), \"GrupoWeb debe crearse antes que InstanciaWeb\");"
+          }
+        },
+        {
+          "name": "la instancia usa el grupo y la etiqueta usa el parámetro",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const instancia = JSON.stringify(template.Resources.InstanciaWeb);\nassert.ok(instancia.includes('\"SecurityGroupIds\":[{\"Ref\":\"GrupoWeb\"}]'), \"La instancia debe referenciar el grupo con Ref\");\nassert.ok(instancia.includes('{\"Ref\":\"Entorno\"}'), \"La etiqueta debe usar Ref hacia Entorno\");"
+          }
+        },
+        {
+          "name": "las salidas devuelven el identificador del grupo y de la instancia",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(template.Outputs.IdGrupo.Value, { \"Fn::GetAtt\": [\"GrupoWeb\", \"GroupId\"] });\nassert.deepStrictEqual(template.Outputs.IdInstancia.Value, { Ref: \"InstanciaWeb\" });"
+          }
+        },
+        {
+          "name": "los recursos conservan su tipo",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(template.Resources.GrupoWeb.Type, \"AWS::EC2::SecurityGroup\");\nassert.strictEqual(template.Resources.InstanciaWeb.Type, \"AWS::EC2::Instance\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-plantilla-guiado",
+      "type": "LAB",
+      "title": "Una plantilla de CloudFormation válida para un entorno de pruebas",
+      "statement": "Escribe una plantilla de CloudFormation como dato de TypeScript. Describe un entorno de pruebas con un parámetro Entorno de tipo String, un grupo de seguridad con ID lógico GrupoWeb y una instancia de EC2 con ID lógico InstanciaWeb que usa ese grupo y lleva una etiqueta con el valor de Entorno; dos salidas devuelven el identificador del grupo (IdGrupo) y el de la instancia (IdInstancia). El código inicial exporta la plantilla con varios defectos: corrígelos con ayuda del validador del arnés (`aws.cfn.validateTemplate`) y del orden de creación (`aws.cfn.dependencyOrder`) sin cambiar el nombre del valor exportado (`export const template = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "plantilla de CloudFormation",
+        "validación",
+        "Ref y Fn::GetAtt",
+        "stack"
+      ],
+      "estimatedMin": 30,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plantilla del entorno regional: un grupo de seguridad, una instancia y una base de datos.\nexport const template = {\n  AWSTemplateFormatVersion: \"2012-10-17\",\n  Description: \"Entorno regional repetible\",\n  Parameters: {\n    Entorno: { Type: \"String\" },\n  },\n  Resources: {\n    GrupoWeb: {\n      Type: \"AWS::EC2::SecurityGroup\",\n      Properties: {\n        GroupDescription: \"Acceso web del entorno\",\n        SecurityGroupIngress: [\n          { IpProtocol: \"tcp\", FromPort: 22, ToPort: 22, CidrIp: \"0.0.0.0/0\" },\n          { IpProtocol: \"tcp\", FromPort: 443, ToPort: 443, CidrIp: \"0.0.0.0/0\" },\n        ],\n        Tags: [{ Key: \"base\", Value: { Ref: \"BaseDatos\" } }],\n      },\n    },\n    InstanciaWeb: {\n      Type: \"AWS::EC2::Instance\",\n      Properties: {\n        SecurityGroupIds: [{ Ref: \"GrupoWeb\" }],\n        Tags: [{ Key: \"Name\", Value: { \"Fn::Sub\": \"web-${Entorno}\" } }],\n      },\n    },\n    BaseDatos: {\n      Type: \"AWS::RDS::DBInstance\",\n      Properties: {\n        VPCSecurityGroups: [{ \"Fn::GetAtt\": [\"GrupoWeb\", \"GroupId\"] }],\n      },\n    },\n  },\n  Outputs: {\n    IdInstancia: { Value: { Ref: \"InstanciaWeb\" } },\n    PuntoFinalBase: { Value: { \"Fn::GetAtt\": \"BaseDatos.Endpoint.Address\" } },\n  },\n};\n",
+      "solution": {
+        "code": "export const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Entorno regional repetible\",\n  Parameters: {\n    Entorno: { Type: \"String\" },\n  },\n  Resources: {\n    GrupoWeb: {\n      Type: \"AWS::EC2::SecurityGroup\",\n      Properties: {\n        GroupDescription: \"Acceso web del entorno\",\n        SecurityGroupIngress: [\n          { IpProtocol: \"tcp\", FromPort: 443, ToPort: 443, CidrIp: \"0.0.0.0/0\" },\n        ],\n        Tags: [{ Key: \"entorno\", Value: { Ref: \"Entorno\" } }],\n      },\n    },\n    InstanciaWeb: {\n      Type: \"AWS::EC2::Instance\",\n      Properties: {\n        SecurityGroupIds: [{ Ref: \"GrupoWeb\" }],\n        Tags: [{ Key: \"Name\", Value: { \"Fn::Sub\": \"web-${Entorno}\" } }],\n      },\n    },\n    BaseDatos: {\n      Type: \"AWS::RDS::DBInstance\",\n      Properties: {\n        VPCSecurityGroups: [{ \"Fn::GetAtt\": [\"GrupoWeb\", \"GroupId\"] }],\n      },\n    },\n  },\n  Outputs: {\n    IdInstancia: { Value: { Ref: \"InstanciaWeb\" } },\n    PuntoFinalBase: { Value: { \"Fn::GetAtt\": [\"BaseDatos\", \"Endpoint.Address\"] } },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "la plantilla tiene un orden de creación y tres recursos",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla tiene una dependencia circular o no declara recursos\");\nassert.strictEqual(orden.length, 3);"
+          }
+        },
+        {
+          "name": "ningún grupo de seguridad abre el puerto 22 a internet",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.securityIssues(template, [{ type: \"sg-open-ingress\", port: 22 }]), []);"
+          }
+        },
+        {
+          "name": "el grupo de seguridad se crea antes que la instancia y la base de datos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla no tiene un orden de creación\");\nassert.ok(orden.indexOf(\"GrupoWeb\") < orden.indexOf(\"InstanciaWeb\"), \"GrupoWeb debe crearse antes que InstanciaWeb\");\nassert.ok(orden.indexOf(\"GrupoWeb\") < orden.indexOf(\"BaseDatos\"), \"GrupoWeb debe crearse antes que BaseDatos\");"
+          }
+        },
+        {
+          "name": "el grupo de seguridad sigue permitiendo HTTPS desde internet",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(aws.cfn.securityIssues(template, [{ type: \"sg-open-ingress\", port: 443 }]).length, 1);"
+          }
+        },
+        {
+          "name": "el grupo y la instancia usan el parámetro Entorno",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(JSON.stringify(template.Resources.GrupoWeb.Properties.Tags).includes('{\"Ref\":\"Entorno\"}'), \"La etiqueta del grupo debe usar Ref hacia Entorno\");\nassert.ok(JSON.stringify(template.Resources.InstanciaWeb.Properties.Tags).includes(\"${Entorno}\"), \"El nombre de la instancia debe usar Fn::Sub con Entorno\");"
+          }
+        },
+        {
+          "name": "las salidas devuelven la instancia y el punto final de la base",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(template.Outputs.IdInstancia.Value, { Ref: \"InstanciaWeb\" });\nassert.deepStrictEqual(template.Outputs.PuntoFinalBase.Value, { \"Fn::GetAtt\": [\"BaseDatos\", \"Endpoint.Address\"] });"
+          }
+        },
+        {
+          "name": "los recursos conservan su tipo",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(template.Resources.GrupoWeb.Type, \"AWS::EC2::SecurityGroup\");\nassert.strictEqual(template.Resources.InstanciaWeb.Type, \"AWS::EC2::Instance\");\nassert.strictEqual(template.Resources.BaseDatos.Type, \"AWS::RDS::DBInstance\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-plantilla-autonomo",
+      "type": "LAB",
+      "title": "Plantilla del entorno regional, sin pistas",
+      "statement": "Escribe la plantilla `template` de un entorno que se repetirá en varias Regiones. Versión de formato 2010-09-09 y un parámetro Entorno de tipo String. Tres recursos: GrupoWeb (AWS::EC2::SecurityGroup) con una etiqueta cuyo valor usa el parámetro Entorno y una única regla de ingreso, TCP al puerto 443 desde 0.0.0.0/0, sin ningún ingreso abierto al puerto 22; InstanciaWeb (AWS::EC2::Instance) que usa GrupoWeb en SecurityGroupIds y cuyo nombre se construye con Fn::Sub a partir de Entorno; y BaseDatos (AWS::RDS::DBInstance) que usa el identificador de GrupoWeb en VPCSecurityGroups mediante Fn::GetAtt. El grupo de seguridad debe poder crearse antes que los otros dos recursos, sin dependencias circulares. Dos salidas: IdInstancia, con el identificador de la instancia, y PuntoFinalBase, con el atributo Endpoint.Address de la base de datos. El código inicial exporta la plantilla con varios defectos: corrígelos sin cambiar el nombre del valor exportado (`export const template = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "plantilla de CloudFormation",
+        "dependencias",
+        "reglas de seguridad",
+        "salidas y referencias"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Aplicación web con acceso centralizado a las consolas de cada servicio. Permite buscar servicios y funciones, ajustar el idioma y la Región predeterminada y consultar notificaciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Consola de administración",
+      "statement": "¿Qué es la Consola de administración de AWS y qué te permite hacer?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "consola",
+        "búsqueda unificada"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Herramienta de código abierto que interactúa con los servicios mediante comandos en tu shell, con acceso directo a las API públicas. Sirve para desarrollar scripts de shell que gestionen recursos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS CLI",
+      "statement": "¿Qué es la AWS CLI y para qué sirve?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "CLI",
+        "script de shell",
+        "API"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Se accede directamente desde la consola y permite ejecutar comandos de la AWS CLI contra los servicios sin salir de ella."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: CloudShell",
+      "statement": "¿Qué aporta AWS CloudShell a la consola?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "CloudShell",
+        "consola",
+        "CLI"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La plantilla describe los recursos que quieres y CloudFormation los aprovisiona y los configura, resolviendo las dependencias entre ellos. Está disponible por consola, API, CLI y SDK."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: CloudFormation",
+      "statement": "¿Qué hace CloudFormation con una plantilla?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "CloudFormation",
+        "plantilla",
+        "dependencias"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es el conjunto de recursos que CloudFormation crea a partir de una plantilla y que gestionas como una unidad. Al eliminar el stack se eliminan todos sus recursos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Stack",
+      "statement": "¿Qué es un stack y qué pasa al eliminarlo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "stack",
+        "recursos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Reutilizas la plantilla para crear los mismos recursos de forma coherente en varias Regiones, y como es texto puedes comparar versiones y volver a una anterior."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Por qué usar una plantilla",
+      "statement": "¿Qué ventajas da describir la infraestructura en una plantilla?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "infraestructura como código",
+        "control de versiones"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "consola",
+            "term": "Consola de administración",
+            "definition": "Aplicación web con acceso centralizado a las consolas de cada servicio y búsqueda unificada"
+          },
+          {
+            "id": "cli",
+            "term": "AWS CLI",
+            "definition": "Herramienta de código abierto que ejecuta comandos en un shell y sirve para escribir scripts"
+          },
+          {
+            "id": "cloudshell",
+            "term": "AWS CloudShell",
+            "definition": "Permite ejecutar comandos de la CLI desde la propia consola, sin salir de ella"
+          },
+          {
+            "id": "api",
+            "term": "API de AWS",
+            "definition": "Acceso directo y programático a los servicios, que la CLI expone mediante comandos"
+          },
+          {
+            "id": "cloudformation",
+            "term": "CloudFormation",
+            "definition": "Aprovisiona y configura los recursos que describe una plantilla, resolviendo sus dependencias"
+          },
+          {
+            "id": "plantilla",
+            "term": "Plantilla",
+            "definition": "Archivo de texto que describe los recursos y sus propiedades y se puede versionar"
+          },
+          {
+            "id": "stack",
+            "term": "Stack",
+            "definition": "Conjunto de recursos creado desde una plantilla; al eliminarlo se eliminan todos sus recursos"
+          },
+          {
+            "id": "private-access",
+            "term": "Console Private Access",
+            "definition": "Limita el acceso a la consola a un conjunto de cuentas conocidas desde el tráfico de tu red"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada herramienta con su uso. Si dudas entre dos, pregúntate si la tarea es puntual o repetible y si hace falta una interfaz web, un shell o una descripción de recursos.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Interfaz: la consola ofrece navegación y búsqueda; CloudShell lleva la CLI a la consola",
+              "Comandos: la CLI da acceso directo a las API y sirve para scripts de shell",
+              "Descripción de recursos: la plantilla describe, el stack agrupa y CloudFormation aprovisiona"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-memoria-01",
+      "type": "MEMORY",
+      "title": "Herramienta y uso que cubre",
+      "statement": "Empareja cada herramienta o concepto de AWS con el uso que cubre.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "consola",
+        "CLI",
+        "CloudFormation",
+        "stack"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html",
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Vía de acceso que elige un asistente para cuatro escenarios. Corrige la elección equivocada.\nexport const eleccion = {\n  escenarios: [\n    { necesidad: \"Explorar un servicio nuevo con una interfaz web\", via: \"consola\" },\n    { necesidad: \"Ejecutar cada noche un script de shell que gestione recursos\", via: \"cli\" },\n    { necesidad: \"Crear el mismo entorno en varias Regiones y eliminarlo después como un conjunto\", via: \"consola\" },\n    { necesidad: \"Ejecutar comandos de la CLI sin salir de la consola web\", via: \"cloudshell\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Vía de acceso que elige un asistente para cuatro escenarios. Corrige la elección equivocada.\nexport const eleccion = {\n  escenarios: [\n    { necesidad: \"Explorar un servicio nuevo con una interfaz web\", via: \"consola\" },\n    { necesidad: \"Ejecutar cada noche un script de shell que gestione recursos\", via: \"cli\" },\n    { necesidad: \"Crear el mismo entorno en varias Regiones y eliminarlo después como un conjunto\", via: \"plantilla\" },\n    { necesidad: \"Ejecutar comandos de la CLI sin salir de la consola web\", via: \"cloudshell\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Fíjate en las palabras «varias Regiones» y «como un conjunto»: la tarea se repite y hay que gestionar todos los recursos a la vez."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal. La consola sirve para explorar y para operaciones puntuales, pero no deja un archivo que describa el entorno ni permite eliminarlo como un conjunto."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `via` de la fila del entorno en varias Regiones de \"consola\" a \"plantilla\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el entorno repetible se describe con una plantilla",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = eleccion.escenarios.find((f) => f.necesidad.startsWith(\"Crear el mismo entorno\"));\nassert.ok(fila, \"debe existir la fila del entorno repetible\");\nassert.strictEqual(fila.via, \"plantilla\");"
+          }
+        },
+        {
+          "name": "las vías solo pueden ser consola, cli, cloudshell o plantilla",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const fila of eleccion.escenarios) {\n  assert.ok([\"consola\", \"cli\", \"cloudshell\", \"plantilla\"].includes(fila.via), fila.necesidad + \" tiene una vía no válida\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su vía",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Explorar un servicio nuevo con una interfaz web\": \"consola\",\n  \"Ejecutar cada noche un script de shell que gestione recursos\": \"cli\",\n  \"Ejecutar comandos de la CLI sin salir de la consola web\": \"cloudshell\",\n};\nfor (const [necesidad, via] of Object.entries(esperado)) {\n  const fila = eleccion.escenarios.find((f) => f.necesidad === necesidad);\n  assert.ok(fila, necesidad + \" debe seguir existiendo\");\n  assert.strictEqual(fila.via, via);\n}"
+          }
+        },
+        {
+          "name": "siguen las cuatro filas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(eleccion.escenarios.length, 4);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-debug-01",
+      "type": "DEBUG",
+      "title": "Una elección de vía de acceso con un escenario mal asignado",
+      "statement": "El objeto `eleccion` asigna una vía de acceso (consola, cli, cloudshell o plantilla) a cada uno de cuatro escenarios. Una de las filas asigna la vía equivocada: con ella, el entorno habría que rehacerlo a mano en cada Región. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const eleccion = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "consola",
+        "plantilla",
+        "tarea repetible"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html",
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La AWS CLI, que lanza comandos de los servicios desde un shell local",
+            "explanation": "Descartada: la CLI se maneja con comandos en un shell, no es la interfaz web con búsqueda y notificaciones que pide la analista."
+          },
+          {
+            "id": "b",
+            "text": "Una plantilla de CloudFormation, que describe los recursos de un entorno",
+            "explanation": "Descartada: una plantilla describe recursos que se aprovisionan; no sirve para explorar servicios ni para consultar notificaciones."
+          },
+          {
+            "id": "c",
+            "text": "La Consola de administración, que da acceso a las consolas de cada servicio",
+            "explanation": "Es la vía adecuada: es una aplicación web con acceso centralizado a las consolas de cada servicio, búsqueda unificada y notificaciones."
+          },
+          {
+            "id": "d",
+            "text": "Un script de shell, que llama a las API de los servicios desde un terminal",
+            "explanation": "Descartada: un script automatiza llamadas desde un terminal y no ofrece una interfaz web para explorar los servicios."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué vía de acceso sirve para explorar servicios",
+      "statement": "Una analista que usa AWS por primera vez quiere explorar los servicios desde una interfaz web, buscarlos por nombre y consultar las notificaciones de su cuenta en un único lugar. ¿Qué vía de acceso es la MÁS adecuada para ese uso?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "consola",
+        "búsqueda unificada",
+        "notificaciones"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La AWS CLI, que lanza comandos de los servicios desde el shell",
+            "explanation": "Es la herramienta adecuada: la CLI interactúa con los servicios mediante comandos en el shell y permite desarrollar scripts que gestionen recursos."
+          },
+          {
+            "id": "b",
+            "text": "La Consola de administración, que ofrece una interfaz web de los servicios",
+            "explanation": "Descartada: la consola es una aplicación web que se maneja desde el navegador, justo lo que el equipo no quiere usar en el script nocturno."
+          },
+          {
+            "id": "c",
+            "text": "Una plantilla de CloudFormation, que describe los recursos en un archivo",
+            "explanation": "Descartada: una plantilla describe los recursos que CloudFormation aprovisiona; no es un script de shell que gestione recursos con comandos."
+          },
+          {
+            "id": "d",
+            "text": "La búsqueda unificada de la consola, que localiza servicios y funciones",
+            "explanation": "Descartada: es una función de la consola web para localizar servicios y funciones; no sirve para automatizar tareas desde un shell."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué herramienta sirve para un script de shell nocturno",
+      "statement": "El equipo de operaciones necesita ejecutar cada noche, en servidores Linux, un script de shell que administre recursos de AWS sin abrir ningún navegador. ¿Qué herramienta es la MÁS adecuada para escribir ese script?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CLI",
+        "script de shell"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html",
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Repetir en cada Región los mismos pasos desde la consola, en el orden que decida el equipo",
+            "explanation": "Descartada: es manual, no describe los recursos una sola vez y el equipo debe resolver el orden y borrar los recursos uno a uno."
+          },
+          {
+            "id": "b",
+            "text": "Escribir un script de shell con la CLI que cree cada recurso en el orden que decida el equipo",
+            "explanation": "Descartada: el script ejecuta comandos pero no describe el entorno completo; el equipo sigue resolviendo las dependencias entre recursos."
+          },
+          {
+            "id": "c",
+            "text": "Documentar con capturas la configuración de cada recurso y reproducirla en cada Región",
+            "explanation": "Descartada: es un proceso manual y sin garantía de coherencia; no resuelve dependencias ni permite eliminar los recursos como un conjunto."
+          },
+          {
+            "id": "d",
+            "text": "Crear un stack de CloudFormation en cada Región a partir de la misma plantilla",
+            "explanation": "Cumple: la plantilla describe los recursos una vez, CloudFormation gestiona las dependencias y eliminar el stack elimina todos sus recursos."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué enfoque describe un entorno una sola vez y lo repite",
+      "statement": "Una empresa debe crear el mismo entorno de aplicación en tres Regiones. Quiere describir los recursos una sola vez, dejar que el servicio resuelva las dependencias entre ellos y poder eliminarlos juntos. ¿Qué enfoque es el MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudFormation",
+        "plantilla",
+        "varias Regiones"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Reutilizar la misma plantilla para crear los mismos recursos en varias Regiones",
+            "explanation": "Cumple: la plantilla se reutiliza para provisionar los mismos recursos de forma coherente y repetible en varias Regiones."
+          },
+          {
+            "id": "b",
+            "text": "Evitar describir los recursos, porque el servicio decide cuáles necesita la aplicación",
+            "explanation": "No cumple: la plantilla describe los recursos que quieres y CloudFormation los aprovisiona; no decide por su cuenta cuáles hacen falta."
+          },
+          {
+            "id": "c",
+            "text": "Comparar versiones de la plantilla y volver a una anterior si un cambio sale mal",
+            "explanation": "Cumple: la plantilla es un archivo de texto, así que puedes controlar sus versiones y recuperar una anterior para revertir cambios."
+          },
+          {
+            "id": "d",
+            "text": "Conservar los recursos en la cuenta cuando se elimina el stack que los creó",
+            "explanation": "No cumple: al eliminar un stack se eliminan todos los recursos que contiene; no se conservan en la cuenta."
+          },
+          {
+            "id": "e",
+            "text": "Abrir las consolas de cada servicio desde un punto único con búsqueda unificada",
+            "explanation": "No cumple: eso lo ofrece la Consola de administración con su búsqueda unificada, no las plantillas de CloudFormation."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-quiz-04",
+      "type": "QUIZ",
+      "title": "Selecciona las ventajas de usar plantillas de CloudFormation",
+      "statement": "Una empresa evalúa describir su infraestructura con plantillas de CloudFormation. Selecciona DOS ventajas que ofrece ese enfoque.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudFormation",
+        "plantilla",
+        "control de versiones"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo se puede ejecutar dentro de un navegador, desde la Consola de administración",
+            "explanation": "No cumple: la CLI se ejecuta en un shell de Linux, macOS o Windows, o de forma remota; CloudShell es solo una vía más desde la consola."
+          },
+          {
+            "id": "b",
+            "text": "Es una herramienta de código abierto que interactúa con los servicios mediante comandos",
+            "explanation": "Cumple: la AWS CLI es una herramienta de código abierto que interactúa con los servicios de AWS mediante comandos en tu shell."
+          },
+          {
+            "id": "c",
+            "text": "Obliga a escribir una plantilla de CloudFormation para cada comando que se ejecuta",
+            "explanation": "No cumple: un comando de la CLI se ejecuta directamente contra el servicio; no necesita una plantilla ni un stack."
+          },
+          {
+            "id": "d",
+            "text": "Da acceso directo a las API públicas de los servicios de AWS desde la línea de comandos",
+            "explanation": "Cumple: la CLI proporciona acceso directo a las API públicas de los servicios y permite explorar sus capacidades y desarrollar scripts."
+          },
+          {
+            "id": "e",
+            "text": "Solo funciona en Linux, porque no admite el símbolo del sistema de Windows ni PowerShell",
+            "explanation": "No cumple: en Windows se puede ejecutar la CLI en el símbolo del sistema o en PowerShell, además de en shells de Linux o macOS."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-quiz-05",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre la AWS CLI",
+      "statement": "Un equipo revisa qué ofrece la AWS CLI antes de usarla en sus scripts. Selecciona DOS afirmaciones correctas.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CLI",
+        "API",
+        "shell"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La búsqueda unificada, que localiza servicios, funciones y productos de Marketplace",
+            "explanation": "Descartada: la búsqueda unificada localiza servicios, funciones y productos de Marketplace, pero no ejecuta comandos de la CLI."
+          },
+          {
+            "id": "b",
+            "text": "AWS CloudShell, que se abre dentro de la propia consola de administración",
+            "explanation": "Es la función adecuada: CloudShell se accede directamente desde la consola y permite ejecutar comandos de la CLI contra tus servicios."
+          },
+          {
+            "id": "c",
+            "text": "AWS Console Home, que muestra widgets como los servicios visitados recientemente",
+            "explanation": "Descartada: Console Home es la página de inicio personalizable con widgets; no ofrece un terminal para comandos de la CLI."
+          },
+          {
+            "id": "d",
+            "text": "AWS User Notifications, que reúne las notificaciones de eventos de la cuenta",
+            "explanation": "Descartada: reúne notificaciones de eventos y de estado de la cuenta; no sirve para ejecutar comandos contra los servicios."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué función ejecuta la CLI dentro de la consola",
+      "statement": "Un administrador trabaja en la Consola de administración y quiere ejecutar un comando de la AWS CLI contra uno de sus servicios sin salir de la consola web. ¿Qué función le ofrece la forma MÁS directa de hacerlo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudShell",
+        "consola",
+        "CLI"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Eliminar el archivo de la plantilla del repositorio donde se guarda",
+            "explanation": "Descartada: la plantilla es un archivo de texto que describe los recursos; borrarla no elimina los recursos ya creados."
+          },
+          {
+            "id": "b",
+            "text": "Eliminar uno por uno los recursos desde la consola de cada servicio",
+            "explanation": "Descartada: son muchas operaciones manuales, justo lo que el equipo quiere evitar, y hay que saber qué depende de qué."
+          },
+          {
+            "id": "c",
+            "text": "Eliminar el stack que se creó a partir de esa plantilla",
+            "explanation": "Es lo adecuado: al eliminar el stack se eliminan todos los recursos que contiene, con una sola operación."
+          },
+          {
+            "id": "d",
+            "text": "Ejecutar con la CLI un comando de borrado para cada recurso del entorno",
+            "explanation": "Descartada: son varias operaciones, una por recurso, y el equipo debe conocer el orden; eliminar el stack lo resuelve en una."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C8"
+      ],
+      "slug": "aws-u1-3-1-quiz-07",
+      "type": "QUIZ",
+      "title": "Cómo eliminar un entorno creado con una plantilla",
+      "statement": "Un equipo creó un entorno de pruebas con una plantilla de CloudFormation y, al acabar el proyecto, quiere eliminar todos sus recursos con la MENOR cantidad de operaciones manuales. ¿Qué debe hacer?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "stack",
+        "eliminar recursos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Management Console Private Access, que restringe el acceso desde la red a cuentas conocidas",
+            "explanation": "Cumple: Console Private Access limita el acceso a la consola a un conjunto de cuentas conocidas cuando el tráfico parte de tu red."
+          },
+          {
+            "id": "b",
+            "text": "AWS CloudShell, que ofrece un terminal para comandos de la CLI en la consola",
+            "explanation": "Descartada: CloudShell ejecuta comandos de la CLI desde la consola; no limita desde qué cuentas o redes se accede a ella."
+          },
+          {
+            "id": "c",
+            "text": "Los ajustes unificados, que personalizan el idioma y la Región predeterminada",
+            "explanation": "Descartada: los ajustes unificados personalizan aspectos como el idioma y la Región predeterminada, no restringen el acceso a la consola."
+          },
+          {
+            "id": "d",
+            "text": "AWS Console Home, que muestra widgets de recursos y de estado de salud",
+            "explanation": "Descartada: Console Home muestra widgets personalizables sobre tus recursos; no controla qué cuentas pueden acceder a la consola."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-quiz-08",
+      "type": "QUIZ",
+      "title": "Qué función limita el acceso a la consola desde la red",
+      "statement": "Una empresa quiere limitar el acceso a la Consola de administración a un conjunto de cuentas de AWS conocidas cuando el tráfico se origina dentro de su red. ¿Qué función es la MÁS específica para ese requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Console Private Access",
+        "consola"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-3-1-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué vía de acceso eliges y por qué",
+      "statement": "Elige un entorno o una tarea que conozcas (por ejemplo, un entorno de pruebas que montas más de una vez) y escribe un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué vía usarías (consola, CLI, SDK o plantilla de CloudFormation) y si la tarea es puntual o repetible.\n\n2) Alternativa descartada: otra vía que te tentaba (por ejemplo, rehacer el entorno a mano desde la consola) y la razón por la que la descartaste.\n\n3) Consecuencia: qué cambia para tu equipo con esa decisión, por ejemplo cómo creas, cambias y eliminas el entorno.\n\n4) Evidencia: qué parte de las páginas oficiales de la consola, la CLI o CloudFormation usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento distinga tarea puntual y repetible y nombre la vía. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo elegiste la vía.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "vías de acceso",
+        "infraestructura como código",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/what-is.html",
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html",
+        "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+      ],
+      "order": 19
+    }
+  ]
+}
