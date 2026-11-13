@@ -1,0 +1,1229 @@
+{
+  "code": "AWS-U1.1.5",
+  "lessons": [
+    {
+      "slug": "aws-u1-1-5-estrategias-migracion-caf",
+      "title": "Estrategias de migración (las 7 R) y Cloud Adoption Framework",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Una estrategia de migración es el enfoque que se usa para trasladar una carga de trabajo a la nube de AWS. La guía de AWS sobre migraciones grandes describe siete, conocidas como las 7 R: retire, retain, rehost, relocate, repurchase, replatform y refactor o re-architect. Cada una responde a una pregunta distinta sobre la aplicación: si se da de baja, si se deja donde está, si se mueve igual, si se mueve a otra plataforma o cuenta, si se reemplaza, si se mueve con ajustes o si se rediseña. Aparte, el AWS Cloud Adoption Framework (AWS CAF) no elige una estrategia para cada aplicación: identifica las capacidades de la organización que sustentan una transformación a la nube exitosa y ayuda a mejorar la preparación para ella. Para el examen CLF-C02 (dominio 1, tarea 1.3) importa reconocer cada estrategia por su descripción y conocer los componentes del AWS CAF."
+        },
+        {
+          "type": "list",
+          "title": "Las siete estrategias de migración (7 R)",
+          "items": [
+            "Retire: da de baja o archiva la aplicación, y permite apagar sus servidores. Se usa cuando no tiene valor de negocio, cuando se quiere eliminar el costo de mantenerla o alojarla, o cuando usa un sistema operativo o componentes sin soporte.",
+            "Retain: mantiene la aplicación en el entorno de origen, o la deja para migrarla más adelante. Motivos habituales: seguridad y cumplimiento (por ejemplo, residencia de datos), alto riesgo, dependencias de otras aplicaciones, una actualización reciente, un plan de pasar a SaaS o hardware especializado sin equivalente en la nube.",
+            "Rehost («lift and shift»): mueve la aplicación del entorno de origen a AWS sin hacerle cambios. Permite migrar muchas máquinas desde plataformas físicas, virtuales u otra nube sin preocuparse de la compatibilidad ni de ventanas de corte largas. Se puede automatizar con servicios como AWS Transform MGN o con VM Import/Export.",
+            "Relocate: traslada muchos servidores a la versión en la nube de su plataforma, o mueve instancias u objetos a otra VPC, Región o cuenta de AWS, por ejemplo una instancia de Amazon RDS a otra cuenta. No exige comprar hardware ni reescribir la aplicación, y es la forma más rápida de migrar porque no afecta a su arquitectura.",
+            "Repurchase («drop and shop»): reemplaza la aplicación por otra versión o producto que aporte más valor de negocio, por ejemplo pasar de una licencia tradicional a SaaS o sustituir una aplicación a medida por una del proveedor.",
+            "Replatform («lift, tinker and shift»): traslada la aplicación e introduce algún nivel de optimización para operarla con eficiencia, reducir costos o aprovechar capacidades de la nube. Ejemplos: pasar una base de datos Microsoft SQL Server a Amazon RDS for SQL Server o llevar máquinas virtuales a contenedores sin cambiar el código.",
+            "Refactor o re-architect: traslada la aplicación y modifica su arquitectura para aprovechar al máximo las funciones nativas de la nube y mejorar la agilidad, el rendimiento y la escalabilidad. Lo impulsa una fuerte demanda de escalar, de lanzar productos antes o de reducir costos. Es la más compleja y costosa de las estrategias."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué estrategias se usan en las migraciones grandes",
+          "text": "La guía de AWS indica que las estrategias comunes en migraciones grandes son rehost, replatform, relocate y retire. Refactor no se recomienda para migraciones grandes, porque moderniza la aplicación durante la migración y es la estrategia más difícil de gestionar para muchas aplicaciones a la vez. La recomendación es hacer rehost, relocate o replatform y modernizar la aplicación cuando la migración ya terminó; solo se usa refactor si las demás estrategias no son una opción aceptable. Además, es más fácil optimizar o rediseñar una aplicación que ya se ejecuta en la nube, porque resulta más sencillo integrarla con los servicios de AWS y administrar la carga."
+        },
+        {
+          "type": "mermaid",
+          "title": "Las 7 R según lo que se hace con la aplicación",
+          "code": "flowchart TB\n  APP[\"Aplicación de la cartera\"]\n  APP --> Q1{\"¿Se migra ahora?\"}\n  Q1 -->|\"No: se da de baja\"| RETIRE[\"Retire: archivar y apagar los servidores\"]\n  Q1 -->|\"No: se deja en el origen\"| RETAIN[\"Retain: conservar y reevaluar más adelante\"]\n  Q1 -->|\"Sí\"| Q2{\"¿Cuánto cambia la aplicación?\"}\n  Q2 -->|\"Nada\"| REHOST[\"Rehost: lift and shift\"]\n  Q2 -->|\"Nada: cambia de plataforma, VPC, Región o cuenta\"| RELOCATE[\"Relocate: mover sin tocar la arquitectura\"]\n  Q2 -->|\"Se reemplaza\"| REPURCHASE[\"Repurchase: drop and shop\"]\n  Q2 -->|\"Alguna optimización\"| REPLATFORM[\"Replatform: lift, tinker and shift\"]\n  Q2 -->|\"Se rediseña su arquitectura\"| REFACTOR[\"Refactor o re-architect\"]"
+        },
+        {
+          "type": "paragraph",
+          "title": "El AWS Cloud Adoption Framework (AWS CAF)",
+          "text": "El AWS CAF aprovecha la experiencia y las mejores prácticas de AWS para ayudar a transformarse digitalmente y a acelerar los resultados del negocio mediante un uso innovador de AWS. Identifica capacidades concretas de la organización que sustentan transformaciones exitosas y las agrupa en seis perspectivas. Cada perspectiva reúne un conjunto de capacidades que gestionan, o de las que son responsables, interesados con funciones relacionadas durante el viaje de transformación. Se usa para identificar y priorizar oportunidades de transformación, evaluar y mejorar la preparación para la nube y hacer evolucionar de forma iterativa la hoja de ruta de transformación. La guía del examen cita como componentes del AWS CAF los beneficios: reducir el riesgo del negocio, mejorar el desempeño ambiental, social y de gobierno (ESG), hacer crecer los ingresos y aumentar la eficiencia operativa."
+        },
+        {
+          "type": "list",
+          "title": "Las seis perspectivas del AWS CAF",
+          "items": [
+            "Business (Negocio): ayuda a que las inversiones en la nube aceleren las ambiciones de transformación digital y los resultados de negocio.",
+            "People (Personas): sirve de puente entre la tecnología y el negocio y acelera el viaje a la nube hacia una cultura de aprendizaje y crecimiento continuos, con foco en la cultura, la estructura organizativa, el liderazgo y la fuerza laboral.",
+            "Governance (Gobernanza): ayuda a orquestar las iniciativas de nube maximizando los beneficios para la organización y minimizando los riesgos de la transformación.",
+            "Platform (Plataforma): es una de las seis perspectivas; la página de resumen consultada la nombra sin describir su foco.",
+            "Security (Seguridad): ayuda a lograr la confidencialidad, la integridad y la disponibilidad de los datos y de las cargas de trabajo en la nube.",
+            "Operations (Operaciones): ayuda a que los servicios en la nube se entreguen a un nivel que cumpla las necesidades del negocio."
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Las cuatro fases de la transformación en el AWS CAF",
+          "items": [
+            "Envision: identificar y priorizar oportunidades de transformación alineadas con los objetivos estratégicos, y asociarlas con interesados y resultados de negocio medibles.",
+            "Align: identificar las brechas de capacidades y las dependencias entre áreas, para crear estrategias que mejoren la preparación para la nube y facilitar el cambio organizativo.",
+            "Launch: entregar pilotos en producción y demostrar un valor de negocio incremental; lo aprendido ayuda a ajustar el enfoque antes de escalar.",
+            "Scale: ampliar los pilotos y el valor de negocio hasta la escala deseada y asegurar que los beneficios de las inversiones en la nube se materialicen y se sostengan."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: seis casos, seis estrategias",
+          "text": "Una empresa tiene seis casos y debe asignar a cada uno su estrategia. Caso 1: servidores de oficina que se trasladan a AWS exactamente como están; es rehost. Caso 2: una base de datos que pasa a un servicio administrado para dejar de administrarla, sin rediseñar la aplicación; es replatform. Caso 3: una instancia que se mueve a otra cuenta de AWS sin cambios; es relocate. Caso 4: un sistema con licencia que se sustituye por la versión SaaS del proveedor; es repurchase. Caso 5: una aplicación sin uso, con un sistema operativo sin soporte, que se apaga; es retire. Caso 6: una aplicación con hardware especializado que no se migra todavía; es retain. En cada caso lo que decide es qué se hace con la aplicación y cuánto cambia, y no una palabra suelta del enunciado."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: estrategias vecinas",
+          "text": "Las preguntas ofrecen a la vez estrategias que parecen cercanas. Rehost, relocate y replatform trasladan la aplicación sin rediseñarla, pero rehost la deja tal cual, relocate la mueve a la versión en la nube de su plataforma o a otra VPC, Región o cuenta, y replatform introduce alguna optimización. Retire y retain dejan la aplicación sin migrar, pero retire la da de baja y permite apagar los servidores, mientras que retain la conserva en el origen. Repurchase y refactor cambian la aplicación, pero repurchase la reemplaza por un producto y refactor modifica su arquitectura. Localiza qué ocurre con la aplicación antes de elegir."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: confundir rehost con replatform",
+          "text": "Causa: pensar que cualquier traslado que mejora algo es un «lift and shift», o que llevar una base de datos a la nube siempre es rehost. Consecuencia: se elige rehost para un caso en el que la aplicación pasa a un servicio administrado, y se pierde la pista de que replatform introduce alguna optimización. Solución: pregunta si la aplicación llega a AWS exactamente igual (rehost) o si cambia algo para operarla con eficiencia, como pasar SQL Server a Amazon RDS for SQL Server (replatform)."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: recomendar refactor para una migración grande",
+          "text": "Causa: creer que rediseñar todas las aplicaciones durante la migración es siempre lo más moderno y por tanto lo mejor. Consecuencia: la migración se vuelve la más compleja y costosa, difícil de gestionar para muchas aplicaciones, y se retrasa. Solución: en una migración grande prefiere rehost, relocate o replatform y moderniza después; reserva refactor para cuando las demás estrategias no sean una opción aceptable."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: confundir el AWS CAF con Well-Architected",
+          "text": "Causa: ver que ambos son marcos de AWS con varias partes y mezclar las seis perspectivas del AWS CAF con los seis pilares de Well-Architected. Consecuencia: se responde «Seguridad» o «Costos» sin distinguir si la pregunta trata de capacidades de la organización para la transformación o de mejores prácticas para diseñar cargas de trabajo. Solución: asocia el AWS CAF con perspectivas, capacidades y la preparación de la organización para la nube, y Well-Architected con la revisión de las decisiones de arquitectura de una carga de trabajo."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Distinguir las siete estrategias de migración (las 7 R) y describir las seis perspectivas y los beneficios del AWS Cloud Adoption Framework: para cada escenario de una aplicación, nombrar la estrategia que lo describe y explicar por qué las estrategias vecinas quedan fuera. Esta unidad prepara el examen CLF-C02, dominio 1 «Conceptos de la nube», tarea 1.3 (comprender los beneficios y las estrategias de migración a la nube de AWS), cuya guía incluye entender los componentes del AWS CAF e identificar estrategias de migración adecuadas. Criterio: ante un escenario nuevo, nombras la estrategia y el dato del enunciado que la decide, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de los seis casos tapando las respuestas: para cada uno, nombra la estrategia y el dato del enunciado que la decide. Después responde de memoria: cuáles son las 7 R, qué distingue a rehost de replatform y de relocate, cuándo se usa retire y cuándo retain, qué estrategias son comunes en migraciones grandes, cuáles son las seis perspectivas del AWS CAF y qué beneficios cita."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una instancia que cambia de cuenta con la estrategia equivocada». Un objeto asigna una estrategia de migración a seis aplicaciones y una de ellas lleva la que no corresponde. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas los nombres de las aplicaciones y las demás estrategias."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Una estrategia que no se recomienda en migraciones grandes». Una función decide si una estrategia es de uso común en una migración grande y su resultado no coincide con la guía de AWS. Criterio de paso: rehost, replatform, relocate y retire dan verdadero, y refactor, repurchase y retain dan falso."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre estrategias de migración y el AWS CAF. Audítalo en «Auditar un informe de estrategias de migración generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con la guía de estrategias de migración y con la página del AWS Cloud Adoption Framework (leídas el 2026-11-13) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe qué se hace con la aplicación y el calificador; al corregir, lee la explicación de cada opción y anota si fallaste por confundir dos estrategias vecinas (por ejemplo, rehost y replatform) o por mezclar las perspectivas del AWS CAF con otros marcos. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una aplicación que conozcas y decide qué estrategia de migración aplicarías y por qué, sin dejar fuera lo que descartas. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero dice que para migrar muchas aplicaciones «lo mejor es refactorizarlas todas durante el traslado»; ¿qué le respondes y en qué parte de la documentación de AWS te apoyas?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-migracion-7-r",
+          "order": 0,
+          "note": "Fuente de las siete estrategias de migración, de sus usos habituales, de las estrategias comunes en migraciones grandes y de la advertencia sobre refactor."
+        },
+        {
+          "resourceSlug": "aws-caf-que-es",
+          "order": 1,
+          "note": "Fuente de las seis perspectivas del AWS CAF, de sus beneficios y de sus cuatro fases de transformación."
+        },
+        {
+          "resourceSlug": "aws-caf-libro-blanco",
+          "order": 2,
+          "note": "Fuente de qué es el AWS CAF y de para qué se usa: identificar y priorizar oportunidades, evaluar la preparación para la nube y evolucionar la hoja de ruta."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 3,
+          "note": "Guía de CLF-C02: la tarea 1.3 del dominio 1 incluye los componentes del AWS CAF y la identificación de estrategias de migración adecuadas."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Retire (dar de baja o archivar la aplicación), Retain (mantenerla en el origen), Rehost (trasladarla sin cambios), Relocate (moverla a la versión en la nube de su plataforma o a otra VPC, Región o cuenta), Repurchase (reemplazarla por otra versión o producto), Replatform (trasladarla con alguna optimización) y Refactor o re-architect (modificar su arquitectura para aprovechar la nube)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Las 7 R",
+      "statement": "¿Cuáles son las siete estrategias de migración, conocidas como las 7 R?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "7 R",
+        "estrategias de migración"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Se diferencian en cuánto cambia la aplicación. Rehost («lift and shift») la traslada sin hacerle cambios. Replatform («lift, tinker and shift») introduce algún nivel de optimización, por ejemplo pasar una base de datos SQL Server a Amazon RDS for SQL Server. Refactor modifica su arquitectura para aprovechar funciones nativas de la nube y es la más compleja y costosa."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Rehost, Replatform y Refactor",
+      "statement": "¿En qué se diferencian Rehost, Replatform y Refactor?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "rehost",
+        "replatform",
+        "refactor"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Retire da de baja o archiva la aplicación y permite apagar sus servidores: se usa si no tiene valor de negocio, si se quiere eliminar el costo de mantenerla o si usa un sistema operativo sin soporte. Retain la deja en el entorno de origen porque no se quiere o no se puede migrar todavía, por ejemplo por residencia de datos, dependencias o hardware especializado, y puede migrarse en el futuro."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Retire y Retain",
+      "statement": "¿En qué se diferencian las estrategias Retire y Retain?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "retire",
+        "retain"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Relocate traslada muchos servidores a la versión en la nube de su plataforma, o mueve instancias u objetos a otra VPC, Región o cuenta de AWS, sin comprar hardware ni reescribir la aplicación. Repurchase («drop and shop») reemplaza la aplicación por otra versión o producto, por ejemplo pasando de una licencia tradicional a SaaS."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Relocate y Repurchase",
+      "statement": "¿Qué hacen las estrategias Relocate y Repurchase?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "relocate",
+        "repurchase"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un marco que identifica capacidades de la organización que sustentan una transformación a la nube exitosa y ayuda a mejorar la preparación para la nube. Las agrupa en seis perspectivas: Business, People, Governance, Platform, Security y Operations."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Las seis perspectivas del CAF",
+      "statement": "¿Qué es el AWS Cloud Adoption Framework y en qué seis perspectivas agrupa sus capacidades?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Cloud Adoption Framework",
+        "perspectivas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/cloud-adoption-framework/",
+        "https://docs.aws.amazon.com/whitepapers/latest/overview-aws-cloud-adoption-framework/welcome.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cita reducir el riesgo del negocio, mejorar el desempeño ambiental, social y de gobierno (ESG), hacer crecer los ingresos y aumentar la eficiencia operativa. Sus cuatro fases son Envision (identificar y priorizar oportunidades), Align (identificar brechas y dependencias), Launch (entregar pilotos en producción) y Scale (ampliar el valor al nivel deseado)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Beneficios y fases del CAF",
+      "statement": "¿Qué beneficios cita el AWS CAF y qué cuatro fases describe para la transformación?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "beneficios del CAF",
+        "fases del CAF"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/cloud-adoption-framework/"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de migración de seis aplicaciones. Corrige su defecto principal.\nexport const plan = {\n  cartera: \"empresa de ejemplo\",\n  aplicaciones: [\n    { nombre: \"Servidores de oficina trasladados sin cambios\", estrategia: \"REHOST\" },\n    { nombre: \"Instancia RDS que pasa a otra cuenta de AWS sin cambios\", estrategia: \"REPLATFORM\" },\n    { nombre: \"CRM con licencia sustituido por la versión SaaS del proveedor\", estrategia: \"REPURCHASE\" },\n    { nombre: \"Aplicación sin uso que se apaga\", estrategia: \"RETIRE\" },\n    { nombre: \"Aplicación con hardware especializado sin equivalente en la nube\", estrategia: \"RETAIN\" },\n    { nombre: \"Monolito rediseñado con funciones nativas de la nube\", estrategia: \"REFACTOR\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  cartera: \"empresa de ejemplo\",\n  aplicaciones: [\n    { nombre: \"Servidores de oficina trasladados sin cambios\", estrategia: \"REHOST\" },\n    { nombre: \"Instancia RDS que pasa a otra cuenta de AWS sin cambios\", estrategia: \"RELOCATE\" },\n    { nombre: \"CRM con licencia sustituido por la versión SaaS del proveedor\", estrategia: \"REPURCHASE\" },\n    { nombre: \"Aplicación sin uso que se apaga\", estrategia: \"RETIRE\" },\n    { nombre: \"Aplicación con hardware especializado sin equivalente en la nube\", estrategia: \"RETAIN\" },\n    { nombre: \"Monolito rediseñado con funciones nativas de la nube\", estrategia: \"REFACTOR\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Cada aplicación debe llevar la estrategia de migración que describe lo que se hace con ella. Recorre la lista y pregúntate, aplicación por aplicación, si la estrategia asignada es la que corresponde."
+        },
+        {
+          "level": 2,
+          "text": "Una aplicación se mueve a otra cuenta de AWS sin cambiarla, pero lleva REPLATFORM, que introduce algún nivel de optimización. La estrategia que mueve instancias u objetos a otra VPC, Región o cuenta sin tocar la aplicación es otra, y ahora no aparece en la lista."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la estrategia de «Instancia RDS que pasa a otra cuenta de AWS sin cambios» a \"RELOCATE\". No cambies los nombres de las aplicaciones ni la estrategia de las demás."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la instancia RDS que cambia de cuenta usa RELOCATE",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const app = plan.aplicaciones.find((a) => a.nombre === \"Instancia RDS que pasa a otra cuenta de AWS sin cambios\");\nassert.ok(app, \"debe existir la aplicación de la instancia RDS\");\nassert.strictEqual(app.estrategia, \"RELOCATE\");"
+          }
+        },
+        {
+          "name": "cada aplicación usa una de las siete R",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const siete = [\"RETIRE\", \"RETAIN\", \"REHOST\", \"RELOCATE\", \"REPURCHASE\", \"REPLATFORM\", \"REFACTOR\"];\nfor (const app of plan.aplicaciones) {\n  assert.ok(siete.includes(app.estrategia), app.nombre + \" usa una estrategia desconocida\");\n}"
+          }
+        },
+        {
+          "name": "las demás aplicaciones conservan su estrategia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Servidores de oficina trasladados sin cambios\": \"REHOST\",\n  \"CRM con licencia sustituido por la versión SaaS del proveedor\": \"REPURCHASE\",\n  \"Aplicación sin uso que se apaga\": \"RETIRE\",\n  \"Aplicación con hardware especializado sin equivalente en la nube\": \"RETAIN\",\n  \"Monolito rediseñado con funciones nativas de la nube\": \"REFACTOR\",\n};\nfor (const [nombre, estrategia] of Object.entries(esperado)) {\n  const app = plan.aplicaciones.find((a) => a.nombre === nombre);\n  assert.ok(app, \"falta la aplicación \" + nombre);\n  assert.strictEqual(app.estrategia, estrategia);\n}"
+          }
+        },
+        {
+          "name": "siguen las seis aplicaciones",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.aplicaciones.length, 6);\nassert.strictEqual(new Set(plan.aplicaciones.map((a) => a.nombre)).size, 6);"
+          }
+        },
+        {
+          "name": "la cartera no cambia",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(plan.cartera, \"empresa de ejemplo\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-debug-01",
+      "type": "DEBUG",
+      "title": "Una instancia que cambia de cuenta con la estrategia equivocada",
+      "statement": "El objeto `plan` asigna a seis aplicaciones de una empresa de ejemplo la estrategia de migración (una de las 7 R) que se aplica a cada una. Una de ellas lleva una estrategia que no corresponde a lo que se hace con la aplicación. Corrígelo sin añadir ni quitar aplicaciones, sin cambiar sus nombres y manteniendo la forma del valor exportado (`export const plan = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "relocate",
+        "replatform",
+        "7 R"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Decide si una estrategia es de uso común en una migración grande. Corrige su defecto principal.\nexport const COMUNES = [\"REHOST\", \"REPLATFORM\", \"RELOCATE\", \"REFACTOR\"];\n\nexport function esComunEnMigracionGrande(estrategia: string): boolean {\n  return COMUNES.includes(estrategia);\n}\n",
+      "solution": {
+        "code": "export const COMUNES = [\"REHOST\", \"REPLATFORM\", \"RELOCATE\", \"RETIRE\"];\n\nexport function esComunEnMigracionGrande(estrategia: string): boolean {\n  return COMUNES.includes(estrategia);\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "rehost, replatform y relocate son de uso común",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(esComunEnMigracionGrande(\"REHOST\"), true);\nassert.strictEqual(esComunEnMigracionGrande(\"REPLATFORM\"), true);\nassert.strictEqual(esComunEnMigracionGrande(\"RELOCATE\"), true);"
+          }
+        },
+        {
+          "name": "retire es de uso común",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(esComunEnMigracionGrande(\"RETIRE\"), true);"
+          }
+        },
+        {
+          "name": "refactor no es de uso común en migraciones grandes",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(esComunEnMigracionGrande(\"REFACTOR\"), false);"
+          }
+        },
+        {
+          "name": "repurchase y retain no están en la lista",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(esComunEnMigracionGrande(\"REPURCHASE\"), false);\nassert.strictEqual(esComunEnMigracionGrande(\"RETAIN\"), false);"
+          }
+        },
+        {
+          "name": "un nombre desconocido no es de uso común",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(esComunEnMigracionGrande(\"RESTART\"), false);"
+          }
+        },
+        {
+          "name": "la lista tiene las cuatro estrategias en orden",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(COMUNES, [\"REHOST\", \"REPLATFORM\", \"RELOCATE\", \"RETIRE\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-debug-02",
+      "type": "DEBUG",
+      "title": "Una estrategia que no se recomienda en migraciones grandes",
+      "statement": "La función `esComunEnMigracionGrande` indica si una estrategia de migración (REHOST, REPLATFORM, RELOCATE, RETIRE, REFACTOR, REPURCHASE o RETAIN) figura entre las de uso común en una migración grande, según la guía de AWS sobre migraciones grandes. Al contrastarla con esa guía, un compañero observa que el resultado no coincide con lo que la documentación recomienda. Localiza el defecto y corrígelo sin cambiar la firma de la función ni el nombre de la lista `COMUNES`.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "migraciones grandes",
+        "refactor"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de estrategias de migración (borrador generado por un asistente)\nContexto: un equipo prepara el plan para trasladar su cartera de aplicaciones a AWS.\n1. Las siete estrategias de migración son Retire, Retain, Rehost, Relocate, Repurchase, Replatform y Refactor o re-architect.\n2. Refactor es la estrategia más sencilla y la más recomendada para una migración grande de muchas aplicaciones.\n3. Retain no abandona la aplicación: la deja en el entorno de origen y puede migrarse en el futuro.\n4. Repurchase, también llamada lift, tinker and shift, traslada la aplicación e introduce alguna optimización.\n5. El AWS CAF agrupa sus capacidades en seis perspectivas: Business, People, Governance, Platform, Security y Operations.\n6. La perspectiva de Operaciones se centra en la confidencialidad, la integridad y la disponibilidad de los datos."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Lista de las siete estrategias",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: las siete estrategias son Retire, Retain, Rehost, Relocate, Repurchase, Replatform y Refactor o re-architect."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Refactor en migraciones grandes",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Refactor es la más compleja y costosa de las estrategias y no se recomienda en migraciones grandes; se recomienda rehost, relocate o replatform y modernizar después."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Retain y el futuro de la aplicación",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Retain mantiene la aplicación en el entorno de origen o la deja sin migrar por ahora, y puede migrarse en el futuro."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Nombre alternativo de Repurchase",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "«Lift, tinker and shift» es otro nombre de Replatform; Repurchase se conoce como «drop and shop» y reemplaza la aplicación por otra versión o producto."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Las seis perspectivas del CAF",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el AWS CAF agrupa sus capacidades en seis perspectivas: Business, People, Governance, Platform, Security y Operations."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Foco de la perspectiva de Operaciones",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "La confidencialidad, la integridad y la disponibilidad son el foco de la perspectiva de Seguridad; la de Operaciones busca que los servicios se entreguen al nivel que necesita el negocio."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de estrategias de migración generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre las estrategias de migración y el AWS Cloud Adoption Framework. Audítalo contra la documentación oficial: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "7 R",
+        "perspectivas del CAF",
+        "migraciones grandes"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://aws.amazon.com/cloud-adoption-framework/"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Replatform, que mueve la aplicación e introduce alguna optimización para operarla mejor",
+            "explanation": "Descartada: replatform introduce un nivel de optimización al mover la aplicación, y el enunciado pide no modificarla."
+          },
+          {
+            "id": "b",
+            "text": "Rehost, que lleva las aplicaciones a AWS conservándolas igual que en su origen",
+            "explanation": "Es la que encaja: mueve las aplicaciones desde plataformas físicas, virtuales u otra nube hacia AWS sin cambios y sin preocuparse de la compatibilidad."
+          },
+          {
+            "id": "c",
+            "text": "Refactor, que rediseña la arquitectura con funciones propias de la nube",
+            "explanation": "Descartada: refactor modifica la arquitectura durante la migración, y el enunciado pide no tocarla ni cambiar el código."
+          },
+          {
+            "id": "d",
+            "text": "Repurchase, que sustituye la aplicación por otra versión o por otro producto",
+            "explanation": "Descartada: repurchase reemplaza la aplicación, y el enunciado traslada las mismas aplicaciones que ya tiene."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-quiz-01",
+      "type": "QUIZ",
+      "title": "Mover muchos servidores sin cambiar las aplicaciones",
+      "statement": "Una empresa debe trasladar a AWS, en un plazo corto, un gran número de servidores físicos y virtuales sin modificar el código ni la arquitectura de sus aplicaciones. ¿Qué estrategia de migración describe MEJOR ese enfoque?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "rehost",
+        "lift and shift"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Rehost, que mueve la aplicación existente a servidores de AWS",
+            "explanation": "Descartada: rehost conserva la aplicación existente y su infraestructura, y el enunciado deja de mantenerlas."
+          },
+          {
+            "id": "b",
+            "text": "Replatform, que traslada la aplicación con algunos ajustes de optimización",
+            "explanation": "Descartada: replatform sigue trasladando la aplicación que ya se tiene, y el enunciado contrata un producto del proveedor."
+          },
+          {
+            "id": "c",
+            "text": "Refactor, que modifica la arquitectura de la aplicación propia en la nube",
+            "explanation": "Descartada: refactor rediseña la aplicación de la empresa, y el enunciado no la rediseña sino que la reemplaza."
+          },
+          {
+            "id": "d",
+            "text": "Repurchase, que cambia la aplicación por otra versión o por un producto equivalente",
+            "explanation": "Es la que encaja: reemplaza la aplicación por una versión o un producto distinto, como pasar de una licencia tradicional a SaaS sin infraestructura que mantener."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-quiz-02",
+      "type": "QUIZ",
+      "title": "Cambiar un sistema con licencia por su versión SaaS",
+      "statement": "Una empresa usa un sistema de gestión de clientes con licencia tradicional, instalado en servidores propios. Decide dejar de mantenerlo y contratar la versión SaaS del proveedor, que no requiere infraestructura propia. ¿Qué estrategia de migración describe MEJOR esa decisión?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "repurchase",
+        "SaaS"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Replatform, que mueve el componente a la nube con ajustes para operarlo con eficiencia",
+            "explanation": "Es la que encaja: traslada el componente e introduce cierta optimización, por ejemplo pasar SQL Server a Amazon RDS for SQL Server, sin rediseñar la aplicación."
+          },
+          {
+            "id": "b",
+            "text": "Rehost, que mueve el componente a la nube tal cual, sin ajustes en su plataforma",
+            "explanation": "Descartada: rehost no introduce ninguna optimización, y el enunciado pasa a un servicio administrado para administrar menos."
+          },
+          {
+            "id": "c",
+            "text": "Refactor, que rediseña los componentes para aprovechar las funciones nativas de la nube",
+            "explanation": "Descartada: refactor modifica la arquitectura de la aplicación, y el enunciado descarta rediseñarla."
+          },
+          {
+            "id": "d",
+            "text": "Retire, que da de baja el componente y permite apagar los servidores que lo alojan",
+            "explanation": "Descartada: retire apaga lo que ya no se necesita, y la base de datos se sigue usando después de la migración."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-quiz-03",
+      "type": "QUIZ",
+      "title": "Pasar una base de datos a un servicio administrado",
+      "statement": "Una empresa traslada una base de datos Microsoft SQL Server a Amazon RDS for SQL Server para reducir el trabajo de administración, sin rediseñar la aplicación que la usa. ¿Qué estrategia de migración describe MEJOR ese caso?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "replatform",
+        "Amazon RDS"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Rehost, que lleva la aplicación a AWS sin tocar su diseño actual",
+            "explanation": "Descartada: rehost conserva el monolito tal como está, y el enunciado busca cambiar la forma de construir y escalar la aplicación."
+          },
+          {
+            "id": "b",
+            "text": "Relocate, que mueve servidores a otra plataforma, VPC, Región o cuenta",
+            "explanation": "Descartada: relocate no cambia la arquitectura de la aplicación, y el enunciado necesita justamente modificarla."
+          },
+          {
+            "id": "c",
+            "text": "Refactor o re-architect, que modifica la arquitectura al migrar la aplicación",
+            "explanation": "Es la que encaja: modifica la arquitectura para aprovechar las funciones nativas de la nube y mejorar la agilidad y la escalabilidad, aunque es la más compleja y costosa."
+          },
+          {
+            "id": "d",
+            "text": "Replatform, que añade cierta optimización para operar la aplicación con eficiencia",
+            "explanation": "Descartada: replatform optimiza para operar mejor o reducir costos, pero el enunciado pide aprovechar las capacidades nativas que da el rediseño."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-quiz-04",
+      "type": "QUIZ",
+      "title": "Rediseñar un monolito que frena los lanzamientos",
+      "statement": "Una empresa tiene una aplicación monolítica que ya frena el lanzamiento de productos nuevos. Acepta el mayor esfuerzo que haga falta para aprovechar las capacidades propias de la nube y poder escalar. ¿Qué estrategia de migración encaja MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "refactor",
+        "monolito"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Retain, que deja la aplicación en su entorno de origen y pospone su migración",
+            "explanation": "Descartada: retain mantiene la aplicación en el origen, y el enunciado quiere apagar sus servidores en lugar de conservarla."
+          },
+          {
+            "id": "b",
+            "text": "Retire, que desmantela o archiva la aplicación junto con su pila de servidores",
+            "explanation": "Es la que encaja: se usa para las aplicaciones sin valor de negocio, para eliminar el costo de mantenerlas y para reducir el riesgo de un sistema operativo sin soporte."
+          },
+          {
+            "id": "c",
+            "text": "Rehost, que traslada la aplicación a AWS conservándola sin cambios",
+            "explanation": "Descartada: rehost lleva la aplicación a la nube y la sigue operando, y el enunciado no ve valor en moverla."
+          },
+          {
+            "id": "d",
+            "text": "Repurchase, que reemplaza la aplicación por una versión o producto distinto",
+            "explanation": "Descartada: repurchase compra un reemplazo, y el enunciado no necesita ninguno porque la aplicación ya no aporta valor."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-quiz-05",
+      "type": "QUIZ",
+      "title": "Dar de baja una aplicación sin valor",
+      "statement": "Un inventario de aplicaciones muestra una que ya no aporta valor al negocio y que corre sobre un sistema operativo sin soporte. La empresa quiere apagar sus servidores y dejar de pagar por mantenerla. ¿Qué estrategia de migración describe MEJOR ese destino?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "retire",
+        "aplicación sin uso"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Retain, que deja la aplicación en su entorno de origen y pospone su migración",
+            "explanation": "Es la que encaja: se usa para las aplicaciones que se quieren mantener en el origen o que aún no se pueden migrar, por residencia de datos o hardware especializado."
+          },
+          {
+            "id": "b",
+            "text": "Relocate, que traslada las cargas a otra VPC, Región o cuenta de AWS",
+            "explanation": "Descartada: relocate mueve las cargas dentro de la nube o a su versión en la nube, y el enunciado no las traslada."
+          },
+          {
+            "id": "c",
+            "text": "Repurchase, que reemplaza la aplicación por otra versión o por otro producto",
+            "explanation": "Descartada: repurchase compra un reemplazo, y el enunciado decide posponer la migración sin sustituir la aplicación."
+          },
+          {
+            "id": "d",
+            "text": "Rehost, que mueve la aplicación a AWS sin hacerle cambios",
+            "explanation": "Descartada: rehost traslada la aplicación a AWS, pero el hardware especializado no tiene equivalente y el equipo no la migra en esta fase."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-quiz-06",
+      "type": "QUIZ",
+      "title": "Mantener una aplicación en su entorno actual",
+      "statement": "Una aplicación debe cumplir requisitos de residencia de datos y depende de hardware especializado sin equivalente en la nube. El equipo decide no migrarla en esta fase y valorarla de nuevo más adelante. ¿Qué estrategia de migración describe MEJOR esa decisión?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "retain",
+        "residencia de datos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Reducir el riesgo del negocio con más fiabilidad, rendimiento y seguridad",
+            "explanation": "Cumple: reducir el riesgo del negocio mediante más fiabilidad, rendimiento y seguridad es uno de los beneficios que cita el AWS CAF."
+          },
+          {
+            "id": "b",
+            "text": "Revisar cada carga de trabajo frente a los seis pilares con una herramienta de la consola",
+            "explanation": "No cumple: esa revisión la hace la AWS Well-Architected Tool con el Framework y sus pilares, no es un beneficio del AWS CAF."
+          },
+          {
+            "id": "c",
+            "text": "Hacer crecer los ingresos con productos, servicios y segmentos de mercado nuevos",
+            "explanation": "Cumple: hacer crecer los ingresos creando productos y servicios, llegando a clientes nuevos y entrando en segmentos nuevos es otro beneficio que cita el AWS CAF."
+          },
+          {
+            "id": "d",
+            "text": "Elegir para cada aplicación una de las siete estrategias de migración",
+            "explanation": "No cumple: las 7 R son las estrategias de migración de la guía de grandes migraciones, y no un beneficio del AWS CAF."
+          },
+          {
+            "id": "e",
+            "text": "Extender la guía del Framework a un dominio concreto de industria o de tecnología",
+            "explanation": "No cumple: eso lo hacen los Lenses de Well-Architected, y no el AWS CAF."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-quiz-07",
+      "type": "QUIZ",
+      "title": "Dos beneficios que cita el AWS CAF",
+      "statement": "Una directiva presenta el AWS Cloud Adoption Framework para justificar su proyecto de nube. Selecciona DOS beneficios que el AWS CAF cita para quienes lo adoptan.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "beneficios del CAF",
+        "riesgo",
+        "ingresos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/cloud-adoption-framework/",
+        "https://docs.aws.amazon.com/whitepapers/latest/overview-aws-cloud-adoption-framework/welcome.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "La perspectiva de Seguridad ayuda a lograr la confidencialidad, la integridad y la disponibilidad de los datos y de las cargas",
+            "explanation": "Cumple: la perspectiva de Seguridad busca la confidencialidad, la integridad y la disponibilidad de los datos y de las cargas de trabajo en la nube."
+          },
+          {
+            "id": "b",
+            "text": "La perspectiva de Operaciones se centra en la cultura, la estructura de la organización y el liderazgo",
+            "explanation": "No cumple: la cultura, la estructura organizativa y el liderazgo son el foco de la perspectiva de Personas, no de la de Operaciones."
+          },
+          {
+            "id": "c",
+            "text": "La perspectiva de Personas sirve de puente entre la tecnología y el negocio, con foco en cultura y fuerza laboral",
+            "explanation": "Cumple: la perspectiva de Personas actúa como puente entre la tecnología y el negocio, con foco en la cultura, la estructura, el liderazgo y la fuerza laboral."
+          },
+          {
+            "id": "d",
+            "text": "La perspectiva de Negocio se centra en que los servicios se entreguen al nivel que la empresa necesita",
+            "explanation": "No cumple: entregar los servicios al nivel que necesita el negocio es el foco de la perspectiva de Operaciones, y la de Negocio busca que las inversiones aceleren los resultados."
+          },
+          {
+            "id": "e",
+            "text": "La perspectiva de Gobernanza se centra en ejecutar y monitorear los sistemas de la empresa",
+            "explanation": "No cumple: la perspectiva de Gobernanza orquesta las iniciativas de nube para maximizar los beneficios y minimizar los riesgos de la transformación."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-quiz-08",
+      "type": "QUIZ",
+      "title": "Dos afirmaciones correctas sobre las perspectivas del CAF",
+      "statement": "Un equipo estudia las perspectivas en las que el AWS CAF agrupa sus capacidades. Selecciona DOS afirmaciones correctas sobre ellas.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "perspectivas del CAF",
+        "seguridad",
+        "personas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/cloud-adoption-framework/"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-5-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué estrategia de migración eliges para una aplicación",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, un sistema de facturación instalado en servidores propios) y escribe tu decisión de migración como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: cuál de las 7 R aplicarías a esa aplicación y por qué, según lo que quieres cambiar o conservar de ella.\n\n2) Alternativa descartada: otra de las 7 R que te tentaba (por ejemplo, refactor en lugar de replatform) y la razón por la que la descartaste.\n\n3) Consecuencia: qué cambia para tu equipo con tu elección (esfuerzo, riesgo, tiempo hasta salir a producción) y qué capacidad del AWS CAF te haría falta reforzar (por ejemplo, de la perspectiva de Personas o de Gobernanza).\n\n4) Evidencia: qué parte de la guía de estrategias de migración de AWS y de la página del AWS Cloud Adoption Framework usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento distinga el grado de cambio de cada estrategia y no confunda las perspectivas del AWS CAF con los pilares de Well-Architected. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará por qué elegiste esa estrategia.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "7 R",
+        "decisión",
+        "AWS CAF"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://aws.amazon.com/cloud-adoption-framework/",
+        "https://docs.aws.amazon.com/whitepapers/latest/overview-aws-cloud-adoption-framework/welcome.html"
+      ],
+      "order": 18
+    }
+  ]
+}
