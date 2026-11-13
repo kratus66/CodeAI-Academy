@@ -1,0 +1,1223 @@
+{
+  "code": "AWS-U1.1.4",
+  "lessons": [
+    {
+      "slug": "aws-u1-1-4-pilares-well-architected",
+      "title": "AWS Well-Architected Framework: los seis pilares",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "El AWS Well-Architected Framework te ayuda a entender los pros y los contras de las decisiones que tomas al construir sistemas en AWS. Reúne mejores prácticas de arquitectura para diseñar y operar cargas de trabajo en la nube seguras, fiables, eficientes, rentables y sostenibles. La documentación lo compara con construir un edificio: si los cimientos no son sólidos, aparecen problemas estructurales. Esos cimientos son seis pilares: excelencia operativa, seguridad, fiabilidad, eficiencia del rendimiento, optimización de costos y sostenibilidad. Para el examen CLF-C02 importa reconocer cada pilar y, sobre todo, identificar en qué se diferencian entre sí."
+        },
+        {
+          "type": "list",
+          "title": "Los seis pilares y su foco",
+          "items": [
+            "Excelencia operativa: se centra en ejecutar y monitorear los sistemas y en mejorar de forma continua los procesos y procedimientos. Temas clave: automatizar los cambios, responder a los eventos y definir estándares para gestionar la operación diaria.",
+            "Seguridad: se centra en proteger la información y los sistemas. Temas clave: la confidencialidad y la integridad de los datos, la gestión de los permisos de los usuarios y los controles para detectar eventos de seguridad.",
+            "Fiabilidad: se centra en que las cargas de trabajo cumplan su función prevista y en cómo recuperarse con rapidez de un fallo para atender la demanda. Temas clave: el diseño de sistemas distribuidos, la planificación de la recuperación y la adaptación a requisitos cambiantes.",
+            "Eficiencia del rendimiento: se centra en la asignación estructurada y ágil de los recursos de TI y de cómputo. Temas clave: seleccionar tipos y tamaños de recursos optimizados para los requisitos de la carga, monitorear el rendimiento y mantener la eficiencia a medida que evolucionan las necesidades del negocio.",
+            "Optimización de costos: se centra en evitar los costos innecesarios. Temas clave: entender el gasto a lo largo del tiempo y controlar la asignación de fondos, seleccionar recursos del tipo y la cantidad adecuados y escalar según las necesidades del negocio sin gastar de más.",
+            "Sostenibilidad: se centra en minimizar el impacto ambiental de ejecutar cargas de trabajo en la nube. Temas clave: un modelo de responsabilidad compartida para la sostenibilidad, comprender el impacto y maximizar la utilización para necesitar menos recursos y reducir los impactos derivados."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómo se usa el Framework",
+          "text": "El Framework documenta un conjunto de preguntas fundamentales que te ayudan a saber si una arquitectura concreta se alinea con las mejores prácticas de la nube. Ofrece una forma coherente de medir tus arquitecturas frente a esas prácticas y de identificar qué áreas mejorar. El proceso de revisar una arquitectura es una conversación constructiva sobre las decisiones de arquitectura y no un mecanismo de auditoría. Está dirigido a quienes ocupan roles tecnológicos, como directores de tecnología (CTO), arquitectos, desarrolladores y miembros de los equipos de operaciones. Incorporar los pilares a la arquitectura produce sistemas estables y eficientes, y te deja centrarte en otros aspectos del diseño, como los requisitos funcionales."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas que rodean al Framework",
+          "items": [
+            "AWS Well-Architected Tool: servicio en la nube que ofrece un proceso coherente para revisar y medir tu arquitectura con el Framework. Permite evaluar las cargas de trabajo con regularidad, identificar los problemas de alto riesgo y registrar las mejoras, y da recomendaciones para que las cargas sean más fiables, seguras, eficientes y rentables.",
+            "Lenses: amplían la guía del Framework a dominios específicos de industria y de tecnología, como el aprendizaje automático, el análisis de datos, las arquitecturas sin servidor, la computación de alto rendimiento, el IoT, SAP, los medios en streaming, la industria de los juegos, las redes híbridas o los servicios financieros. Para evaluar una carga por completo, se usan los Lenses aplicables junto con el Framework y sus seis pilares.",
+            "Well-Architected Labs: un repositorio de código y documentación para ganar experiencia práctica aplicando las mejores prácticas.",
+            "Programa de socios Well-Architected: socios de la red de socios de AWS con un conocimiento profundo de AWS que pueden ayudarte a revisar y mejorar tus cargas de trabajo.",
+            "Guidance: a diferencia del Framework y de los Lenses, que se alinean con los seis pilares, la Guidance se centra en un caso de uso, una tecnología o un escenario de implementación concretos."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "El Framework, sus seis pilares y las piezas de apoyo",
+          "code": "flowchart TB\n  FW[\"AWS Well-Architected Framework: mide tus decisiones frente a las mejores prácticas\"]\n  OE[\"Excelencia operativa: ejecutar, monitorear y mejorar procesos\"]\n  SE[\"Seguridad: proteger la información y los sistemas\"]\n  RE[\"Fiabilidad: cumplir la función y recuperarse de fallos\"]\n  PE[\"Eficiencia del rendimiento: asignar bien los recursos de cómputo\"]\n  CO[\"Optimización de costos: evitar costos innecesarios\"]\n  SU[\"Sostenibilidad: minimizar el impacto ambiental\"]\n  TOOL[\"AWS Well-Architected Tool: revisa y mide la arquitectura\"]\n  LENS[\"Lenses: guía para un dominio concreto, junto con los seis pilares\"]\n  FW --> OE\n  FW --> SE\n  FW --> RE\n  FW --> PE\n  FW --> CO\n  FW --> SU\n  TOOL -->|aplica el Framework| FW\n  LENS -->|amplía la guía| FW"
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: seis necesidades, seis pilares",
+          "text": "Una empresa tiene seis necesidades y debe asignar cada una a su pilar. Necesidad 1: automatizar los cambios y responder a los eventos con estándares para la operación diaria; es la excelencia operativa. Necesidad 2: gestionar los permisos de los usuarios y detectar eventos de seguridad; es la seguridad. Necesidad 3: que la carga cumpla su función y se recupere con rapidez de un fallo; es la fiabilidad. Necesidad 4: elegir el tipo y el tamaño de los recursos según los requisitos de la carga y monitorear el desempeño; es la eficiencia del rendimiento. Necesidad 5: entender el gasto a lo largo del tiempo y no pagar por lo que no se necesita; es la optimización de costos. Necesidad 6: comprender el impacto ambiental y maximizar la utilización de los recursos; es la sostenibilidad. En cada caso, lo que decide es el objetivo que persigue la necesidad y no una palabra suelta del enunciado."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: pilares vecinos",
+          "text": "Las preguntas ofrecen a la vez varios pilares que parecen tocar el mismo tema. La eficiencia del rendimiento y la optimización de costos hablan de seleccionar recursos, pero la primera lo hace para ajustarse a los requisitos de la carga y la segunda para no gastar de más. La fiabilidad y la seguridad hablan de proteger la carga, pero la primera de que funcione y se recupere de los fallos y la segunda de la información y los sistemas. Antes de elegir, localiza el objetivo que describe el enunciado: operar y mejorar, proteger, recuperarse, ajustar el rendimiento, evitar costos o reducir el impacto ambiental."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: tomar la revisión del Framework por una auditoría",
+          "text": "Causa: creer que el Framework aprueba o suspende una arquitectura, como haría una inspección. Consecuencia: el equipo vive la revisión como un examen que hay que superar, esconde los problemas y no aprovecha las preguntas fundamentales para mejorar. Solución: trata la revisión como una conversación constructiva sobre las decisiones de arquitectura, cuyo resultado es una lista de áreas que mejorar, y no como un mecanismo de auditoría."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: elegir el pilar por una palabra suelta del enunciado",
+          "text": "Causa: ver «recursos» y responder optimización de costos, o ver «proteger» y responder seguridad, sin leer el objetivo completo. Consecuencia: se elige un pilar vecino que comparte la palabra pero no el objetivo, por ejemplo la optimización de costos cuando el enunciado pide ajustar el tipo y el tamaño de los recursos a los requisitos de la carga. Solución: antes de mirar las opciones, escribe con tus palabras qué quiere lograr el escenario y busca el pilar cuyo foco coincide con ese objetivo."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: olvidar un pilar al repasar el Framework",
+          "text": "Causa: memorizar una lista de cinco pilares y dejar fuera uno, casi siempre la sostenibilidad. Consecuencia: una revisión que recorre solo cinco pilares se da por completa y ninguna pregunta de ese pilar se responde ni se mejora, y en el examen una opción sobre el impacto ambiental parece inventada. Solución: aprende la lista completa de seis pilares (excelencia operativa, seguridad, fiabilidad, eficiencia del rendimiento, optimización de costos y sostenibilidad) y comprueba la lista entera en cada revisión."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Describir los seis pilares del AWS Well-Architected Framework e identificar en qué se diferencian: para cada necesidad de una carga de trabajo, nombrar el pilar cuyo foco la resuelve y explicar por qué los pilares vecinos quedan fuera. Esta unidad prepara el examen CLF-C02, dominio 1 «Conceptos de la nube», tarea 1.2 (identificar los principios de diseño de la nube de AWS), cuya guía incluye entender los pilares del Well-Architected Framework e identificar las diferencias entre ellos. Criterio: ante un escenario nuevo, nombras el pilar y el objetivo del enunciado que lo decide, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las seis necesidades tapando las respuestas: para cada una, nombra el pilar y el objetivo del enunciado que lo decide. Después responde de memoria: cuáles son los seis pilares, en qué se centra cada uno, qué diferencia a la eficiencia del rendimiento de la optimización de costos y qué papel juegan la Well-Architected Tool y los Lenses."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una práctica asignada al pilar equivocado». Un objeto describe la revisión de una carga de trabajo, con cada práctica asignada a un pilar, y una de ellas cuelga del pilar que no le corresponde. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas los nombres de las prácticas y los demás pilares."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Una revisión que se da por terminada con cinco pilares». Una función calcula los pilares que faltan por revisar y da por completa una revisión a la que le falta un pilar. Criterio de paso: con ningún pilar revisado devuelve los seis, y con cinco revisados devuelve el que queda."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe de revisión Well-Architected. Audítalo en «Auditar un informe de revisión Well-Architected generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de Well-Architected y de los pilares del Framework (leídas el 2026-11-13) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe el objetivo que describe el enunciado y el calificador; al corregir, lee la explicación de cada opción y anota si fallaste por confundir dos pilares vecinos (por ejemplo, eficiencia del rendimiento y optimización de costos) o por no recordar qué ofrece cada pieza de apoyo. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una aplicación que conozcas y decide a qué pilar darías prioridad en su próxima revisión y por qué, sin dejar fuera los demás. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero dice que la revisión del Framework «es una auditoría que se aprueba o se suspende»; ¿qué le respondes y en qué parte de la documentación de AWS te apoyas?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-well-architected-que-es",
+          "order": 0,
+          "note": "Fuente del foco y los temas clave de cada pilar, de la Well-Architected Tool, de los Lenses, de las Labs y de la Guidance."
+        },
+        {
+          "resourceSlug": "aws-well-architected-framework",
+          "order": 1,
+          "note": "Fuente de qué es el Framework, de que la revisión es una conversación constructiva y no una auditoría, de a quién se dirige y de la Well-Architected Tool."
+        },
+        {
+          "resourceSlug": "aws-well-architected-pilares",
+          "order": 2,
+          "note": "Fuente de la lista de los seis pilares y de la idea de que son los cimientos de un sistema estable y eficiente."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 3,
+          "note": "Guía de CLF-C02: la tarea 1.2 del dominio 1 incluye entender los pilares del Well-Architected Framework e identificar sus diferencias."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Excelencia operativa (operar, monitorear y mejorar los procesos), seguridad (proteger la información y los sistemas), fiabilidad (cumplir la función y recuperarse de los fallos), eficiencia del rendimiento (asignar bien los recursos de cómputo), optimización de costos (evitar los costos innecesarios) y sostenibilidad (minimizar el impacto ambiental)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los seis pilares",
+      "statement": "¿Cuáles son los seis pilares del AWS Well-Architected Framework y en qué se centra cada uno?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "seis pilares",
+        "Well-Architected Framework"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ayuda a entender los pros y los contras de las decisiones al construir sistemas en AWS y ofrece una forma coherente de medir las arquitecturas frente a las mejores prácticas. No es una auditoría: revisar una arquitectura es una conversación constructiva sobre las decisiones de arquitectura."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué es el Framework",
+      "statement": "¿Para qué sirve el AWS Well-Architected Framework y su revisión es una auditoría?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Well-Architected Framework",
+        "revisión constructiva"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En ejecutar y monitorear los sistemas y en mejorar de forma continua los procesos y procedimientos. Sus temas clave son automatizar los cambios, responder a los eventos y definir estándares para gestionar la operación diaria."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Excelencia operativa",
+      "statement": "¿En qué se centra el pilar de excelencia operativa?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "excelencia operativa",
+        "automatización"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Las dos seleccionan recursos, pero con distinto objetivo. La eficiencia del rendimiento elige tipos y tamaños optimizados para los requisitos de la carga y mantiene la eficiencia al evolucionar el negocio. La optimización de costos evita los costos innecesarios: elige el tipo y la cantidad adecuados y escala sin gastar de más."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Rendimiento y costos",
+      "statement": "¿En qué se diferencian la eficiencia del rendimiento y la optimización de costos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "eficiencia del rendimiento",
+        "optimización de costos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En minimizar el impacto ambiental de ejecutar cargas de trabajo en la nube. Sus temas clave son un modelo de responsabilidad compartida para la sostenibilidad, comprender el impacto y maximizar la utilización para necesitar menos recursos y reducir los impactos derivados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Sostenibilidad",
+      "statement": "¿En qué se centra el pilar de sostenibilidad?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "sostenibilidad",
+        "impacto ambiental"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La Well-Architected Tool es un servicio en la nube que da un proceso coherente para revisar y medir la arquitectura con el Framework, identificar problemas de alto riesgo y registrar mejoras. Los Lenses amplían la guía a dominios concretos de industria y tecnología y se usan junto con el Framework y sus seis pilares."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Tool y Lenses",
+      "statement": "¿Qué hacen la AWS Well-Architected Tool y los Lenses?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Well-Architected Tool",
+        "Lenses"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Revisión de una carga de trabajo. Corrige su defecto principal.\nexport const revision = {\n  carga: \"tienda en línea\",\n  practicas: [\n    { nombre: \"Automatizar los cambios\", pilar: \"EXCELENCIA_OPERATIVA\" },\n    { nombre: \"Establecer controles para detectar eventos de seguridad\", pilar: \"FIABILIDAD\" },\n    { nombre: \"Planificar la recuperación ante fallos\", pilar: \"FIABILIDAD\" },\n    { nombre: \"Elegir el tipo y el tamaño de los recursos según la carga\", pilar: \"EFICIENCIA_DEL_RENDIMIENTO\" },\n    { nombre: \"Controlar el gasto a lo largo del tiempo\", pilar: \"OPTIMIZACION_DE_COSTOS\" },\n    { nombre: \"Maximizar la utilización de los recursos\", pilar: \"SOSTENIBILIDAD\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const revision = {\n  carga: \"tienda en línea\",\n  practicas: [\n    { nombre: \"Automatizar los cambios\", pilar: \"EXCELENCIA_OPERATIVA\" },\n    { nombre: \"Establecer controles para detectar eventos de seguridad\", pilar: \"SEGURIDAD\" },\n    { nombre: \"Planificar la recuperación ante fallos\", pilar: \"FIABILIDAD\" },\n    { nombre: \"Elegir el tipo y el tamaño de los recursos según la carga\", pilar: \"EFICIENCIA_DEL_RENDIMIENTO\" },\n    { nombre: \"Controlar el gasto a lo largo del tiempo\", pilar: \"OPTIMIZACION_DE_COSTOS\" },\n    { nombre: \"Maximizar la utilización de los recursos\", pilar: \"SOSTENIBILIDAD\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Cada práctica debe colgar del pilar cuyo foco la describe. Recorre la lista y pregúntate, práctica por práctica, si el pilar asignado se centra en eso."
+        },
+        {
+          "level": 2,
+          "text": "Una de las prácticas trata de detectar eventos de seguridad, pero cuelga de FIABILIDAD, que se centra en que la carga cumpla su función y se recupere de los fallos. El pilar que protege la información y los sistemas es otro, y ahora no aparece en la lista."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el pilar de «Establecer controles para detectar eventos de seguridad» a \"SEGURIDAD\". No cambies los nombres de las prácticas ni el pilar de las demás."
+        }
+      ],
+      "tests": [
+        {
+          "name": "los controles para detectar eventos de seguridad cuelgan de SEGURIDAD",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const practica = revision.practicas.find((p) => p.nombre === \"Establecer controles para detectar eventos de seguridad\");\nassert.ok(practica, \"debe existir la práctica de controles de seguridad\");\nassert.strictEqual(practica.pilar, \"SEGURIDAD\");"
+          }
+        },
+        {
+          "name": "cada práctica usa uno de los seis pilares",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const pilares = [\"EXCELENCIA_OPERATIVA\", \"SEGURIDAD\", \"FIABILIDAD\", \"EFICIENCIA_DEL_RENDIMIENTO\", \"OPTIMIZACION_DE_COSTOS\", \"SOSTENIBILIDAD\"];\nfor (const practica of revision.practicas) {\n  assert.ok(pilares.includes(practica.pilar), practica.nombre + \" usa un pilar desconocido\");\n}"
+          }
+        },
+        {
+          "name": "las demás prácticas conservan su pilar",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Automatizar los cambios\": \"EXCELENCIA_OPERATIVA\",\n  \"Planificar la recuperación ante fallos\": \"FIABILIDAD\",\n  \"Elegir el tipo y el tamaño de los recursos según la carga\": \"EFICIENCIA_DEL_RENDIMIENTO\",\n  \"Controlar el gasto a lo largo del tiempo\": \"OPTIMIZACION_DE_COSTOS\",\n  \"Maximizar la utilización de los recursos\": \"SOSTENIBILIDAD\",\n};\nfor (const [nombre, pilar] of Object.entries(esperado)) {\n  const practica = revision.practicas.find((p) => p.nombre === nombre);\n  assert.ok(practica, \"falta la práctica \" + nombre);\n  assert.strictEqual(practica.pilar, pilar);\n}"
+          }
+        },
+        {
+          "name": "siguen las seis prácticas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(revision.practicas.length, 6);\nassert.strictEqual(new Set(revision.practicas.map((p) => p.nombre)).size, 6);"
+          }
+        },
+        {
+          "name": "los seis pilares aparecen en la revisión",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const usados = new Set(revision.practicas.map((p) => p.pilar));\nassert.strictEqual(usados.size, 6);"
+          }
+        },
+        {
+          "name": "la carga no cambia",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(revision.carga, \"tienda en línea\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-debug-01",
+      "type": "DEBUG",
+      "title": "Una práctica asignada al pilar equivocado",
+      "statement": "El objeto `revision` describe una carga de trabajo, una tienda en línea, con seis prácticas y el pilar del AWS Well-Architected Framework al que pertenece cada una. Una de las prácticas cuelga de un pilar que no se centra en eso, y la revisión deja un pilar sin cubrir. Corrígelo sin añadir ni quitar prácticas, sin cambiar sus nombres y manteniendo la forma del valor exportado (`export const revision = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "pilares",
+        "seguridad",
+        "fiabilidad"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Lista los pilares que faltan por revisar. Corrige su defecto principal.\nexport const PILARES = [\n  \"EXCELENCIA_OPERATIVA\",\n  \"SEGURIDAD\",\n  \"FIABILIDAD\",\n  \"EFICIENCIA_DEL_RENDIMIENTO\",\n  \"OPTIMIZACION_DE_COSTOS\",\n];\n\nexport function pilaresPendientes(revisados: string[]): string[] {\n  return PILARES.filter((pilar) => !revisados.includes(pilar));\n}\n",
+      "solution": {
+        "code": "export const PILARES = [\n  \"EXCELENCIA_OPERATIVA\",\n  \"SEGURIDAD\",\n  \"FIABILIDAD\",\n  \"EFICIENCIA_DEL_RENDIMIENTO\",\n  \"OPTIMIZACION_DE_COSTOS\",\n  \"SOSTENIBILIDAD\",\n];\n\nexport function pilaresPendientes(revisados: string[]): string[] {\n  return PILARES.filter((pilar) => !revisados.includes(pilar));\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "sin revisar ningún pilar quedan los seis",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(pilaresPendientes([]).length, 6);"
+          }
+        },
+        {
+          "name": "con cinco pilares revisados queda la sostenibilidad",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const revisados = [\"EXCELENCIA_OPERATIVA\", \"SEGURIDAD\", \"FIABILIDAD\", \"EFICIENCIA_DEL_RENDIMIENTO\", \"OPTIMIZACION_DE_COSTOS\"];\nassert.deepStrictEqual(pilaresPendientes(revisados), [\"SOSTENIBILIDAD\"]);"
+          }
+        },
+        {
+          "name": "con los seis revisados no queda ninguno",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const revisados = [\"EXCELENCIA_OPERATIVA\", \"SEGURIDAD\", \"FIABILIDAD\", \"EFICIENCIA_DEL_RENDIMIENTO\", \"OPTIMIZACION_DE_COSTOS\", \"SOSTENIBILIDAD\"];\nassert.deepStrictEqual(pilaresPendientes(revisados), []);"
+          }
+        },
+        {
+          "name": "la lista de pilares tiene los seis nombres en orden",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(PILARES, [\"EXCELENCIA_OPERATIVA\", \"SEGURIDAD\", \"FIABILIDAD\", \"EFICIENCIA_DEL_RENDIMIENTO\", \"OPTIMIZACION_DE_COSTOS\", \"SOSTENIBILIDAD\"]);"
+          }
+        },
+        {
+          "name": "los pendientes conservan el orden de la lista",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(pilaresPendientes([\"SEGURIDAD\", \"SOSTENIBILIDAD\"]), [\"EXCELENCIA_OPERATIVA\", \"FIABILIDAD\", \"EFICIENCIA_DEL_RENDIMIENTO\", \"OPTIMIZACION_DE_COSTOS\"]);"
+          }
+        },
+        {
+          "name": "no modifica la lista que recibe",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const revisados = [\"SEGURIDAD\"];\npilaresPendientes(revisados);\nassert.deepStrictEqual(revisados, [\"SEGURIDAD\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-debug-02",
+      "type": "DEBUG",
+      "title": "Una revisión que se da por terminada con cinco pilares",
+      "statement": "La función `pilaresPendientes` devuelve los pilares del AWS Well-Architected Framework que faltan por revisar, a partir de los que ya se revisaron. Los pilares se identifican con los nombres EXCELENCIA_OPERATIVA, SEGURIDAD, FIABILIDAD, EFICIENCIA_DEL_RENDIMIENTO, OPTIMIZACION_DE_COSTOS y SOSTENIBILIDAD, en ese orden. Quien la usa observa que una revisión se da por completa tras cubrir cinco pilares. Localiza el defecto y corrígelo sin cambiar la firma de la función ni el nombre de la lista `PILARES`.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "seis pilares",
+        "sostenibilidad"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de revisión Well-Architected (borrador generado por un asistente)\nContexto: un equipo prepara la revisión de una carga de trabajo con el AWS Well-Architected Framework.\n1. Los seis pilares son excelencia operativa, seguridad, fiabilidad, eficiencia del rendimiento, optimización de costos y sostenibilidad.\n2. La revisión de una arquitectura es una auditoría que aprueba o suspende la carga de trabajo.\n3. El pilar de fiabilidad se centra en que la carga cumpla su función prevista y se recupere con rapidez de un fallo, e incluye el diseño de sistemas distribuidos.\n4. El pilar de optimización de costos exige elegir siempre los recursos más pequeños, aunque no cubran los requisitos de la carga.\n5. Los Lenses amplían la guía del Framework a dominios concretos y se usan junto con el Framework y sus seis pilares.\n6. El pilar de seguridad se centra en minimizar el impacto ambiental de ejecutar cargas en la nube."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Lista de los seis pilares",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el Framework tiene seis pilares, que son excelencia operativa, seguridad, fiabilidad, eficiencia del rendimiento, optimización de costos y sostenibilidad."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "La revisión como auditoría",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "La revisión de una arquitectura es una conversación constructiva sobre las decisiones de arquitectura y no un mecanismo de auditoría que apruebe o suspenda."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Foco del pilar de fiabilidad",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la fiabilidad se centra en que las cargas cumplan su función prevista y se recuperen con rapidez de un fallo, e incluye el diseño de sistemas distribuidos."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Optimización de costos y recursos mínimos",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "La optimización de costos busca seleccionar recursos del tipo y la cantidad adecuados y escalar según las necesidades del negocio sin gastar de más; no pide recursos que no cubran los requisitos."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Descripción de los Lenses",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: los Lenses amplían la guía del Framework a dominios específicos de industria y tecnología y se usan junto con el Framework y sus seis pilares."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Foco del pilar de seguridad",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Minimizar el impacto ambiental es el foco de la sostenibilidad; la seguridad se centra en proteger la información y los sistemas."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de revisión Well-Architected generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre una revisión con el AWS Well-Architected Framework. Audítalo contra la documentación oficial: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "pilares",
+        "revisión constructiva",
+        "Lenses"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Seguridad, que se centra en proteger la información y los sistemas",
+            "explanation": "Descartada: la seguridad protege la información y los sistemas, pero el enunciado pide automatizar los cambios y definir estándares de operación, no proteger datos."
+          },
+          {
+            "id": "b",
+            "text": "Excelencia operativa, que se centra en ejecutar los sistemas y mejorar los procesos",
+            "explanation": "Es la que encaja: se centra en ejecutar y monitorear los sistemas y mejorar los procesos, con temas clave como automatizar los cambios y responder a los eventos."
+          },
+          {
+            "id": "c",
+            "text": "Fiabilidad, que se centra en el diseño de sistemas distribuidos y la recuperación",
+            "explanation": "Descartada: la fiabilidad busca que la carga cumpla su función y se recupere de los fallos, y el enunciado habla de cómo se publican y se operan los cambios."
+          },
+          {
+            "id": "d",
+            "text": "Optimización de costos, que se centra en evitar los costos innecesarios",
+            "explanation": "Descartada: la optimización de costos controla el gasto, y el enunciado no menciona el gasto sino automatizar cambios y estándares de operación."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-quiz-01",
+      "type": "QUIZ",
+      "title": "Automatizar cambios y definir estándares de operación",
+      "statement": "Una empresa publica los cambios de su aplicación con pasos manuales y se entera de los problemas cuando los clientes se quejan. Quiere automatizar los cambios, responder a los eventos y definir estándares para su operación diaria. ¿Qué pilar del AWS Well-Architected Framework describe MEJOR esa prioridad?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "excelencia operativa",
+        "automatización"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Eficiencia del rendimiento, que se centra en asignar de forma estructurada los recursos de cómputo",
+            "explanation": "Descartada: la eficiencia del rendimiento ajusta los recursos a los requisitos de la carga, pero el enunciado pide recuperación ante fallos y planes de recuperación."
+          },
+          {
+            "id": "b",
+            "text": "Sostenibilidad, que se centra en minimizar el impacto ambiental de las cargas",
+            "explanation": "Descartada: la sostenibilidad trata del impacto ambiental, y el enunciado no menciona ese impacto sino recuperarse de una caída."
+          },
+          {
+            "id": "c",
+            "text": "Excelencia operativa, que se centra en mejorar los procesos y los procedimientos",
+            "explanation": "Descartada: la excelencia operativa mejora la operación diaria, mientras que el enunciado pide diseño distribuido y recuperación de los fallos."
+          },
+          {
+            "id": "d",
+            "text": "Fiabilidad, que se centra en que la carga funcione como se espera y se recupere de los fallos",
+            "explanation": "Es la que encaja: se centra en que las cargas cumplan su función y se recuperen con rapidez de un fallo, con diseño distribuido y planificación de la recuperación."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-quiz-02",
+      "type": "QUIZ",
+      "title": "Recuperarse de una caída y adaptarse a requisitos cambiantes",
+      "statement": "Tras una caída que dejó su aplicación sin servicio durante horas, un equipo quiere que la carga de trabajo cumpla su función prevista, se recupere con rapidez de los fallos y se adapte a requisitos cambiantes, con un diseño de sistema distribuido y planes de recuperación. ¿Qué pilar se centra MÁS en esas necesidades?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "fiabilidad",
+        "recuperación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Eficiencia del rendimiento, que se centra en elegir recursos optimizados para la carga",
+            "explanation": "Descartada: la eficiencia del rendimiento ajusta tipos y tamaños a los requisitos de la carga, y el enunciado persigue no pagar por capacidad sin usar."
+          },
+          {
+            "id": "b",
+            "text": "Excelencia operativa, que se centra en definir estándares para la operación diaria",
+            "explanation": "Descartada: la excelencia operativa trata de operar y mejorar los procesos, y el enunciado se centra en el gasto y en el tamaño de los recursos."
+          },
+          {
+            "id": "c",
+            "text": "Optimización de costos, que se centra en el gasto y en lo que se paga por los recursos",
+            "explanation": "Es la que encaja: busca evitar costos innecesarios, entender el gasto en el tiempo, elegir el tipo y la cantidad adecuados y escalar sin gastar de más."
+          },
+          {
+            "id": "d",
+            "text": "Seguridad, que se centra en gestionar los permisos de los usuarios",
+            "explanation": "Descartada: la seguridad protege la información y los sistemas, y el enunciado no plantea ningún riesgo de acceso sino un problema de gasto."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-quiz-03",
+      "type": "QUIZ",
+      "title": "Pagar por capacidad que no se usa",
+      "statement": "Una empresa descubre que paga por servidores que casi no utiliza. Quiere entender cómo evoluciona su gasto, elegir recursos del tipo y la cantidad adecuados y escalar según el negocio sin gastar de más. ¿Qué pilar describe MEJOR ese objetivo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "optimización de costos",
+        "gasto"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Sostenibilidad, que se centra en comprender el impacto y maximizar la utilización",
+            "explanation": "Es la que encaja: se centra en minimizar el impacto ambiental, comprender el impacto y maximizar la utilización para necesitar menos recursos."
+          },
+          {
+            "id": "b",
+            "text": "Optimización de costos, que se centra en seleccionar recursos del tipo y la cantidad adecuados",
+            "explanation": "Descartada: la optimización de costos evita gastos innecesarios, y el enunciado habla del impacto ambiental y no del gasto."
+          },
+          {
+            "id": "c",
+            "text": "Eficiencia del rendimiento, que se centra en mantener la eficiencia al evolucionar el negocio",
+            "explanation": "Descartada: la eficiencia del rendimiento ajusta los recursos a los requisitos de la carga, y el enunciado busca reducir el impacto ambiental."
+          },
+          {
+            "id": "d",
+            "text": "Excelencia operativa, que se centra en responder a los eventos y mejorar los procedimientos",
+            "explanation": "Descartada: la excelencia operativa se ocupa de operar y mejorar los procesos, y el enunciado no habla de operación sino de impacto ambiental."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-quiz-04",
+      "type": "QUIZ",
+      "title": "Reducir el impacto ambiental de las cargas",
+      "statement": "Una empresa quiere minimizar el impacto ambiental de ejecutar sus cargas de trabajo en la nube y aprovechar al máximo los recursos para necesitar menos. ¿Qué pilar del Framework se centra MÁS en ese objetivo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "sostenibilidad",
+        "impacto ambiental"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Automatizar los cambios y responder a los eventos operativos",
+            "explanation": "No cumple: automatizar los cambios y responder a los eventos es un tema clave de la excelencia operativa, no del pilar que protege la información."
+          },
+          {
+            "id": "b",
+            "text": "Gestionar los permisos de los usuarios de la carga de trabajo",
+            "explanation": "Cumple: la gestión de los permisos de los usuarios es uno de los temas clave del pilar de seguridad, junto con la confidencialidad y la integridad de los datos."
+          },
+          {
+            "id": "c",
+            "text": "Diseñar sistemas distribuidos y planificar la recuperación ante fallos",
+            "explanation": "No cumple: el diseño de sistemas distribuidos y la planificación de la recuperación son temas clave de la fiabilidad, no de la seguridad."
+          },
+          {
+            "id": "d",
+            "text": "Seleccionar el tipo y el tamaño de los recursos según la carga de trabajo",
+            "explanation": "No cumple: seleccionar tipos y tamaños optimizados para los requisitos de la carga es un tema clave de la eficiencia del rendimiento."
+          },
+          {
+            "id": "e",
+            "text": "Establecer controles para detectar eventos de seguridad en la carga de trabajo",
+            "explanation": "Cumple: establecer controles para detectar eventos de seguridad es otro de los temas clave del pilar de seguridad."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-quiz-05",
+      "type": "QUIZ",
+      "title": "Dos temas clave del pilar que protege la información",
+      "statement": "Un equipo revisa el pilar del Framework que se centra en proteger la información y los sistemas. Selecciona DOS temas clave de ese pilar.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "seguridad",
+        "temas clave"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Las Well-Architected Labs, un repositorio de código y documentación para practicar",
+            "explanation": "Descartada: las Labs dan experiencia práctica con código y documentación, pero no revisan las cargas ni registran las mejoras en la consola."
+          },
+          {
+            "id": "b",
+            "text": "Un Lens, que amplía la guía a un dominio de industria o de tecnología",
+            "explanation": "Descartada: un Lens amplía la guía del Framework a un dominio concreto, y el enunciado pide un mecanismo para revisar cargas y registrar mejoras."
+          },
+          {
+            "id": "c",
+            "text": "La AWS Well-Architected Tool, un servicio para revisar y medir la arquitectura",
+            "explanation": "Es la que encaja: es un servicio en la consola que permite evaluar las cargas con regularidad, identificar los problemas de alto riesgo y registrar las mejoras."
+          },
+          {
+            "id": "d",
+            "text": "El programa de socios Well-Architected, cuyos socios ayudan a revisar las cargas",
+            "explanation": "Descartada: los socios ayudan a revisar y mejorar las cargas, pero no son la herramienta de la consola que registra las mejoras."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-quiz-06",
+      "type": "QUIZ",
+      "title": "Revisar las cargas con regularidad en la consola",
+      "statement": "Una empresa quiere revisar sus cargas de trabajo con regularidad desde la consola, identificar los problemas de alto riesgo y registrar las mejoras. ¿Qué recurso del ecosistema Well-Architected encaja MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Well-Architected Tool",
+        "revisión"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Eficiencia del rendimiento, que se centra en asignar de forma estructurada los recursos de TI",
+            "explanation": "Es la que encaja: selecciona tipos y tamaños optimizados para los requisitos de la carga, monitorea el rendimiento y mantiene la eficiencia al evolucionar el negocio."
+          },
+          {
+            "id": "b",
+            "text": "Optimización de costos, que se centra en entender el gasto a lo largo del tiempo",
+            "explanation": "Descartada: la optimización de costos controla el gasto, y el enunciado pide ajustar los recursos a los requisitos de la carga y vigilar su desempeño."
+          },
+          {
+            "id": "c",
+            "text": "Fiabilidad, que se centra en adaptarse a los requisitos cambiantes y recuperarse",
+            "explanation": "Descartada: la fiabilidad busca que la carga cumpla su función y se recupere de los fallos, y el enunciado trata de elegir tipo y tamaño de recursos."
+          },
+          {
+            "id": "d",
+            "text": "Seguridad, que se centra en la confidencialidad y la integridad de los datos",
+            "explanation": "Descartada: la seguridad protege los datos y los sistemas, y el enunciado no plantea ningún riesgo sobre ellos sino el ajuste de los recursos."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-quiz-07",
+      "type": "QUIZ",
+      "title": "Ajustar el tipo y el tamaño de los recursos a la carga",
+      "statement": "Un equipo debe comprobar si los tipos y los tamaños de recursos que usa están optimizados para los requisitos de su carga, vigilar su desempeño y mantener la eficiencia a medida que evoluciona el negocio. ¿Qué pilar describe MEJOR esa revisión?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "eficiencia del rendimiento",
+        "recursos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Ayuda a entender los pros y los contras de las decisiones al construir sistemas en AWS",
+            "explanation": "Cumple: el Framework ayuda a entender los pros y los contras de las decisiones que se toman al construir sistemas en AWS."
+          },
+          {
+            "id": "b",
+            "text": "Su revisión es una auditoría que aprueba o rechaza la arquitectura del equipo",
+            "explanation": "No cumple: revisar una arquitectura es una conversación constructiva sobre las decisiones de arquitectura, no un mecanismo de auditoría."
+          },
+          {
+            "id": "c",
+            "text": "Está pensado para arquitectos, no para desarrolladores ni equipos de operaciones",
+            "explanation": "No cumple: se dirige a roles tecnológicos como directores de tecnología, arquitectos, desarrolladores y miembros de los equipos de operaciones."
+          },
+          {
+            "id": "d",
+            "text": "Ofrece una forma coherente de medir las arquitecturas frente a las mejores prácticas",
+            "explanation": "Cumple: proporciona un enfoque coherente para evaluar los sistemas y para identificar qué áreas de la arquitectura conviene mejorar."
+          },
+          {
+            "id": "e",
+            "text": "Abarca la seguridad y la fiabilidad, y deja los demás aspectos fuera de su alcance",
+            "explanation": "No cumple: el Framework tiene seis pilares, que incluyen también la excelencia operativa, la eficiencia del rendimiento, los costos y la sostenibilidad."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-quiz-08",
+      "type": "QUIZ",
+      "title": "Dos afirmaciones correctas sobre el Framework",
+      "statement": "Una arquitecta presenta el AWS Well-Architected Framework a un equipo nuevo. Selecciona DOS afirmaciones correctas sobre el Framework.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Well-Architected Framework",
+        "revisión constructiva"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-1-4-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué pilar priorizas en una revisión",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una tienda en línea con base de datos y panel de administración) y escribe tu decisión de priorización como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: a qué pilar del AWS Well-Architected Framework das prioridad en la próxima revisión de esa aplicación y por qué, sin dejar fuera los demás.\n\n2) Alternativa descartada: otro pilar que te tentaba priorizar (por ejemplo, la optimización de costos por encima de la fiabilidad) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué cambia para tu equipo con tu elección (qué prácticas se refuerzan y qué conversación constructiva abre la revisión).\n\n4) Evidencia: qué parte de las páginas oficiales de Well-Architected y de los pilares del Framework usarías para comprobarlo, y si usarías la Well-Architected Tool o un Lens.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento distinga el foco de cada pilar y no confunda una revisión constructiva con una auditoría. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará por qué elegiste ese pilar.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "pilares",
+        "decisión",
+        "revisión constructiva"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://aws.amazon.com/architecture/well-architected/",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html",
+        "https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html"
+      ],
+      "order": 18
+    }
+  ]
+}
