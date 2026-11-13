@@ -1,0 +1,1159 @@
+{
+  "code": "AWS-U0.3.3",
+  "lessons": [
+    {
+      "slug": "aws-u0-3-3-http-apis-rest-y-json",
+      "title": "HTTP, APIs REST y JSON: leer peticiones y respuestas",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Casi todo lo que hace una aplicación, la consola de AWS o la AWS CLI con un servicio es un intercambio de mensajes HTTP: una petición que sale y una respuesta que vuelve. Leerlos bien es una habilidad de diagnóstico. De la petición sacas qué se pidió: el método, la ruta del recurso, las cadenas de consulta, las cabeceras y el cuerpo. De la respuesta sacas qué ocurrió: el código de estado, las cabeceras y el cuerpo. Según la documentación de Amazon API Gateway, sus API REST están basadas en HTTP, permiten una comunicación cliente-servidor sin estado e implementan métodos HTTP estándar como GET, POST, PUT, PATCH y DELETE. Los cuerpos suelen ir en JSON: la consola de pruebas de API Gateway envía los valores en forma application/json por defecto y la AWS CLI muestra su salida en JSON."
+        },
+        {
+          "type": "list",
+          "title": "Qué se lee en cada mensaje y cómo lo muestra la consola",
+          "items": [
+            "Petición: método (GET, POST, PUT, PATCH o DELETE), ruta del recurso, cadenas de consulta (query strings), cabeceras y cuerpo.",
+            "Respuesta: código de estado HTTP, cabeceras y cuerpo.",
+            "La pestaña Test de API Gateway los presenta con estos nombres: Request (la ruta llamada), Status (el código de estado), Latency (ms) (el tiempo entre la recepción de la petición y la respuesta devuelta), Response body, Response headers y Logs (entradas simuladas de CloudWatch Logs).",
+            "Estado sin memoria: en una API REST cada petición es independiente. Una API de WebSocket, en cambio, mantiene una comunicación con estado y bidireccional entre cliente y servidor."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: leer una prueba en la consola",
+          "text": "Escenario: una persona prueba en la pestaña Test el método GET de la ruta /pedidos/42 de una API REST. El panel muestra Request: /pedidos/42, Status: 200 y Latency (ms): 35. El Response body es {\"id\": 42, \"estado\": \"enviado\", \"total\": {\"moneda\": \"EUR\", \"importe\": 19.9}}. Paso 1, mira Request: confirma que se probó la ruta que querías. Paso 2, lee Status: es el código de estado HTTP de la respuesta. Paso 3, lee el cuerpo como JSON: es un objeto con tres campos; el campo total es otro objeto con sus propios campos, así que el importe se alcanza como total.importe. Paso 4, mira Latency: es el tiempo que la API tardó entre recibir la petición y devolver la respuesta. Paso 5, recuerda que Logs son entradas simuladas de lo que se habría escrito fuera de la consola, pero el resultado de la llamada es real. Las cifras del ejemplo son ilustrativas. Si el método está integrado con una función Lambda, el estado, el cuerpo y las cabeceras pueden diferir de lo que envió la función, según el mapeo configurado."
+        },
+        {
+          "type": "mermaid",
+          "title": "El recorrido de una petición y de su respuesta",
+          "code": "sequenceDiagram\n  participant C as Cliente\n  participant G as API Gateway\n  participant B as Backend\n  C->>G: Petición con método, ruta, cabeceras y cuerpo JSON\n  G->>B: Petición hacia el backend, por ejemplo una función Lambda\n  B-->>G: Respuesta del backend\n  G-->>C: Respuesta con estado, cabeceras y cuerpo JSON\n  Note over G,C: El mapeo del método puede cambiar el estado, el cuerpo y las cabeceras"
+        },
+        {
+          "type": "paragraph",
+          "title": "Leer JSON con --query en la AWS CLI",
+          "text": "La salida JSON de la AWS CLI se puede recortar con dos mecanismos. El filtrado del lado del servidor lo ofrece la API del servicio, normalmente con parámetros como --filter o --filters, y se procesa primero: el servicio solo devuelve los registros que coinciden. El filtrado del lado del cliente usa el parámetro --query con sintaxis JMESPath y se aplica a la respuesta HTTP que ya llegó entera. Los identificadores son las etiquetas del JSON (Volumes, Size, VolumeId). Una lista es un identificador seguido de corchetes. Con una salida de aws ec2 describe-volumes: Volumes[*].VolumeId devuelve todos los identificadores, Volumes[0] el primer elemento, Volumes[:2] los dos primeros y Volumes[?Size < `20`].VolumeId solo los volúmenes de tamaño menor que 20. Los valores literales de una comparación van entre acentos graves."
+        },
+        {
+          "type": "list",
+          "title": "Patrones de --query que conviene saber leer",
+          "items": [
+            "Volumes[*].Attachments[].State: el corchete vacío aplana los resultados en una sola lista.",
+            "Volumes[?State==`attached`]: filtra los elementos cuyo estado coincide con el literal.",
+            "Volumes[*].VolumeId | [0]: la barra vertical pasa el resultado a una nueva expresión; aquí se queda con el primer elemento.",
+            "Volumes[].{Id: VolumeId, Tipo: VolumeType}: un multiselect hash da etiquetas legibles a cada valor.",
+            "sort_by(Volumes, &VolumeId) y length(...): JMESPath también tiene funciones."
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica: un 403 en una API privada no siempre es un problema de credenciales",
+          "text": "Una API REST de tipo privado solo es accesible a través de VPC endpoints de interfaz y exige una política de recurso. Esa política debe permitir de forma explícita la VPC (condición aws:SourceVpc) o el endpoint (condición aws:SourceVpce); sin esas condiciones, las invocaciones devuelven 403 Forbidden. Además, el security group del endpoint debe permitir el puerto TCP 443 y, si se invoca por el nombre DNS público del endpoint, la petición debe llevar la cabecera Host o x-apigw-api-id. Ante un 403, revisa la política de recurso antes de buscar credenciales que no existen."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica: --query no hace que viaje menos información",
+          "text": "El parámetro --query filtra en el cliente: la respuesta HTTP completa ya llegó a la CLI cuando se aplica. Para reducir lo que el servicio envía, hay que usar el filtrado del lado del servidor, si el comando lo ofrece (por ejemplo --filters en ec2). En grandes conjuntos de datos, el filtrado del cliente puede ser más lento que el del servidor."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: probar en la consola un método que borra datos reales creyendo que es una simulación",
+          "text": "Causa: pensar que la pestaña Test solo simula la llamada porque sus entradas de Logs son simuladas. Consecuencia: la prueba equivale a llamar al método fuera de la consola, así que un DELETE que termina bien elimina de verdad los recursos de la API. Solución: antes de pulsar Test, comprueba qué hace el método y con qué datos trabaja; para probar usa un recurso o una etapa de pruebas, nunca los datos reales de una API en uso."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar --query con --output text y fiarse de que el resultado es único",
+          "text": "Causa: con --output text la salida se pagina antes de aplicar --query y la CLI ejecuta la consulta una vez por cada página. Consecuencia: la consulta incluye el primer elemento coincidente de cada página y aparece salida de más que parece un error de tu expresión. Solución: usa --output json, que procesa toda la respuesta como una sola estructura y ejecuta la consulta una vez; si necesitas recortar más, encadena otras herramientas de línea de comandos como head o tail."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Leer una petición y una respuesta HTTP de una API REST con cuerpo JSON: identificar método, ruta, cabeceras, código de estado y cuerpo, extraer campos de un JSON con --query y explicar por qué una API privada devuelve 403. Criterio: ante un intercambio nuevo, nombras cada pieza y justificas el diagnóstico sin mirar la lección. Esta unidad no prepara un examen concreto: usa API Gateway y la AWS CLI como material para practicar la lectura."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Rehaz el ejemplo de la prueba en la consola tapando la explicación: nombra los campos del panel, lee el cuerpo JSON hasta el importe y di qué mide Latency. Después contesta de memoria: qué diferencia hay entre una API REST y una de WebSocket, qué es el filtrado del lado del servidor y cuál es el del cliente."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una petición a una API privada sin la cabecera que la identifica». Una petición descrita como objeto falla porque le falta una cabecera. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y la petición conserva el método, la dirección y la cabecera Accept."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La política de recurso apunta al identificador equivocado». Compara la clave de la condición con el tipo de identificador que contiene. Criterio de paso: la política permite la invocación solo desde el endpoint indicado y no has ampliado el acceso ni cambiado el efecto, la acción ni el recurso."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un diagnóstico de una llamada fallida a una API privada. Audítalo en «Auditar un diagnóstico generado por IA de una llamada fallida»: marca solo los defectos reales y deja sin marcar lo correcto aunque parezca sospechoso. Contrasta lo que afirme con la documentación de API Gateway (leída el 2026-11-13) antes de aceptarlo, y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe en una línea la restricción y el calificador de cada una; al corregir, lee la explicación de cada opción y anota si fallaste por confundir el filtrado del cliente con el del servidor, por tratar la consola como una simulación o por pasar por alto la política de recurso. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Completa la reflexión de la unidad sobre una decisión de acceso a una API privada. Pregunta de cierre para una entrevista: una aplicación recibe un 403 al invocar una API privada desde una VPC; ¿qué revisas primero, la política de recurso, las cabeceras de la petición o el security group del endpoint, y qué evidencia pedirías en cada caso?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-api-gateway-que-es",
+          "order": 0,
+          "note": "Qué es API Gateway: rasgos de las API REST (HTTP, sin estado, métodos estándar) y diferencia con las de WebSocket."
+        },
+        {
+          "resourceSlug": "aws-api-gateway-probar-metodo-rest",
+          "order": 1,
+          "note": "Qué muestra la pestaña Test (estado, latencia, cuerpo, cabeceras y logs) y por qué la prueba es una llamada real."
+        },
+        {
+          "resourceSlug": "aws-api-gateway-rest-api-libro-blanco",
+          "order": 2,
+          "note": "API privadas: política de recurso, 403 Forbidden, cabeceras Host y x-apigw-api-id y puerto 443 del endpoint."
+        },
+        {
+          "resourceSlug": "aws-cli-filtrar-salida-json",
+          "order": 3,
+          "note": "Filtrado del lado del servidor y del cliente con --query (JMESPath) sobre la salida JSON."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Están basadas en HTTP, permiten una comunicación cliente-servidor sin estado e implementan métodos HTTP estándar como GET, POST, PUT, PATCH y DELETE."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los tres rasgos de una API REST de API Gateway",
+      "statement": "¿Qué tres rasgos tienen las API REST que crea Amazon API Gateway?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "API REST",
+        "sin estado",
+        "métodos HTTP"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La de WebSocket sigue el protocolo WebSocket: comunicación con estado, bidireccional (full-duplex), y enruta los mensajes según su contenido. La REST es sin estado: cada petición es independiente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: REST frente a WebSocket",
+      "statement": "¿En qué se diferencia una API de WebSocket de una API REST en Amazon API Gateway?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "WebSocket",
+        "API REST",
+        "estado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Request (la ruta llamada), Status (el código de estado HTTP), Latency (ms), Response body, Response headers y Logs (entradas simuladas de CloudWatch Logs)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los campos de la pestaña Test",
+      "statement": "¿Qué campos muestra la pestaña Test de la consola de API Gateway tras probar un método?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "pestaña Test",
+        "código de estado",
+        "cuerpo de la respuesta"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-test-method.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "No. Equivale a llamar al método fuera de la consola: si el método borra recursos y la llamada tiene éxito, se borran. Solo las entradas de Logs son simuladas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Probar en la consola es una llamada real",
+      "statement": "¿Probar un método en la consola de API Gateway es una simulación sin efectos sobre los recursos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "pruebas en la consola",
+        "llamada real"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-test-method.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El del servidor lo define la API del servicio (parámetros como --filters) y se procesa primero: solo devuelve los registros coincidentes. --query filtra en el cliente, con JMESPath, la respuesta HTTP que ya llegó entera."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Filtrado del servidor frente a --query",
+      "statement": "¿Qué diferencia hay entre el filtrado del lado del servidor y el parámetro --query de la AWS CLI?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "filtrado del servidor",
+        "--query",
+        "JMESPath"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una API privada exige política de recurso. Si no permite la VPC (aws:SourceVpc) o el endpoint (aws:SourceVpce), las invocaciones devuelven 403 Forbidden."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: El 403 de una API privada",
+      "statement": "¿Por qué una REST API privada puede devolver 403 Forbidden a una llamada que viene de una VPC?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "API privada",
+        "política de recurso",
+        "403 Forbidden"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/rest-api.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Petición a una REST API privada (identificador a1b2c3d4e5) por el nombre DNS público\n// de un VPC endpoint de interfaz con el DNS privado desactivado. La llamada falla.\nexport const peticion = {\n  metodo: \"GET\",\n  url: \"https://vpce-0a1b2c3d4e5f60718-ab12cd34.execute-api.eu-west-1.vpce.amazonaws.com/prod/pedidos/42\",\n  cabeceras: {\n    Accept: \"application/json\",\n  },\n};\n",
+      "solution": {
+        "code": "// Petición a una REST API privada (identificador a1b2c3d4e5) por el nombre DNS público\n// de un VPC endpoint de interfaz con el DNS privado desactivado: ahora identifica la API.\nexport const peticion = {\n  metodo: \"GET\",\n  url: \"https://vpce-0a1b2c3d4e5f60718-ab12cd34.execute-api.eu-west-1.vpce.amazonaws.com/prod/pedidos/42\",\n  cabeceras: {\n    Accept: \"application/json\",\n    \"x-apigw-api-id\": \"a1b2c3d4e5\",\n  },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Esta vía de acceso, el nombre DNS público del VPC endpoint, no dice por sí sola de qué API se trata. Piensa en qué parte de una petición HTTP puede llevar esa información."
+        },
+        {
+          "level": 2,
+          "text": "Al invocar una API privada por el nombre DNS público del endpoint hay que pasar la cabecera Host o la cabecera x-apigw-api-id. Añade una de ellas al objeto `cabeceras`."
+        },
+        {
+          "level": 3,
+          "text": "Deja `cabeceras` así: `{ Accept: \"application/json\", \"x-apigw-api-id\": \"a1b2c3d4e5\" }`. No cambies `metodo` ni `url` y no añadas cuerpo ni credenciales."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la petición identifica la API con la cabecera x-apigw-api-id",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(peticion.cabeceras[\"x-apigw-api-id\"], \"a1b2c3d4e5\", \"falta la cabecera x-apigw-api-id con el identificador de la API\");"
+          }
+        },
+        {
+          "name": "se conserva la cabecera Accept",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(peticion.cabeceras.Accept, \"application/json\");"
+          }
+        },
+        {
+          "name": "se conservan el método y la dirección de la llamada",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(peticion.metodo, \"GET\");\nassert.strictEqual(peticion.url, \"https://vpce-0a1b2c3d4e5f60718-ab12cd34.execute-api.eu-west-1.vpce.amazonaws.com/prod/pedidos/42\");"
+          }
+        },
+        {
+          "name": "el identificador de la API se escribe exacto, sin espacios",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const valor = peticion.cabeceras[\"x-apigw-api-id\"];\nassert.strictEqual(typeof valor, \"string\");\nassert.strictEqual(valor, valor.trim());\nassert.match(valor, /^[a-z0-9]{10}$/);"
+          }
+        },
+        {
+          "name": "no se añaden cuerpo ni credenciales a la petición",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(!(\"cuerpo\" in peticion), \"una petición GET de lectura no lleva cuerpo\");\nconst nombres = Object.keys(peticion.cabeceras).map((nombre) => nombre.toLowerCase());\nassert.ok(!nombres.some((nombre) => /authorization|secret|token|key/.test(nombre)), \"no se pegan credenciales en la petición\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-debug-01",
+      "type": "DEBUG",
+      "title": "Una petición a una API privada sin la cabecera que la identifica",
+      "statement": "El objeto `peticion` describe una llamada GET a una REST API privada, cuyo identificador es a1b2c3d4e5, hecha por el nombre DNS público de un VPC endpoint de interfaz que tiene el DNS privado desactivado. Con la petición tal cual está, la llamada falla porque no cumple lo que exige esa vía de acceso. El defecto es uno solo. Corrígelo con el cambio mínimo, conserva el método, la dirección y la cabecera Accept, y mantén la forma del valor exportado (`export const peticion = { … }`). No añadas cuerpo ni credenciales.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "cabeceras HTTP",
+        "API privada",
+        "VPC endpoint"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/rest-api.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política de recurso de una REST API privada, escrita como objeto JSON.\n// Debe permitir invocar la API solo desde el VPC endpoint vpce-0a1b2c3d4e5f60718.\nexport const politica = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Effect: \"Allow\",\n      Principal: \"*\",\n      Action: \"execute-api:Invoke\",\n      Resource: \"execute-api:/*\",\n      Condition: {\n        StringEquals: {\n          \"aws:SourceVpc\": \"vpce-0a1b2c3d4e5f60718\",\n        },\n      },\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Política de recurso de una REST API privada, escrita como objeto JSON.\n// Debe permitir invocar la API solo desde el VPC endpoint vpce-0a1b2c3d4e5f60718.\nexport const politica = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Effect: \"Allow\",\n      Principal: \"*\",\n      Action: \"execute-api:Invoke\",\n      Resource: \"execute-api:/*\",\n      Condition: {\n        StringEquals: {\n          \"aws:SourceVpce\": \"vpce-0a1b2c3d4e5f60718\",\n        },\n      },\n    },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la condición filtra por el VPC endpoint con su identificador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(politica.Statement[0].Condition.StringEquals[\"aws:SourceVpce\"], \"vpce-0a1b2c3d4e5f60718\");"
+          }
+        },
+        {
+          "name": "la política sigue teniendo una sola sentencia",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(politica.Statement.length, 1);"
+          }
+        },
+        {
+          "name": "ninguna clave de la condición compara una VPC con un identificador de endpoint",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const comparaciones = politica.Statement[0].Condition.StringEquals;\nassert.ok(!(\"aws:SourceVpc\" in comparaciones), \"aws:SourceVpc no recibe identificadores vpce-\");"
+          }
+        },
+        {
+          "name": "se conservan el efecto, la acción y el recurso",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sentencia = politica.Statement[0];\nassert.strictEqual(politica.Version, \"2012-10-17\");\nassert.strictEqual(sentencia.Effect, \"Allow\");\nassert.strictEqual(sentencia.Action, \"execute-api:Invoke\");\nassert.strictEqual(sentencia.Resource, \"execute-api:/*\");"
+          }
+        },
+        {
+          "name": "no se amplía el acceso con otras condiciones",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const condicion = politica.Statement[0].Condition;\nassert.deepStrictEqual(Object.keys(condicion), [\"StringEquals\"]);\nassert.deepStrictEqual(Object.keys(condicion.StringEquals), [\"aws:SourceVpce\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-debug-02",
+      "type": "DEBUG",
+      "title": "La política de recurso apunta al identificador equivocado",
+      "statement": "El objeto `politica` es la política de recurso de una REST API privada de API Gateway. Debe permitir `execute-api:Invoke` únicamente desde el VPC endpoint de interfaz vpce-0a1b2c3d4e5f60718, pero las llamadas que llegan por ese endpoint reciben 403 Forbidden. Localiza el defecto, que es uno solo, y corrígelo con el cambio mínimo: no cambies el efecto, la acción ni el recurso, no añadas sentencias ni otras condiciones, y mantén la forma del valor exportado (`export const politica = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "política de recurso",
+        "aws:SourceVpce",
+        "403 Forbidden"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/rest-api.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Diagnóstico de una llamada fallida a una API privada de API Gateway (borrador de un asistente)\nPetición: GET https://vpce-0a1b2c3d4e5f60718-ab12cd34.execute-api.eu-west-1.vpce.amazonaws.com/prod/pedidos/42 con la cabecera Accept: application/json\nContexto: el VPC endpoint de interfaz tiene el DNS privado desactivado y su security group ya permite el puerto TCP 443.\nRespuesta: 403 Forbidden.\nCausa 1: se usa el nombre DNS público del endpoint y la petición no lleva la cabecera Host ni x-apigw-api-id, que esa vía de acceso exige.\nCausa 2: un 403 significa que la API fue eliminada, así que hay que crearla de nuevo.\nAcción 1: cambiar el método GET por POST para que la API acepte la petición.\nAcción 2: añadir la cabecera x-apigw-api-id con el identificador de la API.\nAcción 3: en la política de recurso, permitir execute-api:Invoke con \"Principal\": \"*\" y la condición aws:SourceVpce del endpoint.\nAcción 4: abrir en el security group del endpoint el puerto 22 para el tráfico de la VPC."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Causa 1: falta la cabecera",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcta: según la documentación, al invocar una API privada por el nombre DNS público del endpoint hay que pasar la cabecera Host o x-apigw-api-id. Que sea la primera causa no la hace sospechosa."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Causa 2: la API fue eliminada",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Un 403 Forbidden en una API privada no indica que la API haya desaparecido: la documentación lo asocia a una política de recurso sin las condiciones aws:SourceVpc o aws:SourceVpce. Recrear la API no resolvería nada."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Acción 1: cambiar GET por POST",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "GET es un método HTTP estándar válido para leer un recurso y nada en las fuentes indica que la API rechace la petición por su método. Cambiarlo no aporta la información que falta y puede alterar lo que hace el backend."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Acción 2: añadir x-apigw-api-id",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcta: la cabecera x-apigw-api-id con el identificador de la API es una de las dos que la documentación pide para esta vía de acceso."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Acción 3: Principal \"*\" con aws:SourceVpce",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcta aunque Principal \"*\" parezca demasiado amplio: la política de ejemplo de la guía de API Gateway usa exactamente ese Principal acompañado de la condición aws:SourceVpce, que es la que restringe el acceso al endpoint."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              10,
+              10
+            ],
+            "label": "Acción 4: abrir el puerto 22",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "La invocación de la API usa HTTPS y el security group del endpoint debe permitir el puerto TCP 443, que el propio borrador reconoce como ya permitido. El puerto 22 es el de SSH y no tiene relación con el error."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un diagnóstico generado por IA de una llamada fallida",
+      "statement": "Un asistente de IA redactó este diagnóstico de una llamada GET que devuelve 403 Forbidden al invocar una API privada. Audítalo con la documentación de API Gateway: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el diagnóstico se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "403 Forbidden",
+        "cabeceras HTTP",
+        "política de recurso"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/rest-api.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una API REST, que implementa métodos HTTP estándar como GET y POST en una comunicación sin estado",
+            "explanation": "Incumple la restricción de mantener abierta la comunicación: en una API REST cada petición es independiente y el servidor responde a lo que el cliente pide, sin enviar mensajes por iniciativa propia."
+          },
+          {
+            "id": "b",
+            "text": "Una API de WebSocket, que permite una comunicación con estado y bidireccional entre cliente y servidor",
+            "explanation": "Cumple las condiciones: sigue el protocolo WebSocket, con comunicación con estado y full-duplex, y enruta los mensajes entrantes según su contenido, como pide el escenario."
+          },
+          {
+            "id": "c",
+            "text": "Una API HTTP, que ofrece una comunicación sin estado basada en peticiones y respuestas",
+            "explanation": "Incumple la restricción de mantener abierta la comunicación: API Gateway la incluye entre las API sin estado (HTTP y REST), que solo responden a peticiones del cliente."
+          },
+          {
+            "id": "d",
+            "text": "Una API REST, consultada por el cliente con peticiones GET repetidas para detectar mensajes nuevos",
+            "explanation": "Incumple la restricción de que el servidor envíe los mensajes sin que el cliente los solicite: el cliente tendría que preguntar una y otra vez, y no mantiene abierta la comunicación."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-quiz-01",
+      "type": "QUIZ",
+      "title": "Servidor que avisa al cliente sin que lo pida",
+      "statement": "Una empresa construye un panel de operaciones con Amazon API Gateway. El servidor debe enviar mensajes a los clientes en cuanto ocurre un evento, sin que el cliente los solicite, y mantener abierta la comunicación con cada uno. Además, cada mensaje debe encaminarse según su contenido. ¿Qué tipo de API es la opción MÁS adecuada?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "WebSocket",
+        "API REST",
+        "comunicación con estado"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El campo Request, que muestra la ruta del recurso a la que se llamó",
+            "explanation": "Request solo indica la ruta llamada: no mide ningún tiempo, así que no cumple lo que pide el escenario."
+          },
+          {
+            "id": "b",
+            "text": "El campo Status, que muestra el código de estado HTTP de la respuesta",
+            "explanation": "Status da el código HTTP de la respuesta, no su duración: no responde a la restricción de medir el tiempo transcurrido."
+          },
+          {
+            "id": "c",
+            "text": "El campo Latency (ms), que mide el tiempo entre la recepción de la petición y la respuesta devuelta",
+            "explanation": "Es el campo que mide ese intervalo, expresado en milisegundos, desde que la API recibe la petición del llamador hasta que devuelve la respuesta."
+          },
+          {
+            "id": "d",
+            "text": "El campo Logs, que muestra las entradas simuladas de CloudWatch Logs de la llamada",
+            "explanation": "Logs muestra entradas simuladas de lo que se habría escrito fuera de la consola; no es una medida de tiempo y no responde a la restricción del enunciado."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-quiz-02",
+      "type": "QUIZ",
+      "title": "Medir el tiempo de respuesta en la consola",
+      "statement": "Una persona prueba un método GET de una API REST de API Gateway desde la pestaña Test de la consola. El panel muestra los campos Request, Status, Latency (ms), Response body, Response headers y Logs. La persona necesita saber cuántos milisegundos pasan entre que la API recibe la llamada y devuelve su respuesta. ¿Qué campo informa de forma MÁS directa de ese dato?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "pestaña Test",
+        "latencia",
+        "campos de la respuesta"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-test-method.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Tratar la prueba como una llamada real: si el método elimina recursos y la llamada tiene éxito, esos recursos se eliminan",
+            "explanation": "Es la precaución correcta: según la documentación, probar un método en la consola equivale a llamarlo fuera de ella, y los cambios pueden ser irreversibles."
+          },
+          {
+            "id": "b",
+            "text": "Confiar en que la consola simula la llamada por completo y no modifica ningún recurso del backend",
+            "explanation": "Es falso: la consola no simula la llamada. Si el método borra recursos y la llamada tiene éxito, los recursos se borran, así que confiar en una simulación completa no protege los datos."
+          },
+          {
+            "id": "c",
+            "text": "Confiar en que los resultados de la llamada son simulados y que solo las entradas de Logs son reales",
+            "explanation": "Está invertido: las entradas de CloudWatch Logs son las simuladas, mientras que el resultado de la llamada al método es real, por lo que los datos corren riesgo."
+          },
+          {
+            "id": "d",
+            "text": "Dejar vacío el cuerpo de la petición, porque sin cuerpo un método DELETE no llega a ejecutarse",
+            "explanation": "Las fuentes dicen que la prueba equivale a llamar al método; no afirman que un cuerpo vacío impida su ejecución, de modo que no protege los datos y no es una precaución respaldada."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-quiz-03",
+      "type": "QUIZ",
+      "title": "Probar un DELETE sobre una API con datos reales",
+      "statement": "Una persona de un equipo de API quiere ver en la pestaña Test de la consola de API Gateway qué responde el método DELETE de la ruta /pedidos/42 de una REST API que está en uso con datos reales. ¿Qué precaución es la MÁS importante antes de elegir Test?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "pruebas en la consola",
+        "método DELETE",
+        "llamada real"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-test-method.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La consola sustituye la respuesta por una simulada, porque solo una llamada fuera de ella devuelve datos auténticos",
+            "explanation": "Es falso: la documentación indica que, aunque las entradas de Logs son simuladas, el resultado de la llamada al método es real. No hay respuesta simulada."
+          },
+          {
+            "id": "b",
+            "text": "La pestaña Test fuerza el tipo application/json y reemplaza el cuerpo de la respuesta por el de la petición de prueba",
+            "explanation": "La fuente solo dice que la consola envía los valores de la petición en forma application/json; el Response body es el cuerpo de la respuesta HTTP, no el de la petición."
+          },
+          {
+            "id": "c",
+            "text": "El campo Response body muestra el cuerpo de la petición enviada y no el de la respuesta de la API",
+            "explanation": "Es falso: según la documentación, Response body es el cuerpo de la respuesta HTTP. Por eso la diferencia con lo que devuelve la función necesita otra explicación."
+          },
+          {
+            "id": "d",
+            "text": "El mapeo configurado en el método puede cambiar el código de estado, el cuerpo y las cabeceras respecto a lo que envió la función",
+            "explanation": "Es lo que dice la documentación: según el mapeo, el código de estado, el cuerpo y las cabeceras pueden ser distintos de los que envió la función Lambda, el proxy HTTP o el proxy de servicio de AWS."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-quiz-04",
+      "type": "QUIZ",
+      "title": "El estado de la prueba no coincide con el de la función",
+      "statement": "Un equipo prueba en la consola de API Gateway un método de una REST API integrado con una función de AWS Lambda. En el panel de prueba, el código de estado y el cuerpo de la respuesta no coinciden con los que devuelve la propia función. ¿Qué explicación es la MÁS probable según la documentación?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "mapeo",
+        "integración con Lambda",
+        "cuerpo de la respuesta"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-test-method.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir a la política de recurso la condición aws:SourceVpc con el identificador de la VPC completa",
+            "explanation": "Permite la invocación, pero con mayor alcance: acepta cualquier endpoint de la VPC, mientras que aws:SourceVpce limita el acceso a un endpoint concreto."
+          },
+          {
+            "id": "b",
+            "text": "Abrir en el security group del endpoint el puerto 22 para el tráfico de la VPC",
+            "explanation": "No guarda relación con el error: el enunciado dice que el security group ya permite TCP 443, el puerto de la invocación, y el 403 viene de la política de recurso."
+          },
+          {
+            "id": "c",
+            "text": "Añadir a la política de recurso la condición aws:SourceVpce con el identificador del VPC endpoint desde el que se invoca",
+            "explanation": "Cumple todo: sin condiciones la API devuelve 403, y aws:SourceVpce restringe el acceso a un endpoint concreto, el alcance más reducido de las dos opciones que sirven."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar el tipo de endpoint de la API a regional para que deje de necesitar política de recurso",
+            "explanation": "Incumple la restricción de que la API sea accesible solo desde la VPC: el tipo privado es el que limita el acceso a VPC endpoints de interfaz."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-quiz-05",
+      "type": "QUIZ",
+      "title": "Un 403 desde una VPC hacia una API privada",
+      "statement": "Una instancia de Amazon EC2 de una VPC invoca una REST API privada de API Gateway a través de un VPC endpoint de interfaz y recibe 403 Forbidden. El security group del endpoint ya permite TCP 443, la API debe seguir accesible solo desde esa VPC y su política de recurso no tiene condiciones. ¿Qué cambio resuelve el error con el MENOR alcance de acceso?",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "política de recurso",
+        "aws:SourceVpce",
+        "API privada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/rest-api.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir la cabecera Content-Type: application/json para declarar el formato del cuerpo",
+            "explanation": "No identifica la API: la fuente pide por esa vía la cabecera Host o x-apigw-api-id, y un GET de lectura ni siquiera lleva cuerpo que describir."
+          },
+          {
+            "id": "b",
+            "text": "Añadir la cabecera Host o la cabecera x-apigw-api-id con el identificador de la API",
+            "explanation": "Es lo que exige la documentación: al invocar una API privada por el nombre DNS público del endpoint hay que pasar una de esas dos cabeceras."
+          },
+          {
+            "id": "c",
+            "text": "Añadir un cuerpo JSON con el identificador de la API dentro de la petición",
+            "explanation": "Las fuentes no admiten el identificador en el cuerpo: lo piden en las cabeceras Host o x-apigw-api-id, y mover el dato al cuerpo no cumple lo que exige esa vía de acceso."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar el método GET por POST para que la API pueda identificar el recurso",
+            "explanation": "El método no identifica la API privada: la documentación pide una cabecera Host o x-apigw-api-id y no cita el método como solución."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-quiz-06",
+      "type": "QUIZ",
+      "title": "Llamar a una API privada por el nombre DNS del endpoint",
+      "statement": "Una persona administradora invoca una REST API privada desde una VPC con curl. Usa el nombre DNS público del VPC endpoint de interfaz, que tiene el DNS privado desactivado, y envía GET /prod/pedidos/42 con la sola cabecera Accept: application/json. La llamada no identifica la API. ¿Qué cambio en la petición es el MÁS directo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "cabeceras HTTP",
+        "VPC endpoint",
+        "API privada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/rest-api.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Volumes[0:20].VolumeId, una rebanada que toma los elementos del índice 0 al 20",
+            "explanation": "Una rebanada selecciona por posición, no por tamaño: aquí devolvería los tres identificadores, incluido vol-bbb, que incumple la condición de Size."
+          },
+          {
+            "id": "b",
+            "text": "Volumes[?State==`in-use`].VolumeId, un filtro por el valor del campo State",
+            "explanation": "Filtra por estado y no por tamaño: devolvería vol-aaa y vol-bbb, de modo que deja fuera vol-ccc e incluye vol-bbb, que incumple la condición."
+          },
+          {
+            "id": "c",
+            "text": "Volumes[*].VolumeId | [0], una tubería que se queda con el primer elemento de la lista",
+            "explanation": "La tubería devuelve solo el primer elemento, vol-aaa: no filtra por tamaño y omite vol-ccc."
+          },
+          {
+            "id": "d",
+            "text": "Volumes[?Size < `20`].VolumeId, un filtro que compara el campo Size con un literal",
+            "explanation": "Es un filtro con comparador: se queda con los elementos cuyo Size es menor que 20, vol-aaa y vol-ccc, y proyecta su VolumeId. El literal va entre acentos graves."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-quiz-07",
+      "type": "QUIZ",
+      "title": "Extraer solo los volúmenes pequeños de una salida JSON",
+      "statement": "La AWS CLI devuelve esta salida JSON con aws ec2 describe-volumes: {\"Volumes\": [{\"VolumeId\": \"vol-aaa\", \"Size\": 8, \"State\": \"in-use\"}, {\"VolumeId\": \"vol-bbb\", \"Size\": 30, \"State\": \"in-use\"}, {\"VolumeId\": \"vol-ccc\", \"Size\": 15, \"State\": \"available\"}]}. Se quiere mostrar ÚNICAMENTE el VolumeId de los volúmenes con Size menor que 20, que son vol-aaa y vol-ccc. ¿Qué valor de --query lo consigue?",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "--query",
+        "JMESPath",
+        "expresiones de filtro"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Con --query, la AWS CLI recibe primero la respuesta HTTP completa y la filtra después, en el cliente",
+            "explanation": "La documentación lo indica: la respuesta HTTP entera llega al cliente antes de aplicar --query, por eso puede ser más lento que el filtrado del servidor en conjuntos grandes."
+          },
+          {
+            "id": "b",
+            "text": "Con --query, el servicio solo envía los registros que coinciden, así que la respuesta viaja más corta",
+            "explanation": "Es lo contrario: --query filtra en el cliente y la respuesta completa ya se envió. Reducir lo que envía el servicio es propio del filtrado del lado del servidor."
+          },
+          {
+            "id": "c",
+            "text": "Con --output json, la consulta se ejecuta una vez por cada página de resultados por separado",
+            "explanation": "Eso ocurre con --output text. Con --output json la respuesta se procesa como una sola estructura y la consulta se ejecuta una vez."
+          },
+          {
+            "id": "d",
+            "text": "El filtrado del lado del servidor lo define la API del servicio y se procesa antes que el del cliente",
+            "explanation": "Lo respalda la documentación: el filtrado del servidor es proporcionado por la API del servicio, se procesa primero y devuelve el resultado al filtrado del cliente."
+          },
+          {
+            "id": "e",
+            "text": "El parámetro de filtrado del servidor se llama --query en todos los servicios de AWS",
+            "explanation": "Los nombres y funciones varían entre servicios (--filter, --filters, --filter-expression…); --query es el parámetro del filtrado del cliente, no el del servidor."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-quiz-08",
+      "type": "QUIZ",
+      "title": "Qué respalda la documentación sobre el filtrado de la CLI",
+      "statement": "Un equipo repasa cómo filtra la AWS CLI la salida de comandos como aws ec2 describe-volumes. Selecciona DOS afirmaciones que respalda la documentación de la AWS CLI.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "filtrado del servidor",
+        "--query",
+        "--output"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u0-3-3-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: una decisión de acceso a una API privada",
+      "statement": "Una API REST privada de API Gateway devuelve 403 Forbidden a una aplicación que la invoca desde una VPC. Escribe, como un registro breve de decisión de 4 a 6 líneas, cómo permitirías el acceso:\n\n1) Decisión: qué condición pondrías en la política de recurso (aws:SourceVpc o aws:SourceVpce) y qué petición esperas que funcione después.\n\n2) Alternativa descartada: una opción que descartaste (por ejemplo, la otra condición, o abrir la API a cualquier origen) y la restricción que la dejó fuera.\n\n3) Consecuencia: qué cambia para el equipo (por ejemplo, tener que actualizar la política si cambia el endpoint) y qué evidencia revisarías, como el campo Status de la respuesta o el cuerpo.\n\n4) Pilar: qué pilar del Well-Architected Framework sostiene tu decisión (excelencia operativa, seguridad, fiabilidad, eficiencia del rendimiento, optimización de costos o sostenibilidad).\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la restricción y el calificador. Escríbelo con tus palabras.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "política de recurso",
+        "mínimo privilegio",
+        "Well-Architected"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/rest-api.html"
+      ],
+      "order": 18
+    }
+  ]
+}
