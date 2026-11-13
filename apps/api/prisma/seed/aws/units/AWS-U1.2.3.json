@@ -1,0 +1,1313 @@
+{
+  "code": "AWS-U1.2.3",
+  "lessons": [
+    {
+      "slug": "aws-u1-2-3-servicios-de-seguridad",
+      "title": "Servicios de seguridad: GuardDuty, Inspector, Security Hub, Shield, WAF y Macie",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "AWS ofrece servicios de seguridad distintos, y cada uno responde a una pregunta diferente. Amazon GuardDuty detecta amenazas, Amazon Inspector gestiona vulnerabilidades, Amazon Macie descubre datos sensibles en Amazon S3, AWS Security Hub reúne y evalúa el estado de seguridad, AWS WAF controla las peticiones web y AWS Shield protege frente a ataques de denegación de servicio distribuido (DDoS). Para elegir bien, no memorices una lista de nombres: identifica primero la amenaza o la necesidad del escenario y busca el servicio que la cubre. La guía de CLF-C02 nombra estos servicios al pedir que describas cómo los clientes protegen sus recursos en AWS (tarea 2.2) y las funciones y los servicios de seguridad de AWS (tarea 2.4)."
+        },
+        {
+          "type": "list",
+          "title": "Qué hace cada servicio",
+          "items": [
+            "Amazon GuardDuty: servicio de detección de amenazas que monitoriza, analiza y procesa de forma continua datos y registros de tu entorno de AWS, con fuentes de inteligencia de amenazas y modelos de aprendizaje automático. Puede ayudar a detectar credenciales comprometidas, minería de criptomonedas no autorizada y malware en instancias EC2 y cargas de contenedores.",
+            "Amazon Inspector: servicio de gestión de vulnerabilidades que descubre automáticamente instancias EC2, imágenes de contenedor en Amazon ECR y funciones de AWS Lambda, y las escanea en busca de vulnerabilidades de software y de exposición de red no prevista.",
+            "AWS Security Hub: ofrece una vista integral de tu estado de seguridad. Ejecuta comprobaciones de controles frente a estándares y mejores prácticas, y recibe hallazgos de servicios como GuardDuty, Inspector y Macie, y de productos de terceros.",
+            "Amazon Macie: servicio de seguridad de datos que descubre datos sensibles en Amazon S3 con aprendizaje automático y coincidencia de patrones. También evalúa la seguridad y el control de acceso de los buckets y avisa, por ejemplo, de uno que pasa a ser accesible públicamente.",
+            "AWS WAF: firewall de aplicaciones web que vigila las peticiones HTTP(S) dirigidas a recursos protegidos, como una distribución de Amazon CloudFront, una API REST de Amazon API Gateway o un Application Load Balancer. Decide según criterios como la IP de origen o los valores de la cadena de consulta.",
+            "AWS Shield: protege frente a ataques DDoS. Al construir tu aplicación en AWS recibes protección automática frente a vectores volumétricos comunes, como los ataques de reflexión UDP y las inundaciones TCP SYN. AWS Shield Advanced añade detección, mitigación y respuesta adicionales, y operaciones de apoyo de AWS durante eventos DDoS."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "De la amenaza al servicio",
+          "code": "flowchart TB\n  A[\"Amenaza o necesidad de seguridad\"] --> B{\"¿Qué ocurre?\"}\n  B -->|\"Actividad sospechosa en la cuenta\"| GD[\"Amazon GuardDuty\"]\n  B -->|\"Vulnerabilidades de software o exposición de red\"| IN[\"Amazon Inspector\"]\n  B -->|\"Datos sensibles en S3\"| MA[\"Amazon Macie\"]\n  B -->|\"Peticiones HTTP(S) a filtrar\"| WF[\"AWS WAF\"]\n  B -->|\"Ataques DDoS\"| SD[\"AWS Shield\"]\n  GD --> SH[\"AWS Security Hub\"]\n  IN --> SH\n  MA --> SH\n  SH --> V[\"Vista única de hallazgos y comprobación de controles\"]"
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómo se conectan",
+          "text": "Los servicios de detección no trabajan aislados. Security Hub procesa los hallazgos con un formato estándar, el AWS Security Finding Format (ASFF), y los correlaciona para ayudarte a priorizar. Inspector publica sus hallazgos en Amazon EventBridge y, si has activado Security Hub, también en Security Hub. Macie se integra igualmente con EventBridge y con Security Hub. Con EventBridge puedes enviar un hallazgo a destinos como una función de AWS Lambda o un tema de Amazon SNS y automatizar la respuesta. Un hallazgo es un informe detallado del problema que ha detectado el servicio, y las reglas de automatización de Security Hub sirven para actualizar o suprimir hallazgos según criterios que tú defines."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: una tienda en línea y seis necesidades",
+          "text": "Una empresa publica su tienda con Amazon CloudFront y un Application Load Balancer, ejecuta sus servidores en instancias de Amazon EC2 y guarda los documentos de sus clientes en Amazon S3. Situación 1: el consumo de cómputo es inusual y se sospecha de minería de criptomonedas no autorizada. Es detección de amenazas, así que corresponde a GuardDuty. Situación 2: hay que revisar las instancias, las imágenes de contenedor y las funciones Lambda en busca de vulnerabilidades de software. Es gestión de vulnerabilidades, así que corresponde a Inspector. Situación 3: hay que localizar qué objetos de S3 contienen datos personales. Es descubrimiento de datos sensibles, así que corresponde a Macie. Situación 4: hay que bloquear peticiones HTTP(S) según su IP de origen o su cadena de consulta. Eso lo hace WAF. Situación 5: preocupa que una inundación TCP SYN sature la aplicación. Es un ataque DDoS volumétrico, así que corresponde a Shield. Situación 6: el equipo quiere ver todos los hallazgos juntos y compararlos con estándares. Corresponde a Security Hub. Cada situación tuvo un servicio distinto porque cambió la amenaza, no el entorno."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: WAF y Shield protegen la misma aplicación, pero no lo mismo",
+          "text": "Una pregunta puede describir una aplicación expuesta a internet para empujarte a elegir WAF o Shield sin más. WAF decide sobre las peticiones HTTP(S) según criterios como la IP de origen o la cadena de consulta. Shield protege frente a ataques DDoS. Del mismo modo, Security Hub no sustituye a GuardDuty, Inspector ni Macie: reúne y evalúa. Antes de responder, subraya la amenaza o la necesidad y pregúntate si el servicio detecta, escanea, descubre, filtra, protege o reúne."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: elegir Security Hub para detectar o escanear",
+          "text": "Causa: ver que Security Hub muestra hallazgos de seguridad y pensar que él mismo detecta las amenazas o escanea las vulnerabilidades. Consecuencia: respondes Security Hub cuando el escenario pide detectar minería de criptomonedas, revisar vulnerabilidades de software o localizar datos sensibles. Solución: recuerda que Security Hub reúne hallazgos de otros servicios y ejecuta comprobaciones de controles frente a estándares; la detección de amenazas es de GuardDuty, el escaneo de vulnerabilidades es de Inspector y el descubrimiento de datos sensibles es de Macie."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir WAF con Shield",
+          "text": "Causa: asociar ambos nombres a «proteger la aplicación web» y tratarlos como intercambiables. Consecuencia: asignas a WAF la defensa frente a inundaciones TCP SYN o a ataques de reflexión UDP, o a Shield el bloqueo de peticiones según la IP de origen o la cadena de consulta. Solución: ante un escenario de peticiones HTTP(S) que hay que permitir o bloquear con criterios, piensa en WAF; ante un escenario de ataque DDoS que busca saturar la disponibilidad, piensa en Shield."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre GuardDuty, Inspector, Security Hub, Shield, WAF y Macie el servicio que cubre una amenaza o una necesidad de seguridad concreta. Esta unidad prepara el examen CLF-C02, dominio 2 «Seguridad y cumplimiento», tareas 2.2 (cómo protegen sus recursos los clientes) y 2.4 (componentes y recursos de seguridad). Criterio: ante un escenario nuevo, nombras la amenaza, eliges el servicio y explicas por qué los distractores quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las seis situaciones tapando las respuestas: para cada una, nombra la amenaza o la necesidad y el servicio. Después responde de memoria: qué escanea Inspector, qué recibe Security Hub, qué filtra WAF y de qué protege Shield."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una guía de servicios con una amenaza asignada al servicio equivocado». Una guía escrita como objeto asigna mal una amenaza. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas las demás filas."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El panel de hallazgos reordena la lista original». Una función que devuelve los hallazgos más graves altera la lista que recibe. Criterio de paso: el resultado es correcto y la lista original conserva su orden."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre los servicios de seguridad de una carga de trabajo. Audítalo en «Auditar un informe de servicios de seguridad generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de cada servicio (leídas el 2026-11-13) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe la amenaza o la necesidad y el calificador de cada una; al corregir, lee la explicación de cada opción y anota si fallaste por confundir un servicio de detección con uno de protección o por mezclar WAF con Shield. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una aplicación que conozcas (una web con servidores y documentos de clientes) y escribe qué servicio usarías para cada amenaza. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero propone activar Security Hub para «detectar los ataques» de la aplicación; ¿qué le respondes y qué servicios alimentarían a Security Hub?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-guardduty-que-es",
+          "order": 0,
+          "note": "Fuente de qué es GuardDuty, de las amenazas que detecta y de los datos que analiza."
+        },
+        {
+          "resourceSlug": "aws-inspector-que-es",
+          "order": 1,
+          "note": "Fuente de qué escanea Inspector, de los rescaneos automáticos y de cómo publica sus hallazgos."
+        },
+        {
+          "resourceSlug": "aws-security-hub-que-es",
+          "order": 2,
+          "note": "Fuente de la vista integral, de las comprobaciones frente a estándares y de los hallazgos que recibe."
+        },
+        {
+          "resourceSlug": "aws-macie-que-es",
+          "order": 3,
+          "note": "Fuente del descubrimiento de datos sensibles en S3 y de la evaluación de la seguridad de los buckets."
+        },
+        {
+          "resourceSlug": "aws-shield-que-es",
+          "order": 4,
+          "note": "Fuente de la protección frente a DDoS: la automática y la que añade Shield Advanced."
+        },
+        {
+          "resourceSlug": "aws-waf-que-es",
+          "order": 5,
+          "note": "Fuente de qué es WAF, de los recursos que protege y de los criterios con que decide."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 6,
+          "note": "Guía de CLF-C02: las tareas 2.2 y 2.4 del dominio 2 nombran estos servicios de seguridad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un servicio de detección de amenazas que monitoriza y analiza de forma continua datos y registros del entorno (eventos de gestión de CloudTrail, registros de flujo de VPC y registros DNS), con inteligencia de amenazas y aprendizaje automático."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon GuardDuty",
+      "statement": "¿Qué hace Amazon GuardDuty y qué datos analiza?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "GuardDuty",
+        "detección de amenazas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Descubre instancias EC2, imágenes de contenedor en Amazon ECR y funciones Lambda, y las escanea en busca de vulnerabilidades de software y de exposición de red no prevista. Vuelve a escanear de forma automática ante cambios, como un paquete nuevo, un parche o un CVE nuevo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon Inspector",
+      "statement": "¿Qué descubre y qué busca Amazon Inspector?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Inspector",
+        "vulnerabilidades"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una vista integral del estado de seguridad: ejecuta comprobaciones de controles frente a estándares y mejores prácticas, y recibe hallazgos de servicios como GuardDuty, Inspector y Macie y de productos de terceros."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Security Hub",
+      "statement": "¿Qué ofrece AWS Security Hub y qué recibe de otros servicios?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Security Hub",
+        "estándares de seguridad"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Descubre datos sensibles en Amazon S3 con aprendizaje automático y coincidencia de patrones, mantiene un inventario de buckets y genera un hallazgo si, por ejemplo, un bucket pasa a ser accesible públicamente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon Macie",
+      "statement": "¿Qué descubre Amazon Macie y dónde?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Macie",
+        "datos sensibles"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Protege frente a ataques DDoS. La protección automática cubre vectores volumétricos comunes, como la reflexión UDP y las inundaciones TCP SYN. Shield Advanced añade detección, mitigación y respuesta adicionales."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Shield",
+      "statement": "¿Frente a qué protege AWS Shield y qué añade Shield Advanced?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Shield",
+        "DDoS"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un firewall de aplicaciones web: vigila las peticiones HTTP(S) a recursos protegidos y decide según criterios como la IP de origen o los valores de la cadena de consulta. La respuesta puede ser el contenido, un 403 o una respuesta personalizada."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS WAF",
+      "statement": "¿Qué controla AWS WAF y según qué criterios?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "WAF",
+        "firewall de aplicaciones web"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Guía de qué servicio de seguridad cubre cada amenaza. Corrige su defecto principal.\nexport const guia = {\n  filas: [\n    { amenaza: \"Minería de criptomonedas no autorizada en instancias EC2\", servicio: \"Amazon GuardDuty\" },\n    { amenaza: \"Vulnerabilidades de software en instancias EC2, imágenes de ECR y funciones Lambda\", servicio: \"Amazon Inspector\" },\n    { amenaza: \"Datos sensibles en buckets de Amazon S3\", servicio: \"Amazon Macie\" },\n    { amenaza: \"Peticiones HTTP(S) que hay que bloquear según su IP de origen\", servicio: \"AWS Shield\" },\n    { amenaza: \"Ataques DDoS volumétricos como las inundaciones TCP SYN\", servicio: \"AWS Shield\" },\n    { amenaza: \"Vista única de hallazgos de varios servicios de seguridad\", servicio: \"AWS Security Hub\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const guia = {\n  filas: [\n    { amenaza: \"Minería de criptomonedas no autorizada en instancias EC2\", servicio: \"Amazon GuardDuty\" },\n    { amenaza: \"Vulnerabilidades de software en instancias EC2, imágenes de ECR y funciones Lambda\", servicio: \"Amazon Inspector\" },\n    { amenaza: \"Datos sensibles en buckets de Amazon S3\", servicio: \"Amazon Macie\" },\n    { amenaza: \"Peticiones HTTP(S) que hay que bloquear según su IP de origen\", servicio: \"AWS WAF\" },\n    { amenaza: \"Ataques DDoS volumétricos como las inundaciones TCP SYN\", servicio: \"AWS Shield\" },\n    { amenaza: \"Vista única de hallazgos de varios servicios de seguridad\", servicio: \"AWS Security Hub\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Una fila asigna a un servicio la amenaza de otro: busca qué servicio vigila las peticiones HTTP(S) y decide según criterios como la IP de origen o la cadena de consulta."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal: la de las peticiones HTTP(S) que se bloquean según su IP de origen. El servicio que figura en ella ya aparece en la fila de los ataques DDoS."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `servicio` de la fila «Peticiones HTTP(S) que hay que bloquear según su IP de origen» de \"AWS Shield\" a \"AWS WAF\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "las peticiones HTTP(S) por IP de origen las cubre AWS WAF",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = guia.filas.find((f) => f.amenaza.startsWith(\"Peticiones HTTP(S)\"));\nassert.ok(fila, \"debe existir la fila de las peticiones HTTP(S)\");\nassert.strictEqual(fila.servicio, \"AWS WAF\");"
+          }
+        },
+        {
+          "name": "los servicios solo pueden ser los seis de la unidad",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const validos = [\"Amazon GuardDuty\", \"Amazon Inspector\", \"AWS Security Hub\", \"AWS Shield\", \"AWS WAF\", \"Amazon Macie\"];\nfor (const fila of guia.filas) {\n  assert.ok(validos.includes(fila.servicio), fila.amenaza + \" tiene un servicio no válido\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su servicio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Minería de criptomonedas no autorizada en instancias EC2\": \"Amazon GuardDuty\",\n  \"Vulnerabilidades de software en instancias EC2, imágenes de ECR y funciones Lambda\": \"Amazon Inspector\",\n  \"Datos sensibles en buckets de Amazon S3\": \"Amazon Macie\",\n  \"Ataques DDoS volumétricos como las inundaciones TCP SYN\": \"AWS Shield\",\n  \"Vista única de hallazgos de varios servicios de seguridad\": \"AWS Security Hub\",\n};\nfor (const [amenaza, servicio] of Object.entries(esperado)) {\n  const fila = guia.filas.find((f) => f.amenaza === amenaza);\n  assert.ok(fila, amenaza + \" debe seguir existiendo\");\n  assert.strictEqual(fila.servicio, servicio);\n}"
+          }
+        },
+        {
+          "name": "siguen las seis filas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(guia.filas.length, 6);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-debug-01",
+      "type": "DEBUG",
+      "title": "Una guía de servicios con una amenaza asignada al servicio equivocado",
+      "statement": "El objeto `guia` asigna a cada amenaza el servicio de seguridad de AWS que la cubre. Una de las seis filas apunta al servicio equivocado, de modo que la guía confunde dos servicios de protección. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const guia = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "WAF",
+        "Shield",
+        "mapa amenaza-servicio"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Devuelve los hallazgos más graves de un panel unificado. Corrige su defecto principal.\nexport type Hallazgo = { servicio: string; recurso: string; gravedad: number };\n\nexport function hallazgosPrioritarios(hallazgos: Hallazgo[], maximo: number): Hallazgo[] {\n  return hallazgos.sort((a, b) => b.gravedad - a.gravedad).slice(0, maximo);\n}\n",
+      "solution": {
+        "code": "export type Hallazgo = { servicio: string; recurso: string; gravedad: number };\n\nexport function hallazgosPrioritarios(hallazgos: Hallazgo[], maximo: number): Hallazgo[] {\n  return [...hallazgos].sort((a, b) => b.gravedad - a.gravedad).slice(0, maximo);\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "devuelve los hallazgos más graves de mayor a menor",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const lista: Hallazgo[] = [\n  { servicio: \"Amazon Inspector\", recurso: \"i-01\", gravedad: 2 },\n  { servicio: \"Amazon GuardDuty\", recurso: \"i-02\", gravedad: 4 },\n  { servicio: \"Amazon Macie\", recurso: \"b-01\", gravedad: 3 },\n  { servicio: \"Amazon Inspector\", recurso: \"i-03\", gravedad: 1 },\n];\nassert.deepStrictEqual(hallazgosPrioritarios(lista, 2).map((h) => h.recurso), [\"i-02\", \"b-01\"]);"
+          }
+        },
+        {
+          "name": "la lista que se pasa conserva su orden",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const lista: Hallazgo[] = [\n  { servicio: \"Amazon Inspector\", recurso: \"i-01\", gravedad: 2 },\n  { servicio: \"Amazon GuardDuty\", recurso: \"i-02\", gravedad: 4 },\n  { servicio: \"Amazon Macie\", recurso: \"b-01\", gravedad: 3 },\n  { servicio: \"Amazon Inspector\", recurso: \"i-03\", gravedad: 1 },\n];\nhallazgosPrioritarios(lista, 2);\nassert.deepStrictEqual(lista.map((h) => h.recurso), [\"i-01\", \"i-02\", \"b-01\", \"i-03\"]);"
+          }
+        },
+        {
+          "name": "pedir más hallazgos de los que hay devuelve todos, ordenados, sin alterar la lista",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const lista: Hallazgo[] = [\n  { servicio: \"Amazon Inspector\", recurso: \"i-01\", gravedad: 2 },\n  { servicio: \"Amazon GuardDuty\", recurso: \"i-02\", gravedad: 4 },\n  { servicio: \"Amazon Macie\", recurso: \"b-01\", gravedad: 3 },\n  { servicio: \"Amazon Inspector\", recurso: \"i-03\", gravedad: 1 },\n];\nconst todos = hallazgosPrioritarios(lista, 10);\nassert.deepStrictEqual(todos.map((h) => h.recurso), [\"i-02\", \"b-01\", \"i-01\", \"i-03\"]);\nassert.deepStrictEqual(lista.map((h) => h.recurso), [\"i-01\", \"i-02\", \"b-01\", \"i-03\"]);"
+          }
+        },
+        {
+          "name": "dos llamadas seguidas dan el mismo resultado y no alteran la lista",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const lista: Hallazgo[] = [\n  { servicio: \"Amazon Inspector\", recurso: \"i-01\", gravedad: 2 },\n  { servicio: \"Amazon GuardDuty\", recurso: \"i-02\", gravedad: 4 },\n  { servicio: \"Amazon Macie\", recurso: \"b-01\", gravedad: 3 },\n  { servicio: \"Amazon Inspector\", recurso: \"i-03\", gravedad: 1 },\n];\nconst primera = hallazgosPrioritarios(lista, 3).map((h) => h.recurso);\nconst segunda = hallazgosPrioritarios(lista, 3).map((h) => h.recurso);\nassert.deepStrictEqual(primera, segunda);\nassert.strictEqual(lista[0].recurso, \"i-01\");"
+          }
+        },
+        {
+          "name": "un máximo de cero devuelve una lista vacía",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const lista: Hallazgo[] = [\n  { servicio: \"Amazon Inspector\", recurso: \"i-01\", gravedad: 2 },\n  { servicio: \"Amazon GuardDuty\", recurso: \"i-02\", gravedad: 4 },\n  { servicio: \"Amazon Macie\", recurso: \"b-01\", gravedad: 3 },\n  { servicio: \"Amazon Inspector\", recurso: \"i-03\", gravedad: 1 },\n];\nassert.deepStrictEqual(hallazgosPrioritarios(lista, 0), []);\nassert.strictEqual(lista.length, 4);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-debug-02",
+      "type": "DEBUG",
+      "title": "El panel de hallazgos reordena la lista original",
+      "statement": "La función `hallazgosPrioritarios` devuelve los hallazgos más graves de un panel que unifica los resultados de varios servicios de seguridad. Quien la usa observa que, después de llamarla, la lista que le pasó aparece reordenada por gravedad y ya no conserva el orden de llegada. Localiza el defecto y corrígelo sin cambiar el tipo `Hallazgo` ni la firma de la función.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "hallazgos",
+        "priorización",
+        "efectos secundarios"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de servicios de seguridad (borrador generado por un asistente)\nCarga de trabajo: tienda en línea con CloudFront, instancias EC2 y documentos de clientes en Amazon S3.\n1. Amazon GuardDuty: analiza de forma continua los eventos de gestión de CloudTrail, los registros de flujo de VPC y los registros DNS para detectar amenazas.\n2. Amazon Inspector: tras aplicar un parche en una instancia, hay que lanzar un escaneo manual para que el hallazgo se cierre.\n3. AWS Security Hub: recibe hallazgos de otros servicios de AWS y además ejecuta sus propias comprobaciones de controles.\n4. Amazon Macie: además de buscar datos sensibles en S3, evalúa si los buckets son accesibles públicamente.\n5. AWS WAF: protege la aplicación frente a las inundaciones TCP SYN y los ataques de reflexión UDP.\n6. AWS Shield: la protección automática frente a ataques volumétricos comunes solo existe si se contrata Shield Advanced."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Datos que analiza GuardDuty",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: los datos fundamentales que GuardDuty ingiere al activarlo son los eventos de gestión de AWS CloudTrail, los registros de flujo de VPC y los registros DNS, sin que debas activar nada más."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Rescaneo en Inspector",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Inspector no necesita escaneos manuales: vuelve a evaluar los recursos de forma automática ante cambios como instalar un paquete o un parche, o la publicación de un CVE nuevo, y detecta la corrección y cierra el hallazgo."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Security Hub y sus comprobaciones",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Security Hub recibe hallazgos de otros servicios, como GuardDuty, Inspector y Macie, y además ejecuta comprobaciones de controles frente a estándares y mejores prácticas."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Evaluación de buckets en Macie",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: además de descubrir datos sensibles, Macie mantiene un inventario de buckets de S3 y los evalúa; genera un hallazgo si, por ejemplo, un bucket pasa a ser accesible públicamente."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "WAF y los ataques volumétricos",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "WAF vigila las peticiones HTTP(S) y decide según criterios como la IP de origen o la cadena de consulta. La protección frente a vectores volumétricos como las inundaciones TCP SYN y la reflexión UDP corresponde a Shield."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Protección automática de Shield",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Al construir una aplicación en AWS recibes protección automática frente a vectores volumétricos comunes. Shield Advanced no la sustituye: añade detección, mitigación y respuesta adicionales."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de servicios de seguridad generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre los servicios de seguridad de una tienda en línea. Audítalo contra las páginas oficiales de cada servicio: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "Inspector",
+        "WAF",
+        "Shield",
+        "Security Hub"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Inspector, que busca vulnerabilidades de software en las cargas",
+            "explanation": "Descartada: Inspector busca vulnerabilidades de software y exposición de red en las cargas; no detecta actividad maliciosa como la minería de criptomonedas, así que no cumple el requisito."
+          },
+          {
+            "id": "b",
+            "text": "Amazon GuardDuty, que analiza de forma continua los registros y eventos de la cuenta",
+            "explanation": "Es el servicio de detección de amenazas: monitoriza datos y registros del entorno y puede ayudar a detectar la minería de criptomonedas no autorizada en instancias EC2."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Macie, que descubre datos sensibles en los buckets de Amazon S3",
+            "explanation": "Descartada: Macie descubre datos sensibles y evalúa la seguridad de los buckets de S3; no detecta actividad de minería en instancias EC2, así que no cumple el requisito."
+          },
+          {
+            "id": "d",
+            "text": "AWS Shield, que protege las aplicaciones frente a ataques DDoS",
+            "explanation": "Descartada: Shield protege frente a ataques de denegación de servicio distribuido; no detecta actividad no autorizada dentro de las instancias, así que no cumple el requisito."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué servicio detecta minería de criptomonedas no autorizada",
+      "statement": "Una empresa nota un consumo de cómputo inusual en sus instancias de Amazon EC2 y sospecha que alguien instaló minería de criptomonedas sin autorización. Quiere detectar esa actividad sospechosa en su cuenta de AWS. ¿Qué servicio cubre MEJOR ese requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "GuardDuty",
+        "minería de criptomonedas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon GuardDuty, que detecta amenazas a partir de datos y registros del entorno",
+            "explanation": "Descartada: GuardDuty detecta actividad sospechosa a partir de datos y registros del entorno; no escanea el software de las cargas en busca de vulnerabilidades."
+          },
+          {
+            "id": "b",
+            "text": "AWS Security Hub, que reúne hallazgos y evalúa controles frente a estándares",
+            "explanation": "Descartada: Security Hub reúne hallazgos y comprueba controles frente a estándares; no descubre ni escanea por sí mismo las cargas en busca de vulnerabilidades de software."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Macie, que descubre datos sensibles en los buckets de Amazon S3",
+            "explanation": "Descartada: Macie descubre datos sensibles en buckets de S3; no escanea instancias, imágenes de contenedor ni funciones Lambda."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Inspector, que gestiona las vulnerabilidades de software de las cargas",
+            "explanation": "Es el servicio de gestión de vulnerabilidades: descubre automáticamente instancias EC2, imágenes de ECR y funciones Lambda y las escanea sin que programes los escaneos."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué servicio gestiona las vulnerabilidades de software de las cargas",
+      "statement": "Un equipo de operaciones gestiona instancias de Amazon EC2, imágenes de contenedor en Amazon ECR y funciones de AWS Lambda. Quiere descubrir esas cargas de forma automática y revisarlas en busca de vulnerabilidades de software, sin programar los escaneos a mano. ¿Qué servicio cubre MEJOR ese requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Inspector",
+        "gestión de vulnerabilidades"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Security Hub, que ofrece una vista integral del estado de seguridad",
+            "explanation": "Es el servicio que recoge hallazgos de servicios de AWS y de productos de terceros y ejecuta comprobaciones de controles frente a estándares como CIS, PCI DSS y NIST."
+          },
+          {
+            "id": "b",
+            "text": "Amazon GuardDuty, que detecta amenazas a partir de datos y registros del entorno",
+            "explanation": "Descartada: GuardDuty genera hallazgos de amenazas a partir de datos y registros; no reúne los de otros productos ni evalúa el entorno frente a estándares."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Inspector, que busca vulnerabilidades de software en las cargas",
+            "explanation": "Descartada: Inspector genera hallazgos de vulnerabilidades y exposición de red; no consolida los de otros servicios ni comprueba controles frente a estándares."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Macie, que descubre datos sensibles en los buckets de Amazon S3",
+            "explanation": "Descartada: Macie genera hallazgos sobre datos sensibles y buckets de S3; no ofrece una vista única de los demás servicios ni de estándares."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué servicio reúne los hallazgos en una vista única",
+      "statement": "Una organización usa varios servicios de seguridad de AWS y productos de terceros, y recibe los hallazgos por separado de cada uno. Quiere una vista única de su estado de seguridad que, además, evalúe el entorno frente a estándares como CIS o PCI DSS. ¿Qué servicio cubre MEJOR ese requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Security Hub",
+        "estándares de seguridad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS WAF, que controla el acceso con reglas sobre las peticiones HTTP(S)",
+            "explanation": "Descartada: WAF decide sobre las peticiones HTTP(S) a los recursos que protege; no inspecciona el contenido de los objetos de S3 en busca de datos personales."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Inspector, que busca vulnerabilidades de software en las cargas",
+            "explanation": "Descartada: Inspector escanea cargas en busca de vulnerabilidades de software; no descubre datos personales en los objetos de los buckets."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Macie, que descubre datos sensibles en S3 y evalúa la seguridad de los buckets",
+            "explanation": "Descubre datos sensibles, como información personal, con aprendizaje automático y patrones, y genera un hallazgo si un bucket pasa a ser accesible públicamente."
+          },
+          {
+            "id": "d",
+            "text": "Amazon GuardDuty, que detecta amenazas a partir de datos y registros del entorno",
+            "explanation": "Descartada: GuardDuty detecta amenazas a partir de datos y registros; no inventaría qué objetos contienen datos personales, que es la función de Macie."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-quiz-04",
+      "type": "QUIZ",
+      "title": "Qué servicio localiza datos personales en buckets de S3",
+      "statement": "Una empresa guarda documentos de clientes en buckets de Amazon S3. Quiere saber en qué objetos hay datos personales y recibir un aviso si algún bucket pasa a ser accesible públicamente. ¿Qué servicio cubre MEJOR ese requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Macie",
+        "datos sensibles"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon GuardDuty, que detecta amenazas a partir de datos y registros del entorno",
+            "explanation": "Descartada: GuardDuty detecta amenazas a partir de datos y registros, pero no es el servicio de protección frente a los ataques DDoS volumétricos."
+          },
+          {
+            "id": "b",
+            "text": "AWS Security Hub, que reúne hallazgos y evalúa controles frente a estándares",
+            "explanation": "Descartada: Security Hub reúne hallazgos y comprueba controles; no protege de forma activa frente a ataques DDoS."
+          },
+          {
+            "id": "c",
+            "text": "AWS WAF, que controla el acceso con reglas sobre las peticiones HTTP(S)",
+            "explanation": "Descartada: WAF controla el acceso según criterios de las peticiones HTTP(S), como la IP de origen o la cadena de consulta; la protección frente a ataques volumétricos es de Shield."
+          },
+          {
+            "id": "d",
+            "text": "AWS Shield, que protege las aplicaciones frente a los vectores volumétricos comunes",
+            "explanation": "Protege frente a ataques DDoS: al construir en AWS recibes protección automática frente a vectores volumétricos comunes, como la reflexión UDP y las inundaciones TCP SYN."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué servicio protege frente a ataques DDoS volumétricos",
+      "statement": "Una tienda en línea publicada en internet quiere prepararse ante ataques de denegación de servicio distribuido (DDoS) volumétricos, como las inundaciones TCP SYN o la reflexión UDP, y quiere una protección automática frente a ellos. ¿Qué servicio cubre MEJOR ese requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Shield",
+        "DDoS"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS WAF, que controla el acceso con reglas sobre las peticiones web",
+            "explanation": "Es un firewall de aplicaciones web: vigila las peticiones HTTP(S) a recursos como una distribución de CloudFront y decide según la IP de origen o la cadena de consulta, con respuesta 403 si se bloquea."
+          },
+          {
+            "id": "b",
+            "text": "AWS Shield, que protege las aplicaciones frente a ataques DDoS",
+            "explanation": "Descartada: Shield protege frente a ataques DDoS; no decide petición a petición según la IP de origen o la cadena de consulta, que es lo que exige el requisito."
+          },
+          {
+            "id": "c",
+            "text": "Amazon GuardDuty, que detecta amenazas a partir de datos y registros del entorno",
+            "explanation": "Descartada: GuardDuty detecta amenazas a partir de datos y registros; no responde a cada petición HTTP(S) con el contenido o con un 403."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Macie, que descubre datos sensibles en los buckets de Amazon S3",
+            "explanation": "Descartada: Macie descubre datos sensibles en buckets de S3; no filtra las peticiones que llegan a la aplicación."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué servicio filtra peticiones por IP de origen y cadena de consulta",
+      "statement": "Una aplicación web sirve su contenido a través de una distribución de Amazon CloudFront. El equipo quiere permitir o bloquear peticiones HTTP(S) según su IP de origen y los valores de la cadena de consulta, y responder con un 403 a las bloqueadas. ¿Qué servicio cubre MEJOR ese requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "WAF",
+        "peticiones HTTP(S)"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS WAF, que filtra las peticiones HTTP(S) hacia las aplicaciones web",
+            "explanation": "No cumple: WAF controla las peticiones HTTP(S) a recursos protegidos; no escanea instancias ni descubre datos sensibles."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Inspector, que escanea las cargas en busca de vulnerabilidades de software",
+            "explanation": "Cumple: Inspector descubre instancias EC2 y las escanea en busca de vulnerabilidades de software y exposición de red."
+          },
+          {
+            "id": "c",
+            "text": "AWS Shield, que protege las aplicaciones frente a ataques DDoS",
+            "explanation": "No cumple: Shield protege frente a ataques DDoS; no revisa vulnerabilidades ni datos sensibles."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Macie, que descubre datos sensibles mediante aprendizaje automático y patrones",
+            "explanation": "Cumple: Macie descubre datos sensibles en los objetos de los buckets de S3 con aprendizaje automático y coincidencia de patrones."
+          },
+          {
+            "id": "e",
+            "text": "Amazon GuardDuty, que detecta amenazas a partir de datos y registros del entorno",
+            "explanation": "No cumple: GuardDuty detecta actividad sospechosa; no revisa las vulnerabilidades de software ni inventaría los datos sensibles de un bucket."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-quiz-07",
+      "type": "QUIZ",
+      "title": "Selecciona los servicios para vulnerabilidades y datos sensibles",
+      "statement": "Una empresa tiene instancias de Amazon EC2 y un bucket de Amazon S3 con documentos de clientes. Necesita revisar las instancias en busca de vulnerabilidades de software y localizar datos sensibles en el bucket. Selecciona DOS servicios, uno por cada requisito.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Inspector",
+        "Macie"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Shield, que protege las aplicaciones frente a los vectores DDoS más comunes",
+            "explanation": "Cumple: Shield protege frente a ataques DDoS, con protección automática frente a vectores volumétricos comunes."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Macie, que descubre datos sensibles en los buckets de Amazon S3",
+            "explanation": "No cumple: Macie descubre datos sensibles en S3; no actúa sobre el tráfico que llega a la aplicación."
+          },
+          {
+            "id": "c",
+            "text": "AWS WAF, que vigila las peticiones HTTP(S) y decide según sus criterios",
+            "explanation": "Cumple: WAF vigila las peticiones HTTP(S) a los recursos protegidos y responde según criterios como la IP de origen o la cadena de consulta."
+          },
+          {
+            "id": "d",
+            "text": "AWS Security Hub, que reúne hallazgos y evalúa controles frente a estándares",
+            "explanation": "No cumple: Security Hub reúne hallazgos y comprueba controles; no filtra ni mitiga el tráfico entrante."
+          },
+          {
+            "id": "e",
+            "text": "Amazon Inspector, que escanea las cargas en busca de vulnerabilidades",
+            "explanation": "No cumple: Inspector escanea las cargas en busca de vulnerabilidades y exposición de red; no filtra ni mitiga el tráfico entrante."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": "2.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona los servicios que actúan sobre el tráfico entrante",
+      "statement": "Una aplicación web expuesta a internet debe protegerse de las peticiones web maliciosas y de los ataques DDoS que llegan por la red. Selecciona DOS servicios que actúan sobre ese tráfico entrante.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "WAF",
+        "Shield"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+        "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "guardduty",
+            "term": "Amazon GuardDuty",
+            "definition": "Detecta amenazas, como credenciales comprometidas o minería no autorizada, analizando registros del entorno"
+          },
+          {
+            "id": "inspector",
+            "term": "Amazon Inspector",
+            "definition": "Escanea EC2, imágenes de ECR y funciones Lambda: vulnerabilidades de software y exposición de red"
+          },
+          {
+            "id": "security-hub",
+            "term": "AWS Security Hub",
+            "definition": "Reúne en una vista los hallazgos de otros servicios y comprueba controles frente a estándares de seguridad"
+          },
+          {
+            "id": "macie",
+            "term": "Amazon Macie",
+            "definition": "Descubre datos sensibles en buckets de S3 y avisa si un bucket pasa a ser accesible públicamente"
+          },
+          {
+            "id": "shield",
+            "term": "AWS Shield",
+            "definition": "Protege frente a ataques DDoS volumétricos como la reflexión UDP y las inundaciones TCP SYN"
+          },
+          {
+            "id": "waf",
+            "term": "AWS WAF",
+            "definition": "Controla peticiones HTTP(S) a CloudFront, API Gateway o ALB según su IP de origen o su cadena de consulta"
+          },
+          {
+            "id": "hallazgo",
+            "term": "Hallazgo",
+            "definition": "Informe detallado de un problema que ha detectado un servicio de seguridad, con su recurso afectado"
+          },
+          {
+            "id": "estandar",
+            "term": "Estándar de seguridad",
+            "definition": "Conjunto de controles de mejores prácticas, como CIS o PCI DSS, que Security Hub comprueba"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio con la amenaza o el uso que cubre. Si dudas entre dos, pregúntate si el servicio detecta, escanea, descubre, filtra, protege o reúne, y qué recurso vigila.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Detección: GuardDuty detecta amenazas, Inspector escanea vulnerabilidades y Macie descubre datos sensibles en S3",
+              "Protección: WAF filtra peticiones HTTP(S) y Shield protege frente a ataques DDoS",
+              "Visión de conjunto: Security Hub reúne los hallazgos y los compara con estándares"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-memoria-01",
+      "type": "MEMORY",
+      "title": "Servicio y amenaza que cubre",
+      "statement": "Empareja cada servicio de seguridad de AWS con la amenaza o el uso que cubre.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "servicios de seguridad",
+        "amenazas",
+        "hallazgos"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u1-2-3-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué servicio para qué amenaza",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una web en Amazon EC2 con documentos de clientes en Amazon S3) y escribe tu elección de servicios de seguridad como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué servicio usarías para cada amenaza (actividad sospechosa, vulnerabilidades, datos sensibles, peticiones web y ataques DDoS) y cuál reuniría los hallazgos.\n\n2) Alternativa descartada: una asignación tentadora pero incorrecta (por ejemplo, usar Security Hub para detectar amenazas o WAF contra inundaciones TCP SYN) y la razón por la que la descartaste.\n\n3) Consecuencia: qué cambia para tu equipo al tener varios servicios que generan hallazgos y cómo los revisarías.\n\n4) Evidencia: qué página oficial de cada servicio usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la amenaza y el servicio. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo asignaste cada servicio.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "servicios de seguridad",
+        "decisión",
+        "hallazgos"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html"
+      ],
+      "order": 19
+    }
+  ]
+}
