@@ -1,0 +1,1389 @@
+{
+  "code": "AWS-U1.3.6",
+  "lessons": [
+    {
+      "slug": "aws-u1-3-6-integracion-analitica-e-ia-sqs-sns-eventbridge-kinesis-athena-glue-bedrock-y-sagemaker-ai",
+      "title": "Integración, analítica e IA: SQS, SNS, EventBridge, Kinesis, Athena, Glue, Bedrock y SageMaker AI",
+      "estimatedMin": 50,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Para elegir uno de estos ocho servicios primero miras qué problema resuelves: pasar mensajes entre componentes, reaccionar a eventos, recoger datos que llegan sin parar, consultar o preparar datos para analizarlos, o usar inteligencia artificial. Amazon SQS ofrece colas que desacoplan componentes. Amazon SNS publica mensajes en un tema para que los reciban varios suscriptores. Amazon EventBridge usa eventos para conectar componentes de una aplicación. Amazon Kinesis Data Streams recoge y procesa flujos de registros en tiempo real. Amazon Athena consulta con SQL estándar datos de S3. AWS Glue descubre, prepara y mueve datos. Amazon Bedrock da acceso a modelos fundacionales y Amazon SageMaker AI sirve para construir, entrenar y desplegar modelos de aprendizaje automático. En el examen CLF-C02, la tarea 3.7 pide identificar los servicios de IA y aprendizaje automático y los de analítica (por ejemplo, SageMaker AI, Athena, Kinesis y Glue), y la tarea 3.8 pide elegir el servicio adecuado para entregar mensajes y enviar alertas y notificaciones con EventBridge, SNS y SQS."
+        },
+        {
+          "type": "list",
+          "title": "Los servicios y para qué sirven",
+          "items": [
+            "Amazon SQS: cola alojada, segura y duradera que integra y desacopla componentes de un sistema distribuido. Los productores envían mensajes y los consumidores los reciben, los procesan y los borran de la cola.",
+            "Amazon SNS: servicio totalmente administrado que entrega mensajes de publicadores a suscriptores. Los publicadores envían el mensaje a un tema y los suscriptores lo reciben por un punto de conexión como SQS, Lambda, HTTP(S), correo, notificaciones push o mensajes de texto (SMS).",
+            "Amazon EventBridge: servicio sin servidores que usa eventos para conectar componentes de una aplicación. Recibe, filtra, transforma y entrega eventos de aplicaciones propias, de servicios de AWS y de software de terceros.",
+            "Amazon Kinesis Data Streams: recoge y procesa grandes flujos de registros en tiempo real. Varias aplicaciones pueden leer el mismo flujo a la vez.",
+            "Amazon Athena: servicio de consultas interactivas que analiza datos directamente en Amazon S3 con SQL estándar. Es un servicio sin servidores: no hay infraestructura que configurar ni administrar.",
+            "AWS Glue: servicio de integración de datos sin servidores para descubrir, preparar, mover e integrar datos de varias fuentes. Incluye un catálogo de datos central y trabajos ETL.",
+            "Amazon Bedrock: servicio totalmente administrado con acceso seguro a modelos fundacionales de empresas de IA líderes, para crear y escalar aplicaciones de IA generativa.",
+            "Amazon SageMaker AI: servicio totalmente administrado de aprendizaje automático (ML) para construir, entrenar y desplegar modelos en un entorno alojado listo para producción."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Un mensaje de pedido: del productor a los consumidores",
+          "code": "sequenceDiagram\n  participant P as Productor del pedido\n  participant T as Tema de SNS\n  participant Q as Cola de SQS suscrita\n  participant F as Consumidor de facturación\n  participant E as Otro suscriptor\n  P->>T: Publica el mensaje una sola vez\n  T->>Q: Entrega una copia a la cola\n  T->>E: Entrega otra copia al correo o a Lambda\n  F->>Q: Recibe el mensaje cuando puede\n  Note over Q,F: El mensaje sigue en la cola durante el tiempo de visibilidad\n  F->>Q: Lo borra al terminar de procesarlo\n  Note over Q,F: Si no lo borra antes de que venza ese tiempo, la cola lo vuelve a entregar"
+        },
+        {
+          "type": "list",
+          "title": "Qué decide cada elección",
+          "items": [
+            "Si un componente deja trabajo para que otro lo procese cuando pueda y lo borre al terminar, es una cola: SQS. Una cola de tipo estándar entrega los mensajes al menos una vez y una de tipo FIFO procesa cada mensaje exactamente una vez.",
+            "Si un aviso debe llegar a varios destinos a la vez, se publica una sola vez en un tema de SNS. Cuando un tema reparte el mensaje a varias colas, el patrón se llama fanout. Si un suscriptor puede estar desconectado, se combina SNS con una cola de SQS para no perder mensajes.",
+            "Si las fuentes son aplicaciones, servicios de AWS o software de terceros y hay que filtrar y transformar los eventos antes de entregarlos, usas EventBridge. Los pipes sirven para uniones punto a punto, de una fuente a un destino.",
+            "Si lo que llega son registros que hay que procesar en segundos, como los clics de una web, usas Kinesis Data Streams. Cada aplicación consumidora lee el flujo por su cuenta.",
+            "Si los datos ya están en S3 y quieres consultarlos con SQL sin montar servidores, usas Athena. Si hay que descubrirlos, catalogarlos y prepararlos con trabajos ETL, usas Glue, y después Athena puede consultar los datos catalogados.",
+            "Si quieres usar modelos fundacionales ya construidos por empresas de IA para una aplicación de IA generativa, usas Bedrock. Si tu equipo quiere construir, entrenar y desplegar su propio modelo, usas SageMaker AI."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: ocho necesidades, ocho servicios",
+          "text": "Una tienda en línea tiene ocho necesidades. Necesidad 1: dejar cada pedido en un buzón intermedio para que facturación lo procese a su ritmo. Pide una cola, así que usa SQS. Necesidad 2: avisar a un grupo de personas por correo y a una función Lambda con una sola publicación. Pide un tema con varios suscriptores, así que usa SNS. Necesidad 3: reaccionar a los eventos que emiten sus aplicaciones, servicios de AWS y software de terceros, filtrándolos antes de entregarlos. Pide eventos y filtrado, así que usa EventBridge. Necesidad 4: procesar en tiempo real los registros de clics, con dos aplicaciones leyendo el mismo flujo. Pide un flujo de registros, así que usa Kinesis Data Streams. Necesidad 5: que los analistas consulten con SQL archivos que ya están en S3. Pide consultas con SQL sin servidores, así que usa Athena. Necesidad 6: descubrir las fuentes de datos, catalogarlas y prepararlas con trabajos ETL. Pide integración de datos, así que usa Glue. Necesidad 7: añadir a la tienda un asistente de IA generativa que use modelos de varias empresas. Pide acceso administrado a modelos fundacionales, así que usa Bedrock. Necesidad 8: entrenar un modelo propio que prediga la demanda con algoritmos propios. Pide construir, entrenar y desplegar un modelo, así que usa SageMaker AI. El nombre del servicio no decide, la necesidad sí."
+        },
+        {
+          "type": "code",
+          "title": "Un patrón de EventBridge, como lo usarás en el laboratorio",
+          "language": "typescript",
+          "code": "export const patron = {\n  source: [\"tienda.pedidos\"],\n  \"detail-type\": [\"Pedido creado\"],\n};"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el verbo del enunciado decide el servicio",
+          "text": "Lee qué hace el componente. Si deja un mensaje para que otro lo procese y lo borre, es una cola (SQS). Si publica un aviso para que lo reciban varios suscriptores, es un tema (SNS). Si reacciona a eventos de varias fuentes y los filtra, es EventBridge. Si recoge registros que se procesan en tiempo real, es Kinesis Data Streams. Si consulta con SQL datos de S3, es Athena, y si los descubre, los cataloga y los prepara, es Glue. Si usa modelos fundacionales ya construidos, es Bedrock, y si construye y entrena un modelo propio, es SageMaker AI. Recuerda además que SageMaker AI es el nombre actual de Amazon SageMaker: el cambio de nombre no cambia lo que hace el servicio."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: confundir SQS con SNS",
+          "text": "Causa: ambos son servicios de mensajería asíncrona y se supone que son intercambiables, así que se elige uno por su nombre. Consecuencia: se espera que una cola de SQS entregue cada mensaje a todos los consumidores, cuando SQS suele procesar cada mensaje con un solo suscriptor, o se espera que un tema de SNS guarde los mensajes para que un consumidor los tome después. Solución: usa SQS para desacoplar con una cola y SNS para publicar en un tema con varios suscriptores; si necesitas ambas cosas, suscribe varias colas de SQS a un tema de SNS (fanout)."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: enviar a un suscriptor que puede estar desconectado sin una cola en medio",
+          "text": "Causa: se suscribe directamente a un tema de SNS un componente que no siempre está activo y se da por hecho que recibirá todos los avisos. Consecuencia: los mensajes que se publican mientras el suscriptor está desconectado se pierden. Solución: suscribe al tema una cola de SQS y haz que el componente lea de la cola cuando esté activo; así SNS reparte y SQS guarda los mensajes hasta que se procesan y se borran."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir el servicio de integración, analítica o IA de AWS que encaja con una necesidad y escribir patrones de EventBridge que seleccionen solo los eventos pedidos, comprobados con aws.events.matches. Esta unidad prepara el examen CLF-C02, dominio 3 «Tecnología y servicios en la nube», tareas 3.7 (servicios de IA y aprendizaje automático y de analítica) y 3.8 (mensajería con EventBridge, SNS y SQS). Criterio: ante un escenario nuevo, nombras el servicio, descartas los demás con una razón y compruebas con aws.events.matches que cada regla recibe los eventos correctos y ninguno más, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las ocho necesidades tapando las respuestas: para cada una, di si pide una cola, un tema, eventos filtrados, un flujo en tiempo real, consultas con SQL, preparación de datos, modelos ya construidos o un modelo propio, y qué servicio encaja. Después responde de memoria en qué se diferencian SQS y SNS y por qué se combinan."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Una regla de EventBridge que no recibe los pedidos». Ejecuta primero aws.events.matches con el evento de ejemplo sobre el código inicial y compara el resultado con lo que pide el enunciado antes de editar. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y la regla no recibe los pedidos cancelados."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve el laboratorio «Tres reglas para los pagos, sin pistas». Parte de los criterios del enunciado, escribe cada patrón y compruébalo con aws.events.matches contra eventos que deben entrar y eventos que no. Criterio de paso: las tres reglas reciben los pagos pedidos, rechazan los demás y son patrones válidos."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente propuso qué servicio usar en ocho casos de integración y analítica y una de sus elecciones dejaría a los analistas sin poder consultar con SQL los archivos de S3. Resuelve «Un servicio de analítica mal asignado»: corrige solo la fila equivocada y contrasta cada elección con las páginas oficiales de SQS, SNS, EventBridge, Kinesis Data Streams, Athena, Glue, Bedrock y SageMaker AI (leídas el 2026-11-13)."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe qué hace el componente del enunciado: dejar un mensaje, publicar un aviso, reaccionar a eventos, recoger registros, consultar datos, prepararlos o usar IA; al corregir, lee la explicación de cada opción y anota si fallaste por confundir SQS con SNS, Athena con Glue o Bedrock con SageMaker AI. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Piensa en una aplicación que conozcas que reciba pedidos, avise a varias personas y analice sus datos, y escribe qué servicio usarías en cada tramo y por qué. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero suscribió a un tema de SNS un servicio que se apaga por las noches y los avisos de esas horas se perdieron; ¿qué le propones y por qué?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-sqs-que-es",
+          "order": 0,
+          "note": "Qué es Amazon SQS: colas que integran y desacoplan componentes, ciclo de vida del mensaje y diferencias con SNS."
+        },
+        {
+          "resourceSlug": "aws-sns-que-es",
+          "order": 1,
+          "note": "Qué es Amazon SNS: temas, suscriptores, fanout y alertas y notificaciones."
+        },
+        {
+          "resourceSlug": "aws-eventbridge-que-es",
+          "order": 2,
+          "note": "Qué es Amazon EventBridge: eventos que conectan componentes, buses de eventos y pipes."
+        },
+        {
+          "resourceSlug": "aws-kinesis-data-streams-que-es",
+          "order": 3,
+          "note": "Qué es Kinesis Data Streams: recogida y procesamiento de flujos de registros en tiempo real."
+        },
+        {
+          "resourceSlug": "aws-athena-que-es",
+          "order": 4,
+          "note": "Qué es Amazon Athena: consultas con SQL estándar sobre datos de S3 sin servidores."
+        },
+        {
+          "resourceSlug": "aws-glue-que-es",
+          "order": 5,
+          "note": "Qué es AWS Glue: descubrir, catalogar, preparar y mover datos con trabajos ETL sin servidores."
+        },
+        {
+          "resourceSlug": "aws-bedrock-que-es",
+          "order": 6,
+          "note": "Qué es Amazon Bedrock: acceso administrado a modelos fundacionales para IA generativa."
+        },
+        {
+          "resourceSlug": "aws-sagemaker-ai-que-es",
+          "order": 7,
+          "note": "Qué es Amazon SageMaker AI: construir, entrenar y desplegar modelos de aprendizaje automático."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 8,
+          "note": "Guía de CLF-C02: el dominio 3, tarea 3.7, trata IA/ML y analítica, y la 3.8, la mensajería con EventBridge, SNS y SQS."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": "typescript",
+      "starterCode": "// Regla de facturación de la tienda: debe recibir solo los eventos «Pedido creado» del origen tienda.pedidos.\nexport const patron = {\n  source: [\"tienda.pedido\"],\n  \"detail-type\": [\"Pedido creado\"],\n};\n",
+      "solution": {
+        "code": "// Regla de facturación de la tienda: el origen es tienda.pedidos y el tipo es «Pedido creado».\nexport const patron = {\n  source: [\"tienda.pedidos\"],\n  \"detail-type\": [\"Pedido creado\"],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta `aws.events.matches(patron, evento)` con el evento de ejemplo del enunciado y compara, letra por letra, el valor de `source` del evento con el que aparece en el patrón."
+        },
+        {
+          "level": 2,
+          "text": "Cada campo del patrón es una lista de valores aceptados, y el valor del evento debe aparecer en esa lista con exactamente la misma ortografía. El `detail-type` del patrón ya coincide con el del evento."
+        },
+        {
+          "level": 3,
+          "text": "Cambia `[\"tienda.pedido\"]` por `[\"tienda.pedidos\"]` en el campo `source` y no añadas más campos al patrón: el `detail-type` ya está bien."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la regla recibe un pedido creado",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const creado = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { estado: \"creado\", total: 120 } };\nassert.strictEqual(aws.events.matches(patron, creado), true, \"El patrón no recibe el evento de ejemplo «Pedido creado» de tienda.pedidos\");"
+          }
+        },
+        {
+          "name": "el patrón es válido para el arnés",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.events.validatePattern(patron), []);"
+          }
+        },
+        {
+          "name": "la regla no recibe los pedidos cancelados",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const cancelado = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido cancelado\", detail: { estado: \"cancelado\", total: 120 } };\nassert.strictEqual(aws.events.matches(patron, cancelado), false, \"Los pedidos cancelados no deben llegar a la regla\");"
+          }
+        },
+        {
+          "name": "la regla no recibe pedidos de otro origen",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const devolucion = { source: \"tienda.devoluciones\", \"detail-type\": \"Pedido creado\", detail: { estado: \"creado\", total: 120 } };\nassert.strictEqual(aws.events.matches(patron, devolucion), false, \"Un evento de otro origen no debe llegar a la regla\");"
+          }
+        },
+        {
+          "name": "la regla recibe pedidos creados de cualquier importe",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const grande = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { estado: \"creado\", total: 5400 } };\nassert.strictEqual(aws.events.matches(patron, grande), true, \"El importe no debe limitar los pedidos creados\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-regla-pedidos-guiado",
+      "type": "LAB",
+      "title": "Una regla de EventBridge que no recibe los pedidos",
+      "statement": "Una tienda publica sus eventos en un bus de Amazon EventBridge. Cada evento tiene los campos `source`, `detail-type` y `detail`; por ejemplo: `{ source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { estado: \"creado\", total: 120 } }`. La regla de facturación debe recibir los eventos «Pedido creado» del origen `tienda.pedidos` y ningún otro: ni los «Pedido cancelado» ni los de otros orígenes. El código inicial exporta un patrón que no recibe el evento de ejemplo: corrígelo sin cambiar la forma del valor exportado (`export const patron = { … }`) y compruébalo con `aws.events.matches(patron, evento)`.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "EventBridge",
+        "evento",
+        "patrón de evento",
+        "regla"
+      ],
+      "estimatedMin": 25,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tres reglas para los eventos de pagos de la tienda. El modelo actual tiene varios defectos.\nexport const reglas = {\n  revision: {\n    source: [\"tienda.pagos\"],\n    \"detail-type\": [\"Pago procesado\"],\n    detail: { importe: [{ numeric: [\"<\", 1000] }] },\n  },\n  rechazos: {\n    source: [\"tienda.pagos\"],\n    \"detail-type\": [\"Pago rechazado\"],\n    detail: { entorno: [\"produccion\"] },\n  },\n  clientesVip: {\n    source: [\"tienda.pagos\"],\n    detail: { cliente: [{ suffix: \"-vip\" }] },\n  },\n};\n",
+      "solution": {
+        "code": "// Tres reglas para los eventos de pagos de la tienda.\nexport const reglas = {\n  revision: {\n    source: [\"tienda.pagos\"],\n    \"detail-type\": [\"Pago procesado\"],\n    detail: { importe: [{ numeric: [\">\", 1000] }] },\n  },\n  rechazos: {\n    source: [\"tienda.pagos\"],\n    \"detail-type\": [\"Pago rechazado\"],\n    detail: { entorno: [{ \"anything-but\": \"pruebas\" }] },\n  },\n  clientesVip: {\n    source: [\"tienda.pagos\"],\n    detail: { cliente: [{ prefix: \"vip-\" }] },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "las tres reglas son patrones válidos para el arnés",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(Object.keys(reglas).sort(), [\"clientesVip\", \"rechazos\", \"revision\"]);\nfor (const [nombre, patron] of Object.entries(reglas)) {\n  assert.deepStrictEqual(aws.events.validatePattern(patron), [], \"La regla \" + nombre + \" no es un patrón válido\");\n}"
+          }
+        },
+        {
+          "name": "la revisión recibe un pago procesado de 2500",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nconst evento = pago(\"Pago procesado\", { importe: 2500, entorno: \"produccion\", cliente: \"ana\" });\nassert.strictEqual(aws.events.matches(reglas.revision, evento), true, \"La revisión no recibe un pago procesado de 2500\");"
+          }
+        },
+        {
+          "name": "los clientes VIP reciben el pago de vip-ana",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nconst evento = pago(\"Pago procesado\", { importe: 40, entorno: \"produccion\", cliente: \"vip-ana\" });\nassert.strictEqual(aws.events.matches(reglas.clientesVip, evento), true, \"La regla VIP no recibe el pago de vip-ana\");"
+          }
+        },
+        {
+          "name": "la revisión no recibe pagos de 800 ni de exactamente 1000",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nfor (const importe of [800, 1000]) {\n  const evento = pago(\"Pago procesado\", { importe, entorno: \"produccion\", cliente: \"ana\" });\n  assert.strictEqual(aws.events.matches(reglas.revision, evento), false, \"Un pago de \" + importe + \" no supera 1000\");\n}"
+          }
+        },
+        {
+          "name": "la revisión no recibe pagos rechazados",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nconst evento = pago(\"Pago rechazado\", { importe: 5000, entorno: \"produccion\", cliente: \"ana\" });\nassert.strictEqual(aws.events.matches(reglas.revision, evento), false, \"La revisión solo es para pagos procesados\");"
+          }
+        },
+        {
+          "name": "los rechazos incluyen cualquier entorno menos pruebas",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nfor (const entorno of [\"produccion\", \"staging\"]) {\n  const evento = pago(\"Pago rechazado\", { importe: 50, entorno, cliente: \"ana\" });\n  assert.strictEqual(aws.events.matches(reglas.rechazos, evento), true, \"Un rechazo del entorno \" + entorno + \" debe llegar a la regla\");\n}"
+          }
+        },
+        {
+          "name": "los rechazos excluyen el entorno de pruebas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nconst evento = pago(\"Pago rechazado\", { importe: 50, entorno: \"pruebas\", cliente: \"ana\" });\nassert.strictEqual(aws.events.matches(reglas.rechazos, evento), false, \"Los rechazos del entorno de pruebas no deben llegar\");"
+          }
+        },
+        {
+          "name": "los rechazos no incluyen pagos procesados",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nconst evento = pago(\"Pago procesado\", { importe: 50, entorno: \"produccion\", cliente: \"ana\" });\nassert.strictEqual(aws.events.matches(reglas.rechazos, evento), false, \"Un pago procesado no es un rechazo\");"
+          }
+        },
+        {
+          "name": "los clientes VIP no incluyen nombres que solo terminan en -vip",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nconst evento = pago(\"Pago procesado\", { importe: 40, entorno: \"produccion\", cliente: \"ana-vip\" });\nassert.strictEqual(aws.events.matches(reglas.clientesVip, evento), false, \"Un cliente que no empieza por vip- no es VIP\");"
+          }
+        },
+        {
+          "name": "los clientes VIP ven pagos procesados y rechazados, solo de tienda.pagos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const pago = (tipo: string, detalle: Record<string, unknown>, origen: string = \"tienda.pagos\") => ({ source: origen, \"detail-type\": tipo, detail: detalle });\nfor (const tipo of [\"Pago procesado\", \"Pago rechazado\"]) {\n  const evento = pago(tipo, { importe: 40, entorno: \"produccion\", cliente: \"vip-luis\" });\n  assert.strictEqual(aws.events.matches(reglas.clientesVip, evento), true, tipo + \" de un cliente VIP debe llegar a la regla\");\n}\nconst otro = pago(\"Pago procesado\", { importe: 40, entorno: \"produccion\", cliente: \"vip-luis\" }, \"tienda.devoluciones\");\nassert.strictEqual(aws.events.matches(reglas.clientesVip, otro), false, \"Un evento de otro origen no debe llegar a la regla VIP\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-reglas-de-pagos-autonomo",
+      "type": "LAB",
+      "title": "Tres reglas para los pagos, sin pistas",
+      "statement": "La tienda publica eventos de pagos en un bus de Amazon EventBridge con `source` `tienda.pagos`, `detail-type` «Pago procesado» o «Pago rechazado» y un `detail` con `importe` (número), `entorno` (`produccion`, `staging` o `pruebas`) y `cliente` (texto). Escribe tres patrones, uno por regla. Criterios: (1) `revision` recibe los pagos procesados de importe MAYOR que 1000 (el de exactamente 1000 no) y ningún rechazado; (2) `rechazos` recibe los pagos rechazados de cualquier entorno excepto `pruebas`, y ningún procesado; (3) `clientesVip` recibe los pagos, procesados o rechazados, de los clientes cuyo nombre EMPIEZA por `vip-`, solo del origen `tienda.pagos`; (4) los tres son patrones válidos. Mantén la forma del valor exportado (`export const reglas = { revision, rechazos, clientesVip }`) y comprueba cada regla con `aws.events.matches(patron, evento)` contra eventos que deben entrar y eventos que no.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "EventBridge",
+        "patrón de evento",
+        "filtrado de eventos",
+        "regla"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cola alojada, segura y duradera que integra y desacopla componentes. Un productor envía el mensaje, un consumidor lo recibe, lo procesa y lo borra; si no lo borra antes de que venza el tiempo de visibilidad, la cola puede volver a entregarlo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon SQS",
+      "statement": "¿Qué es Amazon SQS y cómo viaja un mensaje por una cola?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "SQS",
+        "cola",
+        "desacoplar"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Entrega mensajes de publicadores a suscriptores: se publica una vez en un tema y llega a varios puntos de conexión (SQS, Lambda, HTTP, correo, push, SMS). Con colas de SQS suscritas al tema (fanout), un suscriptor desconectado no pierde mensajes."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon SNS",
+      "statement": "¿Qué hace Amazon SNS y cómo se combina con SQS?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "SNS",
+        "tema",
+        "fanout"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio sin servidores que usa eventos para conectar componentes de una aplicación. Recibe, filtra, transforma y entrega eventos de aplicaciones propias, de servicios de AWS y de software de terceros a uno o varios destinos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon EventBridge",
+      "statement": "¿Para qué sirve Amazon EventBridge?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "EventBridge",
+        "evento",
+        "bus de eventos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Recoge y procesa grandes flujos de registros en tiempo real, como logs o clics de una web. Los datos pueden consumirse casi al instante y varias aplicaciones pueden leer el mismo flujo a la vez."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon Kinesis Data Streams",
+      "statement": "¿Qué problema resuelve Amazon Kinesis Data Streams?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Kinesis",
+        "flujo de datos",
+        "tiempo real"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Athena consulta con SQL estándar los datos que ya están en S3, sin servidores. Glue es un servicio de integración de datos sin servidores que descubre, cataloga, prepara y mueve datos con trabajos ETL; Athena puede consultar luego los datos catalogados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Athena y Glue",
+      "statement": "¿En qué se diferencian Amazon Athena y AWS Glue?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Athena",
+        "Glue",
+        "ETL"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Bedrock da acceso administrado a modelos fundacionales de empresas de IA líderes para crear aplicaciones de IA generativa. SageMaker AI es un servicio de ML para construir, entrenar y desplegar tus propios modelos en un entorno alojado."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Bedrock y SageMaker AI",
+      "statement": "¿En qué se diferencian Amazon Bedrock y Amazon SageMaker AI?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Bedrock",
+        "SageMaker AI",
+        "IA generativa"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html",
+        "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "sqs",
+            "term": "Amazon SQS",
+            "definition": "Cola que desacopla componentes: el consumidor recibe cada mensaje, lo procesa y lo borra"
+          },
+          {
+            "id": "sns",
+            "term": "Amazon SNS",
+            "definition": "Publica una vez en un tema y entrega a varios suscriptores, como correo, SMS o Lambda"
+          },
+          {
+            "id": "eb",
+            "term": "Amazon EventBridge",
+            "definition": "Filtra y entrega a sus destinos los eventos de aplicaciones propias, de AWS y de terceros"
+          },
+          {
+            "id": "kinesis",
+            "term": "Amazon Kinesis Data Streams",
+            "definition": "Recoge y procesa en tiempo real flujos de registros, como los clics de una web"
+          },
+          {
+            "id": "athena",
+            "term": "Amazon Athena",
+            "definition": "Consulta con SQL estándar archivos que ya están en S3, sin servidores"
+          },
+          {
+            "id": "glue",
+            "term": "AWS Glue",
+            "definition": "Descubre, cataloga y prepara datos de varias fuentes con trabajos ETL sin servidores"
+          },
+          {
+            "id": "bedrock",
+            "term": "Amazon Bedrock",
+            "definition": "Da acceso administrado a modelos fundacionales para aplicaciones de IA generativa"
+          },
+          {
+            "id": "sage",
+            "term": "Amazon SageMaker AI",
+            "definition": "Construye, entrena y despliega modelos propios de aprendizaje automático"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio de integración, analítica o IA con el caso que resuelve. Si dudas, pregúntate qué hace el componente del enunciado: dejar un mensaje, publicar un aviso, reaccionar a eventos, recoger registros, consultar datos, prepararlos o usar IA.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Mensajes: SQS los guarda en una cola y SNS los publica en un tema con varios suscriptores",
+              "Eventos y flujos: EventBridge filtra eventos y Kinesis procesa registros en tiempo real",
+              "Datos e IA: Athena consulta, Glue prepara, Bedrock da acceso a modelos y SageMaker AI entrena los propios"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-memoria-01",
+      "type": "MEMORY",
+      "title": "Servicio y caso de integración o analítica que resuelve",
+      "statement": "Empareja cada servicio de integración, analítica o IA de AWS con el caso que resuelve.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SQS",
+        "SNS",
+        "EventBridge",
+        "Kinesis",
+        "Athena",
+        "Glue",
+        "Bedrock",
+        "SageMaker AI"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+        "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Servicio que elige un asistente para ocho casos. Corrige la elección equivocada.\nexport const analitica = {\n  casos: [\n    { necesidad: \"Dejar cada pedido en una cola hasta que un consumidor lo procese y lo borre\", servicio: \"sqs\" },\n    { necesidad: \"Publicar un aviso una sola vez y entregarlo a varios suscriptores, incluidos correo y mensajes de texto\", servicio: \"sns\" },\n    { necesidad: \"Reaccionar a eventos de aplicaciones propias, servicios de AWS y software de terceros, filtrándolos antes de entregarlos\", servicio: \"eventbridge\" },\n    { necesidad: \"Procesar en tiempo real los registros de clics de una web que leen varias aplicaciones a la vez\", servicio: \"kinesis\" },\n    { necesidad: \"Consultar con SQL estándar archivos que ya están en S3, sin montar servidores\", servicio: \"glue\" },\n    { necesidad: \"Descubrir fuentes de datos, catalogarlas y prepararlas con trabajos ETL sin servidores\", servicio: \"glue\" },\n    { necesidad: \"Crear una aplicación de IA generativa con modelos fundacionales de varias empresas\", servicio: \"bedrock\" },\n    { necesidad: \"Construir, entrenar y desplegar un modelo propio de aprendizaje automático\", servicio: \"sagemaker\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Servicio que elige un asistente para ocho casos. Corrige la elección equivocada.\nexport const analitica = {\n  casos: [\n    { necesidad: \"Dejar cada pedido en una cola hasta que un consumidor lo procese y lo borre\", servicio: \"sqs\" },\n    { necesidad: \"Publicar un aviso una sola vez y entregarlo a varios suscriptores, incluidos correo y mensajes de texto\", servicio: \"sns\" },\n    { necesidad: \"Reaccionar a eventos de aplicaciones propias, servicios de AWS y software de terceros, filtrándolos antes de entregarlos\", servicio: \"eventbridge\" },\n    { necesidad: \"Procesar en tiempo real los registros de clics de una web que leen varias aplicaciones a la vez\", servicio: \"kinesis\" },\n    { necesidad: \"Consultar con SQL estándar archivos que ya están en S3, sin montar servidores\", servicio: \"athena\" },\n    { necesidad: \"Descubrir fuentes de datos, catalogarlas y prepararlas con trabajos ETL sin servidores\", servicio: \"glue\" },\n    { necesidad: \"Crear una aplicación de IA generativa con modelos fundacionales de varias empresas\", servicio: \"bedrock\" },\n    { necesidad: \"Construir, entrenar y desplegar un modelo propio de aprendizaje automático\", servicio: \"sagemaker\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Fíjate en «consultar con SQL estándar archivos que ya están en S3»: ese caso lo cubre un servicio de consultas, y la fila actual usa un servicio de preparación de datos."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal. Athena consulta con SQL los datos de S3 sin servidores; Glue descubre, cataloga y prepara datos con trabajos ETL, y ya tiene su propia fila."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `servicio` de la fila de las consultas con SQL sobre S3 de \"glue\" a \"athena\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "las consultas con SQL sobre S3 se resuelven con Athena",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = analitica.casos.find((f) => f.necesidad.startsWith(\"Consultar con SQL\"));\nassert.ok(fila, \"debe existir la fila de las consultas con SQL\");\nassert.strictEqual(fila.servicio, \"athena\");"
+          }
+        },
+        {
+          "name": "los servicios solo pueden ser de la lista de ocho",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const fila of analitica.casos) {\n  assert.ok([\"sqs\", \"sns\", \"eventbridge\", \"kinesis\", \"athena\", \"glue\", \"bedrock\", \"sagemaker\"].includes(fila.servicio), fila.necesidad + \" tiene un servicio no válido\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su servicio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado: Record<string, string> = {\n  \"Dejar cada pedido en una cola hasta que un consumidor lo procese y lo borre\": \"sqs\",\n  \"Publicar un aviso una sola vez y entregarlo a varios suscriptores, incluidos correo y mensajes de texto\": \"sns\",\n  \"Reaccionar a eventos de aplicaciones propias, servicios de AWS y software de terceros, filtrándolos antes de entregarlos\": \"eventbridge\",\n  \"Procesar en tiempo real los registros de clics de una web que leen varias aplicaciones a la vez\": \"kinesis\",\n  \"Descubrir fuentes de datos, catalogarlas y prepararlas con trabajos ETL sin servidores\": \"glue\",\n  \"Crear una aplicación de IA generativa con modelos fundacionales de varias empresas\": \"bedrock\",\n  \"Construir, entrenar y desplegar un modelo propio de aprendizaje automático\": \"sagemaker\",\n};\nfor (const [necesidad, servicio] of Object.entries(esperado)) {\n  const fila = analitica.casos.find((f) => f.necesidad === necesidad);\n  assert.ok(fila, necesidad + \" debe seguir existiendo\");\n  assert.strictEqual(fila.servicio, servicio);\n}"
+          }
+        },
+        {
+          "name": "siguen las ocho filas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(analitica.casos.length, 8);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-debug-01",
+      "type": "DEBUG",
+      "title": "Un servicio de analítica mal asignado",
+      "statement": "El objeto `analitica` asigna un servicio (sqs, sns, eventbridge, kinesis, athena, glue, bedrock o sagemaker) a cada uno de ocho casos. Una de las filas asigna el servicio equivocado: con él, los analistas no podrían consultar con SQL los archivos que ya están en S3. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const analitica = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "Athena",
+        "Glue",
+        "analítica de datos"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+        "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon SNS, que publica mensajes en temas con varios suscriptores",
+            "explanation": "Descartada: SNS entrega los mensajes publicados a los suscriptores de un tema; el requisito pide un buzón del que facturación tome el pedido cuando pueda, y para no perder mensajes con suscriptores desconectados SNS se combina con una cola de SQS."
+          },
+          {
+            "id": "b",
+            "text": "Amazon SQS, que ofrece colas para integrar y desacoplar componentes",
+            "explanation": "Es la opción adecuada: SQS es una cola que desacopla componentes; el consumidor recibe el mensaje cuando está listo, lo procesa y lo borra."
+          },
+          {
+            "id": "c",
+            "text": "Amazon EventBridge, que usa eventos para conectar componentes",
+            "explanation": "Descartada: EventBridge recibe, filtra y entrega eventos a sus destinos; el requisito pide un buzón del que el consumidor retire cada pedido al terminar."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Kinesis Data Streams, que procesa flujos de registros en tiempo real",
+            "explanation": "Descartada: Kinesis recoge y procesa flujos de registros en tiempo real que pueden leer varias aplicaciones; el requisito pide una cola de la que se retira cada mensaje al procesarlo."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.8",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué servicio desacopla dos componentes con una cola de la que se borran los mensajes",
+      "statement": "Una tienda en línea quiere que su servicio web deje cada pedido en un buzón intermedio y que el servicio de facturación lo tome cuando pueda y lo retire al terminar, sin que los dos servicios tengan que estar activos a la vez. ¿Qué servicio es el MEJOR para desacoplarlos de esa forma?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SQS",
+        "cola",
+        "desacoplar"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon SQS, que ofrece colas para integrar y desacoplar componentes",
+            "explanation": "Descartada: una cola de SQS suele procesar cada mensaje con un solo suscriptor; el requisito pide repartir una publicación a varios destinos, para lo que SQS se integra con SNS."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Kinesis Data Streams, que procesa flujos de registros en tiempo real",
+            "explanation": "Descartada: Kinesis recoge y procesa flujos de registros en tiempo real; el requisito pide avisar a personas por correo y mensaje de texto, que son canales de SNS."
+          },
+          {
+            "id": "c",
+            "text": "Amazon SNS, que publica mensajes en temas con varios suscriptores",
+            "explanation": "Es la opción adecuada: SNS publica el mensaje una vez en un tema y lo entrega a varios suscriptores, como correo, SMS, SQS y Lambda."
+          },
+          {
+            "id": "d",
+            "text": "AWS Glue, que prepara y mueve datos con trabajos ETL",
+            "explanation": "Descartada: Glue integra y prepara datos para analizarlos; no envía avisos a personas ni a una cola con una sola publicación."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.8",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué servicio publica un aviso una sola vez para varios destinos",
+      "statement": "Una alarma de la aplicación debe avisar por correo y por mensaje de texto a un grupo de personas y, además, llegar a una cola y a una función Lambda. El equipo quiere publicar el aviso una sola vez. ¿Qué servicio es el MEJOR para ello?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SNS",
+        "tema",
+        "fanout"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon EventBridge, que usa eventos para conectar componentes",
+            "explanation": "Es la opción adecuada: EventBridge recibe, filtra, transforma y entrega eventos de aplicaciones propias, de servicios de AWS y de software de terceros."
+          },
+          {
+            "id": "b",
+            "text": "Amazon SQS, que ofrece colas para integrar y desacoplar componentes",
+            "explanation": "Descartada: una cola de SQS guarda mensajes para un consumidor; el requisito pide filtrar eventos de varias fuentes y entregarlos a los destinos que correspondan."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Kinesis Data Streams, que procesa flujos de registros en tiempo real",
+            "explanation": "Descartada: Kinesis recoge y procesa flujos de registros en tiempo real; el requisito pide filtrar y entregar eventos de varias fuentes a distintos destinos."
+          },
+          {
+            "id": "d",
+            "text": "AWS Glue, que prepara y mueve datos con trabajos ETL",
+            "explanation": "Descartada: Glue descubre, prepara y mueve datos para analizarlos; no filtra ni entrega eventos de aplicaciones a sus destinos."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.8",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué servicio filtra y entrega eventos de varias fuentes a sus destinos",
+      "statement": "Una empresa quiere conectar sus aplicaciones mediante los eventos que emiten sus propias aplicaciones, servicios de AWS y software de terceros, filtrarlos y entregar cada uno a los destinos que le corresponden, sin que los productores dependan de los consumidores. ¿Qué servicio es el MEJOR para ello?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "EventBridge",
+        "evento",
+        "desacoplar"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Athena, que consulta con SQL estándar datos de S3",
+            "explanation": "Descartada: Athena ejecuta consultas ad hoc sobre datos que ya están en S3; el requisito pide procesar un flujo de registros según llegan."
+          },
+          {
+            "id": "b",
+            "text": "AWS Glue, que prepara y mueve datos con trabajos ETL",
+            "explanation": "Descartada: Glue descubre, prepara y mueve datos con trabajos ETL; el requisito pide recoger registros en tiempo real y que varias aplicaciones los lean."
+          },
+          {
+            "id": "c",
+            "text": "Amazon SageMaker AI, que construye y entrena modelos de ML",
+            "explanation": "Descartada: SageMaker AI construye, entrena y despliega modelos de ML; el requisito pide recoger y procesar un flujo de registros, no entrenar un modelo."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Kinesis Data Streams, que procesa flujos de registros en tiempo real",
+            "explanation": "Es la opción adecuada: Kinesis recoge y procesa flujos de registros en tiempo real, y varias aplicaciones pueden consumir el mismo flujo a la vez."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.7",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-quiz-04",
+      "type": "QUIZ",
+      "title": "Qué servicio procesa en tiempo real un flujo de registros que leen dos aplicaciones",
+      "statement": "Una web recoge los clics de sus visitantes y quiere procesar esos registros en tiempo real, con los datos disponibles en segundos, y que dos aplicaciones distintas lean el mismo flujo a la vez: una calcula agregados y otra archiva los datos. ¿Qué servicio es el MEJOR para ello?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Kinesis",
+        "flujo de datos",
+        "tiempo real"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Athena, que consulta con SQL estándar datos de S3",
+            "explanation": "Es la opción adecuada: Athena es un servicio sin servidores que consulta con SQL los datos de S3, sin infraestructura que configurar ni administrar."
+          },
+          {
+            "id": "b",
+            "text": "AWS Glue, que prepara y mueve datos con trabajos ETL",
+            "explanation": "Descartada: Glue descubre, cataloga y prepara datos con trabajos ETL; el requisito pide consultas ad hoc con SQL, que es la función de Athena."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Kinesis Data Streams, que procesa flujos de registros en tiempo real",
+            "explanation": "Descartada: Kinesis procesa flujos de registros según llegan; el requisito pide consultar con SQL archivos que ya están en S3."
+          },
+          {
+            "id": "d",
+            "text": "Amazon SageMaker AI, que construye y entrena modelos de ML",
+            "explanation": "Descartada: SageMaker AI construye, entrena y despliega modelos; el requisito pide consultas con SQL, no un modelo de ML."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.7",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué servicio consulta con SQL archivos de S3 con la menor sobrecarga operativa",
+      "statement": "Un equipo de analistas tiene archivos de registros en un bucket de S3 y quiere ejecutar consultas ad hoc con SQL estándar, con la MENOR sobrecarga operativa posible: sin crear ni administrar infraestructura. ¿Qué servicio debe usar?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Athena",
+        "SQL",
+        "sin servidores"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Athena, que consulta con SQL estándar datos de S3",
+            "explanation": "Descartada: Athena consulta con SQL los datos que ya están en S3; descubrir las fuentes, catalogarlas y prepararlas con ETL son funciones de Glue."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Kinesis Data Streams, que procesa flujos de registros en tiempo real",
+            "explanation": "Descartada: Kinesis procesa flujos de registros en tiempo real; el requisito pide descubrir y catalogar fuentes de datos y prepararlas con trabajos ETL."
+          },
+          {
+            "id": "c",
+            "text": "AWS Glue, que prepara y mueve datos con trabajos ETL",
+            "explanation": "Es la opción adecuada: Glue es un servicio de integración de datos sin servidores que descubre, cataloga y prepara datos de varias fuentes con un catálogo central y trabajos ETL."
+          },
+          {
+            "id": "d",
+            "text": "Amazon SageMaker AI, que construye y entrena modelos de ML",
+            "explanation": "Descartada: SageMaker AI construye, entrena y despliega modelos de ML; el requisito pide integrar y preparar datos, no entrenar un modelo."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.7",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué servicio descubre, cataloga y prepara datos de varias fuentes",
+      "statement": "Una empresa tiene datos en varias fuentes, locales y en AWS, y quiere descubrirlos, registrarlos en un catálogo de datos central y prepararlos con trabajos ETL sin servidores antes de analizarlos. ¿Qué servicio es el MÁS adecuado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Glue",
+        "catálogo de datos",
+        "ETL"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Bedrock, que da acceso a modelos fundacionales de empresas de IA",
+            "explanation": "Descartada: Bedrock da acceso administrado a modelos fundacionales que ya construyeron empresas de IA; el requisito pide construir y entrenar un modelo propio con algoritmos propios."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Athena, que consulta con SQL estándar datos de S3",
+            "explanation": "Descartada: Athena consulta datos de S3 con SQL; el requisito pide construir, entrenar y desplegar un modelo de aprendizaje automático."
+          },
+          {
+            "id": "c",
+            "text": "AWS Glue, que prepara y mueve datos con trabajos ETL",
+            "explanation": "Descartada: Glue prepara y mueve datos con trabajos ETL; el requisito pide construir, entrenar y desplegar un modelo."
+          },
+          {
+            "id": "d",
+            "text": "Amazon SageMaker AI, que construye y despliega modelos de ML",
+            "explanation": "Es la opción adecuada: SageMaker AI es un servicio totalmente administrado para construir, entrenar y desplegar modelos de ML, con soporte para traer tus propios algoritmos y marcos."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.7",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-quiz-07",
+      "type": "QUIZ",
+      "title": "Qué servicio entrena un modelo propio con algoritmos propios",
+      "statement": "Un equipo de ciencia de datos quiere construir, entrenar y desplegar su propio modelo de aprendizaje automático, trayendo sus algoritmos y marcos, en un entorno alojado y administrado. ¿Qué servicio es el MEJOR para ello?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "SageMaker AI",
+        "aprendizaje automático",
+        "Bedrock"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html",
+        "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html",
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Bedrock ofrece modelos fundacionales de varias empresas de IA como servicio administrado",
+            "explanation": "Cumple: Bedrock es un servicio totalmente administrado con acceso seguro a modelos fundacionales de empresas de IA líderes."
+          },
+          {
+            "id": "b",
+            "text": "Amazon SQS entrega cada mensaje publicado a todos los suscriptores de un tema",
+            "explanation": "No cumple: una cola de SQS suele procesar cada mensaje con un solo suscriptor; publicar en un tema con varios suscriptores es SNS."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Athena necesita servidores aprovisionados antes de consultar datos de S3",
+            "explanation": "No cumple: Athena es un servicio sin servidores, sin infraestructura que configurar ni administrar."
+          },
+          {
+            "id": "d",
+            "text": "AWS Glue registra datos de varias fuentes en un catálogo de datos central",
+            "explanation": "Cumple: Glue permite administrar los datos de varias fuentes en un catálogo de datos central."
+          },
+          {
+            "id": "e",
+            "text": "Amazon Kinesis Data Streams solo admite una aplicación consumidora por flujo",
+            "explanation": "No cumple: varias aplicaciones pueden consumir el mismo flujo a la vez, por ejemplo una que agrega y otra que archiva."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre servicios de integración y analítica",
+      "statement": "Un equipo resume lo que hace cada servicio de integración y analítica que va a usar. Selecciona DOS afirmaciones correctas sobre esos servicios.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Bedrock",
+        "SQS",
+        "Athena",
+        "Glue",
+        "Kinesis"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-6-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué servicio usas para pasar mensajes, reaccionar a eventos y analizar datos",
+      "statement": "Elige una aplicación que conozcas que reciba pedidos, avise a varias personas y analice sus datos, y escribe un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué servicio usarías en cada tramo (SQS, SNS, EventBridge, Kinesis Data Streams, Athena, Glue, Bedrock o SageMaker AI) y qué problema resuelve en ese tramo.\n\n2) Alternativa descartada: otro servicio que te tentaba (por ejemplo, SNS en lugar de SQS, o Glue en lugar de Athena) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué cambia para tu equipo con esa decisión, por ejemplo qué tendría que administrar y qué quedaría desacoplado.\n\n4) Evidencia: qué parte de las páginas oficiales de SQS, SNS, EventBridge, Kinesis Data Streams, Athena, Glue, Bedrock o SageMaker AI usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre cada servicio, distinga una cola de un tema y la consulta de la preparación de datos, y justifique cada elección. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo elegiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "integración de aplicaciones",
+        "analítica",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+        "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+      ],
+      "order": 19
+    }
+  ]
+}
