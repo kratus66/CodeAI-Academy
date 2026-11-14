@@ -1,0 +1,1322 @@
+{
+  "code": "AWS-U1.3.4",
+  "lessons": [
+    {
+      "slug": "aws-u1-3-4-bases-de-datos-rds-aurora-dynamodb-elasticache-redshift",
+      "title": "Bases de datos: RDS, Aurora, DynamoDB, ElastiCache y Redshift",
+      "estimatedMin": 50,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Para elegir una base de datos en AWS primero miras qué datos guardas y cómo los usa la aplicación. Amazon RDS es un servicio web que facilita crear, operar y escalar una base de datos relacional y se encarga de las tareas de administración habituales. Amazon Aurora es un motor relacional compatible con MySQL y PostgreSQL, parte de RDS. Amazon DynamoDB es una base de datos NoSQL sin servidor y totalmente administrada. Amazon ElastiCache es un almacén de datos distribuido en memoria que se usa como caché. Amazon Redshift es un almacén de datos administrado para analizar grandes volúmenes con SQL. La tarea 3.4 del examen pide decidir cuándo usar una base alojada en EC2 o una administrada por AWS e identificar las bases relacionales, NoSQL y en memoria; Redshift aparece en la guía entre los servicios de analítica."
+        },
+        {
+          "type": "list",
+          "title": "Los servicios y para qué sirven",
+          "items": [
+            "Amazon RDS: bases de datos relacionales administradas con los motores IBM Db2, MariaDB, Microsoft SQL Server, MySQL, Oracle Database y PostgreSQL. RDS administra las copias de seguridad, los parches del software, la detección automática de fallos y la recuperación.",
+            "Amazon Aurora: motor relacional administrado compatible con MySQL y PostgreSQL. Tiene un subsistema de almacenamiento distribuido de alto rendimiento que crece automáticamente, y automatiza el clustering y la replicación. Se elige como motor al configurar un servidor de base de datos en RDS.",
+            "Amazon DynamoDB: base de datos NoSQL distribuida, sin servidor y totalmente administrada, con rendimiento de milisegundos de un solo dígito a cualquier escala. Admite los modelos de clave-valor y de documentos, y no admite JOIN: se recomienda desnormalizar el modelo de datos.",
+            "Amazon ElastiCache: almacén de datos o caché distribuido en memoria. Funciona con los motores Valkey, Memcached y Redis OSS, y se puede usar como caché sin servidor o como clúster basado en nodos.",
+            "Amazon Redshift: servicio de almacén de datos administrado y a escala de petabytes. Permite consultar con SQL, desde su editor de consultas o desde las herramientas de inteligencia de negocio que ya usas."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Elegir la base de datos según el dato y el acceso",
+          "code": "flowchart TD\n  D[\"Datos que hay que guardar o consultar\"] --> Q{\"¿Cómo los usa la aplicación?\"}\n  Q -- \"Tablas relacionales con SQL\" --> R{\"¿Quién administra la base?\"}\n  R -- \"AWS: copias, parches y recuperación\" --> RDS[\"Amazon RDS\"]\n  R -- \"Motor compatible con MySQL o PostgreSQL con almacenamiento distribuido\" --> AUR[\"Amazon Aurora\"]\n  R -- \"El equipo, sobre una instancia de EC2\" --> EC2[\"Base de datos en Amazon EC2\"]\n  Q -- \"Clave-valor o documentos, sin JOIN\" --> DDB[\"Amazon DynamoDB\"]\n  Q -- \"Datos en memoria como caché\" --> CACHE[\"Amazon ElastiCache\"]\n  Q -- \"Análisis con SQL de grandes volúmenes\" --> RS[\"Amazon Redshift\"]\n  DDB -.-> IDX[\"Índices secundarios para claves alternativas\"]\n  CACHE -.-> BD[\"Acelera lecturas repetidas de otra base\"]"
+        },
+        {
+          "type": "list",
+          "title": "Base administrada frente a base en EC2, y diseño en DynamoDB",
+          "items": [
+            "RDS frente a EC2: AWS recomienda RDS como opción predeterminada para la mayoría de los despliegues relacionales. En una base sobre EC2, el cliente se encarga del escalado, la alta disponibilidad, las copias, la instalación del software y los parches del software y del sistema operativo; en RDS, AWS se encarga de todo eso. En ambos casos la optimización de la aplicación es del cliente.",
+            "Responsabilidad compartida en RDS: AWS aloja los componentes de software y la infraestructura de las instancias y los clústeres de base de datos. El ajuste de las consultas SQL (query tuning) es responsabilidad del cliente.",
+            "Alta disponibilidad y lectura en RDS: una instancia principal y una instancia secundaria síncrona a la que se conmuta cuando hay problemas dan alta disponibilidad. Las réplicas de lectura aumentan la capacidad de lectura.",
+            "DynamoDB: ofrece transacciones ACID, tablas globales con replicación multiactiva entre Regiones y flujos de cambios (streams) para arquitecturas dirigidas por eventos.",
+            "Índices secundarios de DynamoDB: los índices globales y los locales permiten consultar los datos de la tabla con una clave alternativa, es decir, acceder con atributos distintos de la clave primaria. Por eso en DynamoDB se parte de los patrones de acceso y no del esquema."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cinco necesidades, cinco servicios",
+          "text": "Una empresa tiene cinco necesidades. Necesidad 1: una aplicación de pedidos con MySQL, sin gestionar parches ni copias. Pide una base relacional administrada y conservar el motor, así que usa Amazon RDS. Necesidad 2: los carritos de compra como elementos de clave-valor con milisegundos de un solo dígito. Pide NoSQL sin JOIN, así que usa DynamoDB. Necesidad 3: reducir las lecturas repetidas de la base con datos en memoria. Pide una caché, así que usa ElastiCache. Necesidad 4: analizar años de ventas con SQL desde herramientas de inteligencia de negocio. Pide un almacén de datos, así que usa Redshift. Necesidad 5: un motor compatible con PostgreSQL con almacenamiento distribuido que crece solo. Pide Aurora. Cada servicio resuelve un modo distinto de usar los datos; el nombre «base de datos» no decide, el acceso sí."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el modelo de datos y el acceso deciden",
+          "text": "Mira primero la forma de los datos y cómo se consultan: tablas relacionales con SQL (RDS o Aurora), clave-valor o documentos sin JOIN (DynamoDB), datos en memoria como caché (ElastiCache) o análisis de grandes volúmenes (Redshift). Si el enunciado pide conservar un motor como MySQL o PostgreSQL y reducir la administración, piensa en RDS; si añade almacenamiento distribuido que crece solo y clustering automatizado, piensa en Aurora. Y si la base la instala y mantiene el equipo sobre una instancia de EC2, la responsabilidad de parches, copias y alta disponibilidad es del equipo."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: diseñar la tabla de DynamoDB sin listar antes los patrones de acceso",
+          "text": "Causa: modelar la tabla como si fuera relacional y contar con unir datos después con JOIN. Consecuencia: DynamoDB no admite JOIN, así que consultas que parecían sencillas no tienen una clave por la que resolverse, y el resultado es una tabla que no responde a lo que la aplicación necesita. Solución: antes de crear la tabla, escribe cada pregunta que hará la aplicación y con qué atributos; añade un índice secundario global o local cuando el acceso necesite una clave alternativa. En el laboratorio lo comprobarás con aws.dynamodb.planAccessPatterns: un patrón que solo se resolvería con Scan es un defecto del diseño."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: instalar la base de datos en una instancia de EC2 por costumbre",
+          "text": "Causa: elegir EC2 porque ya sabes instalar el motor, sin comparar quién administra cada tarea. Consecuencia: el equipo asume el escalado, la alta disponibilidad, las copias y los parches, y es más propenso a errores de usuario, como causar una caída al actualizar el sistema operativo o el software a mano. Solución: usa por defecto una base administrada como RDS, que gestiona esas tareas, y reserva EC2 para cuando necesites un control que RDS no ofrece. La optimización de la aplicación y de las consultas sigue siendo tuya en ambos casos."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir el servicio de bases de datos de AWS que encaja con una necesidad de datos y diseñar una tabla de DynamoDB cuyos patrones de acceso se resuelvan sin Scan. Esta unidad prepara el examen CLF-C02, dominio 3 «Tecnología y servicios en la nube», tarea 3.4 (identificar los servicios de bases de datos de AWS). Criterio: ante un escenario nuevo, nombras el servicio, descartas los demás con una razón y expresas los patrones de acceso de una tabla con sus claves e índices comprobados con aws.dynamodb.planAccessPatterns, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cinco necesidades tapando las respuestas: para cada una, di si los datos son relacionales, clave-valor, una caché en memoria o un análisis, y qué servicio encaja. Después responde de memoria qué administra RDS y qué sigue siendo del cliente, qué añade Aurora y qué permiten los índices secundarios de DynamoDB."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Pedidos de una tienda: patrones de acceso sin Scan». Ejecuta primero aws.dynamodb.planAccessPatterns sobre el código inicial y lee los problemas que devuelve el arnés antes de editar. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y ningún patrón necesita Scan."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve el laboratorio «Partidas de un juego con índices locales y globales, sin pistas». Parte de los patrones del enunciado, comprueba cada uno con aws.dynamodb.planAccessPatterns y corrige las claves y las proyecciones de la tabla. Criterio de paso: los cinco patrones se resuelven con GetItem o Query, sin problemas y sin Scan."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente propuso qué servicio de bases de datos usar en cinco casos y una de sus elecciones dejaría una aplicación sin caché. Resuelve «Una elección de base de datos con un caso mal asignado»: corrige solo la fila equivocada y contrasta cada elección con las páginas oficiales de RDS, Aurora, DynamoDB, ElastiCache y Redshift (leídas el 2026-11-13)."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe si los datos son relacionales, clave-valor, una caché o un análisis, y quién administra la base; al corregir, lee la explicación de cada opción y anota si fallaste por confundir RDS con Aurora, DynamoDB con una base relacional o ElastiCache con una base principal. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Piensa en una aplicación que conozcas con pedidos, sesiones de usuario e informes de ventas, y escribe qué servicio usarías para cada grupo de datos y por qué. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero quiere instalar PostgreSQL en una instancia de EC2 para guardar los pedidos y usar la misma base para los informes; ¿qué le respondes y qué le propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-rds-que-es",
+          "order": 0,
+          "note": "Qué es RDS: base relacional administrada, motores compatibles, comparación de responsabilidades con EC2, alta disponibilidad y réplicas de lectura."
+        },
+        {
+          "resourceSlug": "aws-aurora-que-es",
+          "order": 1,
+          "note": "Qué es Aurora: motor compatible con MySQL y PostgreSQL con almacenamiento distribuido que crece solo."
+        },
+        {
+          "resourceSlug": "aws-dynamodb-que-es",
+          "order": 2,
+          "note": "Qué es DynamoDB: base NoSQL sin servidor, sin JOIN, con transacciones, tablas globales e índices secundarios."
+        },
+        {
+          "resourceSlug": "aws-elasticache-que-es",
+          "order": 3,
+          "note": "Qué es ElastiCache: almacén de datos en memoria para caché, con Valkey, Memcached y Redis OSS."
+        },
+        {
+          "resourceSlug": "aws-redshift-que-es",
+          "order": 4,
+          "note": "Qué es Redshift: almacén de datos administrado a escala de petabytes para análisis con SQL."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 5,
+          "note": "Guía de CLF-C02: el dominio 3, tarea 3.4, trata los servicios de bases de datos."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": "typescript",
+      "starterCode": "// Tabla de pedidos de una tienda y los patrones de acceso que debe resolver sin Scan.\nexport const tabla = {\n  partitionKey: \"pedidoId\",\n  gsis: [\n    { name: \"porCliente\", partitionKey: \"clienteId\", projection: { type: \"KEYS_ONLY\" } },\n  ],\n};\n\nexport const patrones = [\n  { name: \"detalleDelPedido\", keyCondition: [{ attribute: \"pedidoId\", operator: \"=\" }] },\n  {\n    name: \"pedidosDelClienteEnUnRango\",\n    index: \"porCliente\",\n    keyCondition: [\n      { attribute: \"clienteId\", operator: \"=\" },\n      { attribute: \"fecha\", operator: \"between\" },\n    ],\n    requiredAttributes: [\"total\", \"estado\"],\n  },\n  {\n    name: \"ultimosPedidosDelCliente\",\n    keyCondition: [\n      { attribute: \"clienteId\", operator: \"=\" },\n      { attribute: \"fecha\", operator: \">=\" },\n    ],\n    requiredAttributes: [\"estado\"],\n  },\n];\n",
+      "solution": {
+        "code": "// Tabla de pedidos de una tienda y los patrones de acceso que debe resolver sin Scan.\nexport const tabla = {\n  partitionKey: \"pedidoId\",\n  gsis: [\n    {\n      name: \"porCliente\",\n      partitionKey: \"clienteId\",\n      sortKey: \"fecha\",\n      projection: { type: \"INCLUDE\", attributes: [\"total\", \"estado\"] },\n    },\n  ],\n};\n\nexport const patrones = [\n  { name: \"detalleDelPedido\", keyCondition: [{ attribute: \"pedidoId\", operator: \"=\" }] },\n  {\n    name: \"pedidosDelClienteEnUnRango\",\n    index: \"porCliente\",\n    keyCondition: [\n      { attribute: \"clienteId\", operator: \"=\" },\n      { attribute: \"fecha\", operator: \"between\" },\n    ],\n    requiredAttributes: [\"total\", \"estado\"],\n  },\n  {\n    name: \"ultimosPedidosDelCliente\",\n    keyCondition: [\n      { attribute: \"clienteId\", operator: \"=\" },\n      { attribute: \"fecha\", operator: \">=\" },\n    ],\n    requiredAttributes: [\"estado\"],\n  },\n];\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta `aws.dynamodb.planAccessPatterns(tabla, patrones)` y lee los problemas de cada plan. Fíjate en qué dice sobre `fecha` y sobre los atributos `total` y `estado` en el índice `porCliente`."
+        },
+        {
+          "level": 2,
+          "text": "Hay dos defectos en el índice `porCliente`. No tiene clave de ordenación, así que no admite condiciones sobre `fecha`, y su proyección `KEYS_ONLY` no incluye los atributos que leen los patrones."
+        },
+        {
+          "level": 3,
+          "text": "Añade `sortKey: \"fecha\"` al índice `porCliente` y cambia su proyección por `{ type: \"INCLUDE\", attributes: [\"total\", \"estado\"] }`. Deja intactos la clave de la tabla y los patrones."
+        }
+      ],
+      "tests": [
+        {
+          "name": "ningún patrón de acceso necesita Scan",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"detalleDelPedido\", keyCondition: [{ attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDelClienteEnUnRango\", index: \"porCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \"between\" }], requiredAttributes: [\"total\", \"estado\"] },\n  { name: \"ultimosPedidosDelCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nfor (const plan of planes) {\n  assert.notStrictEqual(plan.operation, null, \"Un patrón no tiene operación: \" + plan.problems.join(\" \"));\n}"
+          }
+        },
+        {
+          "name": "el detalle del pedido es un GetItem sobre la tabla",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"detalleDelPedido\", keyCondition: [{ attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDelClienteEnUnRango\", index: \"porCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \"between\" }], requiredAttributes: [\"total\", \"estado\"] },\n  { name: \"ultimosPedidosDelCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.strictEqual(planes[0].operation, \"GetItem\");\nassert.strictEqual(planes[0].index, null);"
+          }
+        },
+        {
+          "name": "los pedidos de un cliente en un rango se consultan en porCliente sin problemas",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"detalleDelPedido\", keyCondition: [{ attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDelClienteEnUnRango\", index: \"porCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \"between\" }], requiredAttributes: [\"total\", \"estado\"] },\n  { name: \"ultimosPedidosDelCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.strictEqual(planes[1].operation, \"Query\");\nassert.strictEqual(planes[1].index, \"porCliente\");\nassert.deepStrictEqual(planes[1].problems, []);"
+          }
+        },
+        {
+          "name": "los últimos pedidos de un cliente también usan porCliente sin problemas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"detalleDelPedido\", keyCondition: [{ attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDelClienteEnUnRango\", index: \"porCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \"between\" }], requiredAttributes: [\"total\", \"estado\"] },\n  { name: \"ultimosPedidosDelCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.strictEqual(planes[2].operation, \"Query\");\nassert.strictEqual(planes[2].index, \"porCliente\");\nassert.deepStrictEqual(planes[2].problems, []);"
+          }
+        },
+        {
+          "name": "la tabla es válida y conserva su clave de partición",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.dynamodb.validateTable(tabla), []);\nassert.strictEqual(tabla.partitionKey, \"pedidoId\");"
+          }
+        },
+        {
+          "name": "los patrones exportados no se han modificado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"detalleDelPedido\", keyCondition: [{ attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDelClienteEnUnRango\", index: \"porCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \"between\" }], requiredAttributes: [\"total\", \"estado\"] },\n  { name: \"ultimosPedidosDelCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"fecha\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.deepStrictEqual(patrones, esperados);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-pedidos-guiado",
+      "type": "LAB",
+      "title": "Pedidos de una tienda: patrones de acceso sin Scan",
+      "statement": "Una tienda guarda sus pedidos en una tabla de DynamoDB con la clave de partición `pedidoId`. La aplicación necesita tres patrones de acceso, que el código inicial exporta en `patrones`: el detalle de un pedido por su identificador, los pedidos de un cliente en un rango de fechas (leyendo también `total` y `estado`) y los últimos pedidos de un cliente desde una fecha (leyendo `estado`). Ninguno debe resolverse con Scan. Con el modelo del arnés, un patrón se resuelve con GetItem si da la clave primaria completa en igualdad, y con Query si da la clave de partición en igualdad y, como mucho, una condición sobre la clave de ordenación, sobre la tabla o sobre un índice; los atributos que el patrón lee deben estar en la proyección del índice. Comprueba el diseño con `aws.dynamodb.planAccessPatterns(tabla, patrones)` y corrige `tabla` sin cambiar los patrones ni el nombre del valor exportado (`export const tabla = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "DynamoDB",
+        "clave de partición",
+        "índice secundario global",
+        "patrón de acceso"
+      ],
+      "estimatedMin": 30,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tabla de partidas de un juego y los patrones de acceso que debe resolver sin Scan.\nexport const tabla = {\n  partitionKey: \"jugadorId\",\n  sortKey: \"partidaId\",\n  gsis: [\n    { name: \"porMapa\", partitionKey: \"mapa\", projection: { type: \"KEYS_ONLY\" } },\n  ],\n  lsis: [\n    { name: \"porPuntos\", sortKey: \"partidaId\", projection: { type: \"KEYS_ONLY\" } },\n  ],\n};\n\nexport const patrones = [\n  { name: \"unaPartida\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"partidaId\", operator: \"=\" }] },\n  { name: \"partidasDelJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }] },\n  {\n    name: \"mejoresPartidasDelJugador\",\n    index: \"porPuntos\",\n    keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }],\n    requiredAttributes: [\"mapa\"],\n  },\n  {\n    name: \"rankingDelMapa\",\n    index: \"porMapa\",\n    keyCondition: [{ attribute: \"mapa\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }],\n    requiredAttributes: [\"apodo\"],\n  },\n  {\n    name: \"jugadorPorCorreo\",\n    keyCondition: [{ attribute: \"correo\", operator: \"=\" }],\n    requiredAttributes: [\"apodo\", \"nivel\"],\n  },\n];\n",
+      "solution": {
+        "code": "export const tabla = {\n  partitionKey: \"jugadorId\",\n  sortKey: \"partidaId\",\n  gsis: [\n    { name: \"porMapa\", partitionKey: \"mapa\", sortKey: \"puntos\", projection: { type: \"INCLUDE\", attributes: [\"apodo\"] } },\n    { name: \"porCorreo\", partitionKey: \"correo\", projection: { type: \"INCLUDE\", attributes: [\"apodo\", \"nivel\"] } },\n  ],\n  lsis: [\n    { name: \"porPuntos\", sortKey: \"puntos\", projection: { type: \"INCLUDE\", attributes: [\"mapa\"] } },\n  ],\n};\n\nexport const patrones = [\n  { name: \"unaPartida\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"partidaId\", operator: \"=\" }] },\n  { name: \"partidasDelJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }] },\n  {\n    name: \"mejoresPartidasDelJugador\",\n    index: \"porPuntos\",\n    keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }],\n    requiredAttributes: [\"mapa\"],\n  },\n  {\n    name: \"rankingDelMapa\",\n    index: \"porMapa\",\n    keyCondition: [{ attribute: \"mapa\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }],\n    requiredAttributes: [\"apodo\"],\n  },\n  {\n    name: \"jugadorPorCorreo\",\n    keyCondition: [{ attribute: \"correo\", operator: \"=\" }],\n    requiredAttributes: [\"apodo\", \"nivel\"],\n  },\n];\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "ningún patrón de acceso necesita Scan",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"unaPartida\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"partidaId\", operator: \"=\" }] },\n  { name: \"partidasDelJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }] },\n  { name: \"mejoresPartidasDelJugador\", index: \"porPuntos\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"mapa\"] },\n  { name: \"rankingDelMapa\", index: \"porMapa\", keyCondition: [{ attribute: \"mapa\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"apodo\"] },\n  { name: \"jugadorPorCorreo\", keyCondition: [{ attribute: \"correo\", operator: \"=\" }], requiredAttributes: [\"apodo\", \"nivel\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nfor (const plan of planes) {\n  assert.notStrictEqual(plan.operation, null, \"Un patrón no tiene operación: \" + plan.problems.join(\" \"));\n}"
+          }
+        },
+        {
+          "name": "una partida se lee con GetItem y las partidas de un jugador con Query, ambas sobre la tabla",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"unaPartida\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"partidaId\", operator: \"=\" }] },\n  { name: \"partidasDelJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }] },\n  { name: \"mejoresPartidasDelJugador\", index: \"porPuntos\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"mapa\"] },\n  { name: \"rankingDelMapa\", index: \"porMapa\", keyCondition: [{ attribute: \"mapa\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"apodo\"] },\n  { name: \"jugadorPorCorreo\", keyCondition: [{ attribute: \"correo\", operator: \"=\" }], requiredAttributes: [\"apodo\", \"nivel\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.strictEqual(planes[0].operation, \"GetItem\");\nassert.strictEqual(planes[0].index, null);\nassert.strictEqual(planes[1].operation, \"Query\");\nassert.strictEqual(planes[1].index, null);"
+          }
+        },
+        {
+          "name": "el ranking del mapa usa Query en porMapa sin problemas",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"unaPartida\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"partidaId\", operator: \"=\" }] },\n  { name: \"partidasDelJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }] },\n  { name: \"mejoresPartidasDelJugador\", index: \"porPuntos\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"mapa\"] },\n  { name: \"rankingDelMapa\", index: \"porMapa\", keyCondition: [{ attribute: \"mapa\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"apodo\"] },\n  { name: \"jugadorPorCorreo\", keyCondition: [{ attribute: \"correo\", operator: \"=\" }], requiredAttributes: [\"apodo\", \"nivel\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.strictEqual(planes[3].operation, \"Query\");\nassert.strictEqual(planes[3].index, \"porMapa\");\nassert.deepStrictEqual(planes[3].problems, []);"
+          }
+        },
+        {
+          "name": "las mejores partidas de un jugador usan Query en porPuntos sin problemas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"unaPartida\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"partidaId\", operator: \"=\" }] },\n  { name: \"partidasDelJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }] },\n  { name: \"mejoresPartidasDelJugador\", index: \"porPuntos\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"mapa\"] },\n  { name: \"rankingDelMapa\", index: \"porMapa\", keyCondition: [{ attribute: \"mapa\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"apodo\"] },\n  { name: \"jugadorPorCorreo\", keyCondition: [{ attribute: \"correo\", operator: \"=\" }], requiredAttributes: [\"apodo\", \"nivel\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.strictEqual(planes[2].operation, \"Query\");\nassert.strictEqual(planes[2].index, \"porPuntos\");\nassert.deepStrictEqual(planes[2].problems, []);"
+          }
+        },
+        {
+          "name": "el jugador por correo se consulta en un índice global con clave de partición correo",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"unaPartida\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"partidaId\", operator: \"=\" }] },\n  { name: \"partidasDelJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }] },\n  { name: \"mejoresPartidasDelJugador\", index: \"porPuntos\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"mapa\"] },\n  { name: \"rankingDelMapa\", index: \"porMapa\", keyCondition: [{ attribute: \"mapa\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"apodo\"] },\n  { name: \"jugadorPorCorreo\", keyCondition: [{ attribute: \"correo\", operator: \"=\" }], requiredAttributes: [\"apodo\", \"nivel\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.strictEqual(planes[4].operation, \"Query\");\nassert.deepStrictEqual(planes[4].problems, []);\nconst indice = (tabla.gsis ?? []).find((g) => g.name === planes[4].index);\nassert.ok(indice, \"El patrón debe usar un índice global\");\nassert.strictEqual(indice.partitionKey, \"correo\");"
+          }
+        },
+        {
+          "name": "la tabla es válida y conserva sus claves",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.dynamodb.validateTable(tabla), []);\nassert.strictEqual(tabla.partitionKey, \"jugadorId\");\nassert.strictEqual(tabla.sortKey, \"partidaId\");"
+          }
+        },
+        {
+          "name": "los patrones exportados no se han modificado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const esperados = [\n  { name: \"unaPartida\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"partidaId\", operator: \"=\" }] },\n  { name: \"partidasDelJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }] },\n  { name: \"mejoresPartidasDelJugador\", index: \"porPuntos\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"mapa\"] },\n  { name: \"rankingDelMapa\", index: \"porMapa\", keyCondition: [{ attribute: \"mapa\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"apodo\"] },\n  { name: \"jugadorPorCorreo\", keyCondition: [{ attribute: \"correo\", operator: \"=\" }], requiredAttributes: [\"apodo\", \"nivel\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, esperados);\nassert.deepStrictEqual(patrones, esperados);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-partidas-autonomo",
+      "type": "LAB",
+      "title": "Partidas de un juego con índices locales y globales, sin pistas",
+      "statement": "Un juego guarda las partidas en una tabla de DynamoDB con la clave de partición `jugadorId` y la clave de ordenación `partidaId`. Los atributos `puntos`, `mapa`, `apodo`, `nivel` y `correo` no son claves de la tabla. El código inicial exporta en `patrones` cinco patrones de acceso: leer una partida concreta de un jugador, listar las partidas de un jugador, listar las partidas de un jugador con `puntos` mayores o iguales que un valor (leyendo `mapa`), listar las de un mapa con `puntos` mayores o iguales que un valor (leyendo `apodo`) y encontrar a un jugador por `correo` (leyendo `apodo` y `nivel`). Ninguno debe resolverse con Scan, ninguno debe dejar problemas y cada índice nombrado en un patrón debe existir con ese nombre. Recuerda que un índice local comparte la clave de partición de la tabla y tiene otra clave de ordenación, que un índice global tiene sus propias claves, y que lo que lee un patrón debe estar en la proyección. Corrige `tabla` sin cambiar los patrones ni el nombre del valor exportado (`export const tabla = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "DynamoDB",
+        "índice secundario local",
+        "índice secundario global",
+        "proyección"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio web que facilita crear, operar y escalar una base de datos relacional en la nube. Admite motores como MySQL, PostgreSQL, MariaDB, Oracle, SQL Server y Db2, y administra copias de seguridad, parches, detección de fallos y recuperación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon RDS",
+      "statement": "¿Qué es Amazon RDS y qué administra por ti?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "RDS",
+        "base relacional",
+        "servicio administrado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Motor de base de datos relacional administrado, compatible con MySQL y PostgreSQL, que forma parte de RDS. Usa un almacenamiento distribuido que crece automáticamente y automatiza el clustering y la replicación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon Aurora",
+      "statement": "¿Qué es Amazon Aurora y cómo se relaciona con RDS?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Aurora",
+        "compatible con MySQL y PostgreSQL",
+        "almacenamiento distribuido"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Base de datos NoSQL distribuida, sin servidor y totalmente administrada, con rendimiento de milisegundos de un solo dígito a cualquier escala. Admite clave-valor y documentos; no admite JOIN y se recomienda desnormalizar los datos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon DynamoDB",
+      "statement": "¿Qué ofrece Amazon DynamoDB?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "DynamoDB",
+        "NoSQL",
+        "sin servidor"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio que facilita crear, administrar y escalar un almacén de datos o caché distribuido en memoria. Funciona con Valkey, Memcached y Redis OSS, y se puede usar sin servidor o con clústeres de nodos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon ElastiCache",
+      "statement": "¿Qué es Amazon ElastiCache y con qué motores funciona?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "ElastiCache",
+        "caché en memoria",
+        "Valkey"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un almacén de datos administrado a escala de petabytes en la nube. Sirve para analizar grandes volúmenes de datos con SQL, desde su editor de consultas o desde herramientas de inteligencia de negocio."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon Redshift",
+      "statement": "¿Para qué sirve Amazon Redshift?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Redshift",
+        "almacén de datos",
+        "análisis con SQL"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En RDS, AWS se encarga del escalado, la alta disponibilidad, las copias, la instalación y los parches. En EC2 lo asume el cliente. En ambos casos la optimización de la aplicación y de las consultas es del cliente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: RDS frente a una base en EC2",
+      "statement": "¿Qué diferencia hay entre usar Amazon RDS y una base de datos instalada en EC2?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "RDS",
+        "EC2",
+        "responsabilidad compartida"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "rds",
+            "term": "Amazon RDS",
+            "definition": "Bases relacionales administradas con motores como MySQL, PostgreSQL u Oracle"
+          },
+          {
+            "id": "aurora",
+            "term": "Amazon Aurora",
+            "definition": "Motor relacional compatible con MySQL y PostgreSQL, con almacenamiento distribuido que crece solo"
+          },
+          {
+            "id": "dynamodb",
+            "term": "Amazon DynamoDB",
+            "definition": "Base NoSQL sin servidor de clave-valor y documentos, con milisegundos de un solo dígito"
+          },
+          {
+            "id": "elasticache",
+            "term": "Amazon ElastiCache",
+            "definition": "Almacén de datos distribuido en memoria para usar como caché con Valkey, Memcached o Redis OSS"
+          },
+          {
+            "id": "redshift",
+            "term": "Amazon Redshift",
+            "definition": "Almacén de datos administrado a escala de petabytes para análisis con SQL"
+          },
+          {
+            "id": "ec2",
+            "term": "Base de datos instalada en EC2",
+            "definition": "El equipo gestiona el escalado, la alta disponibilidad, las copias y los parches"
+          },
+          {
+            "id": "replica",
+            "term": "Réplica de lectura de RDS",
+            "definition": "Copia de la instancia principal que aumenta la capacidad de lectura"
+          },
+          {
+            "id": "global",
+            "term": "Tablas globales de DynamoDB",
+            "definition": "Replicación multiactiva de los datos entre las Regiones que elijas"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio o concepto con el caso de datos que cubre. Si dudas, pregúntate cómo usa la aplicación los datos: tablas relacionales, clave-valor, caché en memoria o análisis.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Modelo: RDS y Aurora son relacionales, DynamoDB es NoSQL, ElastiCache es caché y Redshift es almacén de datos",
+              "Administración: en RDS la gestiona AWS y en una base sobre EC2, el equipo",
+              "Escala: las réplicas de lectura amplían la lectura de RDS y las tablas globales replican DynamoDB"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-memoria-01",
+      "type": "MEMORY",
+      "title": "Servicio de datos y caso que cubre",
+      "statement": "Empareja cada servicio o concepto de bases de datos de AWS con el caso que cubre.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "RDS",
+        "Aurora",
+        "DynamoDB",
+        "ElastiCache",
+        "Redshift"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Servicio de bases de datos que elige un asistente para cinco casos. Corrige la elección equivocada.\nexport const eleccion = {\n  casos: [\n    { necesidad: \"Guardar los carritos de compra como elementos de clave-valor\", servicio: \"dynamodb\" },\n    { necesidad: \"Ejecutar una aplicación de pedidos con MySQL sin gestionar parches ni copias\", servicio: \"rds\" },\n    { necesidad: \"Analizar años de ventas con SQL desde herramientas de inteligencia de negocio\", servicio: \"redshift\" },\n    { necesidad: \"Guardar en memoria los datos más consultados para acelerar la aplicación\", servicio: \"rds\" },\n    { necesidad: \"Usar un motor compatible con PostgreSQL con almacenamiento distribuido que crece solo\", servicio: \"aurora\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Servicio de bases de datos que elige un asistente para cinco casos. Corrige la elección equivocada.\nexport const eleccion = {\n  casos: [\n    { necesidad: \"Guardar los carritos de compra como elementos de clave-valor\", servicio: \"dynamodb\" },\n    { necesidad: \"Ejecutar una aplicación de pedidos con MySQL sin gestionar parches ni copias\", servicio: \"rds\" },\n    { necesidad: \"Analizar años de ventas con SQL desde herramientas de inteligencia de negocio\", servicio: \"redshift\" },\n    { necesidad: \"Guardar en memoria los datos más consultados para acelerar la aplicación\", servicio: \"elasticache\" },\n    { necesidad: \"Usar un motor compatible con PostgreSQL con almacenamiento distribuido que crece solo\", servicio: \"aurora\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Fíjate en «en memoria» y «acelerar la aplicación»: el caso pide una caché, no una base de datos."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal. RDS es una base relacional administrada; no es un almacén de datos en memoria."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `servicio` de la fila de los datos en memoria de \"rds\" a \"elasticache\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "los datos en memoria se guardan en una caché",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = eleccion.casos.find((f) => f.necesidad.startsWith(\"Guardar en memoria\"));\nassert.ok(fila, \"debe existir la fila de los datos en memoria\");\nassert.strictEqual(fila.servicio, \"elasticache\");"
+          }
+        },
+        {
+          "name": "los servicios solo pueden ser rds, aurora, dynamodb, elasticache o redshift",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const fila of eleccion.casos) {\n  assert.ok([\"rds\", \"aurora\", \"dynamodb\", \"elasticache\", \"redshift\"].includes(fila.servicio), fila.necesidad + \" tiene un servicio no válido\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su servicio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Guardar los carritos de compra como elementos de clave-valor\": \"dynamodb\",\n  \"Ejecutar una aplicación de pedidos con MySQL sin gestionar parches ni copias\": \"rds\",\n  \"Analizar años de ventas con SQL desde herramientas de inteligencia de negocio\": \"redshift\",\n  \"Usar un motor compatible con PostgreSQL con almacenamiento distribuido que crece solo\": \"aurora\",\n};\nfor (const [necesidad, servicio] of Object.entries(esperado)) {\n  const fila = eleccion.casos.find((f) => f.necesidad === necesidad);\n  assert.ok(fila, necesidad + \" debe seguir existiendo\");\n  assert.strictEqual(fila.servicio, servicio);\n}"
+          }
+        },
+        {
+          "name": "siguen las cinco filas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(eleccion.casos.length, 5);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-debug-01",
+      "type": "DEBUG",
+      "title": "Una elección de base de datos con un caso mal asignado",
+      "statement": "El objeto `eleccion` asigna un servicio de bases de datos (rds, aurora, dynamodb, elasticache o redshift) a cada uno de cinco casos. Una de las filas asigna el servicio equivocado: con él, la aplicación no tendría una caché en memoria. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const eleccion = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "ElastiCache",
+        "RDS",
+        "caché en memoria"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "MySQL instalado en una instancia de Amazon EC2, con el equipo a cargo del software y de las copias",
+            "explanation": "Descartada: en una base de datos sobre EC2 el cliente se encarga del escalado, la alta disponibilidad, las copias y los parches, justo lo que el enunciado quiere evitar."
+          },
+          {
+            "id": "b",
+            "text": "Amazon RDS con el motor MySQL, que gestiona copias, parches y detección de fallos",
+            "explanation": "Es la opción adecuada: RDS conserva el motor MySQL y se encarga de las copias, los parches, la detección de fallos y la recuperación."
+          },
+          {
+            "id": "c",
+            "text": "Amazon DynamoDB con tablas NoSQL, que no usan SQL ni el motor MySQL",
+            "explanation": "Descartada: DynamoDB es una base de datos NoSQL y no admite JOIN, así que no conserva el motor MySQL ni sus consultas SQL, que es lo que se quiere mantener."
+          },
+          {
+            "id": "d",
+            "text": "Amazon ElastiCache con un almacén en memoria, que guarda datos como caché",
+            "explanation": "Descartada: ElastiCache es un almacén de datos en memoria que funciona como caché, no una base de datos MySQL con consultas SQL para los pedidos."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué opción administra la base de datos MySQL con la menor carga manual",
+      "statement": "Una empresa migra la base de datos de su aplicación de pedidos, que usa MySQL y consultas SQL. Quiere conservar el motor, pero no quiere instalar el software de base de datos, aplicar parches, programar copias de seguridad ni gestionar la conmutación por error. ¿Qué opción exige la MENOR administración por parte del equipo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "RDS",
+        "base administrada",
+        "EC2"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Redshift, que ofrece un almacén de datos para analizar grandes volúmenes con SQL",
+            "explanation": "Descartada: Redshift es un almacén de datos para análisis, no un motor compatible con PostgreSQL con clustering y replicación automatizados."
+          },
+          {
+            "id": "b",
+            "text": "Amazon DynamoDB, que ofrece tablas NoSQL de clave-valor y de documentos",
+            "explanation": "Descartada: DynamoDB es una base de datos NoSQL; no es un motor relacional compatible con PostgreSQL ni con las herramientas que ya usa la empresa."
+          },
+          {
+            "id": "c",
+            "text": "Amazon ElastiCache, que ofrece un almacén de datos distribuido en memoria",
+            "explanation": "Descartada: ElastiCache es una caché en memoria, no un motor relacional compatible con PostgreSQL."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Aurora, que ofrece un motor relacional compatible con MySQL y PostgreSQL",
+            "explanation": "Es la opción adecuada: Aurora es compatible con PostgreSQL, su almacenamiento distribuido crece automáticamente y automatiza el clustering y la replicación."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué servicio ofrece un motor compatible con PostgreSQL con almacenamiento que crece solo",
+      "statement": "Una empresa necesita una base de datos relacional compatible con PostgreSQL para poder reutilizar las herramientas que ya usa. Quiere que el almacenamiento crezca de forma automática y que el clustering y la replicación estén automatizados. ¿Qué servicio es el MÁS adecuado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Aurora",
+        "compatible con PostgreSQL"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon DynamoDB, que ofrece una base NoSQL sin servidor de clave-valor y documentos",
+            "explanation": "Es la opción adecuada: DynamoDB es una base NoSQL sin servidor, con milisegundos de un solo dígito a cualquier escala y sin versiones ni ventanas de mantenimiento."
+          },
+          {
+            "id": "b",
+            "text": "Amazon RDS, que ofrece instancias de base de datos relacionales con motores como MySQL",
+            "explanation": "Descartada: RDS ofrece instancias de bases relacionales cuyo motor tiene versiones y funciones propias de cada versión, y el enunciado pide un modelo de clave-valor sin versiones."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Aurora, que ofrece un motor relacional compatible con MySQL y PostgreSQL",
+            "explanation": "Descartada: Aurora es un motor relacional con sus propias versiones, y el enunciado pide clave-valor sin versiones del motor."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Redshift, que ofrece un almacén de datos para análisis con SQL",
+            "explanation": "Descartada: Redshift sirve para analizar datos con SQL, no para guardar carritos como elementos de clave-valor con respuesta de milisegundos."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué servicio guarda carritos de compra con milisegundos de un solo dígito sin JOIN",
+      "statement": "Una tienda en línea guarda los carritos de compra como elementos de clave-valor, sin necesidad de unir tablas con JOIN. Exige un rendimiento de milisegundos de un solo dígito tanto con diez como con cien millones de usuarios, y no quiere versiones del motor ni ventanas de mantenimiento. ¿Qué servicio encaja MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "DynamoDB",
+        "NoSQL",
+        "clave-valor"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon RDS, que ofrece réplicas de lectura de la base de datos relacional",
+            "explanation": "Descartada: las réplicas de lectura de RDS aumentan la capacidad de lectura de una base relacional, pero no son un almacén en memoria con Valkey, Memcached o Redis OSS."
+          },
+          {
+            "id": "b",
+            "text": "Amazon DynamoDB, que ofrece tablas NoSQL con rendimiento de milisegundos",
+            "explanation": "Descartada: DynamoDB es una base de datos NoSQL, no una caché en memoria que funcione con Valkey, Memcached o Redis OSS."
+          },
+          {
+            "id": "c",
+            "text": "Amazon ElastiCache, que ofrece cachés sin servidor y clústeres basados en nodos",
+            "explanation": "Es la opción adecuada: ElastiCache es un almacén de datos distribuido en memoria que funciona como caché con Valkey, Memcached y Redis OSS."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Redshift, que ofrece un almacén de datos para análisis a gran escala",
+            "explanation": "Descartada: Redshift es un almacén de datos para análisis, no una caché en memoria para acelerar lecturas repetidas."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-quiz-04",
+      "type": "QUIZ",
+      "title": "Qué servicio da una caché en memoria para acelerar lecturas repetidas",
+      "statement": "Una aplicación web lee una y otra vez los mismos datos de su base de datos y el equipo quiere reducir esas lecturas con un almacén de datos distribuido en memoria que funcione como caché. Debe poder usar el motor Valkey, Memcached o Redis OSS. ¿Qué servicio es el MÁS adecuado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "ElastiCache",
+        "caché",
+        "en memoria"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon ElastiCache, que ofrece un almacén de datos en memoria para usar como caché",
+            "explanation": "Descartada: ElastiCache es una caché en memoria para acelerar aplicaciones, no un almacén de datos para analizar años de ventas con SQL."
+          },
+          {
+            "id": "b",
+            "text": "Amazon DynamoDB, que ofrece tablas NoSQL de clave-valor y de documentos",
+            "explanation": "Descartada: DynamoDB es una base NoSQL para cargas operativas de clave-valor y documentos, no un almacén de datos para análisis con SQL."
+          },
+          {
+            "id": "c",
+            "text": "Amazon RDS, que ofrece instancias de bases de datos con motores relacionales",
+            "explanation": "Descartada: RDS ofrece bases relacionales para aplicaciones, y el enunciado pide un almacén de datos a escala de petabytes para análisis."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Redshift, que ofrece un almacén de datos administrado para consultas SQL",
+            "explanation": "Es la opción adecuada: Redshift es un almacén de datos administrado a escala de petabytes que se consulta con SQL desde herramientas de inteligencia de negocio."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.7",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué servicio analiza un gran volumen de datos históricos con SQL",
+      "statement": "Un equipo de análisis necesita ejecutar consultas SQL sobre un almacén de datos con años de ventas históricas, a escala de petabytes, desde sus herramientas de inteligencia de negocio. No es la base de datos de una aplicación. ¿Qué servicio es el MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Redshift",
+        "almacén de datos",
+        "análisis"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir una instancia secundaria síncrona para conmutar por error si hay problemas",
+            "explanation": "Descartada: la instancia secundaria síncrona da alta disponibilidad, porque se conmuta a ella cuando hay problemas, y no es lo que reparte las lecturas de los informes."
+          },
+          {
+            "id": "b",
+            "text": "Migrar las tablas a Amazon DynamoDB, que ofrece una base NoSQL sin servidor",
+            "explanation": "Descartada: cambia el motor y el servicio, y DynamoDB es NoSQL y no admite JOIN, lo contrario de conservar la base relacional."
+          },
+          {
+            "id": "c",
+            "text": "Crear réplicas de lectura de la instancia de base de datos de RDS",
+            "explanation": "Es la opción adecuada: RDS usa réplicas de lectura para aumentar la capacidad de lectura, sin cambiar de motor ni de servicio."
+          },
+          {
+            "id": "d",
+            "text": "Activar las copias de seguridad automáticas para restaurar la base de datos",
+            "explanation": "Descartada: las copias automáticas sirven para restaurar la base de datos tras un problema, no para aumentar la capacidad de lectura."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué acción aumenta la capacidad de lectura de una base de datos de RDS",
+      "statement": "Una aplicación usa una instancia principal de Amazon RDS para PostgreSQL. Los informes de lectura saturan la instancia y el equipo quiere aumentar la capacidad de lectura sin cambiar de motor de base de datos ni de servicio. ¿Qué acción es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "RDS",
+        "réplica de lectura",
+        "alta disponibilidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La empresa es responsable del ajuste de las consultas de sus propias bases de datos",
+            "explanation": "Es la opción adecuada: AWS aloja el software y la infraestructura de RDS, y el ajuste de las consultas (query tuning) corresponde al cliente."
+          },
+          {
+            "id": "b",
+            "text": "AWS es responsable del ajuste de las consultas porque administra el software de la base de datos",
+            "explanation": "Descartada: AWS aloja los componentes de software y la infraestructura de RDS, pero el ajuste de las consultas del cliente no es una de sus tareas."
+          },
+          {
+            "id": "c",
+            "text": "AWS es responsable del ajuste de las consultas porque la alta disponibilidad de RDS lo incluye",
+            "explanation": "Descartada: la alta disponibilidad de RDS conmuta a una instancia secundaria cuando hay problemas, y no incluye ajustar las consultas del cliente."
+          },
+          {
+            "id": "d",
+            "text": "La responsabilidad es compartida a partes iguales porque RDS administra la base completa",
+            "explanation": "Descartada: el ajuste de las consultas no se reparte, porque es una tarea que corresponde al cliente aunque RDS administre el software y la infraestructura."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-quiz-07",
+      "type": "QUIZ",
+      "title": "Quién ajusta una consulta SQL lenta en una base de datos de Amazon RDS",
+      "statement": "Una empresa ejecuta Amazon RDS para MySQL. Un informe tarda mucho porque la consulta SQL está mal diseñada, aunque la instancia funciona con normalidad. Según el modelo de responsabilidad compartida de RDS, ¿qué afirmación es la MÁS precisa sobre quién ajusta esa consulta?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "RDS",
+        "responsabilidad compartida",
+        "ajuste de consultas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Unir varias tablas con una operación JOIN en una sola consulta",
+            "explanation": "No cumple: DynamoDB no admite el operador JOIN y por eso se recomienda desnormalizar el modelo de datos."
+          },
+          {
+            "id": "b",
+            "text": "Ejecutar transacciones ACID sobre una o varias tablas en una sola solicitud",
+            "explanation": "Cumple: DynamoDB ofrece transacciones ACID entre uno o varios elementos y tablas con una sola solicitud."
+          },
+          {
+            "id": "c",
+            "text": "Elegir el tipo y el número de nodos del clúster que aloja los datos",
+            "explanation": "No cumple: elegir el tipo y el número de nodos es propio de un clúster basado en nodos de ElastiCache, no de DynamoDB, que es sin servidor."
+          },
+          {
+            "id": "d",
+            "text": "Analizar datos a escala de petabytes en un almacén de datos con SQL",
+            "explanation": "No cumple: el almacén de datos a escala de petabytes con SQL es Amazon Redshift, no DynamoDB."
+          },
+          {
+            "id": "e",
+            "text": "Replicar los datos entre las Regiones elegidas con tablas globales",
+            "explanation": "Cumple: las tablas globales de DynamoDB replican los datos entre las Regiones que elijas con replicación multiactiva."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las capacidades que ofrece Amazon DynamoDB",
+      "statement": "Un equipo de juegos evalúa Amazon DynamoDB para guardar el estado de las partidas de sus jugadores. Selecciona DOS capacidades que ofrece DynamoDB.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "DynamoDB",
+        "transacciones ACID",
+        "tablas globales"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u1-3-4-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué base de datos eliges para cada grupo de datos y por qué",
+      "statement": "Elige una aplicación que conozcas y que guarde pedidos, sesiones de usuario e informes de ventas, y escribe un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué servicio de bases de datos usarías para cada grupo de datos (RDS, Aurora, DynamoDB, ElastiCache o Redshift) y cómo accede la aplicación a esos datos.\n\n2) Alternativa descartada: otro servicio que te tentaba (por ejemplo, instalar la base de datos en una instancia de EC2) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué cambia para tu equipo con esa decisión, por ejemplo qué administra AWS, qué sigue siendo tuyo y cómo consultas los datos.\n\n4) Evidencia: qué parte de las páginas oficiales de RDS, Aurora, DynamoDB, ElastiCache o Redshift usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento distinga datos relacionales, clave-valor, caché y análisis, y que nombre el servicio. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo elegiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "bases de datos de AWS",
+        "responsabilidad compartida",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+      ],
+      "order": 19
+    }
+  ]
+}
