@@ -1,0 +1,1207 @@
+{
+  "code": "AWS-U1.4.2",
+  "lessons": [
+    {
+      "slug": "aws-u1-4-2-herramientas-de-costo-pricing-calculator-cost-explorer-budgets-informes-de-costo-y-etiquetas-de-asignacion",
+      "title": "Herramientas de costo: Pricing Calculator, Cost Explorer, Budgets, informes de costo y etiquetas de asignación",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cada herramienta de costo responde a una pregunta distinta, y el examen CLF-C02 pide elegir la adecuada para un escenario. AWS Pricing Calculator crea estimaciones de costo para modelar una solución antes de construirla. AWS Cost Explorer sirve para ver y analizar los costos y el uso que ya tienes. AWS Budgets permite seguir los costos y el uso y actuar cuando se acercan o superan un umbral que defines. Las etiquetas de asignación de costos organizan el gasto por categorías de negocio, y AWS Data Exports entrega los datos detallados de costo y uso para procesarlos fuera de la consola."
+        },
+        {
+          "type": "list",
+          "title": "Qué hace cada herramienta",
+          "items": [
+            "AWS Pricing Calculator: herramienta web para crear estimaciones de costo de servicios de AWS. Sirve para modelar soluciones antes de construirlas, explorar precios, revisar los cálculos de una estimación y planificar el gasto. Permite agrupar la estimación, guardar su enlace y exportarla en CSV o PDF. La estimación no incluye impuestos y se basa solo en la información que introduces.",
+            "AWS Cost Explorer: herramienta para ver y analizar costos y uso con un gráfico principal, informes de costo y uso e informes de instancias reservadas. Permite pronosticar el gasto futuro y obtener recomendaciones de instancias reservadas. Usa el mismo conjunto de datos que los informes de costo y uso.",
+            "AWS Budgets: sirve para seguir y actuar sobre costos y uso. Admite presupuestos de costo, de uso, de utilización y de cobertura de instancias reservadas, y de utilización y de cobertura de Savings Plans.",
+            "Etiquetas de asignación de costos: etiquetas (clave y valor) que, una vez activadas, organizan los costos de los recursos en el informe de asignación de costos y en Cost Explorer.",
+            "AWS Data Exports: crea exportaciones recurrentes de datos de facturación y costos con SQL básico y las guarda en Amazon S3. Cost and Usage Report 2.0 (CUR 2.0) es la forma recomendada de recibir los datos detallados de costo y uso."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Qué pregunta de costo responde cada herramienta",
+          "code": "flowchart TB\n  Q1[\"¿Quiero estimar el costo de una solución que aún no existe?\"] --> PC[\"AWS Pricing Calculator: estimación y cálculos revisables\"]\n  Q2[\"¿Quiero ver y analizar el costo y el uso que ya tengo?\"] --> CE[\"AWS Cost Explorer: gráficos, informes y previsión\"]\n  Q3[\"¿Quiero un umbral con aviso o acción automática?\"] --> BU[\"AWS Budgets: presupuestos, notificaciones y acciones\"]\n  Q4[\"¿Quiero atribuir el costo a una aplicación o a un equipo?\"] --> TAG[\"Etiquetas de asignación de costos: aplicar y activar\"]\n  TAG --> CE\n  TAG --> REP[\"Informe de asignación de costos\"]\n  Q5[\"¿Quiero datos detallados y recurrentes para procesarlos?\"] --> DX[\"AWS Data Exports: CUR 2.0 en Amazon S3\"]\n  TAG --> DX"
+        },
+        {
+          "type": "list",
+          "title": "Cómo funcionan las etiquetas de asignación de costos",
+          "items": [
+            "Una etiqueta es una marca con clave y valor que se asigna a un recurso. En cada recurso, cada clave es única y solo puede tener un valor.",
+            "Hay dos tipos: etiquetas generadas por AWS (las define y aplica AWS o un proveedor de software de AWS Marketplace, con el prefijo aws:) y etiquetas definidas por el usuario (las defines y aplicas tú).",
+            "Los dos tipos se deben activar por separado antes de que aparezcan en Cost Explorer o en un informe de asignación de costos. Todas las etiquetas pueden tardar hasta 24 horas en aparecer en la consola de Billing and Cost Management.",
+            "El informe de asignación de costos es un archivo CSV con el uso y los costos agrupados por tus etiquetas activas. Incluye los recursos etiquetados y los que no lo están, y al cierre del ciclo de facturación sus totales cuadran con los de la página de facturas.",
+            "Para crear y actualizar etiquetas se usa Tag Editor. Como buena práctica, no pongas información sensible en las etiquetas."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro necesidades, cuatro herramientas",
+          "text": "Una empresa tiene su tienda en Amazon EC2 y quiere resolver cuatro necesidades. Necesidad 1: calcular cuánto costaría una nueva arquitectura antes de desplegarla; la solución aún no existe, así que no hay gasto que analizar y la herramienta es AWS Pricing Calculator. Necesidad 2: entender qué parte del gasto de los últimos meses corresponde a cada servicio; es costo ya incurrido, así que la herramienta es AWS Cost Explorer. Necesidad 3: recibir un aviso por correo cuando el gasto previsto del mes vaya a superar un importe; es un umbral con notificación, así que la herramienta es AWS Budgets. Necesidad 4: saber cuánto cuesta cada aplicación; hay que aplicar una etiqueta de aplicación a los recursos, activarla como etiqueta de asignación de costos y filtrar después por ella en Cost Explorer o en el informe de asignación de costos. Cada necesidad tiene una sola herramienta natural porque cambia el momento (antes o después del gasto) y la acción (estimar, analizar o avisar)."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: antes del gasto, después del gasto o con umbral",
+          "text": "Las opciones de una pregunta suelen mezclar las tres herramientas. Antes de responder, pregúntate si el gasto aún no existe (estimar: Pricing Calculator), si ya existe y quieres explorarlo (analizar: Cost Explorer) o si quieres que algo te avise o actúe al cruzar un umbral (Budgets). Después, si el enunciado habla de atribuir costos a un equipo o a una aplicación, busca las etiquetas activadas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que una etiqueta aplicada ya sirve para el informe de costos",
+          "text": "Causa: pensar que etiquetar el recurso basta, porque en la consola de cada servicio la etiqueta ya se ve. Consecuencia: la etiqueta no aparece en Cost Explorer ni en el informe de asignación de costos, y el equipo financiero no puede separar el gasto por aplicación. Solución: activa cada etiqueta, la definida por el usuario y también la generada por AWS, como etiqueta de asignación de costos en la consola de Billing and Cost Management, y espera hasta 24 horas a que aparezca."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar Cost Explorer para estimar una arquitectura nueva",
+          "text": "Causa: confundir la previsión de Cost Explorer con una estimación de diseño, porque ambas hablan de costos futuros. Consecuencia: la cifra se apoya en el gasto que ya tienes y no modela los servicios nuevos que aún no usas, así que el presupuesto del proyecto sale equivocado. Solución: para una solución aún no construida, crea la estimación en AWS Pricing Calculator con los servicios y las configuraciones previstas, y reserva Cost Explorer para analizar lo que ya se está gastando."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la herramienta de costo adecuada para un escenario (AWS Pricing Calculator, AWS Cost Explorer, AWS Budgets, etiquetas de asignación de costos o AWS Data Exports) y configurar un presupuesto y una política de etiquetas coherentes con la necesidad. Esta unidad prepara el examen CLF-C02, dominio 4 «Facturación, precios y soporte», tarea 4.2 (comprender los recursos de facturación, presupuesto y administración de costos). Criterio: ante un escenario nuevo, nombras la herramienta, justificas por qué las demás no encajan y detectas una etiqueta o una alerta mal configurada, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cuatro necesidades tapando las respuestas: para cada una, di si el gasto ya existe, si buscas estimar, analizar o avisar, y qué herramienta corresponde. Después responde de memoria: qué diferencia hay entre aplicar y activar una etiqueta, qué tipos de presupuesto existen y qué datos entrega AWS Data Exports."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una etiqueta de asignación de costos sin activar». Una política de etiquetas escrita como objeto deja una etiqueta fuera del informe. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y las demás etiquetas conservan su estado."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Las alertas por gasto previsto no se disparan». Una función decide qué notificaciones de un presupuesto se envían. Criterio de paso: cada notificación se evalúa con la medida que le corresponde, real o prevista, y la función no modifica los datos de entrada."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un plan de control de costos que mezcla Pricing Calculator, Cost Explorer, Budgets, etiquetas y Data Exports. Audítalo en «Auditar un plan de control de costos generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de cada herramienta (leídas el 2026-11-13) y decide si el plan se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe si el gasto ya existe, qué acción pide el enunciado (estimar, analizar, avisar o atribuir) y el calificador; al corregir, lee la explicación de cada opción y anota si fallaste por confundir dos herramientas o por olvidar activar las etiquetas. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Piensa en un proyecto que conozcas y escribe qué herramienta usarías antes de empezar, durante su operación y para repartir su costo entre equipos. Después completa la reflexión de la unidad. Pregunta de cierre: el equipo financiero pide el costo por aplicación y el informe sale sin esa columna; ¿qué revisas primero y por qué?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-pricing-calculator-que-es",
+          "order": 0,
+          "note": "Fuente de qué es AWS Pricing Calculator y de sus usos."
+        },
+        {
+          "resourceSlug": "aws-cost-explorer-que-es",
+          "order": 1,
+          "note": "Fuente de qué permite analizar AWS Cost Explorer."
+        },
+        {
+          "resourceSlug": "aws-budgets-gestionar-costos",
+          "order": 2,
+          "note": "Fuente de los tipos de presupuesto, las notificaciones y las acciones de AWS Budgets."
+        },
+        {
+          "resourceSlug": "aws-etiquetas-de-asignacion-de-costos",
+          "order": 3,
+          "note": "Fuente de los tipos de etiquetas de asignación de costos, su activación y el informe de asignación."
+        },
+        {
+          "resourceSlug": "aws-data-exports-que-es",
+          "order": 4,
+          "note": "Fuente de AWS Data Exports y de CUR 2.0."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 5,
+          "note": "Guía de CLF-C02: el dominio 4 incluye comprender los recursos de facturación, presupuesto y administración de costos."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es una herramienta web para crear estimaciones de costo de servicios de AWS: sirve para modelar soluciones antes de construirlas, explorar precios, revisar los cálculos y planificar el gasto. Las estimaciones se pueden exportar en CSV o PDF."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Pricing Calculator",
+      "statement": "¿Para qué sirve AWS Pricing Calculator?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Pricing Calculator",
+        "estimación"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ver y analizar los costos y el uso que ya tienes con su gráfico principal y sus informes de costo y uso y de instancias reservadas. También pronostica el gasto futuro y recomienda instancias reservadas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Cost Explorer",
+      "statement": "¿Qué permite hacer AWS Cost Explorer?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Cost Explorer",
+        "análisis de costos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "De costo, de uso, de utilización de instancias reservadas, de cobertura de instancias reservadas, de utilización de Savings Plans y de cobertura de Savings Plans."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: tipos de presupuesto",
+      "statement": "¿Qué tipos de presupuesto se pueden crear en AWS Budgets?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Budgets",
+        "tipos de presupuesto"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Envía notificaciones a un correo, a un tema de Amazon SNS o a ambos, tanto por el gasto real como por el previsto. También puede aplicar una acción, por ejemplo una política de IAM que impide aprovisionar más recursos. Puede haber un retraso entre el cargo y el aviso."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: notificaciones y acciones de presupuesto",
+      "statement": "¿Cómo avisa AWS Budgets y qué puede hacer cuando se cruza un umbral?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "notificación",
+        "acción de presupuesto"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Generadas por AWS (prefijo aws:) y definidas por el usuario. Ambos tipos se activan por separado antes de aparecer en Cost Explorer o en un informe de asignación de costos, y pueden tardar hasta 24 horas en verse."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: etiquetas de asignación de costos",
+      "statement": "¿Qué dos tipos de etiquetas de asignación de costos existen y qué hay que hacer con ellas?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "etiqueta definida por el usuario",
+        "etiqueta generada por AWS"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Crea exportaciones recurrentes de datos de facturación y costos con SQL básico, con columnas y filas a elección, y las almacena en Amazon S3. CUR 2.0 es la forma recomendada de recibir los datos detallados de costo y uso."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Data Exports",
+      "statement": "¿Qué ofrece AWS Data Exports y cuál es la forma recomendada de recibir el detalle de costo y uso?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Data Exports",
+        "CUR 2.0"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cur/latest/userguide/what-is-data-exports.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política de etiquetas para el informe de asignación de costos. Corrige su defecto principal.\nexport const politica = {\n  informe: \"Informe de asignación de costos\",\n  agruparPor: [\"Proyecto\", \"CentroDeCostos\", \"aws:createdBy\"],\n  etiquetas: [\n    { clave: \"Proyecto\", tipo: \"DEFINIDA_POR_EL_USUARIO\", aplicada: true, activada: true },\n    { clave: \"CentroDeCostos\", tipo: \"DEFINIDA_POR_EL_USUARIO\", aplicada: true, activada: false },\n    { clave: \"aws:createdBy\", tipo: \"GENERADA_POR_AWS\", aplicada: true, activada: true },\n  ],\n};\n",
+      "solution": {
+        "code": "export const politica = {\n  informe: \"Informe de asignación de costos\",\n  agruparPor: [\"Proyecto\", \"CentroDeCostos\", \"aws:createdBy\"],\n  etiquetas: [\n    { clave: \"Proyecto\", tipo: \"DEFINIDA_POR_EL_USUARIO\", aplicada: true, activada: true },\n    { clave: \"CentroDeCostos\", tipo: \"DEFINIDA_POR_EL_USUARIO\", aplicada: true, activada: true },\n    { clave: \"aws:createdBy\", tipo: \"GENERADA_POR_AWS\", aplicada: true, activada: true },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Una etiqueta aplicada a los recursos no aparece sola en Cost Explorer ni en el informe de asignación de costos. Pregúntate qué paso falta, además de aplicarla, para cada etiqueta por la que agrupa el informe."
+        },
+        {
+          "level": 2,
+          "text": "Recorre las etiquetas por las que agrupa el informe y compara su estado de activación. Solo una está distinta de las demás."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `activada` de la etiqueta «CentroDeCostos» de `false` a `true`. No toques las demás etiquetas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "toda etiqueta por la que agrupa el informe está activada",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "for (const clave of politica.agruparPor) {\n  const etiqueta = politica.etiquetas.find((e) => e.clave === clave);\n  assert.ok(etiqueta, clave + \" debe existir en la lista de etiquetas\");\n  assert.strictEqual(etiqueta.activada, true, clave + \" debe estar activada\");\n}"
+          }
+        },
+        {
+          "name": "las etiquetas siguen aplicadas a los recursos",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const etiqueta of politica.etiquetas) {\n  assert.strictEqual(etiqueta.aplicada, true, etiqueta.clave + \" debe seguir aplicada\");\n}"
+          }
+        },
+        {
+          "name": "los tipos de etiqueta no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  Proyecto: \"DEFINIDA_POR_EL_USUARIO\",\n  CentroDeCostos: \"DEFINIDA_POR_EL_USUARIO\",\n  \"aws:createdBy\": \"GENERADA_POR_AWS\",\n};\nfor (const [clave, tipo] of Object.entries(esperado)) {\n  const etiqueta = politica.etiquetas.find((e) => e.clave === clave);\n  assert.ok(etiqueta, clave + \" debe seguir existiendo\");\n  assert.strictEqual(etiqueta.tipo, tipo);\n}"
+          }
+        },
+        {
+          "name": "siguen las tres etiquetas y el informe agrupa por las mismas claves",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(politica.etiquetas.length, 3);\nassert.deepStrictEqual(politica.agruparPor, [\"Proyecto\", \"CentroDeCostos\", \"aws:createdBy\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-debug-01",
+      "type": "DEBUG",
+      "title": "Una etiqueta de asignación de costos sin activar",
+      "statement": "El objeto `politica` describe las etiquetas que usa un informe de asignación de costos para agrupar el gasto por proyecto, por centro de costos y por quién creó el recurso. El equipo financiero avisa de que el informe sale sin la columna del centro de costos aunque los recursos están etiquetados. Corrige el defecto sin añadir ni quitar etiquetas, sin cambiar las demás y manteniendo la forma del valor exportado (`export const politica = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "etiqueta de asignación de costos",
+        "activación",
+        "informe de asignación de costos"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Decide qué notificaciones de un presupuesto se disparan. Corrige su defecto principal.\nexport type Notificacion = {\n  id: string;\n  tipo: \"REAL\" | \"PREVISTO\";\n  umbralPorcentaje: number;\n};\n\nexport type Presupuesto = {\n  importe: number;\n  notificaciones: Notificacion[];\n};\n\nexport type Gasto = {\n  actual: number;\n  previsto: number;\n};\n\nexport function notificacionesDisparadas(presupuesto: Presupuesto, gasto: Gasto): string[] {\n  const disparadas: string[] = [];\n  for (const notificacion of presupuesto.notificaciones) {\n    const umbral = presupuesto.importe * (notificacion.umbralPorcentaje / 100);\n    const medida = gasto.actual;\n    if (medida >= umbral) {\n      disparadas.push(notificacion.id);\n    }\n  }\n  return disparadas;\n}\n",
+      "solution": {
+        "code": "export type Notificacion = {\n  id: string;\n  tipo: \"REAL\" | \"PREVISTO\";\n  umbralPorcentaje: number;\n};\n\nexport type Presupuesto = {\n  importe: number;\n  notificaciones: Notificacion[];\n};\n\nexport type Gasto = {\n  actual: number;\n  previsto: number;\n};\n\nexport function notificacionesDisparadas(presupuesto: Presupuesto, gasto: Gasto): string[] {\n  const disparadas: string[] = [];\n  for (const notificacion of presupuesto.notificaciones) {\n    const umbral = presupuesto.importe * (notificacion.umbralPorcentaje / 100);\n    const medida = notificacion.tipo === \"REAL\" ? gasto.actual : gasto.previsto;\n    if (medida >= umbral) {\n      disparadas.push(notificacion.id);\n    }\n  }\n  return disparadas;\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "una notificación PREVISTA se dispara con el gasto previsto aunque el real sea bajo",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const presupuesto = {\n  importe: 1000,\n  notificaciones: [\n    { id: \"real-80\", tipo: \"REAL\" as const, umbralPorcentaje: 80 },\n    { id: \"previsto-100\", tipo: \"PREVISTO\" as const, umbralPorcentaje: 100 },\n  ],\n};\nassert.deepStrictEqual(notificacionesDisparadas(presupuesto, { actual: 500, previsto: 1100 }), [\"previsto-100\"]);"
+          }
+        },
+        {
+          "name": "una notificación REAL se dispara con el gasto real",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const presupuesto = {\n  importe: 1000,\n  notificaciones: [\n    { id: \"real-80\", tipo: \"REAL\" as const, umbralPorcentaje: 80 },\n    { id: \"previsto-100\", tipo: \"PREVISTO\" as const, umbralPorcentaje: 100 },\n  ],\n};\nassert.deepStrictEqual(notificacionesDisparadas(presupuesto, { actual: 850, previsto: 900 }), [\"real-80\"]);"
+          }
+        },
+        {
+          "name": "una notificación REAL no mira el gasto previsto",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const presupuesto = {\n  importe: 1000,\n  notificaciones: [\n    { id: \"real-80\", tipo: \"REAL\" as const, umbralPorcentaje: 80 },\n    { id: \"previsto-100\", tipo: \"PREVISTO\" as const, umbralPorcentaje: 100 },\n  ],\n};\nassert.deepStrictEqual(notificacionesDisparadas(presupuesto, { actual: 100, previsto: 790 }), []);"
+          }
+        },
+        {
+          "name": "se disparan las dos cuando ambas medidas alcanzan su umbral, en el orden del presupuesto",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const presupuesto = {\n  importe: 1000,\n  notificaciones: [\n    { id: \"real-80\", tipo: \"REAL\" as const, umbralPorcentaje: 80 },\n    { id: \"previsto-100\", tipo: \"PREVISTO\" as const, umbralPorcentaje: 100 },\n  ],\n};\nassert.deepStrictEqual(notificacionesDisparadas(presupuesto, { actual: 800, previsto: 1000 }), [\"real-80\", \"previsto-100\"]);"
+          }
+        },
+        {
+          "name": "no modifica el presupuesto recibido",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const presupuesto = {\n  importe: 1000,\n  notificaciones: [\n    { id: \"real-80\", tipo: \"REAL\" as const, umbralPorcentaje: 80 },\n    { id: \"previsto-100\", tipo: \"PREVISTO\" as const, umbralPorcentaje: 100 },\n  ],\n};\nconst antes = JSON.stringify(presupuesto);\nnotificacionesDisparadas(presupuesto, { actual: 900, previsto: 1200 });\nassert.strictEqual(JSON.stringify(presupuesto), antes);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-debug-02",
+      "type": "DEBUG",
+      "title": "Las alertas por gasto previsto no se disparan",
+      "statement": "La función `notificacionesDisparadas` devuelve los identificadores de las notificaciones de un presupuesto que deben enviarse. Una notificación de tipo REAL se dispara cuando el gasto actual alcanza su umbral, y una de tipo PREVISTO, cuando el gasto previsto lo alcanza. Quien la usa observa que las alertas por gasto previsto no llegan nunca antes de que el gasto real llegue al umbral. Localiza el defecto y corrígelo sin cambiar los tipos ni la firma de la función.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "AWS Budgets",
+        "gasto previsto",
+        "notificación"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Plan de control de costos (borrador generado por un asistente)\nContexto: una empresa migra su tienda a AWS y quiere controlar su gasto desde el diseño.\n1. Antes de desplegar, se crea una estimación en AWS Pricing Calculator con los servicios previstos y se revisan sus cálculos.\n2. Para saber cuánto costará la arquitectura nueva que aún no existe, se usa AWS Cost Explorer.\n3. En AWS Budgets se crea un presupuesto de costos con una notificación por correo cuando el gasto previsto vaya a superar el importe.\n4. Basta con aplicar la etiqueta definida por el usuario Proyecto a los recursos para que aparezca en Cost Explorer.\n5. Se acepta que las notificaciones de AWS Budgets pueden llegar con retraso respecto al cargo, así que el gasto puede pasar el umbral antes del aviso.\n6. Para exportar los datos detallados de costo y uso a Amazon S3 se recomienda crear los informes con Legacy CUR en lugar de CUR 2.0."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Estimación previa",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: AWS Pricing Calculator sirve para modelar soluciones antes de construirlas y permite revisar los cálculos de la estimación."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Cost Explorer para lo nuevo",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "AWS Cost Explorer sirve para ver y analizar los costos y el uso que ya tienes. Para una arquitectura que aún no existe se crea una estimación en AWS Pricing Calculator."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Aviso por gasto previsto",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: AWS Budgets admite notificaciones por correo, por Amazon SNS o por ambos, tanto para el gasto real como para el previsto."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Etiqueta sin activar",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "No basta con aplicar la etiqueta: las etiquetas definidas por el usuario y las generadas por AWS se activan por separado antes de aparecer en Cost Explorer o en un informe de asignación de costos."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Retraso de las notificaciones",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: puede haber un retraso entre el cargo y la notificación, y el gasto puede superar el umbral antes de que AWS Budgets avise. Que parezca una debilidad no lo convierte en un error del plan."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Legacy CUR",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "AWS Data Exports indica que CUR 2.0 es la forma nueva y recomendada de recibir los datos detallados de costo y uso. Legacy CUR es la exportación del informe anterior."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un plan de control de costos generado por IA",
+      "statement": "Un asistente de IA redactó este plan de control de costos para una empresa que migra su tienda a AWS. Audítalo contra la documentación oficial de AWS Pricing Calculator, AWS Cost Explorer, AWS Budgets, las etiquetas de asignación de costos y AWS Data Exports: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el plan se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "AWS Pricing Calculator",
+        "AWS Cost Explorer",
+        "etiqueta de asignación de costos",
+        "CUR 2.0"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html",
+        "https://docs.aws.amazon.com/cur/latest/userguide/what-is-data-exports.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Usar AWS Cost Explorer para proyectar el gasto de los meses anteriores de la cuenta",
+            "explanation": "Descartada: Cost Explorer analiza los costos y el uso que ya existen, y una solución que aún no se ha creado no tiene gasto previo que proyectar."
+          },
+          {
+            "id": "b",
+            "text": "Crear un presupuesto de costos en AWS Budgets con el importe previsto para el proyecto",
+            "explanation": "Descartada: AWS Budgets sigue el gasto y avisa al cruzar un umbral, pero no calcula cuánto costaría una arquitectura antes de construirla."
+          },
+          {
+            "id": "c",
+            "text": "Crear una estimación en AWS Pricing Calculator con los servicios y las configuraciones previstas",
+            "explanation": "Es correcta: AWS Pricing Calculator sirve para modelar soluciones antes de construirlas y permite revisar los cálculos de la estimación."
+          },
+          {
+            "id": "d",
+            "text": "Activar etiquetas de asignación de costos en la cuenta antes de desplegar la aplicación",
+            "explanation": "Descartada: las etiquetas organizan el costo de recursos existentes por categoría; no estiman el costo de una arquitectura que todavía no existe."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué herramienta estima el costo de una solución que aún no existe",
+      "statement": "Una empresa diseña una aplicación nueva en AWS y todavía no ha creado ningún recurso. El equipo quiere calcular cuánto costaría la arquitectura prevista, con sus servicios y configuraciones, antes de aprobar el proyecto. ¿Qué herramienta sirve MEJOR para ello?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Pricing Calculator",
+        "estimación de costos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Usar AWS Cost Explorer para ver y filtrar los costos y el uso de los meses anteriores",
+            "explanation": "Es correcta: Cost Explorer sirve para ver y analizar los costos y el uso que ya tienes mediante su gráfico principal y sus informes."
+          },
+          {
+            "id": "b",
+            "text": "Crear una estimación en AWS Pricing Calculator con la arquitectura actual de la empresa",
+            "explanation": "Descartada: Pricing Calculator calcula estimaciones a partir de la información que se introduce; no explora el gasto que ya se incurrió."
+          },
+          {
+            "id": "c",
+            "text": "Crear un presupuesto de uso en AWS Budgets para cada servicio que la empresa utiliza",
+            "explanation": "Descartada: AWS Budgets fija umbrales y avisa al cruzarlos, pero no es la herramienta para explorar con gráficos qué explica un gasto pasado."
+          },
+          {
+            "id": "d",
+            "text": "Crear una exportación recurrente en AWS Data Exports hacia Amazon S3 con las consultas SQL",
+            "explanation": "Descartada: Data Exports entrega los datos para procesarlos fuera de la consola; la exploración visual con filtros es la función de Cost Explorer."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué herramienta explora el costo que ya se ha generado",
+      "statement": "El director financiero de una empresa pregunta por qué subió el gasto de AWS en los meses anteriores. El equipo quiere explorar el costo ya incurrido con gráficos y filtros para ver qué lo explica. ¿Qué herramienta es la MÁS adecuada?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Cost Explorer",
+        "análisis de costos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html",
+        "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+        "https://docs.aws.amazon.com/cur/latest/userguide/what-is-data-exports.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Revisar cada semana el gráfico de AWS Cost Explorer y escribir al equipo si la previsión sube",
+            "explanation": "Descartada: Cost Explorer sirve para ver y analizar costos; el aviso automático al cruzar un umbral es la función de Budgets y revisarlo a mano añade trabajo."
+          },
+          {
+            "id": "b",
+            "text": "Crear una estimación mensual en AWS Pricing Calculator y compararla con la factura de cada mes",
+            "explanation": "Descartada: Pricing Calculator estima el costo de una solución con los datos que se introducen; no vigila el gasto ni envía avisos."
+          },
+          {
+            "id": "c",
+            "text": "Activar la etiqueta de proyecto como etiqueta de asignación de costos y esperar al informe mensual",
+            "explanation": "Descartada: las etiquetas permiten agrupar el gasto por categoría, pero no avisan cuando el gasto previsto supera un importe."
+          },
+          {
+            "id": "d",
+            "text": "Crear un presupuesto de costos en AWS Budgets con una notificación por el gasto previsto",
+            "explanation": "Es correcta: AWS Budgets admite notificaciones por correo o por Amazon SNS cuando el gasto previsto va a superar el importe, sin trabajo manual."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-quiz-03",
+      "type": "QUIZ",
+      "title": "Cómo avisar cuando el gasto previsto superará el presupuesto",
+      "statement": "Una empresa quiere recibir un correo cuando el gasto previsto del mes vaya a superar un importe que ha definido, antes de que llegue a producirse. El equipo prefiere una solución administrada y con la MENOR sobrecarga operativa. ¿Qué solución cumple el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Budgets",
+        "gasto previsto",
+        "notificación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html",
+        "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html",
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un presupuesto de cobertura de Savings Plans con un umbral mínimo de cobertura",
+            "explanation": "Descartada: avisa cuando baja el porcentaje de uso elegible cubierto por Savings Plans, es decir, falta de cobertura, no compromisos sin usar."
+          },
+          {
+            "id": "b",
+            "text": "Un presupuesto de utilización de Savings Plans con un umbral mínimo de utilización",
+            "explanation": "Es correcto: el presupuesto de utilización avisa cuando el uso cae por debajo del umbral y permite identificar Savings Plans sin usar o infrautilizados."
+          },
+          {
+            "id": "c",
+            "text": "Un presupuesto de costos con un importe fijo mensual y una notificación al superarlo",
+            "explanation": "Descartada: controla cuánto se gasta en total, no si los Savings Plans comprados se están aprovechando."
+          },
+          {
+            "id": "d",
+            "text": "Un presupuesto de uso con una cantidad fija de horas de instancia al mes",
+            "explanation": "Descartada: limita la cantidad de uso de un servicio y avisa al acercarse o superarla; no mide el aprovechamiento de un plan de ahorro comprado."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-quiz-04",
+      "type": "QUIZ",
+      "title": "Qué tipo de presupuesto detecta Savings Plans sin usar",
+      "statement": "Una empresa compró Savings Plans para su cómputo y quiere recibir una alerta cuando el uso de lo comprado caiga por debajo de un umbral, para detectar compromisos desaprovechados. ¿Qué tipo de presupuesto de AWS Budgets cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Budgets",
+        "Savings Plans",
+        "utilización"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear un presupuesto en AWS Budgets para cada valor distinto de la etiqueta",
+            "explanation": "No cumple: los presupuestos siguen costos y uso con umbrales; no son un paso para que una etiqueta aparezca en los informes."
+          },
+          {
+            "id": "b",
+            "text": "Aplicar la etiqueta a los recursos que se quieren agrupar, por ejemplo con Tag Editor",
+            "explanation": "Cumple: la etiqueta debe estar aplicada a los recursos, y Tag Editor sirve para crear y actualizar etiquetas."
+          },
+          {
+            "id": "c",
+            "text": "Dejar que AWS active la etiqueta sola después de aplicarla a los recursos",
+            "explanation": "No cumple: las etiquetas definidas por el usuario y las generadas por AWS se activan por separado; no se activan automáticamente al aplicarlas."
+          },
+          {
+            "id": "d",
+            "text": "Activar la etiqueta como etiqueta de asignación de costos en la consola de facturación",
+            "explanation": "Cumple: la etiqueta se debe activar en la consola de Billing and Cost Management antes de que aparezca en Cost Explorer o en el informe."
+          },
+          {
+            "id": "e",
+            "text": "Crear una estimación en AWS Pricing Calculator que incluya la clave de la etiqueta",
+            "explanation": "No cumple: las estimaciones modelan costos futuros con los datos que se introducen y no activan etiquetas de asignación de costos."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-quiz-05",
+      "type": "QUIZ",
+      "title": "Selecciona los pasos para que una etiqueta aparezca en el informe de costos",
+      "statement": "Una empresa quiere ver el costo por proyecto en Cost Explorer y en el informe de asignación de costos usando una etiqueta definida por el usuario. Selecciona DOS pasos necesarios para que la etiqueta aparezca.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "etiqueta definida por el usuario",
+        "activación",
+        "informe de asignación de costos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html",
+        "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo las etiquetas definidas por el usuario se activan; las generadas por AWS aparecen siempre",
+            "explanation": "Descartada: las dos clases se deben activar antes de aparecer en Cost Explorer o en un informe de asignación de costos."
+          },
+          {
+            "id": "b",
+            "text": "Las etiquetas generadas por AWS usan el prefijo aws: y las definidas por el usuario aparecen sin activar",
+            "explanation": "Descartada: acierta con el prefijo aws:, pero ninguna clase aparece en los informes sin activarse antes."
+          },
+          {
+            "id": "c",
+            "text": "Existen generadas por AWS y definidas por el usuario, y ambas se activan por separado para aparecer",
+            "explanation": "Es correcto: hay dos tipos de etiquetas de asignación de costos y los dos se activan por separado antes de aparecer en los informes."
+          },
+          {
+            "id": "d",
+            "text": "Existen generadas por AWS y definidas por el usuario, y las dos aparecen al aplicarlas a un recurso",
+            "explanation": "Descartada: reconoce los dos tipos, pero aplicar la etiqueta no basta; hay que activarla en la consola de facturación."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué enunciado describe las etiquetas de asignación de costos",
+      "statement": "Un equipo financiero revisa cómo se organiza el gasto por etiquetas. Hay etiquetas que crea la propia empresa y otras que aplica AWS, y quiere saber cómo se comportan ante los informes de costos. ¿Qué enunciado describe MEJOR las etiquetas de asignación de costos?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "etiqueta generada por AWS",
+        "etiqueta definida por el usuario"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Configurar en AWS Budgets una acción que aplique la política de IAM al alcanzar el umbral",
+            "explanation": "Es correcta: AWS Budgets permite configurar una notificación al 80 % del presupuesto y aplicar una acción, como una política de IAM que deniegue aprovisionar más recursos."
+          },
+          {
+            "id": "b",
+            "text": "Configurar en AWS Budgets una notificación por correo y por Amazon SNS al alcanzar el umbral",
+            "explanation": "Descartada: avisa al equipo, pero la política de IAM tendría que aplicarla una persona; no cumple «automáticamente» con el menor esfuerzo."
+          },
+          {
+            "id": "c",
+            "text": "Crear en AWS Cost Explorer un informe filtrado por servicio y revisarlo al llegar a ese umbral",
+            "explanation": "Descartada: Cost Explorer sirve para ver y analizar costos; no aplica políticas de forma automática al llegar a un umbral."
+          },
+          {
+            "id": "d",
+            "text": "Activar las etiquetas de asignación de costos y filtrar por ellas el gasto de la cuenta",
+            "explanation": "Descartada: las etiquetas agrupan el gasto por categoría, pero no aplican ninguna política al alcanzar un umbral."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-quiz-07",
+      "type": "QUIZ",
+      "title": "Cómo frenar el aprovisionamiento al llegar a un umbral del presupuesto",
+      "statement": "Una empresa quiere que, al llegar al 80 % de su presupuesto mensual, se aplique automáticamente una política de IAM que impida aprovisionar recursos adicionales en la cuenta. ¿Qué configuración cumple el requisito con el MENOR esfuerzo manual?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Budgets",
+        "acción de presupuesto",
+        "IAM"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html",
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Pricing Calculator, exportando la estimación en CSV o PDF para cada cuenta",
+            "explanation": "Descartada: exporta estimaciones de costo creadas con los datos que se introducen, no los datos reales de costo y uso de la cuenta."
+          },
+          {
+            "id": "b",
+            "text": "AWS Data Exports, con una exportación recurrente de CUR 2.0 hacia Amazon S3",
+            "explanation": "Es correcta: Data Exports crea exportaciones recurrentes con SQL básico, columnas y filas a elección, y CUR 2.0 es la forma recomendada de recibir el detalle."
+          },
+          {
+            "id": "c",
+            "text": "AWS Budgets, con un presupuesto de costos por cada cuenta de la empresa",
+            "explanation": "Descartada: AWS Budgets sigue costos y uso con umbrales y avisos; no entrega datos detallados de forma recurrente a Amazon S3."
+          },
+          {
+            "id": "d",
+            "text": "AWS Cost Explorer, usando su interfaz para filtrar el costo de cada cuenta",
+            "explanation": "Descartada: Cost Explorer sirve para ver y analizar los costos en su interfaz; la entrega recurrente a S3 con consultas SQL es la función de Data Exports."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-quiz-08",
+      "type": "QUIZ",
+      "title": "Qué herramienta entrega datos detallados de costo de forma recurrente",
+      "statement": "Una empresa necesita recibir de forma recurrente en Amazon S3 los datos detallados de costo y uso, eligiendo solo las columnas que necesita y sin los cargos de ciertas cuentas, para procesarlos con sus propias consultas SQL. ¿Qué herramienta es la MÁS adecuada?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Data Exports",
+        "CUR 2.0"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/cur/latest/userguide/what-is-data-exports.html",
+        "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-2-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué herramienta de costo usas y cuándo",
+      "statement": "Elige un proyecto que conozcas (por ejemplo, una tienda en línea que migra a AWS) y escribe su control de costos como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué herramienta usarías antes de construir, cuál para analizar el gasto y cuál para avisar al superar un umbral, y cómo repartirías el costo entre equipos con etiquetas.\n\n2) Alternativa descartada: una herramienta tentadora pero equivocada para una de esas necesidades (por ejemplo, usar Cost Explorer para estimar una arquitectura que aún no existe) y la razón por la que la descartaste.\n\n3) Consecuencia: qué trabajo recae en tu equipo (aplicar y activar etiquetas, definir umbrales, revisar avisos que pueden llegar con retraso).\n\n4) Evidencia: qué página oficial de AWS Pricing Calculator, Cost Explorer, Budgets o etiquetas de asignación de costos usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento distinga entre estimar, analizar y avisar. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo elegiste cada herramienta.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "herramientas de costo",
+        "AWS Budgets",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html",
+        "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+        "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+      ],
+      "order": 18
+    }
+  ]
+}
