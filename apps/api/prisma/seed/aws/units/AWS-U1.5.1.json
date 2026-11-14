@@ -1,0 +1,905 @@
+{
+  "code": "AWS-U1.5.1",
+  "lessons": [
+    {
+      "slug": "aws-u1-5-1-simulacros-clf-c02-y-plan-de-refuerzo",
+      "title": "Simulacros CLF-C02 y plan de refuerzo por dominio",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "Para qué sirven los simulacros",
+          "text": "Esta unidad no enseña un servicio nuevo: te enseña a medir lo que ya estudiaste en los cuatro dominios de CLF-C02 y a decidir qué reforzar. La guía de examen presenta CLF-C02 como un examen que valida un conocimiento general de la nube de AWS, independiente de un rol concreto. Tiene cuatro dominios: «Cloud Concepts», «Security and Compliance», «Cloud Technology and Services» y «Billing, Pricing, and Support». Un simulacro te da un porcentaje de aciertos por dominio, y ese desglose es la base de tu plan de refuerzo."
+        },
+        {
+          "type": "list",
+          "title": "Cómo es el examen real según la guía",
+          "items": [
+            "Hay dos tipos de pregunta: de opción múltiple (una respuesta correcta y tres distractores) y de respuesta múltiple (dos o más respuestas correctas entre cinco o más opciones).",
+            "Los distractores son respuestas plausibles que elegiría alguien con un conocimiento incompleto del tema.",
+            "Las preguntas sin responder se puntúan como incorrectas y no hay penalización por adivinar.",
+            "El examen incluye preguntas sin puntuar que no se identifican, y AWS las usa para evaluar preguntas futuras.",
+            "El resultado es aprobado o no aprobado, y el modelo de puntuación es compensatorio: no hace falta superar cada sección, solo el examen en conjunto.",
+            "El desglose por sección es una pista de tus fortalezas y debilidades, y la guía pide interpretarlo con cautela."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "El simulador de la plataforma",
+          "text": "El simulador está en /learn/exams/CLF-C02 y ofrece varias formas de practicar. Las formas A, B y C son simulacros completos fijos, con preguntas que no aparecen en las unidades. El simulacro aleatorio arma un examen con preguntas del banco reservado que no viste en tus últimos intentos. El bloque por dominio es una serie de 20 preguntas de un solo dominio (si el dominio tiene entre 15 y 19, salen todas), útil para reforzar donde fallas. En todos los casos el cronómetro corre en el servidor, no recibes retroalimentación hasta entregar, puedes marcar preguntas para revisarlas, ves una pantalla de revisión antes de entregar y puedes activar los 30 minutos adicionales opcionales."
+        },
+        {
+          "type": "mermaid",
+          "title": "El ciclo de preparación",
+          "code": "flowchart LR\n  A[\"Simulacro: forma A, B o C, aleatorio o bloque por dominio\"] --> B[\"Informe por dominio: porcentaje de aciertos\"]\n  B --> C{\"¿Algún dominio flojo?\"}\n  C -->|\"Sí\"| D[\"Plan de refuerzo: unidad del concepto y repaso de las falladas\"]\n  D --> E[\"Bloque por dominio\"]\n  E --> B\n  C -->|\"No\"| F[\"Otra forma distinta\"]\n  F --> G[\"Panel listo para presentar\"]"
+        },
+        {
+          "type": "list",
+          "title": "Cómo leer el informe y el panel",
+          "items": [
+            "El informe por dominio muestra el porcentaje de aciertos global y por dominio, sin puntuación escalada inventada; la respuesta múltiple se corrige todo o nada.",
+            "Cada pregunta fallada muestra la explicación de cada opción, enlaza a la unidad del concepto y entra en el repaso con prioridad alta.",
+            "El panel «listo para presentar» no responde solo sí o no: muestra cada criterio con su estado (cumplido, falta o aún no disponible) y lo que falta.",
+            "Para el criterio de simulacros cuentan solo las formas fijas A, B y C entregadas y revisadas por una persona, con el mínimo de aciertos y el suelo por dominio que indica el panel; el aleatorio y el bloque por dominio entrenan, pero no cuentan.",
+            "El criterio de evidencia profesional todavía figura como «aún no disponible», así que de momento nadie sale marcado como listo."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de un informe a un plan",
+          "text": "Una persona entrega la forma A y su informe muestra buen resultado en «Cloud Concepts» y en «Billing, Pricing, and Support», un resultado medio en «Cloud Technology and Services» y el más bajo en «Security and Compliance». Su plan: primero abre las unidades enlazadas desde las preguntas falladas y las repasa; después hace un bloque por dominio de «Security and Compliance» y de «Cloud Technology and Services»; solo entonces entrega otra forma distinta, para comprobar si mejoró con preguntas que no ha visto. En el panel «listo para presentar» revisa qué criterio falta, y usa el desglose de una sola sección para priorizar el repaso, porque la guía advierte que hay que interpretarlo con cautela."
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué cubre y qué no cubre el examen",
+          "text": "La guía describe un candidato con hasta seis meses de exposición al diseño, la implementación o la operación en la nube de AWS. Declara fuera de alcance, entre otras, estas tareas: programar, diseñar arquitecturas en la nube, resolver averías, implementar y hacer pruebas de carga y rendimiento. Además, su sección de referencias de servicios incluye la lista de servicios dentro del alcance, la lista de servicios fuera del alcance y las tecnologías y conceptos. Consúltala antes de dedicar horas a un servicio que no sepas si entra."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el distractor plausible",
+          "text": "En CLF-C02 los distractores son respuestas razonables para quien conoce el tema a medias. Antes de elegir, localiza la restricción y el calificador de la pregunta (por ejemplo, MEJOR, MÁS o ÚNICAMENTE) y descarta cada opción nombrando la restricción que incumple. En respuesta múltiple, comprueba que eliges exactamente las opciones que se piden."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: dar por perdido un dominio por un solo mal resultado",
+          "text": "Causa: leer el porcentaje de una sección como un suspenso, cuando el examen es compensatorio y la guía pide cautela con el desglose por sección. Consecuencia: abandonas un dominio entero o, al contrario, te obsesionas con él y descuidas los demás. Solución: usa el informe por dominio para priorizar el repaso, trabaja las preguntas falladas con su explicación y confirma la mejora con un bloque por dominio y con otra forma distinta."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: repetir la misma forma hasta recordar las respuestas",
+          "text": "Causa: volver a hacer la forma A porque ya sabes cómo salió. Consecuencia: el porcentaje sube por memoria y no por comprensión, y el criterio de simulacros del panel pide formas distintas. Solución: tras reforzar, haz una forma que no hayas visto y deja el bloque por dominio para entrenar un tema concreto."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: dejar preguntas sin responder",
+          "text": "Causa: creer que una respuesta fallada resta puntos. Consecuencia: las preguntas sin responder se puntúan como incorrectas, de modo que dejarlas vacías nunca te beneficia. Solución: responde todas, marca para revisar las dudosas y usa la pantalla de revisión antes de entregar."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Resolver simulacros de CLF-C02 con las condiciones del examen y elaborar un plan de refuerzo por dominio a partir del informe. Esta unidad prepara el examen CLF-C02 y repasa sus cuatro dominios (Cloud Concepts, Security and Compliance, Cloud Technology and Services, Billing, Pricing, and Support). Criterio: dado un informe por dominio, nombras el dominio más débil, el modo de simulador que usarás después y qué dice el panel «listo para presentar» que falta."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo del informe tapando el plan: ante el desglose por dominio, decide qué unidades repasar, qué bloque por dominio hacer y cuándo entregar otra forma distinta. Después responde de memoria: qué dos tipos de pregunta tiene el examen, qué significa que la puntuación sea compensatoria y qué hace cada forma del simulador."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Entra en /learn/exams/CLF-C02 y haz un simulacro completo con la forma A, con cronómetro y sin retroalimentación. Marca para revisar las dudosas y repásalas en la pantalla de revisión antes de entregar. Criterio de paso: entregas la forma completa y abres el informe por dominio."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin ayuda: elige tu dominio más débil del informe y haz un bloque por dominio de ese dominio. Para cada pregunta fallada, abre la unidad enlazada y escribe qué restricción pasaste por alto. Criterio de paso: puedes explicar cada fallo con la restricción o el calificador de la pregunta."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente un plan de estudio a partir de tu informe y contrástalo con la guía de examen (leída el 2026-11-13) y con el propio informe: comprueba que respeta los cuatro dominios, que no declara obligatorio superar cada sección por separado y que no incluye tareas que la guía declara fuera de alcance. Decide qué aceptas, qué corriges y qué descartas."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de repaso transversal de la unidad. Antes de elegir, escribe el dominio de cada pregunta y su calificador; al corregir, lee la explicación de cada opción. Criterio de paso: al menos 6 de 8 correctas; si fallas más, repasa la unidad del dominio que corresponda."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Con tu informe real, completa la reflexión de la unidad: un plan de refuerzo con un dominio prioritario, la unidad que repasarás, el modo de simulador que usarás y la fecha de la siguiente forma distinta. Pregunta de cierre: un compañero dice que «con un 40 % en un dominio ya no puede aprobar»; ¿qué le respondes según la guía de examen y qué le recomiendas hacer con ese resultado?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 0,
+          "note": "Guía de CLF-C02: dominios, tipos de pregunta, puntuación compensatoria, alcance y referencias de servicios."
+        },
+        {
+          "resourceSlug": "aws-certification-cloud-practitioner",
+          "order": 1,
+          "note": "Página de la certificación: qué valida AWS Certified Cloud Practitioner y a quién se dirige."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Opción múltiple: una respuesta correcta y tres distractores. Respuesta múltiple: dos o más correctas entre cinco o más opciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los dos tipos de pregunta",
+      "statement": "¿Qué dos tipos de pregunta tiene CLF-C02?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "tipos de pregunta",
+        "distractor"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cloud Concepts, Security and Compliance, Cloud Technology and Services, y Billing, Pricing, and Support. Cloud Technology and Services tiene el mayor peso y Billing, Pricing, and Support el menor."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los cuatro dominios",
+      "statement": "¿Cuáles son los cuatro dominios de CLF-C02 y cuál pesa más?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "dominios",
+        "pesos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "No hace falta superar cada sección: solo el examen en conjunto. El desglose por sección es una pista y la guía pide interpretarlo con cautela."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Puntuación compensatoria",
+      "statement": "¿Qué significa que la puntuación de CLF-C02 sea compensatoria?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "puntuación compensatoria",
+        "desglose por sección"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una pregunta sin responder se puntúa como incorrecta y no hay penalización por adivinar. Además, hay preguntas sin puntuar que no se identifican."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Preguntas sin responder",
+      "statement": "¿Cómo puntúa el examen una pregunta sin responder y qué pasa con adivinar?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "preguntas sin responder",
+        "preguntas sin puntuar"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un conocimiento básico y de alto nivel de la nube de AWS, de sus servicios y de su terminología. Es un punto de partida para quien no tiene experiencia previa en TI o en la nube."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué valida la certificación",
+      "statement": "¿Qué valida AWS Certified Cloud Practitioner?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Cloud Practitioner",
+        "certificación fundacional"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://aws.amazon.com/certification/certified-cloud-practitioner/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Hasta seis meses de exposición a AWS. Fuera de alcance: programar, diseñar arquitecturas en la nube, resolver averías, implementar y hacer pruebas de carga y rendimiento."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Candidato objetivo y fuera de alcance",
+      "statement": "¿Qué experiencia supone la guía y qué tareas declara fuera de alcance?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "candidato objetivo",
+        "fuera de alcance"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dominio 2: Security and Compliance",
+            "explanation": "Descartada: este dominio agrupa el modelo de responsabilidad compartida y los conceptos de seguridad, no el valor de la nube."
+          },
+          {
+            "id": "b",
+            "text": "Dominio 4: Billing, Pricing, and Support",
+            "explanation": "Descartada: trata de precios, facturación y soporte, no de explicar los beneficios generales de la nube."
+          },
+          {
+            "id": "c",
+            "text": "Dominio 1: Cloud Concepts",
+            "explanation": "Es el dominio de conceptos de la nube, donde encaja explicar su valor y sus beneficios."
+          },
+          {
+            "id": "d",
+            "text": "Dominio 3: Cloud Technology and Services",
+            "explanation": "Descartada: este dominio posiciona servicios concretos, y la capacidad pedida es conceptual y no de servicios."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-quiz-01",
+      "type": "QUIZ",
+      "title": "A qué dominio pertenece explicar el valor de la nube",
+      "statement": "Una persona de ventas debe explicar a un cliente el valor de la nube de AWS y se prepara para CLF-C02. Quiere reforzar ÚNICAMENTE el dominio en el que se enmarca esa capacidad. ¿Qué dominio le corresponde?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "dominios",
+        "Cloud Concepts"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Explicar el valor de la nube de AWS a la dirección de la empresa",
+            "explanation": "No cumple: explicar el valor de la nube es una capacidad de conceptos de la nube, no de seguridad y cumplimiento."
+          },
+          {
+            "id": "b",
+            "text": "Entender el modelo de responsabilidad compartida de AWS",
+            "explanation": "Cumple: el modelo de responsabilidad compartida es una capacidad de seguridad y cumplimiento que valida la guía."
+          },
+          {
+            "id": "c",
+            "text": "Comparar los modelos de precio que ofrece AWS para el cómputo",
+            "explanation": "No cumple: comparar modelos de precio pertenece al dominio de facturación, precios y soporte."
+          },
+          {
+            "id": "d",
+            "text": "Entender las buenas prácticas de seguridad en la nube de AWS",
+            "explanation": "Cumple: entender las buenas prácticas de seguridad es una capacidad que la guía valida en seguridad y cumplimiento."
+          },
+          {
+            "id": "e",
+            "text": "Describir y posicionar servicios de cómputo, red y almacenamiento",
+            "explanation": "No cumple: posicionar servicios de cómputo, red y almacenamiento es el dominio de tecnología y servicios de la nube."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-quiz-02",
+      "type": "QUIZ",
+      "title": "Selecciona las actividades del dominio de seguridad y cumplimiento",
+      "statement": "Un candidato clasifica lo que valida la guía de CLF-C02 por dominios. Selecciona DOS actividades que pertenecen al dominio «Security and Compliance».",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Security and Compliance",
+        "responsabilidad compartida"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Describir y posicionar servicios centrales de cómputo, red, base de datos y almacenamiento",
+            "explanation": "Es la actividad de este dominio: la guía valida describir y posicionar los servicios centrales de AWS."
+          },
+          {
+            "id": "b",
+            "text": "Entender el modelo de responsabilidad compartida entre AWS y el cliente",
+            "explanation": "Descartada: la responsabilidad compartida es una capacidad del dominio de seguridad y cumplimiento."
+          },
+          {
+            "id": "c",
+            "text": "Explicar el valor de la nube de AWS a un público no técnico y a la dirección",
+            "explanation": "Descartada: explicar el valor de la nube es una capacidad del dominio de conceptos de la nube."
+          },
+          {
+            "id": "d",
+            "text": "Comparar los modelos de precio y las opciones de soporte que ofrece AWS",
+            "explanation": "Descartada: precios y soporte pertenecen al dominio de facturación, precios y soporte."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué actividad es del dominio de tecnología y servicios",
+      "statement": "Una persona refuerza el dominio «Cloud Technology and Services» de CLF-C02 y revisa una lista de actividades de estudio. ¿Qué actividad pertenece ÚNICAMENTE a ese dominio?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Cloud Technology and Services",
+        "servicios centrales"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dominio 1: Cloud Concepts",
+            "explanation": "Descartada: pesa más que el dominio de facturación, precios y soporte, así que no es el de menor peso."
+          },
+          {
+            "id": "b",
+            "text": "Dominio 2: Security and Compliance",
+            "explanation": "Descartada: es uno de los dominios de mayor peso, no el de menor."
+          },
+          {
+            "id": "c",
+            "text": "Dominio 3: Cloud Technology and Services",
+            "explanation": "Descartada: es el dominio de mayor peso en la guía, lo contrario del pedido."
+          },
+          {
+            "id": "d",
+            "text": "Dominio 4: Billing, Pricing, and Support",
+            "explanation": "Es el dominio de menor peso en el contenido puntuado según la guía."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-quiz-04",
+      "type": "QUIZ",
+      "title": "Qué dominio tiene el menor peso",
+      "statement": "Una persona reparte sus horas de estudio entre los cuatro dominios de CLF-C02 según el peso de cada uno en el contenido puntuado de la guía. ¿Qué dominio tiene el MENOR peso?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "pesos de los dominios",
+        "Billing, Pricing, and Support"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Es cierto: debe alcanzar la puntuación de aprobado en cada dominio por separado",
+            "explanation": "Descartada: el modelo es compensatorio, así que no se exige superar cada sección."
+          },
+          {
+            "id": "b",
+            "text": "Es falso: el modelo es compensatorio y basta con aprobar el examen en conjunto",
+            "explanation": "Es acertada: con puntuación compensatoria solo importa el examen en conjunto, y el desglose por sección orienta el repaso."
+          },
+          {
+            "id": "c",
+            "text": "Es cierto: cada dominio se califica por separado y el peor decide el resultado",
+            "explanation": "Descartada: ningún dominio decide por sí solo el resultado, que se calcula sobre el examen completo."
+          },
+          {
+            "id": "d",
+            "text": "Es falso: los dominios no influyen en la puntuación final del examen",
+            "explanation": "Descartada: cada sección tiene un peso específico, así que los dominios sí influyen en el resultado."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-quiz-05",
+      "type": "QUIZ",
+      "title": "Interpretar un mal resultado en seguridad y cumplimiento",
+      "statement": "Tras un simulacro, el informe por dominio de una persona muestra su peor resultado en «Security and Compliance». Ella afirma que, en el examen real, no podrá aprobar sin superar ese dominio por separado. Según la guía de examen, ¿qué respuesta es MÁS acertada?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "puntuación compensatoria",
+        "informe por dominio"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dejarla vacía para evitar que un error te penalice en la puntuación final",
+            "explanation": "Descartada: no hay penalización por adivinar, así que dejarla vacía no evita ningún descuento."
+          },
+          {
+            "id": "b",
+            "text": "Dejarla vacía porque las preguntas sin responder no entran en la puntuación",
+            "explanation": "Descartada: las preguntas sin responder se puntúan como incorrectas, así que sí cuentan."
+          },
+          {
+            "id": "c",
+            "text": "Responderla con la opción más probable en lugar de dejarla vacía",
+            "explanation": "Es la mejor: una pregunta sin responder cuenta como incorrecta y adivinar no se penaliza."
+          },
+          {
+            "id": "d",
+            "text": "Marcarla para revisar y entregar el examen sin haberla respondido",
+            "explanation": "Descartada: marcarla no la responde, y una pregunta sin responder se puntúa como incorrecta."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-quiz-06",
+      "type": "QUIZ",
+      "title": "Una pregunta de servicios que no sabes resolver",
+      "statement": "En un bloque del simulacro sobre «Cloud Technology and Services» aparece una pregunta cuya respuesta no conoces y ya queda poco tiempo. Según el sistema de puntuación de la guía, ¿qué estrategia es MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "preguntas sin responder",
+        "estrategia de examen"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Diseñar la arquitectura de una solución en la nube de AWS",
+            "explanation": "Es la tarea fuera de alcance: la guía excluye el diseño de arquitecturas en la nube."
+          },
+          {
+            "id": "b",
+            "text": "Explicar el valor de la nube de AWS a otras personas",
+            "explanation": "Descartada: explicar el valor de la nube es una capacidad que la guía valida, no una tarea fuera de alcance."
+          },
+          {
+            "id": "c",
+            "text": "Entender el modelo de responsabilidad compartida de AWS",
+            "explanation": "Descartada: es una capacidad que valida la guía, así que no está fuera de alcance."
+          },
+          {
+            "id": "d",
+            "text": "Identificar servicios de AWS para casos de uso comunes",
+            "explanation": "Descartada: identificar servicios para casos de uso comunes es una capacidad que valida el examen."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-quiz-07",
+      "type": "QUIZ",
+      "title": "Qué actividad queda fuera de alcance",
+      "statement": "Una persona prepara el dominio «Cloud Concepts» y ordena actividades de estudio. La guía de CLF-C02 declara fuera de alcance ciertas tareas para el candidato objetivo. ¿Qué actividad figura ÚNICAMENTE entre las tareas fuera de alcance?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "fuera de alcance",
+        "candidato objetivo"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "En la lista de servicios fuera del alcance de la guía de examen",
+            "explanation": "Descartada: esa lista dice qué servicios no entran, no confirma cuáles sí entran."
+          },
+          {
+            "id": "b",
+            "text": "En la lista de servicios dentro del alcance de la guía de examen",
+            "explanation": "Es la correcta: la guía incluye una lista de servicios dentro del alcance del examen."
+          },
+          {
+            "id": "c",
+            "text": "En la sección de tecnologías y conceptos de la guía de examen",
+            "explanation": "Descartada: esa sección recoge tecnologías y conceptos, no la lista de servicios dentro del alcance."
+          },
+          {
+            "id": "d",
+            "text": "En el informe por dominio de su último simulacro en la plataforma",
+            "explanation": "Descartada: el informe muestra aciertos por dominio, no el alcance oficial del examen."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-quiz-08",
+      "type": "QUIZ",
+      "title": "Dónde comprobar si un servicio entra en el examen",
+      "statement": "Antes de reforzar «Billing, Pricing, and Support», una persona quiere saber si un servicio concreto de facturación está dentro del alcance de CLF-C02. ¿Dónde puede comprobarlo MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "referencias de servicios",
+        "servicios dentro del alcance"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-5-1-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: mi plan de refuerzo por dominio",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "concepts": [
+        "plan de refuerzo",
+        "informe por dominio",
+        "simulacro"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html"
+      ],
+      "statement": "Con el informe por dominio de tu último simulacro de CLF-C02, escribe tu plan de refuerzo como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué dominio refuerzas primero, qué unidades repasas y qué modo del simulador usarás después (bloque por dominio, otra forma distinta o simulacro aleatorio).\n\n2) Alternativa descartada: otro camino tentador (por ejemplo, repetir la misma forma o dar un dominio por perdido) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué dejas de estudiar o aplazas por esta decisión y cuándo harás la siguiente forma.\n\n4) Evidencia: qué dato del informe y qué apartado de la guía de examen (por ejemplo, la puntuación compensatoria o el alcance) respaldan tu elección.\n\nNo hay una única respuesta correcta: cuenta que el plan nombre el dominio, el criterio y la fecha. Escríbelo con tus palabras y vuelve a leerlo antes de tu próximo simulacro.",
+      "order": 15
+    }
+  ]
+}
