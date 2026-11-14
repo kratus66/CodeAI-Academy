@@ -1,0 +1,1175 @@
+{
+  "certification": "CLF-C02",
+  "domain": 3,
+  "questions": [
+    {
+      "unitCode": "AWS-U1.3.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Repetir en la Consola de administración, Región por Región, los pasos de creación de cada recurso",
+              "explanation": "Descartada: cada repetición manual depende de quien siga los pasos y nada garantiza que la configuración resulte idéntica en las tres Regiones."
+            },
+            {
+              "id": "b",
+              "text": "Ejecutar a mano la misma serie de comandos de la AWS CLI en cada Región, copiándolos desde unas notas",
+              "explanation": "Descartada: la CLI actúa sobre recursos concretos con comandos que alguien lanza, y no describe el entorno completo en un archivo reutilizable."
+            },
+            {
+              "id": "c",
+              "text": "Describir los recursos una sola vez en una plantilla de CloudFormation y crear un stack con ella en cada Región",
+              "explanation": "Cumple: una misma plantilla se reutiliza para aprovisionar los mismos recursos de forma consistente y repetible en varias Regiones."
+            },
+            {
+              "id": "d",
+              "text": "Crear los recursos en una Región y consultar sus ajustes en la consola para reproducirlos en las demás",
+              "explanation": "Descartada: reproducir ajustes leídos en pantalla es un proceso manual y no un archivo que se pueda reutilizar tal cual en cada Región."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C1"
+        ],
+        "slug": "clf-c02-r-d3-c-01",
+        "type": "QUIZ",
+        "title": "Crear el mismo entorno en tres Regiones",
+        "statement": "Una empresa de comercio electrónico debe crear el mismo entorno de recursos en tres Regiones de AWS y obtener en todas ellas exactamente la misma configuración. ¿Qué enfoque cubre MEJOR esa exigencia?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "infraestructura como código",
+          "plantillas de CloudFormation"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html",
+          "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html"
+        ],
+        "order": 1201
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "La sección Parameters devuelve los identificadores y las direcciones de los recursos una vez creado el stack",
+              "explanation": "Descartada: los valores que se devuelven al consultar las propiedades de un stack pertenecen a la sección Outputs, no a Parameters."
+            },
+            {
+              "id": "b",
+              "text": "La sección Parameters permite personalizar los valores de la plantilla sin modificar el archivo",
+              "explanation": "Cumple: los parámetros se referencian en Resources y Outputs y permiten personalizar la plantilla sin tocarla."
+            },
+            {
+              "id": "c",
+              "text": "La sección Mappings registra qué persona cambió la plantilla y en qué fecha",
+              "explanation": "Descartada: Mappings funciona como una tabla de consulta de pares clave-valor; el historial de cambios lo da un sistema de control de versiones."
+            },
+            {
+              "id": "d",
+              "text": "La sección Conditions controla si se crean ciertos recursos según, por ejemplo, el tipo de entorno",
+              "explanation": "Cumple: Conditions decide si se crea un recurso o se asigna una propiedad según condiciones como el tipo de entorno."
+            },
+            {
+              "id": "e",
+              "text": "La sección Outputs enumera los recursos que CloudFormation aprovisiona y las propiedades de cada uno",
+              "explanation": "Descartada: los recursos y sus propiedades se describen en la plantilla; Outputs solo define los valores que se devuelven del stack."
+            }
+          ]
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C1"
+        ],
+        "slug": "clf-c02-r-d3-c-02",
+        "type": "QUIZ",
+        "title": "Dos afirmaciones correctas sobre las secciones de una plantilla",
+        "statement": "Un equipo escribe una plantilla de CloudFormation para varios entornos. Selecciona DOS afirmaciones correctas sobre las secciones de una plantilla.",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "secciones de plantilla",
+          "Parameters y Conditions"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html",
+          "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html"
+        ],
+        "order": 1202
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon EC2 Auto Scaling, que aumenta o reduce el número de instancias según cambia la demanda",
+              "explanation": "Cumple: EC2 Auto Scaling mantiene el número deseado de instancias y las aumenta o reduce automáticamente cuando cambia la demanda."
+            },
+            {
+              "id": "b",
+              "text": "Elastic Load Balancing, que reparte el tráfico entrante entre los destinos registrados",
+              "explanation": "Descartada: el balanceador distribuye el tráfico entre instancias que ya existen, pero no cambia por sí solo cuántas instancias hay."
+            },
+            {
+              "id": "c",
+              "text": "Amazon CloudFront, que entrega el contenido desde ubicaciones de borde cercanas a los usuarios",
+              "explanation": "Descartada: CloudFront acerca el contenido a los usuarios y no aumenta ni reduce el número de instancias de EC2."
+            },
+            {
+              "id": "d",
+              "text": "Amazon Route 53, que dirige a los usuarios hacia los recursos de un dominio mediante DNS",
+              "explanation": "Descartada: Route 53 enruta el tráfico por DNS y no añade ni quita instancias cuando cambia la demanda."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C4"
+        ],
+        "slug": "clf-c02-r-d3-c-03",
+        "type": "QUIZ",
+        "title": "Ajustar el número de instancias a la demanda",
+        "statement": "Una tienda en línea recibe picos de visitas en sus campañas y mucha menos carga el resto del tiempo. Quiere que el número de instancias de Amazon EC2 aumente y disminuya de forma automática según la demanda. ¿Qué servicio aporta esa elasticidad MEJOR?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "EC2 Auto Scaling",
+          "elasticidad"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+          "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html",
+          "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html"
+        ],
+        "order": 1203
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Registra los nombres de dominio de la aplicación y los renueva cada año",
+              "explanation": "Descartada: registrar dominios es una de las funciones principales de Amazon Route 53 y no del balanceador de carga."
+            },
+            {
+              "id": "b",
+              "text": "Comprueba el estado de los destinos registrados y envía el tráfico solo a los que están sanos",
+              "explanation": "Cumple: el balanceador monitoriza la salud de sus destinos registrados y enruta el tráfico únicamente a los sanos."
+            },
+            {
+              "id": "c",
+              "text": "Entrega copias del contenido de la aplicación desde ubicaciones de borde cercanas a los usuarios",
+              "explanation": "Descartada: entregar contenido desde ubicaciones de borde es función de Amazon CloudFront, no del balanceador."
+            },
+            {
+              "id": "d",
+              "text": "Recibe como destinos las instancias que lanza Auto Scaling sin que alguien las registre a mano",
+              "explanation": "Cumple: con Auto Scaling habilitado junto al balanceador, las instancias que lanza se registran con él de forma automática."
+            },
+            {
+              "id": "e",
+              "text": "Guarda copias puntuales de los volúmenes de las instancias para restaurarlos después",
+              "explanation": "Descartada: las copias puntuales de volúmenes son snapshots de Amazon EBS y no una función del balanceador."
+            }
+          ]
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "slug": "clf-c02-r-d3-c-04",
+        "type": "QUIZ",
+        "title": "Dos afirmaciones sobre Elastic Load Balancing con Auto Scaling",
+        "statement": "Una empresa usa Elastic Load Balancing junto con Amazon EC2 Auto Scaling para su aplicación web. Selecciona DOS afirmaciones correctas sobre el balanceador de carga.",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Elastic Load Balancing",
+          "comprobaciones de estado"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+          "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+          "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+          "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html"
+        ],
+        "order": 1204
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon DynamoDB, con tablas NoSQL de clave-valor sin servidor",
+              "explanation": "Descartada: DynamoDB es una base NoSQL pensada para aplicaciones y no un almacén de datos para análisis con SQL a escala de petabytes."
+            },
+            {
+              "id": "b",
+              "text": "Amazon ElastiCache, con un almacén distribuido que guarda los datos en memoria",
+              "explanation": "Descartada: ElastiCache es un almacén en memoria para acelerar el acceso y no guarda el histórico completo para analizarlo con SQL."
+            },
+            {
+              "id": "c",
+              "text": "Amazon RDS, con instancias administradas de motores de base de datos relacionales",
+              "explanation": "Descartada: RDS administra bases relacionales para aplicaciones y no es el almacén de datos de escala de petabytes que se pide."
+            },
+            {
+              "id": "d",
+              "text": "Amazon Redshift, con un almacén de datos en la nube y consultas con las herramientas de SQL habituales",
+              "explanation": "Cumple: Redshift es un servicio de almacén de datos a escala de petabytes que se consulta con SQL y con herramientas de inteligencia empresarial."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "slug": "clf-c02-r-d3-c-05",
+        "type": "QUIZ",
+        "title": "Analizar un histórico creciente con SQL y herramientas de inteligencia empresarial",
+        "statement": "Un equipo de análisis quiere ejecutar consultas SQL desde sus herramientas de inteligencia empresarial sobre un histórico de ventas que crecerá hasta petabytes. ¿Qué servicio encaja MEJOR?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Amazon Redshift",
+          "almacén de datos"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html",
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+          "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html"
+        ],
+        "order": 1205
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "c"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Es un motor relacional administrado compatible con MySQL y con PostgreSQL",
+              "explanation": "Cumple: Aurora es un motor relacional totalmente administrado compatible con MySQL y PostgreSQL, y las herramientas de esos motores sirven con él."
+            },
+            {
+              "id": "b",
+              "text": "Es una base NoSQL sin servidor de clave-valor con rendimiento de milisegundos de un dígito",
+              "explanation": "Descartada: esa descripción corresponde a Amazon DynamoDB, mientras que Aurora es un motor relacional."
+            },
+            {
+              "id": "c",
+              "text": "Su almacenamiento subyacente crece de forma automática a medida que hace falta",
+              "explanation": "Cumple: el almacenamiento subyacente de Aurora crece automáticamente según se necesita."
+            },
+            {
+              "id": "d",
+              "text": "Es un almacén en memoria distribuido que funciona con Valkey y con Memcached",
+              "explanation": "Descartada: Valkey y Memcached son motores de Amazon ElastiCache y no tienen relación con Aurora."
+            },
+            {
+              "id": "e",
+              "text": "Es un almacén de datos a escala de petabytes pensado para análisis con SQL",
+              "explanation": "Descartada: esa descripción corresponde a Amazon Redshift y no a un motor relacional como Aurora."
+            }
+          ]
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "slug": "clf-c02-r-d3-c-06",
+        "type": "QUIZ",
+        "title": "Dos afirmaciones correctas sobre Amazon Aurora",
+        "statement": "Una empresa evalúa Amazon Aurora para migrar sus bases de datos de MySQL. Selecciona DOS afirmaciones correctas sobre Aurora.",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Amazon Aurora",
+          "bases de datos relacionales"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html",
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+          "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+          "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+        ],
+        "order": 1206
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon Route 53, con comprobaciones de estado de los recursos del dominio",
+              "explanation": "Descartada: Route 53 resuelve nombres y comprueba recursos, pero no entrega el contenido desde ubicaciones cercanas a cada usuario."
+            },
+            {
+              "id": "b",
+              "text": "Amazon CloudFront, con una red mundial de ubicaciones de borde que entrega el contenido",
+              "explanation": "Cumple: CloudFront entrega contenido estático y dinámico desde la ubicación de borde que ofrece menor latencia al usuario."
+            },
+            {
+              "id": "c",
+              "text": "AWS Direct Connect, con una conexión dedicada desde la red local de la empresa",
+              "explanation": "Descartada: Direct Connect enlaza una red local con AWS y no acerca el contenido a los usuarios de varios países."
+            },
+            {
+              "id": "d",
+              "text": "Elastic Load Balancing, con un reparto del tráfico entre los destinos registrados",
+              "explanation": "Descartada: el balanceador distribuye peticiones entre destinos y no copia el contenido a ubicaciones cercanas a los usuarios."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.5",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "slug": "clf-c02-r-d3-c-07",
+        "type": "QUIZ",
+        "title": "Acercar contenido de un bucket a usuarios de varios países",
+        "statement": "Una empresa sirve imágenes y archivos JavaScript desde un bucket de Amazon S3 a usuarios de varios países, y estos notan una carga lenta. Quiere acercar ese contenido a los usuarios para reducir la latencia. ¿Qué servicio encaja MEJOR?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Amazon CloudFront",
+          "ubicaciones de borde"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+          "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+          "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+          "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+        ],
+        "order": 1207
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 3,
+          "correctOptionIds": [
+            "a",
+            "c",
+            "f"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Registrar el nombre de dominio de un sitio web",
+              "explanation": "Cumple: el registro de dominios es una de las tres funciones principales de Route 53."
+            },
+            {
+              "id": "b",
+              "text": "Entregar contenido estático y dinámico desde ubicaciones de borde",
+              "explanation": "Descartada: entregar contenido desde ubicaciones de borde es función de Amazon CloudFront."
+            },
+            {
+              "id": "c",
+              "text": "Enrutar el tráfico de internet hacia los recursos de un dominio",
+              "explanation": "Cumple: el enrutamiento DNS conecta el navegador con el sitio o la aplicación y es otra de las funciones principales."
+            },
+            {
+              "id": "d",
+              "text": "Conectar la red local con AWS mediante una conexión dedicada",
+              "explanation": "Descartada: la conexión dedicada con la red local es función de AWS Direct Connect."
+            },
+            {
+              "id": "e",
+              "text": "Repartir las peticiones entre varios destinos registrados en una VPC",
+              "explanation": "Descartada: repartir peticiones entre destinos es función de Elastic Load Balancing."
+            },
+            {
+              "id": "f",
+              "text": "Comprobar que los recursos están disponibles y funcionan",
+              "explanation": "Cumple: las comprobaciones de estado verifican que un recurso es alcanzable y funcional, y es la tercera función principal."
+            }
+          ]
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.5",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "slug": "clf-c02-r-d3-c-08",
+        "type": "QUIZ",
+        "title": "Tres funciones principales de Amazon Route 53",
+        "statement": "Una empresa quiere usar Amazon Route 53 para su sitio web. Selecciona TRES funciones principales del servicio.",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Amazon Route 53",
+          "DNS"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+          "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+          "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+          "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+        ],
+        "order": 1208
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un rango mayor que el de la VPC, para poder agrupar varias VPC en una subred",
+              "explanation": "Descartada: una subred es un rango de direcciones dentro de la VPC, así que no puede abarcar más que ella."
+            },
+            {
+              "id": "b",
+              "text": "Un rango propio sin relación con el de la VPC, que se enlaza después mediante una tabla de rutas",
+              "explanation": "Descartada: las tablas de rutas dirigen el tráfico, pero el rango de una subred debe salir del bloque de su VPC."
+            },
+            {
+              "id": "c",
+              "text": "Un subconjunto del bloque CIDR de la VPC, con el que se reparten sus direcciones entre las subredes",
+              "explanation": "Cumple: para crear varias subredes, el bloque de cada una es un subconjunto del bloque de la VPC."
+            },
+            {
+              "id": "d",
+              "text": "El mismo bloque CIDR de la VPC, repetido en cada una de las subredes que se creen",
+              "explanation": "Descartada: el bloque de la subred solo coincide con el de la VPC cuando se crea una única subred, no varias."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.5",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "slug": "clf-c02-r-d3-c-09",
+        "type": "QUIZ",
+        "title": "Bloque CIDR de las subredes de una VPC",
+        "statement": "Un equipo define una VPC con un bloque CIDR y quiere crear varias subredes dentro de ella. ¿Qué descripción del bloque CIDR de cada subred es la MÁS exacta?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "subredes",
+          "bloques CIDR"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+          "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html"
+        ],
+        "order": 1209
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Backup, con planes de respaldo que se aplican a recursos de varios servicios",
+              "explanation": "Cumple: AWS Backup centraliza y automatiza la protección de datos, con planes de respaldo que se aplican a recursos de varios servicios, incluso por etiquetas."
+            },
+            {
+              "id": "b",
+              "text": "Amazon EBS, con copias puntuales de un volumen de bloques conectado a una instancia",
+              "explanation": "Descartada: los snapshots de EBS protegen volúmenes concretos y no son una política única para varios servicios."
+            },
+            {
+              "id": "c",
+              "text": "S3 Glacier Deep Archive, con una clase de almacenamiento pensada para archivo",
+              "explanation": "Descartada: es una clase de almacenamiento de S3 y no un servicio que defina políticas de respaldo para varios servicios."
+            },
+            {
+              "id": "d",
+              "text": "Amazon EFS, con un sistema de archivos compartido al que acceden varias instancias",
+              "explanation": "Descartada: EFS es un servicio de archivos y no una herramienta que aplique políticas de respaldo a recursos de otros servicios."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.6",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "slug": "clf-c02-r-d3-c-10",
+        "type": "QUIZ",
+        "title": "Política de respaldo común para recursos de varios servicios",
+        "statement": "Una empresa guarda datos en varios servicios de AWS. Quiere definir una política de respaldo con sus requisitos de cumplimiento y aplicarla a los recursos mediante etiquetas. ¿Qué servicio cubre MEJOR esa necesidad?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "AWS Backup",
+          "planes de respaldo"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html",
+          "https://docs.aws.amazon.com/ebs/latest/userguide/what-is-ebs.html",
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+          "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html"
+        ],
+        "order": 1210
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon EBS, con volúmenes de bloques conectados a instancias de EC2",
+              "explanation": "Descartada: EBS ofrece almacenamiento de bloques para instancias de EC2 y no una interfaz de archivos hacia objetos de S3."
+            },
+            {
+              "id": "b",
+              "text": "Amazon EFS, con un sistema de archivos accesible por NFS desde instancias de EC2",
+              "explanation": "Descartada: EFS guarda los archivos en su propio sistema y no los almacena como objetos en S3 para las aplicaciones locales."
+            },
+            {
+              "id": "c",
+              "text": "Amazon S3 File Gateway, con una interfaz de archivos hacia S3 mediante NFS y SMB",
+              "explanation": "Cumple: S3 File Gateway permite guardar y recuperar objetos de S3 con protocolos de archivos estándar como NFS y SMB."
+            },
+            {
+              "id": "d",
+              "text": "AWS Backup, con planes que centralizan las copias de seguridad de varios servicios",
+              "explanation": "Descartada: AWS Backup automatiza copias de seguridad y no ofrece a las aplicaciones una interfaz de archivos hacia S3."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.6",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "slug": "clf-c02-r-d3-c-11",
+        "type": "QUIZ",
+        "title": "Guardar en S3 los archivos de aplicaciones locales que usan NFS y SMB",
+        "statement": "Una oficina tiene aplicaciones locales que guardan archivos mediante los protocolos NFS y SMB. La empresa quiere que esos archivos se almacenen como objetos en Amazon S3 sin cambiar las aplicaciones. ¿Qué servicio encaja MEJOR?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Storage Gateway",
+          "S3 File Gateway"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+          "https://docs.aws.amazon.com/ebs/latest/userguide/what-is-ebs.html",
+          "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html",
+          "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html"
+        ],
+        "order": 1211
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "S3 Intelligent-Tiering, que mueve los objetos entre niveles según su patrón de acceso",
+              "explanation": "Descartada: está pensada para patrones de acceso cambiantes o desconocidos y no para elegir una sola zona junto al cómputo."
+            },
+            {
+              "id": "b",
+              "text": "S3 Standard-IA, una clase para objetos a los que se accede con poca frecuencia",
+              "explanation": "Descartada: es una clase de acceso infrecuente y la aplicación accede a sus objetos con mucha frecuencia."
+            },
+            {
+              "id": "c",
+              "text": "S3 Glacier Deep Archive, una clase pensada para archivar datos",
+              "explanation": "Descartada: es una clase de archivo para datos que casi no se leen, justo lo contrario de la carga descrita."
+            },
+            {
+              "id": "d",
+              "text": "S3 Express One Zone, una clase de baja latencia en la que se elige una sola zona de disponibilidad",
+              "explanation": "Cumple: es la clase de menor latencia y permite elegir una zona de disponibilidad para ubicarla junto al cómputo."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.6",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "slug": "clf-c02-r-d3-c-12",
+        "type": "QUIZ",
+        "title": "Clase de S3 de menor latencia en una sola zona",
+        "statement": "Una aplicación de análisis lee y escribe objetos con mucha frecuencia y es sensible a la latencia. El equipo quiere elegir una sola zona de disponibilidad para ubicar el almacenamiento junto a su cómputo. ¿Qué clase de almacenamiento de Amazon S3 encaja MEJOR?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "clases de almacenamiento de S3",
+          "S3 Express One Zone"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+        ],
+        "order": 1212
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.6",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Glue, con trabajos ETL que preparan y mueven datos de varias fuentes",
+              "explanation": "Descartada: Glue integra y prepara datos, pero no es el servicio de consultas interactivas con SQL sobre archivos de S3."
+            },
+            {
+              "id": "b",
+              "text": "Amazon Athena, con consultas de SQL estándar directamente sobre los datos de S3",
+              "explanation": "Cumple: Athena es un servicio de consultas interactivas y sin servidor que analiza datos de S3 con SQL estándar."
+            },
+            {
+              "id": "c",
+              "text": "Amazon Kinesis Data Streams, con la recogida continua de flujos de registros",
+              "explanation": "Descartada: Kinesis recoge y procesa flujos en tiempo real y no consulta con SQL archivos que ya están en S3."
+            },
+            {
+              "id": "d",
+              "text": "Amazon SageMaker AI, con un entorno alojado para construir y entrenar modelos",
+              "explanation": "Descartada: SageMaker AI sirve para crear modelos de aprendizaje automático y no para consultar archivos con SQL."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.7",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "slug": "clf-c02-r-d3-c-13",
+        "type": "QUIZ",
+        "title": "Consultar archivos de S3 con SQL sin administrar infraestructura",
+        "statement": "Un equipo de análisis guarda archivos de registros en Amazon S3 y quiere consultarlos de forma interactiva con SQL estándar, sin montar ni administrar infraestructura. ¿Qué servicio encaja MEJOR?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Amazon Athena",
+          "consultas SQL"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+          "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+          "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+          "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+        ],
+        "order": 1213
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.6",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Consultar con SQL estándar archivos que ya están guardados en Amazon S3",
+              "explanation": "Descartada: las consultas con SQL estándar sobre datos de S3 son función de Amazon Athena."
+            },
+            {
+              "id": "b",
+              "text": "Mantener un catálogo central con los datos descubiertos de varias fuentes",
+              "explanation": "Descartada: el catálogo de datos central es una capacidad de AWS Glue y no de Kinesis Data Streams."
+            },
+            {
+              "id": "c",
+              "text": "Recoger de forma continua flujos de registros y datos de clics",
+              "explanation": "Cumple: Kinesis Data Streams recoge y procesa grandes flujos de registros de datos en tiempo real, como registros y clics."
+            },
+            {
+              "id": "d",
+              "text": "Entrenar y desplegar modelos de aprendizaje automático en un entorno alojado",
+              "explanation": "Descartada: construir, entrenar y desplegar modelos es función de Amazon SageMaker AI."
+            },
+            {
+              "id": "e",
+              "text": "Procesar los registros con aplicaciones consumidoras, por ejemplo, en instancias de EC2",
+              "explanation": "Cumple: las aplicaciones que leen los registros del flujo pueden usar la Kinesis Client Library y ejecutarse en instancias de EC2."
+            }
+          ]
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.7",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "slug": "clf-c02-r-d3-c-14",
+        "type": "QUIZ",
+        "title": "Dos capacidades de Amazon Kinesis Data Streams",
+        "statement": "Una empresa recibe un flujo continuo de eventos de navegación de su sitio web y quiere procesarlos en tiempo real. Selecciona DOS capacidades de Amazon Kinesis Data Streams que encajan con esa necesidad.",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Amazon Kinesis Data Streams",
+          "datos en tiempo real"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+          "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+          "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+          "https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html"
+        ],
+        "order": 1214
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.6",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon SQS, con una cola de la que los consumidores recogen los mensajes",
+              "explanation": "Descartada: en una cola los consumidores recogen los mensajes cuando los piden, y no envía avisos por correo ni por mensaje de texto."
+            },
+            {
+              "id": "b",
+              "text": "Amazon Kinesis Data Streams, con la recogida de flujos de datos en tiempo real",
+              "explanation": "Descartada: Kinesis recoge y procesa flujos de registros y no envía avisos a personas por correo o mensaje de texto."
+            },
+            {
+              "id": "c",
+              "text": "AWS Glue, con trabajos ETL que preparan y mueven datos de varias fuentes",
+              "explanation": "Descartada: Glue integra datos y no es un servicio para enviar avisos a personas."
+            },
+            {
+              "id": "d",
+              "text": "Amazon SNS, con temas a los que se suscriben destinos de correo y de mensajes de texto",
+              "explanation": "Cumple: SNS entrega los mensajes de un tema a sus suscriptores, entre ellos el correo electrónico y los mensajes de texto (SMS)."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.8",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "slug": "clf-c02-r-d3-c-15",
+        "type": "QUIZ",
+        "title": "Avisar por correo y mensaje de texto cuando falla un servicio",
+        "statement": "Un equipo de operaciones quiere que, cuando se supere un umbral de errores, se envíe un aviso a varias personas por correo electrónico y por mensaje de texto. ¿Qué servicio encaja MEJOR?",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Amazon SNS",
+          "notificaciones"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+          "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+          "https://docs.aws.amazon.com/streams/latest/dev/introduction.html"
+        ],
+        "order": 1215
+      }
+    },
+    {
+      "unitCode": "AWS-U1.3.6",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Un bus de eventos sirve para dirigir eventos de muchas fuentes hacia muchos destinos",
+              "explanation": "Cumple: los buses de eventos encajan bien al enrutar eventos de muchas fuentes hacia muchos destinos, con transformación opcional."
+            },
+            {
+              "id": "b",
+              "text": "Un bus de eventos solo admite como fuente servicios de AWS y nunca aplicaciones propias",
+              "explanation": "Descartada: EventBridge enruta eventos de aplicaciones propias, de servicios de AWS y de software de terceros."
+            },
+            {
+              "id": "c",
+              "text": "Un pipe recibe eventos de varias fuentes y los reparte entre varios destinos a la vez",
+              "explanation": "Descartada: un pipe es una integración punto a punto con una sola fuente y un solo destino."
+            },
+            {
+              "id": "d",
+              "text": "EventBridge es un servicio con servidores que el equipo debe aprovisionar y escalar",
+              "explanation": "Descartada: EventBridge es un servicio sin servidor que usa eventos para conectar los componentes de una aplicación."
+            },
+            {
+              "id": "e",
+              "text": "Un pipe conecta una única fuente con un único destino y admite transformaciones",
+              "explanation": "Cumple: los pipes son integraciones punto a punto, de una fuente a un destino, con transformación y enriquecimiento."
+            }
+          ]
+        },
+        "exam": {
+          "certification": "CLF-C02",
+          "domain": 3,
+          "task": "3.8",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "slug": "clf-c02-r-d3-c-16",
+        "type": "QUIZ",
+        "title": "Dos afirmaciones correctas sobre Amazon EventBridge",
+        "statement": "Una empresa diseña una arquitectura basada en eventos con Amazon EventBridge. Selecciona DOS afirmaciones correctas sobre el servicio.",
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "concepts": [
+          "Amazon EventBridge",
+          "bus de eventos y pipes"
+        ],
+        "estimatedMin": 3,
+        "sources": [
+          "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+          "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html"
+        ],
+        "order": 1216
+      }
+    }
+  ]
+}
