@@ -1,12 +1,13 @@
 # Sprint 17 — Contenido AWS: A0 (cuenta segura y nivelación) y A1 (CLF-C02)
 
-> **Estado:** 🔄 fichas redactadas (2026-11-12), contrastadas con el código · **Duración prevista:** unas 60 sesiones · **Depende de:** S13, S14, S15 y S16, todos cerrados.
+> **Estado:** ✅ construido (2026-11-14): las 35 unidades (A0 15, A1 20), el banco reservado de CLF-C02 (195 preguntas), las tres formas del simulacro y los dos proyectos están hechos, sin publicar, y la suite completa está en verde. Faltan las **revisiones humanas** (T4, T19b y T52) y la decisión de publicar, todas diferidas. Registro en §8 · **Depende de:** S13, S14, S15 y S16, todos cerrados.
 > **Ámbito:** contenido de `apps/api/prisma/seed/aws/…` y cuatro tareas de plataforma (T1a–T1d). Cada tarea de unidad toca **un solo archivo** y sigue la ficha tipo de [`metodo-aws.md`](../../02-contenido/metodo-aws.md) §13.
 > **Puertas humanas:** dos tareas son de una persona y paran el sprint hasta que se hacen:
-> - **T4**: revisar el molde de A0 antes de escalar a las otras 14 unidades;
-> - **T19b**: revisar el molde de A1 antes de escalar a las otras 19.
+> - **T4**: revisar el molde de A0 (AWS-U0.1.2);
+> - **T19b**: revisar el molde de A1 (AWS-U1.2.1);
+> - **T52**: revisar una muestra del lote y el 100 % del banco reservado.
 >
-> Un defecto de método en el molde se repetiría en cada unidad.
+> Las tres se **difirieron** por decisión del responsable: la construcción continuó sin ellas, con las dos correcciones que el Orquestador encontró en el molde de A0 aplicadas y convertidas en reglas para las demás unidades. Un defecto de método que se le escapara al Orquestador se habrá propagado; §8 lista los puntos señalados para esas revisiones.
 
 ---
 
@@ -206,14 +207,37 @@ T1a → T1b → T1c → T1d → T2a → T2b → T3 → **T4 (persona)** → T5�
 
 ## 6. Criterios de cierre
 
-- [ ] `npm run db:seed:aws` carga las 35 unidades con su lección y su paquete, y `seed-course-quality` está en verde (incluidas T1b, T1c y T1d).
-- [ ] Hay 195 preguntas reservadas de CLF-C02 repartidas por dominio, ninguna parecida a una del banco de unidad, y las tres formas son válidas.
-- [ ] Los moldes de A0 y A1 y el lote los revisó una persona distinta de quien los redactó.
-- [ ] Ninguna pregunta tiene precios, cuotas ni límites sin fuente fechada, y ninguna sale de volcados ni de las muestras oficiales.
-- [ ] La publicación de A0–A1 la decide el responsable tras la revisión.
+- [x] `npm run db:seed:aws` carga las 35 unidades con su lección y su paquete, y `seed-course-quality` está en verde (incluidas T1b, T1c y T1d).
+- [x] Hay 195 preguntas reservadas de CLF-C02 repartidas por dominio (D1 48, D2 57, D3 66, D4 24), ninguna parecida a una del banco de unidad (guarda de similitud), y las tres formas son válidas (`examFormViolations` sin problemas; «Formas de simulacro: 3»).
+- [ ] Los moldes de A0 y A1 y el lote los revisó una persona distinta de quien los redactó. **Diferido (T4, T19b, T52).**
+- [x] Ninguna pregunta tiene precios, cuotas ni límites sin fuente fechada, y ninguna sale de volcados ni de las muestras oficiales. Cada ejercicio cita solo URLs oficiales del inventario; la revisión humana (T52) confirma la fidelidad.
+- [ ] La publicación de A0–A1 la decide el responsable tras la revisión. **Pendiente.** Todo el contenido está con `isPublished: false`.
 
 ## 7. Documentos relacionados
 
 - [`../../02-contenido/plan-poblado-banco-e0-e2.md`](../../02-contenido/plan-poblado-banco-e0-e2.md) (método de molde y lotes)
 - [`../../02-contenido/metodo-aws.md`](../../02-contenido/metodo-aws.md) §3, §5, §6 y §13
 - [`sprint-18-aws-arquitecto-asociado.md`](sprint-18-aws-arquitecto-asociado.md)
+
+## 8. Registro de construcción (Orquestador, 2026-11-14)
+
+El contenido lo construyeron subagentes de Claude Sonnet 5.5, una tarea por agente; primero DeepSeek hizo diez unidades de A0 y una corrección de guarda, y el resto lo hicieron agentes Sonnet tras agotarse los créditos de DeepSeek. El Orquestador (Claude Opus) revisó cada commit, una muestra del contenido y pasó la suite completa al cerrar cada bloque.
+
+**Plataforma y fuentes:** T1a `ba57fcb` (proyectos de cualquier ruta), T1b `599a54e` (guarda de completitud del paquete), T1c `1ac17a3` (banco reservado en la semilla), T1d `7673b6e` (similitud reservado/unidad), T2a `d47bd03` y T2b `086c1ed` y T2c `b38ef47` (inventario de 133 fuentes oficiales, cada una abierta y con su `<title>` comprobado).
+
+**Molde de A0 (T3):** `9383fa3` + correcciones `2dd4d1c` y `f6c6397`. El Orquestador encontró dos defectos y los corrigió: una opción correcta que repetía el calificador y se delataba, y una afirmación sobre Aurora sin fuente en el catálogo (se cambió por Redshift, que sí la tiene). Esas dos reglas se añadieron a los encargos de las demás unidades.
+
+**Unidades:** A0 completa (15) y A1 completa (20). Cada unidad: 1 lección de 7 pasos con diagrama y «Error común», 8 `QUIZ` de escenario, 6 `FLASHCARD`, 1 `REFLECT`, y o bien `LAB` guiado+autónomo con el arnés AWS, o la excepción `AUDIT` + 2 `DEBUG`; las unidades de catálogo llevan `MEMORY`. Los `QUIZ` de A1 llevan metadatos `exam` de CLF-C02. La guarda de completitud (T1b) obliga a ese paquete y la de laboratorios comprueba que la solución pasa y el código inicial falla.
+
+**Banco reservado (T39.1–T39.12):** 195 preguntas en 12 lotes, con el reparto por dominio que piden las formas. Ninguna supera 0,21 de similitud (Jaccard de trigramas) con las preguntas de unidad; el umbral de rechazo es 0,6.
+
+**Formas (T49) `473263a`:** tres formas disjuntas de 65, reparto 16/19/22/8, validadas por `examFormViolations`. **Proyectos (T50) `4b6f9ba`:** «Cuenta de estudio segura» (A0) y «Propuesta de nube para una pyme» (A1).
+
+**Puntos señalados para las revisiones humanas (T4, T19b, T52):**
+- la lista de calificadores en mayúsculas de la guarda es corta para las unidades de seguridad (molde de A1);
+- varias preguntas citan servicios o detalles al límite de lo que cubre su fuente del catálogo (p. ej. herramientas de migración en D1, servicios de D4 en preguntas de seguridad, S3 Express One Zone); conviene confirmar cada afirmación contra su página;
+- algunas unidades de nivelación de A0 (p. ej. U0.3.3 sobre HTTP) tienen preguntas más avanzadas de lo que sugiere su título, por ceñirse a las fuentes oficiales disponibles;
+- una fecha de retirada de planes de soporte (1-ene-2027) en U1.4.3, fechada y con fuente;
+- la cobertura de tareas de la guía (`exam.task`) la dedujeron los agentes de las subpáginas de dominio de la guía, que no están en el catálogo; conviene verificar los números.
+
+**Lo que queda, todo de una persona:** las tres revisiones (T4, T19b, T52), el registro en `revision-pedagogica.md` y la decisión de publicar A0–A1.
