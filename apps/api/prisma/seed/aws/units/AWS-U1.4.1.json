@@ -1,0 +1,1304 @@
+{
+  "code": "AWS-U1.4.1",
+  "lessons": [
+    {
+      "slug": "aws-u1-4-1-modelos-de-precio-de-computo-bajo-demanda-savings-plans-instancias-reservadas-y-spot",
+      "title": "Modelos de precio de cómputo: bajo demanda, Savings Plans, instancias reservadas y Spot",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon EC2 ofrece varias formas de pagar por el mismo cómputo, y elegir bien depende de dos preguntas: cuánto te comprometes y cuánto toleras que te interrumpan. Con las instancias bajo demanda pagas por segundo las instancias que lanzas. Con Savings Plans te comprometes con una cantidad de uso constante, en USD por hora, durante 1 o 3 años. Con las instancias reservadas te comprometes con una configuración concreta de instancia, incluidos el tipo de instancia y la región, durante 1 o 3 años. Con las instancias Spot pides capacidad de EC2 sin utilizar, que reduce el costo de forma significativa si tu aplicación es flexible y tolera interrupciones. En el examen CLF-C02, el dominio 4 «Facturación, precios y soporte» incluye la tarea 4.1, comparar los modelos de precio de AWS, que pide identificar cuándo usar cada opción de compra de cómputo y describir la flexibilidad y el comportamiento de las instancias reservadas."
+        },
+        {
+          "type": "list",
+          "title": "Las opciones de compra y qué las define",
+          "items": [
+            "Instancias bajo demanda: pagas por segundo las instancias que lanzas. Su precio por hora es estático y, si no hay capacidad disponible cuando haces la petición de lanzamiento, recibes un error de capacidad insuficiente.",
+            "Savings Plans: ofrecen ahorro sobre las tarifas bajo demanda a cambio de comprometer una cantidad de uso por hora durante 1 o 3 años. Los Compute Savings Plans bajan el precio del uso de EC2 sin importar la familia, el tamaño, el sistema operativo, la tenencia ni la región, y también se aplican a AWS Fargate y AWS Lambda. Los precios se mantienen durante el plazo y puedes pagar el compromiso con pago total, parcial o sin pago inicial.",
+            "Instancias reservadas: no son instancias físicas, sino un descuento de facturación que se aplica al uso de instancias bajo demanda que coinciden con ciertos atributos: tipo de instancia, región, tenencia y plataforma. El plazo es de uno o tres años y el de tres años da un descuento mayor.",
+            "Instancias Spot: usan capacidad de EC2 sin utilizar. El precio Spot lo fija Amazon EC2 y se ajusta de forma gradual según la oferta y la demanda a largo plazo. Cuando EC2 necesita la capacidad de vuelta, interrumpe la instancia y avisa antes.",
+            "Dedicated Hosts: pagas por un servidor físico dedicado a tus instancias y puedes llevar las licencias de software que ya tienes por socket, núcleo o máquina virtual. Dedicated Instances: se pagan por hora y se ejecutan en hardware de un solo inquilino.",
+            "Capacity Reservations: reservan capacidad de EC2 en una zona de disponibilidad específica."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Cómo elegir la opción de compra de una carga",
+          "code": "graph TD\n  A[\"Carga de trabajo en EC2\"] --> B{\"¿Tolera interrupciones y puede esperar a que haya capacidad?\"}\n  B -- \"Sí\" --> S[\"Instancias Spot\"]\n  B -- \"No\" --> C{\"¿Hay un uso constante que puedas comprometer por 1 o 3 años?\"}\n  C -- \"No\" --> O[\"Instancias bajo demanda\"]\n  C -- \"Sí\" --> D{\"¿El tipo de instancia y la región son fijos?\"}\n  D -- \"Sí\" --> R[\"Instancias reservadas\"]\n  D -- \"No\" --> P[\"Savings Plans\"]\n  A -.-> X[\"Aparte: licencias por socket o núcleo piden Dedicated Hosts y capacidad en una zona piden Capacity Reservations\"]"
+        },
+        {
+          "type": "list",
+          "title": "Qué decide cada elección",
+          "items": [
+            "Si no puedes comprometerte o no sabes cuánto vas a usar, las instancias bajo demanda pagan solo lo que lanzas. Es también lo que corresponde a una carga que no puede interrumpirse y no tiene un uso estable.",
+            "Si puedes comprometer una cantidad de uso por hora pero no una configuración concreta, compras Savings Plans.",
+            "Si necesitas reservar capacidad, la documentación indica comprar instancias reservadas o Capacity Reservations para una zona de disponibilidad específica.",
+            "Si eres flexible en cuándo se ejecuta la aplicación y esta puede interrumpirse, Spot es una opción rentable: encaja con análisis de datos, trabajos por lotes, procesamiento en segundo plano y tareas opcionales.",
+            "Si tus licencias están ligadas al servidor, los Dedicated Hosts permiten reducir costos usando las licencias por socket, núcleo o máquina virtual que ya tienes."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro cargas, cuatro opciones",
+          "text": "Una tienda en línea tiene cuatro cargas en EC2. Carga 1: el servicio web, con un uso estable y un tipo de instancia y una región que no cambiarán durante un año. Pide comprometer una configuración, así que usa instancias reservadas. Carga 2: los servicios que cambiarán de familia y de región durante los próximos años pero con un consumo constante por hora. Piden comprometer uso sin atarse a una configuración, así que usa Savings Plans. Carga 3: un proceso nocturno de informes que puede esperar capacidad libre y tolera interrupciones. Pide flexibilidad, así que usa Spot. Carga 4: los picos de la campaña, que nadie puede prever y que no pueden interrumpirse. Piden pagar solo lo que se usa, así que usa instancias bajo demanda. El nombre de la opción no decide: deciden el compromiso que puedes asumir y la interrupción que toleras. Una nota para el examen: la documentación de EC2 recomienda Savings Plans frente a las instancias reservadas por ser la forma más flexible de ahorrar en cómputo, pero las instancias reservadas siguen existiendo y la guía de CLF-C02 las incluye."
+        },
+        {
+          "type": "code",
+          "title": "Una estimación con la tabla del enunciado, como la harás en el laboratorio",
+          "language": "typescript",
+          "code": "// Precios FICTICIOS del enunciado (USD por hora-instancia); no son precios de AWS.\nexport const precios = [\n  { item: \"bajo-demanda\", unit: \"hora-instancia\", pricePerUnitUsd: 0.1 },\n  { item: \"spot\", unit: \"hora-instancia\", pricePerUnitUsd: 0.04 },\n];\nexport const uso = [{ item: \"spot\", quantity: 600 }];\n// aws.cost.estimate({ priceTable: precios, usage: uso }).totalUsd"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el compromiso y la interrupción deciden",
+          "text": "Lee primero cuánto puede comprometerse la empresa y si la carga tolera interrupciones. Si no puede interrumpirse ni comprometerse, es bajo demanda. Si puede comprometer una configuración concreta, son instancias reservadas; si solo puede comprometer una cantidad de uso por hora, son Savings Plans. Si es flexible y tolera interrupciones, es Spot. Recuerda además que Spot no está cubierto por Savings Plans: tener un plan no da ahorro adicional sobre Spot y el gasto en Spot no aplica el compromiso de Compute Savings Plans."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: confundir Savings Plans con instancias reservadas",
+          "text": "Causa: ambos exigen un compromiso de 1 o 3 años y dan un descuento, así que se creen intercambiables. Consecuencia: se compra una reserva ligada a un tipo de instancia y una región para una carga que va a cambiar de familia o de región, y el descuento deja de aplicarse a lo que se usa. Solución: pregunta qué se compromete: con instancias reservadas es una configuración concreta, y con Savings Plans es una cantidad de uso por hora, con flexibilidad para usar la configuración que mejor convenga."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar Spot para una carga que no puede interrumpirse",
+          "text": "Causa: se elige Spot solo porque tiene el precio más bajo, sin pensar en la interrupción. Consecuencia: Amazon EC2 puede interrumpir una instancia Spot cuando necesita la capacidad de vuelta, y un servicio crítico se cae. Solución: reserva Spot para cargas flexibles que toleran interrupciones, como análisis de datos o trabajos por lotes, y usa instancias bajo demanda, instancias reservadas o Savings Plans para las que no pueden pararse."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Comparar los modelos de precio de cómputo de EC2 (bajo demanda, Savings Plans, instancias reservadas y Spot), elegir el que encaja con un escenario y estimar su costo mensual con aws.cost.estimate usando la tabla de precios del enunciado. Esta unidad prepara el examen CLF-C02, dominio 4 «Facturación, precios y soporte», tarea 4.1 (comparar los modelos de precio de AWS). Criterio: ante un escenario nuevo, nombras la opción de compra, descartas las demás con una razón y compruebas con aws.cost.estimate cuánto cuesta cada carga con la tabla del enunciado, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cuatro cargas tapando las respuestas: para cada una, di cuánto puede comprometerse la empresa y si la carga tolera interrupciones, y qué opción de compra encaja. Después responde de memoria en qué se diferencian Savings Plans e instancias reservadas y por qué Spot no se combina con un plan."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «El costo de un lote: bajo demanda frente a Spot». Ejecuta primero aws.cost.estimate sobre el código inicial y compara el total con lo que pide el enunciado antes de editar. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y el costo en Spot es el esperado."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve el laboratorio «Un plan de compras para tres cargas, sin pistas». Parte de los criterios del enunciado, asigna a cada carga la opción de compra que encaja y comprueba el total con aws.cost.estimate. Criterio de paso: el plan no tiene problemas, respeta el presupuesto y cada carga usa la opción adecuada."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente propuso la opción de compra de ocho cargas y una de sus elecciones dejaría un servicio de pagos expuesto a interrupciones. Resuelve «Una opción de compra mal asignada»: corrige solo la fila equivocada y contrasta cada elección con las páginas oficiales de opciones de compra de EC2, Savings Plans, instancias reservadas e instancias Spot (leídas el 2026-11-13)."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe cuánto puede comprometerse la empresa y si la carga tolera interrupciones; al corregir, lee la explicación de cada opción y anota si fallaste por confundir Savings Plans con instancias reservadas, o por olvidar que Spot puede interrumpirse. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Piensa en una aplicación que conozcas con una parte estable, una parte flexible y picos, y escribe qué opción de compra usarías en cada parte y por qué. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero compró instancias reservadas para una carga que va a cambiar de familia de instancias el año próximo; ¿qué le propones y por qué?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-ec2-opciones-de-compra",
+          "order": 0,
+          "note": "Opciones de compra de EC2: bajo demanda, Savings Plans, instancias reservadas, Spot, Dedicated Hosts, Dedicated Instances y Capacity Reservations, y cuándo elegir cada una."
+        },
+        {
+          "resourceSlug": "aws-savings-plans-que-es",
+          "order": 1,
+          "note": "Qué son los Savings Plans: compromiso de uso por hora, plazos, opciones de pago y diferencias con las instancias reservadas."
+        },
+        {
+          "resourceSlug": "aws-ec2-instancias-reservadas",
+          "order": 2,
+          "note": "Instancias reservadas: atributos que fijan el precio, plazo, opciones de pago, clases de oferta y qué pasa al vencer."
+        },
+        {
+          "resourceSlug": "aws-ec2-instancias-spot",
+          "order": 3,
+          "note": "Instancias Spot: capacidad sin utilizar, precio Spot, interrupciones y diferencias con las instancias bajo demanda."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 4,
+          "note": "Guía de CLF-C02: el dominio 4, tarea 4.1, trata la comparación de los modelos de precio de AWS."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": "typescript",
+      "starterCode": "// Comparación mensual de un trabajo por lotes: 5 instancias, 120 horas cada una.\n// Precios FICTICIOS del enunciado (USD por hora-instancia); no son precios de AWS.\nexport const precios = [\n  { item: \"bajo-demanda\", unit: \"hora-instancia\", pricePerUnitUsd: 0.1 },\n  { item: \"spot\", unit: \"hora-instancia\", pricePerUnitUsd: 0.04 },\n];\n\nexport const usoBajoDemanda = [{ item: \"bajo-demanda\", quantity: 120 }];\nexport const usoSpot = [{ item: \"spot\", quantity: 120 }];\n",
+      "solution": {
+        "code": "// Comparación mensual de un trabajo por lotes: 5 instancias, 120 horas cada una.\n// Precios FICTICIOS del enunciado (USD por hora-instancia); no son precios de AWS.\nexport const precios = [\n  { item: \"bajo-demanda\", unit: \"hora-instancia\", pricePerUnitUsd: 0.1 },\n  { item: \"spot\", unit: \"hora-instancia\", pricePerUnitUsd: 0.04 },\n];\n\nexport const usoBajoDemanda = [{ item: \"bajo-demanda\", quantity: 5 * 120 }];\nexport const usoSpot = [{ item: \"spot\", quantity: 5 * 120 }];\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta `aws.cost.estimate({ priceTable: precios, usage: usoBajoDemanda })` y compara el total con los 60 USD que pide el enunciado. Fíjate en cuántas horas cuenta el uso."
+        },
+        {
+          "level": 2,
+          "text": "La cantidad de uso es el total de horas-instancia del mes, es decir, las de todas las instancias juntas. El código inicial cuenta solo las horas de una instancia, en los dos usos."
+        },
+        {
+          "level": 3,
+          "text": "Cambia `quantity: 120` por `quantity: 5 * 120` en `usoBajoDemanda` y en `usoSpot`, y no toques la tabla de precios."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el lote cuesta 60 USD bajo demanda",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const r = aws.cost.estimate({ priceTable: precios, usage: usoBajoDemanda });\nassert.deepStrictEqual(r.problems, []);\nassert.strictEqual(r.totalUsd, 60, \"El costo bajo demanda del lote debe ser de 60 USD\");"
+          }
+        },
+        {
+          "name": "la tabla de precios conserva los valores del enunciado",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(precios, [\n  { item: \"bajo-demanda\", unit: \"hora-instancia\", pricePerUnitUsd: 0.1 },\n  { item: \"spot\", unit: \"hora-instancia\", pricePerUnitUsd: 0.04 },\n]);"
+          }
+        },
+        {
+          "name": "el lote cuesta 24 USD en Spot",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const r = aws.cost.estimate({ priceTable: precios, usage: usoSpot });\nassert.deepStrictEqual(r.problems, []);\nassert.strictEqual(r.totalUsd, 24, \"El costo en Spot del lote debe ser de 24 USD\");"
+          }
+        },
+        {
+          "name": "los dos usos cuentan las 600 horas-instancia del mes",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "for (const uso of [usoBajoDemanda, usoSpot]) {\n  assert.strictEqual(uso.length, 1);\n  assert.strictEqual(uso[0]?.quantity, 600, \"El uso debe contar 5 instancias por 120 horas\");\n}"
+          }
+        },
+        {
+          "name": "cada uso se factura con su propio item",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(usoBajoDemanda[0]?.item, \"bajo-demanda\");\nassert.strictEqual(usoSpot[0]?.item, \"spot\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-costo-del-lote-guiado",
+      "type": "LAB",
+      "title": "El costo de un lote: bajo demanda frente a Spot",
+      "statement": "Un equipo ejecuta un trabajo por lotes en EC2 con 5 instancias durante 120 horas cada una al mes. Quiere comparar su costo mensual con instancias bajo demanda y con instancias Spot. Los precios de este laboratorio son FICTICIOS: están inventados para el ejercicio y no son precios de AWS ni de ninguna otra fuente. Tabla de precios (USD por hora-instancia): `bajo-demanda` 0.10 y `spot` 0.04. El código inicial exporta la tabla `precios` y dos usos, `usoBajoDemanda` y `usoSpot`, pero cada uso cuenta las horas de una sola instancia. Corrígelos para que el costo mensual sea de 60 USD bajo demanda y de 24 USD en Spot, sin problemas en la estimación. Compruébalo con `aws.cost.estimate({ priceTable: precios, usage })`, mantén la forma de los valores exportados y no cambies la tabla.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "bajo demanda",
+        "Spot",
+        "estimación de costo",
+        "tabla de precios"
+      ],
+      "estimatedMin": 25,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de compras mensual de la tienda. Precios FICTICIOS del enunciado (USD por hora-instancia).\nexport const plan: { priceTable: { item: string; unit: string; pricePerUnitUsd: number }[]; usage: { item: string; quantity: number }[] } = {\n  priceTable: [\n    { item: \"bajo-demanda\", unit: \"hora-instancia\", pricePerUnitUsd: 0.1 },\n    { item: \"reservada\", unit: \"hora-instancia\", pricePerUnitUsd: 0.06 },\n    { item: \"spot\", unit: \"hora-instancia\", pricePerUnitUsd: 0.03 },\n  ],\n  usage: [],\n};\n",
+      "solution": {
+        "code": "// Plan de compras mensual de la tienda. Precios FICTICIOS del enunciado (USD por hora-instancia).\nexport const plan: { priceTable: { item: string; unit: string; pricePerUnitUsd: number }[]; usage: { item: string; quantity: number }[] } = {\n  priceTable: [\n    { item: \"bajo-demanda\", unit: \"hora-instancia\", pricePerUnitUsd: 0.1 },\n    { item: \"reservada\", unit: \"hora-instancia\", pricePerUnitUsd: 0.06 },\n    { item: \"spot\", unit: \"hora-instancia\", pricePerUnitUsd: 0.03 },\n  ],\n  usage: [\n    { item: \"reservada\", quantity: 3 * 720 },\n    { item: \"spot\", quantity: 400 },\n    { item: \"bajo-demanda\", quantity: 100 },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la estimación del plan no tiene problemas y tiene tres líneas",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const r = aws.cost.estimate(plan);\nassert.deepStrictEqual(r.problems, []);\nassert.strictEqual(r.lines.length, 3, \"El plan debe usar una opción de compra por carga\");"
+          }
+        },
+        {
+          "name": "el plan respeta el presupuesto de 160 USD",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const r = aws.cost.estimate(plan);\nassert.ok(r.lines.length > 0, \"El plan no tiene ningún uso\");\nassert.ok(r.totalUsd <= 160, \"El plan cuesta \" + r.totalUsd + \" USD y el presupuesto es de 160\");"
+          }
+        },
+        {
+          "name": "la tabla de precios conserva los valores del enunciado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(plan.priceTable, [\n  { item: \"bajo-demanda\", unit: \"hora-instancia\", pricePerUnitUsd: 0.1 },\n  { item: \"reservada\", unit: \"hora-instancia\", pricePerUnitUsd: 0.06 },\n  { item: \"spot\", unit: \"hora-instancia\", pricePerUnitUsd: 0.03 },\n]);"
+          }
+        },
+        {
+          "name": "el servicio web usa instancias reservadas durante las 720 horas de sus 3 instancias",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const horas = (item: string) => plan.usage.filter((u) => u.item === item).reduce((suma, u) => suma + u.quantity, 0);\nassert.strictEqual(horas(\"reservada\"), 2160, \"El servicio web son 3 instancias por 720 horas, en reservadas\");"
+          }
+        },
+        {
+          "name": "el proceso de informes usa Spot y solo sus 400 horas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const horas = (item: string) => plan.usage.filter((u) => u.item === item).reduce((suma, u) => suma + u.quantity, 0);\nassert.strictEqual(horas(\"spot\"), 400, \"Solo el proceso de informes tolera interrupciones: 400 horas en Spot\");"
+          }
+        },
+        {
+          "name": "los picos de campaña usan bajo demanda durante 100 horas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const horas = (item: string) => plan.usage.filter((u) => u.item === item).reduce((suma, u) => suma + u.quantity, 0);\nassert.strictEqual(horas(\"bajo-demanda\"), 100, \"Los picos no se pueden prever ni interrumpir: 100 horas bajo demanda\");"
+          }
+        },
+        {
+          "name": "el costo total del plan es de 151.6 USD",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const r = aws.cost.estimate(plan);\nassert.strictEqual(r.totalUsd, 151.6);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-plan-de-compras-autonomo",
+      "type": "LAB",
+      "title": "Un plan de compras para tres cargas, sin pistas",
+      "statement": "Una tienda en línea calcula su costo mensual de EC2 para un mes de 720 horas. Los precios de este laboratorio son FICTICIOS: están inventados para el ejercicio y no son precios de AWS ni de ninguna otra fuente. Tabla de precios (USD por hora-instancia): `bajo-demanda` 0.10, `reservada` 0.06 y `spot` 0.03. En el ejercicio, una instancia reservada se factura todas las horas del mes, se use o no. Cargas: (1) el servicio web, 3 instancias encendidas las 720 horas con la misma configuración todo el año, que no puede interrumpirse; (2) un proceso nocturno de informes que puede esperar capacidad libre y tolera interrupciones, con 400 horas-instancia al mes; (3) los picos de la campaña, imprevisibles y que no pueden interrumpirse, con 100 horas-instancia al mes. Escribe el plan: elige para cada carga el item de la tabla que mejor encaja. Criterios: (a) `plan.usage` tiene una sola entrada por item usado y la estimación `aws.cost.estimate(plan)` no da problemas; (b) el total no supera el presupuesto de 160 USD; (c) la tabla conserva los precios del enunciado. Mantén la forma del valor exportado (`export const plan = { priceTable, usage }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "bajo demanda",
+        "instancias reservadas",
+        "Spot",
+        "estimación de costo"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Pagas por segundo las instancias que lanzas, a un precio por hora que es estático. Si no hay capacidad disponible cuando haces la petición de lanzamiento, recibes un error de capacidad insuficiente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: instancias bajo demanda",
+      "statement": "¿Cómo se pagan las instancias bajo demanda y qué pasa si no hay capacidad al lanzar una?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "bajo demanda",
+        "precio estático"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una cantidad de uso constante, en USD por hora, durante 1 o 3 años. Los Compute Savings Plans bajan el precio del uso de EC2 sin importar la familia, el tamaño, el sistema operativo, la tenencia ni la región, y también cubren AWS Fargate y AWS Lambda."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Savings Plans",
+      "statement": "¿Qué se compromete con un Savings Plans y qué flexibilidad da?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Savings Plans",
+        "compromiso de uso"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un compromiso con una configuración concreta (tipo de instancia, región, tenencia y plataforma) durante 1 o 3 años; no es una instancia física, sino un descuento de facturación. No se renueva sola: al vencer, las instancias siguen sin interrupción a tarifa bajo demanda. La compra no se puede cancelar, aunque puede ser posible modificarla, intercambiarla o venderla."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: instancias reservadas",
+      "statement": "¿Qué compromete una instancia reservada y qué ocurre al vencer el plazo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "instancias reservadas",
+        "compromiso de configuración"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Usa capacidad de EC2 sin utilizar a un precio que fija Amazon EC2 según la oferta y la demanda a largo plazo. Conviene si eres flexible en cuándo se ejecuta la aplicación y esta tolera interrupciones, como análisis de datos o trabajos por lotes. EC2 puede interrumpir la instancia cuando necesita la capacidad de vuelta. Spot no está cubierto por Savings Plans."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: instancias Spot",
+      "statement": "¿Cuándo conviene Spot y qué riesgo tiene?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Spot",
+        "interrupción"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Pago total por adelantado (All Upfront), parcial (Partial Upfront) o sin pago inicial (No Upfront). En las instancias reservadas, por lo general se ahorra más con un pago inicial mayor, y las de sin pago inicial se facturan cada hora del plazo se usen o no."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: opciones de pago del compromiso",
+      "statement": "¿Qué opciones de pago tienen las instancias reservadas y los Savings Plans?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "pago inicial",
+        "compromiso"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html",
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Standard da el descuento más alto, pero solo puede modificarse y no puede intercambiarse. Convertible da un descuento menor, puede intercambiarse por otra reserva Convertible con atributos distintos y también puede modificarse."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: clases de instancias reservadas",
+      "statement": "¿En qué se diferencian las instancias reservadas Standard y Convertible?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Standard",
+        "Convertible"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "od",
+            "term": "Instancias bajo demanda",
+            "definition": "Pagas por segundo las instancias que lanzas, a un precio por hora estático"
+          },
+          {
+            "id": "sp",
+            "term": "Savings Plans",
+            "definition": "Compromiso de uso en USD por hora durante 1 o 3 años, sin atarte a una familia ni a una región"
+          },
+          {
+            "id": "ri",
+            "term": "Instancias reservadas",
+            "definition": "Compromiso con una configuración concreta, como tipo de instancia y región, durante 1 o 3 años"
+          },
+          {
+            "id": "spot",
+            "term": "Instancias Spot",
+            "definition": "Capacidad de EC2 sin utilizar para cargas flexibles que toleran interrupciones"
+          },
+          {
+            "id": "dh",
+            "term": "Dedicated Hosts",
+            "definition": "Servidor físico dedicado para llevar tus licencias por socket, núcleo o máquina virtual"
+          },
+          {
+            "id": "di",
+            "term": "Dedicated Instances",
+            "definition": "Instancias que se pagan por hora y se ejecutan en hardware de un solo inquilino"
+          },
+          {
+            "id": "cr",
+            "term": "Capacity Reservations",
+            "definition": "Reservan capacidad de EC2 en una zona de disponibilidad específica"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada opción de compra de cómputo con el caso que resuelve. Si dudas, pregúntate cuánto puede comprometerse la empresa y si la carga tolera interrupciones.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Sin compromiso: bajo demanda paga lo que lanzas y Spot aprovecha capacidad sin utilizar si toleras interrupciones",
+              "Con compromiso de 1 o 3 años: Savings Plans, uso por hora; instancias reservadas, una configuración",
+              "Casos especiales: Dedicated Hosts (licencias), Dedicated Instances (un inquilino) y Capacity Reservations (zona)"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-memoria-01",
+      "type": "MEMORY",
+      "title": "Modelo de precio de cómputo y caso que resuelve",
+      "statement": "Empareja cada opción de compra de EC2 con el caso que resuelve.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "bajo demanda",
+        "Savings Plans",
+        "instancias reservadas",
+        "Spot",
+        "Dedicated Hosts",
+        "Capacity Reservations"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Opción de compra que elige un asistente para ocho cargas. Corrige la elección equivocada.\nexport const compras = {\n  casos: [\n    { necesidad: \"Servicio de pagos que no puede interrumpirse, con demanda impredecible y sin compromiso de plazo\", opcion: \"spot\" },\n    { necesidad: \"Análisis de datos nocturno que puede esperar capacidad libre y reanudarse tras una interrupción\", opcion: \"spot\" },\n    { necesidad: \"Uso constante durante tres años con cambios frecuentes de familia, tamaño y región de las instancias\", opcion: \"savings-plans\" },\n    { necesidad: \"Uso constante durante un año con un tipo de instancia y una región que no cambiarán\", opcion: \"reservadas\" },\n    { necesidad: \"Licencias de software por socket y por núcleo que ya posee la empresa y quiere usar en EC2\", opcion: \"hosts-dedicados\" },\n    { necesidad: \"Tareas opcionales en segundo plano que pueden pararse sin consecuencias\", opcion: \"spot\" },\n    { necesidad: \"Uso constante de funciones Lambda y contenedores Fargate que se quiere comprometer por hora\", opcion: \"savings-plans\" },\n    { necesidad: \"Prueba de concepto de unos días en la que nadie sabe cuántas instancias harán falta\", opcion: \"bajo-demanda\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Opción de compra que elige un asistente para ocho cargas. Corrige la elección equivocada.\nexport const compras = {\n  casos: [\n    { necesidad: \"Servicio de pagos que no puede interrumpirse, con demanda impredecible y sin compromiso de plazo\", opcion: \"bajo-demanda\" },\n    { necesidad: \"Análisis de datos nocturno que puede esperar capacidad libre y reanudarse tras una interrupción\", opcion: \"spot\" },\n    { necesidad: \"Uso constante durante tres años con cambios frecuentes de familia, tamaño y región de las instancias\", opcion: \"savings-plans\" },\n    { necesidad: \"Uso constante durante un año con un tipo de instancia y una región que no cambiarán\", opcion: \"reservadas\" },\n    { necesidad: \"Licencias de software por socket y por núcleo que ya posee la empresa y quiere usar en EC2\", opcion: \"hosts-dedicados\" },\n    { necesidad: \"Tareas opcionales en segundo plano que pueden pararse sin consecuencias\", opcion: \"spot\" },\n    { necesidad: \"Uso constante de funciones Lambda y contenedores Fargate que se quiere comprometer por hora\", opcion: \"savings-plans\" },\n    { necesidad: \"Prueba de concepto de unos días en la que nadie sabe cuántas instancias harán falta\", opcion: \"bajo-demanda\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Fíjate en la carga que «no puede interrumpirse»: una de las opciones puede ser interrumpida por Amazon EC2 cuando necesita la capacidad de vuelta."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal. Es la del servicio de pagos: no admite interrupciones y no quiere comprometer un plazo, así que la opción que se paga por segundo y no se interrumpe es la que encaja."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `opcion` de la fila del servicio de pagos de \"spot\" a \"bajo-demanda\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el servicio de pagos que no puede interrumpirse va en bajo demanda",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = compras.casos.find((f) => f.necesidad.startsWith(\"Servicio de pagos\"));\nassert.ok(fila, \"debe existir la fila del servicio de pagos\");\nassert.strictEqual(fila.opcion, \"bajo-demanda\");"
+          }
+        },
+        {
+          "name": "las opciones solo pueden ser de la lista de cinco",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const fila of compras.casos) {\n  assert.ok([\"bajo-demanda\", \"savings-plans\", \"reservadas\", \"spot\", \"hosts-dedicados\"].includes(fila.opcion), fila.necesidad + \" tiene una opción no válida\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su opción",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado: Record<string, string> = {\n  \"Análisis de datos nocturno que puede esperar capacidad libre y reanudarse tras una interrupción\": \"spot\",\n  \"Uso constante durante tres años con cambios frecuentes de familia, tamaño y región de las instancias\": \"savings-plans\",\n  \"Uso constante durante un año con un tipo de instancia y una región que no cambiarán\": \"reservadas\",\n  \"Licencias de software por socket y por núcleo que ya posee la empresa y quiere usar en EC2\": \"hosts-dedicados\",\n  \"Tareas opcionales en segundo plano que pueden pararse sin consecuencias\": \"spot\",\n  \"Uso constante de funciones Lambda y contenedores Fargate que se quiere comprometer por hora\": \"savings-plans\",\n  \"Prueba de concepto de unos días en la que nadie sabe cuántas instancias harán falta\": \"bajo-demanda\",\n};\nfor (const [necesidad, opcion] of Object.entries(esperado)) {\n  const fila = compras.casos.find((f) => f.necesidad === necesidad);\n  assert.ok(fila, necesidad + \" debe seguir existiendo\");\n  assert.strictEqual(fila.opcion, opcion);\n}"
+          }
+        },
+        {
+          "name": "siguen las ocho filas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(compras.casos.length, 8);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-debug-01",
+      "type": "DEBUG",
+      "title": "Una opción de compra mal asignada",
+      "statement": "El objeto `compras` asigna una opción de compra (bajo-demanda, savings-plans, reservadas, spot o hosts-dedicados) a cada una de ocho cargas. Una de las filas asigna una opción equivocada: con ella, un servicio que no puede interrumpirse quedaría expuesto a que Amazon EC2 lo interrumpa. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const compras = { casos: [ … ] }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "bajo demanda",
+        "Spot",
+        "interrupción"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias Spot, que usan capacidad de EC2 sin utilizar",
+            "explanation": "Descartada: Spot usa capacidad sin utilizar que EC2 puede reclamar, y el enunciado habla de una API con uso estable las 24 horas, que no encaja con una instancia que puede interrumpirse."
+          },
+          {
+            "id": "b",
+            "text": "Savings Plans, que se basan en un compromiso de uso por hora",
+            "explanation": "Es la opción adecuada: el compromiso es una cantidad de uso en USD por hora durante 1 o 3 años, y los Compute Savings Plans bajan el precio sin importar la familia, el tamaño ni la región de las instancias."
+          },
+          {
+            "id": "c",
+            "text": "Instancias bajo demanda, que se pagan por segundo",
+            "explanation": "Descartada: el precio bajo demanda es estático y no recompensa un compromiso; el enunciado dice que la empresa puede comprometerse con el uso por hora durante tres años."
+          },
+          {
+            "id": "d",
+            "text": "Instancias reservadas, que se basan en una configuración concreta de instancia",
+            "explanation": "Descartada: el compromiso es con una configuración concreta, incluidos el tipo de instancia y la región, y el enunciado dice que esos atributos cambiarán y que no quiere gestionar modificaciones ni intercambios."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué modelo reduce el costo de un uso estable cuando la configuración va a cambiar",
+      "statement": "Una empresa ejecuta su API en EC2 con un uso estable las 24 horas y puede comprometerse con una cantidad de uso por hora durante tres años. El equipo cambiará con frecuencia la familia, el tamaño y la región de las instancias y no quiere gestionar modificaciones ni intercambios de lo comprado. ¿Qué modelo de precio es el MEJOR para reducir el costo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Savings Plans",
+        "instancias reservadas",
+        "compromiso"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias reservadas, que se basan en una configuración concreta de instancia",
+            "explanation": "Descartada: exige comprometer una configuración durante 1 o 3 años, y el enunciado dice que el equipo no quiere asumir compromisos de plazo."
+          },
+          {
+            "id": "b",
+            "text": "Savings Plans, que se basan en un compromiso de uso por hora",
+            "explanation": "Descartada: exige comprometer una cantidad de uso por hora durante 1 o 3 años, y el enunciado dice que el equipo no quiere asumir compromisos de plazo."
+          },
+          {
+            "id": "c",
+            "text": "Instancias bajo demanda, que se pagan por segundo",
+            "explanation": "Descartada: sirve, pero paga el precio bajo demanda y no aprovecha que el análisis puede esperar y tolera interrupciones, que es lo que hace más rentable a Spot."
+          },
+          {
+            "id": "d",
+            "text": "Instancias Spot, que usan capacidad de EC2 sin utilizar",
+            "explanation": "Es la opción adecuada: Spot es rentable cuando eres flexible en cuándo se ejecuta la aplicación y esta tolera interrupciones, como en los análisis de datos y los trabajos por lotes."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué opción de compra es la más rentable para un análisis flexible que tolera interrupciones",
+      "statement": "Un equipo de datos ejecuta cada noche un análisis por lotes. Puede esperar a que haya capacidad disponible y el análisis tolera interrupciones, porque reanuda desde el último punto guardado. El equipo no quiere asumir compromisos de plazo. ¿Qué opción de compra es la MÁS rentable?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Spot",
+        "trabajos por lotes",
+        "interrupción"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias bajo demanda, que se pagan por segundo",
+            "explanation": "Es la opción adecuada: pagas por segundo las instancias que lanzas, sin compromiso de plazo, y una vez en ejecución es la persona usuaria quien decide cuándo se detienen."
+          },
+          {
+            "id": "b",
+            "text": "Instancias Spot, que usan capacidad de EC2 sin utilizar",
+            "explanation": "Descartada: EC2 puede interrumpir una instancia Spot cuando necesita la capacidad de vuelta, y el enunciado dice que el servicio no debe interrumpirse en ningún momento."
+          },
+          {
+            "id": "c",
+            "text": "Savings Plans, que se basan en un compromiso de uso por hora",
+            "explanation": "Descartada: es un compromiso de uso por hora durante 1 o 3 años, y el enunciado dice que la empresa no quiere comprometerse a un plazo de uno o tres años."
+          },
+          {
+            "id": "d",
+            "text": "Instancias reservadas, que se basan en una configuración concreta de instancia",
+            "explanation": "Descartada: es un compromiso con una configuración durante 1 o 3 años, y el enunciado habla de una prueba de dos semanas con demanda impredecible."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué opción de compra encaja con un servicio de prueba que no puede interrumpirse ni comprometerse",
+      "statement": "Una empresa lanza durante dos semanas un servicio de pagos de prueba cuya demanda no puede prever. El servicio no debe interrumpirse en ningún momento y la empresa no quiere comprometerse a un plazo de uno o tres años. ¿Qué opción de compra es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "bajo demanda",
+        "interrupción",
+        "compromiso"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias Spot, que usan capacidad de EC2 sin utilizar",
+            "explanation": "Descartada: Spot usa capacidad de EC2 sin utilizar a un precio inferior, y no ofrece un servidor físico dedicado donde usar las licencias ligadas al servidor."
+          },
+          {
+            "id": "b",
+            "text": "Savings Plans, que se basan en un compromiso de uso por hora",
+            "explanation": "Descartada: es un compromiso de uso por hora que baja el precio del cómputo, y no ofrece un servidor físico dedicado para las licencias por socket y por núcleo."
+          },
+          {
+            "id": "c",
+            "text": "Dedicated Hosts, que ofrecen un servidor físico dedicado a tus instancias",
+            "explanation": "Es la opción adecuada: con Dedicated Hosts pagas por un host físico dedicado y puedes llevar tus licencias por socket, núcleo o máquina virtual para reducir costos."
+          },
+          {
+            "id": "d",
+            "text": "Capacity Reservations, que reservan capacidad en una zona de disponibilidad específica",
+            "explanation": "Descartada: reservan capacidad de EC2 en una zona de disponibilidad, pero no dan un servidor físico dedicado donde usar las licencias."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-quiz-04",
+      "type": "QUIZ",
+      "title": "Qué opción de compra permite llevar licencias por socket y por núcleo a un servidor físico dedicado",
+      "statement": "Una empresa ya tiene licencias de software por socket y por núcleo que están ligadas a los servidores. Quiere llevarlas a AWS para reducir costos y necesita pagar por un servidor físico dedicado para sus instancias de EC2. ¿Qué opción de compra es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Dedicated Hosts",
+        "licencias",
+        "Capacity Reservations"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Las reservas se renuevan solas por otro año y mantienen el mismo descuento",
+            "explanation": "Descartada: las instancias reservadas no se renuevan automáticamente; al vencer, el descuento deja de aplicarse."
+          },
+          {
+            "id": "b",
+            "text": "Los servidores se detienen hasta que se compren reservas nuevas con los mismos atributos",
+            "explanation": "Descartada: al vencer, puedes seguir usando las instancias de EC2 sin interrupción; una instancia reservada es un descuento de facturación, no la instancia en sí."
+          },
+          {
+            "id": "c",
+            "text": "Los servidores siguen en ejecución sin interrupción y se facturan a tarifa bajo demanda",
+            "explanation": "Es la opción adecuada: las reservas no se renuevan solas y, al expirar, puedes seguir usando la instancia sin interrupción pagando la tarifa bajo demanda."
+          },
+          {
+            "id": "d",
+            "text": "Las reservas pasan a ser Savings Plans y mantienen el mismo descuento durante otro año",
+            "explanation": "Descartada: no existe una conversión automática; las instancias reservadas y los Savings Plans son modelos distintos y la reserva solo deja de aplicarse."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-quiz-05",
+      "type": "QUIZ",
+      "title": "Cómo se facturan los servidores cuando vencen las instancias reservadas",
+      "statement": "Una empresa compró instancias reservadas por un año para sus servidores. Al terminar el año nadie compra nada nuevo y los servidores siguen en ejecución. ¿Qué descripción de la facturación a partir de ese momento es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "instancias reservadas",
+        "vencimiento",
+        "tarifa bajo demanda"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El plan añade un descuento sobre el precio Spot, y ese gasto cubre parte del compromiso",
+            "explanation": "Descartada: Spot no está cubierto por Savings Plans, así que el plan no da un descuento sobre el precio Spot ni se aplica a ese uso."
+          },
+          {
+            "id": "b",
+            "text": "El plan evita las interrupciones de esas instancias, y ese gasto cubre parte del compromiso",
+            "explanation": "Descartada: Spot no está cubierto por Savings Plans, que son un modelo de precio; las interrupciones siguen dependiendo de que EC2 necesite la capacidad."
+          },
+          {
+            "id": "c",
+            "text": "El plan añade un descuento sobre el precio Spot, y ese gasto no cubre el compromiso",
+            "explanation": "Descartada: acierta en que el gasto en Spot no aplica el compromiso, pero falla en el descuento: un plan no da ahorro adicional sobre el que ya se obtiene con Spot."
+          },
+          {
+            "id": "d",
+            "text": "El plan no añade ahorro sobre el precio Spot, y ese gasto no cubre el compromiso",
+            "explanation": "Es la opción adecuada: Spot no está cubierto por Savings Plans, no hay ahorro adicional y el gasto en Spot no aplica los compromisos de Compute Savings Plans."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué ocurre al combinar Savings Plans con instancias Spot",
+      "statement": "Un equipo ejecuta su carga por lotes con instancias Spot y compra Compute Savings Plans pensando que ahorrará más sobre esas mismas instancias. ¿Qué descripción del resultado es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Spot",
+        "Savings Plans"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html",
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cancelar la compra de inmediato y dejar de pagar el resto de los tres años",
+            "explanation": "Descartada: después de comprar una instancia reservada no puedes cancelar la compra."
+          },
+          {
+            "id": "b",
+            "text": "Modificar la reserva, intercambiarla si es Convertible o venderla en el Reserved Instance Marketplace",
+            "explanation": "Es la opción adecuada: la compra no se puede cancelar, pero puede ser posible modificarla, intercambiarla (las Convertible) o venderla en el Reserved Instance Marketplace."
+          },
+          {
+            "id": "c",
+            "text": "Transformar la reserva en instancias Spot que ya no generan ningún pago",
+            "explanation": "Descartada: una instancia reservada es un descuento de facturación sobre instancias bajo demanda y no se transforma en Spot; no existe un pago cero."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar la reserva por un Savings Plans con el mismo plazo y el mismo descuento",
+            "explanation": "Descartada: la compra solo se puede modificar, intercambiar o vender como instancia reservada; un cambio a Savings Plans no es una opción descrita en la documentación."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-quiz-07",
+      "type": "QUIZ",
+      "title": "Qué puede hacer una empresa con instancias reservadas que ya no necesita",
+      "statement": "Una empresa compró instancias reservadas por tres años, pero al cabo de un año cambia su arquitectura y ya no las necesita. ¿Qué opción describe MEJOR lo que puede hacer con esa compra?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "instancias reservadas",
+        "Convertible",
+        "Marketplace"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "b"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias reservadas, que se compran para una zona de disponibilidad específica",
+            "explanation": "Cumple: la documentación indica comprar instancias reservadas o Capacity Reservations cuando se necesita reservar capacidad para una zona de disponibilidad específica."
+          },
+          {
+            "id": "b",
+            "text": "Capacity Reservations, que reservan capacidad de EC2 en una zona de disponibilidad",
+            "explanation": "Cumple: reservan capacidad de EC2 en una zona de disponibilidad específica, que es justo el requisito."
+          },
+          {
+            "id": "c",
+            "text": "Instancias bajo demanda, que se lanzan con una petición manual y pueden fallar",
+            "explanation": "No cumple: si no hay capacidad disponible cuando haces la petición de lanzamiento recibes un error de capacidad insuficiente; no reservan capacidad."
+          },
+          {
+            "id": "d",
+            "text": "Instancias Spot, que reintentan la petición hasta que haya capacidad",
+            "explanation": "No cumple: la petición se repite hasta que hay capacidad disponible, pero eso no la garantiza y EC2 puede interrumpir la instancia después."
+          },
+          {
+            "id": "e",
+            "text": "Savings Plans, que se basan en un compromiso de uso por hora",
+            "explanation": "No cumple: es un compromiso de uso por hora para reducir costos, no una reserva de capacidad; para reservar capacidad se compran instancias reservadas o Capacity Reservations."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las opciones de compra que reservan capacidad en una zona",
+      "statement": "Una tienda en línea prepara un evento de ventas y necesita garantizar que habrá capacidad de EC2 disponible en una zona de disponibilidad concreta. Selecciona DOS opciones de compra que sirven para reservar esa capacidad.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Capacity Reservations",
+        "instancias reservadas",
+        "capacidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html",
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-1-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué opción de compra usas según el compromiso y la interrupción",
+      "statement": "Elige una aplicación que conozcas con una parte estable, una parte flexible y picos de demanda, y escribe un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué opción de compra usarías en cada parte (bajo demanda, Savings Plans, instancias reservadas o Spot) y qué problema resuelve en esa parte.\n\n2) Alternativa descartada: otra opción que te tentaba (por ejemplo, instancias reservadas en lugar de Savings Plans, o Spot para una carga que no puede pararse) y la razón por la que la descartaste.\n\n3) Consecuencia: qué cambia para tu equipo con esa decisión, por ejemplo qué compromiso de 1 o 3 años asume y qué interrupciones tendría que tolerar.\n\n4) Evidencia: qué parte de las páginas oficiales de opciones de compra de EC2, Savings Plans, instancias reservadas o instancias Spot usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre cada opción, distinga el compromiso de una configuración del de un uso por hora y justifique cada elección. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo elegiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "modelos de precio",
+        "compromiso",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+        "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-reserved-instances.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+      ],
+      "order": 19
+    }
+  ]
+}
