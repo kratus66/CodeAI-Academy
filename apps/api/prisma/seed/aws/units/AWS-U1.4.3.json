@@ -1,0 +1,1193 @@
+{
+  "code": "AWS-U1.4.3",
+  "lessons": [
+    {
+      "slug": "aws-u1-4-3-planes-de-soporte-aws-marketplace-trusted-advisor-y-recursos-de-ayuda",
+      "title": "Planes de soporte, AWS Marketplace, Trusted Advisor y recursos de ayuda",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "El examen CLF-C02 pide, en la tarea 4.3 del dominio 4, identificar los recursos técnicos y las opciones de soporte de AWS. La pregunta de fondo es siempre la misma: qué necesita el cliente y qué incluye cada opción. Basic Support lo tienen automáticamente todos los clientes. Los planes de pago (AWS Business Support+, AWS Enterprise Support y AWS Unified Operations) añaden ingenieros 24x7, figuras designadas y servicios proactivos. AWS Trusted Advisor inspecciona tu entorno y recomienda mejoras. AWS Marketplace es el catálogo donde compras software de terceros y lo pagas en tu factura de AWS."
+        },
+        {
+          "type": "list",
+          "title": "Qué incluye cada plan de soporte",
+          "items": [
+            "Basic Support: lo tienen automáticamente todos los clientes, 24x7. Incluye respuestas individuales a preguntas de cuenta y facturación, foros de soporte, comprobaciones del estado de los servicios y documentación, documentos técnicos y guías de buenas prácticas. En la página de planes también figuran un acceso de atención al cliente y comunidades (con AWS re:Post), las comprobaciones esenciales de Trusted Advisor y AWS Health.",
+            "AWS Business Support+: añade respuestas contextuales con IA generativa, acceso 24x7 por teléfono, web y chat a ingenieros de soporte en la nube, el conjunto completo de comprobaciones de Trusted Advisor, la API de AWS Support, soporte de software de terceros y casos ilimitados.",
+            "AWS Enterprise Support: todo lo de Business Support+ y además un Technical Account Manager (TAM) designado, acceso a AWS Security Incident Response, revisiones estratégicas de negocio con expertos de AWS y acceso a AWS Countdown.",
+            "AWS Unified Operations: orientación sobre la arquitectura de la aplicación, gestión de eventos de infraestructura, un TAM y un Domain Specialist Engineer designados, una suscripción recurrente a AWS Countdown Premium y revisiones de cargas críticas con runbooks y procedimientos operativos personalizados.",
+            "Algunas funciones, como el teléfono y el chat 24x7, no están disponibles en todos los idiomas."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Qué plan de soporte encaja con cada necesidad",
+          "code": "flowchart TB\n  N0[\"¿Qué necesita el cliente?\"] --> N1[\"Solo dudas de cuenta y facturación, foros y documentación\"]\n  N0 --> N2[\"Casos técnicos 24x7 con ingenieros y todas las comprobaciones de Trusted Advisor\"]\n  N0 --> N3[\"Además, un Technical Account Manager designado\"]\n  N0 --> N4[\"Además, especialistas de dominio designados para su aplicación\"]\n  N1 --> P1[\"Basic Support: automático en todas las cuentas\"]\n  N2 --> P2[\"AWS Business Support+\"]\n  N3 --> P3[\"AWS Enterprise Support\"]\n  N4 --> P4[\"AWS Unified Operations\"]\n  P2 --> TA[\"Trusted Advisor: conjunto completo de comprobaciones\"]\n  P3 --> TA\n  P4 --> TA\n  P1 --> TB[\"Trusted Advisor: límites de servicio y comprobaciones seleccionadas\"]"
+        },
+        {
+          "type": "list",
+          "title": "Trusted Advisor y AWS Marketplace",
+          "items": [
+            "AWS Trusted Advisor inspecciona tu entorno de AWS y hace recomendaciones cuando hay oportunidades de ahorrar dinero, mejorar la disponibilidad y el rendimiento o cerrar brechas de seguridad.",
+            "Con Basic Support se accede en la consola a todas las comprobaciones de la categoría de límites de servicio y a algunas de las categorías de seguridad y de tolerancia a fallos. No hay actualización automática: las comprobaciones de seguridad se actualizan a mano con el botón de actualizar.",
+            "Con Business Support+, Enterprise Support o Unified Operations se accede a todas las comprobaciones, en la consola y con la API de Trusted Advisor.",
+            "AWS Marketplace es un catálogo digital curado para encontrar, comprar, desplegar y administrar software, datos y servicios de terceros. Los productos pueden ofrecerse como AMI, como SaaS, con plantillas de CloudFormation o como reglas de AWS WAF, entre otros formatos.",
+            "El vendedor (un proveedor independiente de software, un revendedor o un particular) fija el precio y las condiciones. AWS gestiona la facturación y los pagos, y el cargo aparece en tu factura de AWS; después AWS paga al vendedor. Las opciones de precio incluyen prueba gratuita, por horas, mensual, anual, plurianual y traer tu propia licencia (BYOL)."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro necesidades, cuatro respuestas",
+          "text": "Una empresa tiene cuentas de pruebas y una carga de producción. Necesidad 1: resolver dudas de facturación de las cuentas de pruebas; basta Basic Support, que ya tiene. Necesidad 2: abrir casos técnicos 24x7 por chat para producción y ver todas las comprobaciones de Trusted Advisor, sin necesitar un gestor designado; el plan de menor nivel que lo cubre es AWS Business Support+. Necesidad 3: contar con un Technical Account Manager designado; hay que pasar a AWS Enterprise Support (o a Unified Operations, si además se piden especialistas de dominio designados). Necesidad 4: comprar un producto de seguridad de un tercero y recibir un único cargo; se compra en AWS Marketplace y el cargo llega en la factura de AWS. Cada necesidad se resuelve mirando qué figura o qué acceso pide el enunciado y qué plan lo incluye."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el plan que sobra y el plan que falta",
+          "text": "Las opciones suelen incluir un plan que no cubre la necesidad (Basic Support cuando se piden casos técnicos) y planes que la cubren con funciones que nadie pidió (un TAM designado cuando no se necesita). Cuando el enunciado pide el MENOR nivel o el plan más ajustado, identifica la característica decisiva del enunciado: casos técnicos 24x7, comprobaciones completas de Trusted Advisor, TAM designado o especialistas de dominio designados, y elige el primer plan que la incluye."
+        },
+        {
+          "type": "callout",
+          "title": "Condiciones vigentes de los planes (leídas el 2026-11-13)",
+          "text": "Las páginas oficiales de planes de soporte y de Trusted Advisor, leídas el 2026-11-13, avisan de que Developer Support y Business Support se retiran el 1 de enero de 2027 y de que Business Support+ es el plan al que se migra. La guía de CLF-C02 nombra Basic Support, AWS Business Support+, AWS Enterprise Support y AWS Unified Operations. Comprueba la página de comparación de planes antes de contratar: los planes y sus características cambian."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: esperar casos técnicos y todo Trusted Advisor con Basic Support",
+          "text": "Causa: pensar que todo cliente de AWS tiene soporte técnico 24x7 y el conjunto completo de comprobaciones de Trusted Advisor, porque Basic Support es automático. Consecuencia: ante un incidente en producción no hay ingenieros a los que abrir un caso técnico y faltan comprobaciones de seguridad y tolerancia a fallos. Solución: Basic Support cubre cuentas, facturación, foros y documentación; para casos técnicos 24x7 y todas las comprobaciones contrata AWS Business Support+ o un plan superior."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: creer que el software de AWS Marketplace se paga directamente al proveedor",
+          "text": "Causa: ver el producto como una compra externa a AWS, porque lo publica un proveedor independiente. Consecuencia: el equipo financiero busca una factura aparte y no encuentra el cargo, que llega dentro de la factura de AWS. Solución: AWS Marketplace gestiona la facturación y los pagos; el cargo aparece en tu factura de AWS y después AWS paga al vendedor."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir el plan de soporte adecuado para un escenario (Basic Support, AWS Business Support+, AWS Enterprise Support o AWS Unified Operations) y localizar AWS Trusted Advisor, AWS Marketplace y los recursos de ayuda según la necesidad. Esta unidad prepara el examen CLF-C02, dominio 4 «Facturación, precios y soporte», tarea 4.3 (identificar los recursos técnicos de AWS y las opciones de soporte). Criterio: ante un escenario nuevo, nombras el plan o el recurso, justificas por qué los demás no encajan y detectas una elección de plan o una configuración de Trusted Advisor equivocada, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las cuatro necesidades tapando las respuestas: para cada una, di qué característica es la decisiva (casos técnicos, comprobaciones completas, TAM designado, compra de software de terceros) y qué plan o recurso la incluye. Después responde de memoria: qué incluye Basic Support, qué añade cada plan de pago, a qué comprobaciones accede Basic Support en Trusted Advisor y cómo se factura una compra en AWS Marketplace."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Un plan de soporte que no cubre las necesidades». Un objeto TypeScript describe lo que necesita una empresa y el plan elegido, que no lo cubre. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y las necesidades y la lista de planes conservan su estado."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Basic Support con todas las comprobaciones de tolerancia a fallos». Una función decide a qué comprobaciones de Trusted Advisor accede cada plan. Criterio de paso: Basic Support solo accede a todas las comprobaciones de límites de servicio, los planes de pago acceden a todas y la función conserva su firma."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó una recomendación de soporte que mezcla planes, Trusted Advisor y AWS Marketplace. Audítala en «Auditar una recomendación de soporte generada por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca una limitación. Contrasta cada afirmación con las páginas oficiales de planes de soporte, Trusted Advisor y AWS Marketplace (leídas el 2026-11-13) y decide si la recomendación se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe qué característica decide el escenario (casos técnicos, comprobaciones completas, TAM, especialistas designados, compra de terceros) y el calificador; al corregir, lee la explicación de cada opción y anota si fallaste por confundir dos planes o por olvidar qué incluye Basic Support. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Piensa en un proyecto que conozcas y escribe qué plan de soporte pondrías en cada tipo de cuenta, qué recurso de ayuda consultarías primero y si comprarías software de terceros en AWS Marketplace. Después completa la reflexión de la unidad. Pregunta de cierre: producción sufre una caída a las 3 de la mañana y la cuenta solo tiene Basic Support; ¿a quién puedes pedir ayuda técnica y qué plan habría cambiado la situación?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-planes-de-soporte",
+          "order": 0,
+          "note": "Fuente de la comparación de planes de soporte y de los recursos de ayuda incluidos en Basic Support."
+        },
+        {
+          "resourceSlug": "aws-comparar-planes-de-soporte",
+          "order": 1,
+          "note": "Fuente de las características de Basic Support, Business Support+, Enterprise Support y Unified Operations."
+        },
+        {
+          "resourceSlug": "aws-trusted-advisor-que-es",
+          "order": 2,
+          "note": "Fuente de qué hace Trusted Advisor y de las comprobaciones disponibles según el plan."
+        },
+        {
+          "resourceSlug": "aws-marketplace-que-es",
+          "order": 3,
+          "note": "Fuente de qué es AWS Marketplace, sus productos y su facturación."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 4,
+          "note": "Guía de CLF-C02: el dominio 4, tarea 4.3, incluye identificar los recursos técnicos de AWS y las opciones de soporte."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Lo tienen automáticamente todos los clientes de AWS, 24x7: respuestas individuales a preguntas de cuenta y facturación, foros de soporte, comprobaciones del estado de los servicios y documentación, documentos técnicos y guías de buenas prácticas. Los casos técnicos con ingenieros requieren otro plan."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Basic Support",
+      "statement": "¿Qué incluye Basic Support y quién lo tiene?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Basic Support",
+        "plan automático"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Respuestas contextuales con IA generativa, acceso 24x7 por teléfono, web y chat a ingenieros de soporte en la nube, el conjunto completo de comprobaciones de Trusted Advisor, la API de AWS Support, soporte de software de terceros y casos ilimitados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Business Support+",
+      "statement": "¿Qué añade AWS Business Support+ a Basic Support?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Business Support+",
+        "soporte técnico 24x7"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Todo lo de Business Support+ y además un Technical Account Manager (TAM) designado, acceso a AWS Security Incident Response, revisiones estratégicas de negocio con expertos de AWS y acceso a AWS Countdown para eventos críticos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Enterprise Support",
+      "statement": "¿Qué añade AWS Enterprise Support a Business Support+?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Enterprise Support",
+        "Technical Account Manager"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Orientación sobre la arquitectura de la aplicación, gestión de eventos de infraestructura, un Technical Account Manager y un especialista de dominio (Domain Specialist Engineer) designados, una suscripción recurrente a AWS Countdown Premium y revisiones de cargas críticas con runbooks personalizados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Unified Operations",
+      "statement": "¿Qué ofrece AWS Unified Operations?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Unified Operations",
+        "Domain Specialist Engineer"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Inspecciona tu entorno de AWS y recomienda cómo ahorrar dinero, mejorar la disponibilidad y el rendimiento o cerrar brechas de seguridad. Con Basic Support se accede a todas las comprobaciones de límites de servicio y a algunas de seguridad y de tolerancia a fallos; el conjunto completo requiere Business Support+, Enterprise Support o Unified Operations."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Trusted Advisor",
+      "statement": "¿Qué hace AWS Trusted Advisor y qué comprobaciones ve un cliente con Basic Support?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Trusted Advisor",
+        "comprobaciones"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html",
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un catálogo digital curado para encontrar, comprar, desplegar y administrar software, datos y servicios de terceros. AWS gestiona la facturación y los pagos, y los cargos aparecen en tu factura de AWS."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS Marketplace",
+      "statement": "¿Qué es AWS Marketplace y cómo se factura lo que se compra en él?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "AWS Marketplace",
+        "catálogo de terceros"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/marketplace/latest/buyerguide/what-is-marketplace.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Elección del plan de soporte de una empresa. Corrige su defecto principal.\nexport const eleccion = {\n  necesidades: {\n    casosTecnicos24x7: true,\n    comprobacionesCompletasTrustedAdvisor: true,\n    tamDesignado: false,\n  },\n  planElegido: \"BASIC\",\n  planes: [\n    { plan: \"BASIC\", casosTecnicos24x7: false, comprobacionesCompletasTrustedAdvisor: false, tamDesignado: false },\n    { plan: \"BUSINESS_PLUS\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: false },\n    { plan: \"ENTERPRISE\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: true },\n    { plan: \"UNIFIED_OPERATIONS\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: true },\n  ],\n};\n",
+      "solution": {
+        "code": "export const eleccion = {\n  necesidades: {\n    casosTecnicos24x7: true,\n    comprobacionesCompletasTrustedAdvisor: true,\n    tamDesignado: false,\n  },\n  planElegido: \"BUSINESS_PLUS\",\n  planes: [\n    { plan: \"BASIC\", casosTecnicos24x7: false, comprobacionesCompletasTrustedAdvisor: false, tamDesignado: false },\n    { plan: \"BUSINESS_PLUS\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: false },\n    { plan: \"ENTERPRISE\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: true },\n    { plan: \"UNIFIED_OPERATIONS\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: true },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Compara lo que necesita la empresa con lo que ofrece el plan elegido. Un plan que no cubre una necesidad marcada como verdadera no resuelve el caso."
+        },
+        {
+          "level": 2,
+          "text": "Recorre la lista de planes en orden, del más básico al más completo, y detente en el primero que cubra todas las necesidades que están en verdadero. Ese es el que debe quedar en `planElegido`."
+        },
+        {
+          "level": 3,
+          "text": "Cambia `planElegido` de \"BASIC\" a \"BUSINESS_PLUS\". No toques las necesidades ni la lista de planes."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el plan elegido existe y cubre todas las necesidades marcadas",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const plan = eleccion.planes.find((p) => p.plan === eleccion.planElegido);\nassert.ok(plan, \"el plan elegido debe existir en la lista de planes\");\nif (eleccion.necesidades.casosTecnicos24x7) {\n  assert.strictEqual(plan.casosTecnicos24x7, true, \"debe incluir casos técnicos 24x7\");\n}\nif (eleccion.necesidades.comprobacionesCompletasTrustedAdvisor) {\n  assert.strictEqual(plan.comprobacionesCompletasTrustedAdvisor, true, \"debe incluir todas las comprobaciones de Trusted Advisor\");\n}\nif (eleccion.necesidades.tamDesignado) {\n  assert.strictEqual(plan.tamDesignado, true, \"debe incluir un TAM designado\");\n}"
+          }
+        },
+        {
+          "name": "se elige el primer plan de la lista que cubre las necesidades",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const cubre = (p: (typeof eleccion.planes)[number]): boolean =>\n  (!eleccion.necesidades.casosTecnicos24x7 || p.casosTecnicos24x7) &&\n  (!eleccion.necesidades.comprobacionesCompletasTrustedAdvisor || p.comprobacionesCompletasTrustedAdvisor) &&\n  (!eleccion.necesidades.tamDesignado || p.tamDesignado);\nconst primero = eleccion.planes.find(cubre);\nassert.ok(primero, \"algún plan debe cubrir las necesidades\");\nassert.strictEqual(eleccion.planElegido, primero.plan);"
+          }
+        },
+        {
+          "name": "las necesidades de la empresa no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(eleccion.necesidades, {\n  casosTecnicos24x7: true,\n  comprobacionesCompletasTrustedAdvisor: true,\n  tamDesignado: false,\n});"
+          }
+        },
+        {
+          "name": "la lista de planes conserva los cuatro planes y sus características",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(eleccion.planes, [\n  { plan: \"BASIC\", casosTecnicos24x7: false, comprobacionesCompletasTrustedAdvisor: false, tamDesignado: false },\n  { plan: \"BUSINESS_PLUS\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: false },\n  { plan: \"ENTERPRISE\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: true },\n  { plan: \"UNIFIED_OPERATIONS\", casosTecnicos24x7: true, comprobacionesCompletasTrustedAdvisor: true, tamDesignado: true },\n]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-debug-01",
+      "type": "DEBUG",
+      "title": "Un plan de soporte que no cubre las necesidades",
+      "statement": "El objeto `eleccion` describe lo que necesita una empresa de AWS (casos técnicos 24x7, todas las comprobaciones de Trusted Advisor y, en este caso, no necesita un Technical Account Manager designado), la lista de planes con lo que incluye cada uno y el plan elegido. El equipo se queja de que no puede abrir casos técnicos ni ver todas las comprobaciones de Trusted Advisor. Corrige el defecto sin cambiar las necesidades ni la lista de planes y manteniendo la forma del valor exportado (`export const eleccion = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "planes de soporte",
+        "Basic Support",
+        "AWS Business Support+"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Decide a qué comprobaciones de Trusted Advisor accede un plan. Corrige su defecto principal.\nexport type Plan = \"BASIC\" | \"BUSINESS_PLUS\" | \"ENTERPRISE\" | \"UNIFIED_OPERATIONS\";\nexport type Categoria = \"SERVICE_LIMITS\" | \"SECURITY\" | \"FAULT_TOLERANCE\";\nexport type Acceso = \"TODAS\" | \"SELECCIONADAS\";\n\nexport function comprobacionesAccesibles(plan: Plan, categoria: Categoria): Acceso {\n  if (plan !== \"BASIC\") {\n    return \"TODAS\";\n  }\n  return categoria === \"SECURITY\" ? \"SELECCIONADAS\" : \"TODAS\";\n}\n",
+      "solution": {
+        "code": "export type Plan = \"BASIC\" | \"BUSINESS_PLUS\" | \"ENTERPRISE\" | \"UNIFIED_OPERATIONS\";\nexport type Categoria = \"SERVICE_LIMITS\" | \"SECURITY\" | \"FAULT_TOLERANCE\";\nexport type Acceso = \"TODAS\" | \"SELECCIONADAS\";\n\nexport function comprobacionesAccesibles(plan: Plan, categoria: Categoria): Acceso {\n  if (plan !== \"BASIC\") {\n    return \"TODAS\";\n  }\n  return categoria === \"SERVICE_LIMITS\" ? \"TODAS\" : \"SELECCIONADAS\";\n}\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "Basic Support accede a todas las comprobaciones de límites de servicio",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(comprobacionesAccesibles(\"BASIC\", \"SERVICE_LIMITS\"), \"TODAS\");"
+          }
+        },
+        {
+          "name": "Basic Support solo accede a comprobaciones seleccionadas de tolerancia a fallos",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(comprobacionesAccesibles(\"BASIC\", \"FAULT_TOLERANCE\"), \"SELECCIONADAS\");"
+          }
+        },
+        {
+          "name": "Basic Support solo accede a comprobaciones seleccionadas de seguridad",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(comprobacionesAccesibles(\"BASIC\", \"SECURITY\"), \"SELECCIONADAS\");"
+          }
+        },
+        {
+          "name": "los planes de pago acceden a todas las comprobaciones de cualquier categoría",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const planes: Plan[] = [\"BUSINESS_PLUS\", \"ENTERPRISE\", \"UNIFIED_OPERATIONS\"];\nconst categorias: Categoria[] = [\"SERVICE_LIMITS\", \"SECURITY\", \"FAULT_TOLERANCE\"];\nfor (const plan of planes) {\n  for (const categoria of categorias) {\n    assert.strictEqual(comprobacionesAccesibles(plan, categoria), \"TODAS\", plan + \" / \" + categoria);\n  }\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-debug-02",
+      "type": "DEBUG",
+      "title": "Basic Support con todas las comprobaciones de tolerancia a fallos",
+      "statement": "La función `comprobacionesAccesibles` indica si un plan de soporte da acceso a TODAS las comprobaciones de una categoría de AWS Trusted Advisor o solo a algunas SELECCIONADAS. Con Basic Support se accede a todas las comprobaciones de la categoría de límites de servicio y solo a algunas de las categorías de seguridad y de tolerancia a fallos; los planes de pago acceden a todas. Quien la usa observa que, con Basic Support, una categoría aparece con acceso completo cuando no debería. Localiza el defecto y corrígelo sin cambiar los tipos ni la firma de la función.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "AWS Trusted Advisor",
+        "Basic Support",
+        "comprobaciones"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html",
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Recomendación de soporte (borrador generado por un asistente)\nContexto: una empresa tiene cuentas de pruebas y una carga de producción en AWS y compra software de terceros.\n1. Las cuentas de pruebas se quedan con Basic Support: lo tienen automáticamente todos los clientes y cubre las consultas de cuenta y facturación.\n2. El equipo de producción necesita abrir casos técnicos 24x7 por chat con ingenieros, así que basta con mantener Basic Support.\n3. Con Basic Support, Trusted Advisor solo da acceso a todas las comprobaciones de límites de servicio y a algunas de seguridad y de tolerancia a fallos.\n4. El software de terceros se compra en AWS Marketplace, donde el proveedor cobra directamente y el cargo no aparece en la factura de AWS.\n5. Si más adelante se necesita un Technical Account Manager designado, hay que pasar a AWS Enterprise Support.\n6. Se recomienda AWS Business Support+ porque incluye un Technical Account Manager designado para la carga de producción."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Basic para cuentas de pruebas",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: todos los clientes tienen Basic Support automáticamente y ofrece respuestas a preguntas de cuenta y facturación, foros de soporte y documentación."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Casos técnicos con Basic",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Basic Support atiende preguntas de cuenta y facturación; el acceso 24x7 por teléfono, web y chat a ingenieros de soporte en la nube llega con AWS Business Support+ o con un plan superior."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Trusted Advisor limitado",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: con Basic Support se accede a todas las comprobaciones de límites de servicio y a algunas de seguridad y de tolerancia a fallos. Que parezca una limitación no lo convierte en un error del plan."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Cobro del proveedor",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "En AWS Marketplace, AWS gestiona la facturación y los pagos y el cargo aparece en la factura de AWS del comprador; después AWS paga al vendedor."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "TAM con Enterprise",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el Technical Account Manager designado forma parte de AWS Enterprise Support (y de AWS Unified Operations), no de Business Support+."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "TAM en Business Support+",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Business Support+ incluye acceso 24x7 a ingenieros, comprobaciones completas de Trusted Advisor y soporte de software de terceros, pero no un Technical Account Manager designado."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar una recomendación de soporte generada por IA",
+      "statement": "Un asistente de IA redactó esta recomendación de soporte para una empresa con cuentas de pruebas, una carga de producción y compras de software de terceros. Audítala contra la documentación oficial de los planes de soporte, AWS Trusted Advisor y AWS Marketplace: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el plan se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "planes de soporte",
+        "AWS Trusted Advisor",
+        "AWS Marketplace",
+        "Technical Account Manager"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/",
+        "https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html",
+        "https://docs.aws.amazon.com/marketplace/latest/buyerguide/what-is-marketplace.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Enterprise Support, con un Technical Account Manager designado para la empresa",
+            "explanation": "Descartada: es un plan de pago cuyo valor añadido es un Technical Account Manager; el enunciado pide el nivel MÍNIMO que se tiene sin contratar nada."
+          },
+          {
+            "id": "b",
+            "text": "AWS Business Support+, con acceso 24x7 a ingenieros de soporte en la nube",
+            "explanation": "Descartada: es un plan de pago; el nivel MÍNIMO que tienen todos los clientes automáticamente es otro."
+          },
+          {
+            "id": "c",
+            "text": "Basic Support, con respuestas a dudas de cuenta y facturación y foros de soporte",
+            "explanation": "Es correcta: todos los clientes de AWS tienen Basic Support automáticamente, con respuestas a preguntas de cuenta y facturación, foros de soporte y documentación."
+          },
+          {
+            "id": "d",
+            "text": "AWS Unified Operations, con revisiones de cargas de trabajo críticas y runbooks",
+            "explanation": "Descartada: es el plan de pago más amplio y requiere contratarse; no es el nivel MÍNIMO automático."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué plan de soporte tienen automáticamente todos los clientes",
+      "statement": "Una empresa abrió hoy su cuenta de AWS y todavía no ha contratado ningún plan de soporte de pago. Quiere saber con qué apoyo cuenta desde el primer día. ¿Qué plan de soporte tiene como nivel MÍNIMO disponible de forma automática?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Basic Support",
+        "planes de soporte"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Unified Operations, con revisiones de cargas de trabajo críticas y runbooks personalizados",
+            "explanation": "Es correcto: AWS Unified Operations incluye un Technical Account Manager y especialistas de dominio designados para los casos de uso de la empresa."
+          },
+          {
+            "id": "b",
+            "text": "AWS Enterprise Support, con un Technical Account Manager y revisiones estratégicas de negocio",
+            "explanation": "Descartada: incluye el Technical Account Manager, pero los especialistas de dominio designados no forman parte de este plan; el requisito ÚNICAMENTE se cumple en otro."
+          },
+          {
+            "id": "c",
+            "text": "AWS Business Support+, con ingenieros de soporte en la nube 24x7 y casos ilimitados",
+            "explanation": "Descartada: ofrece ingenieros de soporte en la nube, no especialistas de dominio designados ni un Technical Account Manager."
+          },
+          {
+            "id": "d",
+            "text": "Basic Support, con respuestas a dudas de cuenta y facturación y foros de soporte",
+            "explanation": "Descartada: no incluye figuras designadas; solo ofrece respuestas a dudas de cuenta y facturación, foros y documentación."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué plan incluye especialistas de dominio designados",
+      "statement": "Una empresa tiene una aplicación crítica y quiere contar con un Technical Account Manager y también con especialistas técnicos de dominio (Domain Specialist Engineers) designados que conozcan su aplicación. Solo uno de los planes listados ofrece estos especialistas. ¿Qué plan de soporte los incluye ÚNICAMENTE?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Unified Operations",
+        "Domain Specialist Engineer"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Usar AWS Health Dashboard para ver el estado de los servicios de AWS y las alertas de sus recursos",
+            "explanation": "Descartada: informa del estado de los servicios y de los recursos afectados; no genera recomendaciones de ahorro ni de seguridad."
+          },
+          {
+            "id": "b",
+            "text": "Preguntar en AWS re:Post cómo reducir el gasto y reforzar la seguridad de la cuenta",
+            "explanation": "Descartada: re:Post es un recurso de ayuda de Customer Service and Communities; no inspecciona el entorno ni genera recomendaciones por sí mismo."
+          },
+          {
+            "id": "c",
+            "text": "Usar la API de AWS Support para automatizar la gestión de casos de soporte de la cuenta",
+            "explanation": "Descartada: automatiza casos y operaciones de Trusted Advisor, pero no es ella la que inspecciona el entorno y recomienda."
+          },
+          {
+            "id": "d",
+            "text": "Usar AWS Trusted Advisor para recibir recomendaciones basadas en la inspección del entorno",
+            "explanation": "Es correcta: Trusted Advisor inspecciona el entorno y recomienda cómo ahorrar dinero, mejorar la disponibilidad y el rendimiento o cerrar brechas de seguridad."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué herramienta recomienda mejoras en el entorno de AWS",
+      "statement": "Una empresa quiere una herramienta de AWS que revise su cuenta y le indique oportunidades de ahorro, de disponibilidad y rendimiento, y de seguridad. ¿Qué herramienta es la MÁS adecuada?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Trusted Advisor",
+        "recomendaciones"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html",
+        "https://aws.amazon.com/premiumsupport/plans/",
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "A todas las de seguridad y de tolerancia a fallos, con actualización automática",
+            "explanation": "Descartada: en esas dos categorías solo hay comprobaciones seleccionadas, y las de seguridad se actualizan manualmente con el botón de actualizar."
+          },
+          {
+            "id": "b",
+            "text": "A todas las de límites de servicio y a algunas de seguridad y de tolerancia a fallos",
+            "explanation": "Es correcta: con Basic Support se accede a todas las comprobaciones de la categoría de límites de servicio y a algunas de seguridad y de tolerancia a fallos."
+          },
+          {
+            "id": "c",
+            "text": "A todas las de todas las categorías mediante la API de AWS Trusted Advisor",
+            "explanation": "Descartada: el acceso a todas las comprobaciones, en la consola y en la API, es de Business Support+, Enterprise Support y Unified Operations."
+          },
+          {
+            "id": "d",
+            "text": "A ninguna, porque la consola de Trusted Advisor exige tener un plan de pago",
+            "explanation": "Descartada: con Basic Support se puede usar la consola de Trusted Advisor con un conjunto limitado de comprobaciones."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-quiz-04",
+      "type": "QUIZ",
+      "title": "A qué comprobaciones de Trusted Advisor accede Basic Support",
+      "statement": "Una empresa solo tiene Basic Support y abre la consola de AWS Trusted Advisor. ¿A qué comprobaciones accede como MÁXIMO con ese plan?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Trusted Advisor",
+        "Basic Support"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html",
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Es un catálogo digital curado donde se encuentra, compra y despliega software, datos y servicios de terceros",
+            "explanation": "Cumple: AWS Marketplace es un catálogo digital curado para encontrar, comprar, desplegar y administrar software, datos y servicios de terceros."
+          },
+          {
+            "id": "b",
+            "text": "Solo pueden publicar productos los empleados de AWS; ninguna empresa externa puede vender en él",
+            "explanation": "No cumple: un vendedor puede ser un proveedor independiente de software, un revendedor con valor añadido o un particular."
+          },
+          {
+            "id": "c",
+            "text": "Todos sus productos son gratuitos y no generan ningún cargo en la cuenta del comprador",
+            "explanation": "No cumple: un producto puede ser gratuito o tener un cargo asociado, y ese cargo pasa a formar parte de la factura de AWS."
+          },
+          {
+            "id": "d",
+            "text": "Un producto puede ofrecerse, por ejemplo, como imagen de máquina de Amazon (AMI) o como software como servicio (SaaS)",
+            "explanation": "Cumple: los productos pueden ofrecerse como AMI, como SaaS o con plantillas de CloudFormation, entre otros formatos."
+          },
+          {
+            "id": "e",
+            "text": "Sus productos solo se pueden ejecutar en instancias bajo demanda, nunca en Reserved ni en Spot",
+            "explanation": "No cumple: los productos de AWS Marketplace pueden ejecutarse en instancias de Amazon EC2 Reserved y Spot, además de bajo demanda."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-quiz-05",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre AWS Marketplace",
+      "statement": "Una empresa evalúa comprar software de seguridad de un tercero y quiere saber cómo funciona AWS Marketplace. Selecciona DOS afirmaciones correctas.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Marketplace",
+        "productos de terceros"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/marketplace/latest/buyerguide/what-is-marketplace.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El proveedor cobra directamente al comprador y AWS no interviene en la facturación ni en los pagos",
+            "explanation": "Descartada: en AWS Marketplace es AWS quien gestiona la facturación y los pagos; el proveedor no cobra por su cuenta."
+          },
+          {
+            "id": "b",
+            "text": "AWS gestiona la facturación y los pagos, y el cargo aparece en la factura de AWS del comprador",
+            "explanation": "Es correcta: todas las opciones de precio se facturan desde un único origen y los cargos aparecen en la factura de AWS."
+          },
+          {
+            "id": "c",
+            "text": "El cargo se factura por separado de la factura de AWS y exige un contrato anual obligatorio",
+            "explanation": "Descartada: el cargo forma parte de la factura de AWS y las opciones de precio incluyen prueba gratuita, por horas, mensual, anual o plurianual."
+          },
+          {
+            "id": "d",
+            "text": "El comprador paga primero al proveedor y después AWS le reembolsa el importe de la compra",
+            "explanation": "Descartada: no hay reembolso; el comprador paga a través de AWS y después AWS paga al vendedor."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-quiz-06",
+      "type": "QUIZ",
+      "title": "Cómo se factura una compra en AWS Marketplace",
+      "statement": "Una empresa compra en AWS Marketplace un producto SaaS de un proveedor independiente y quiere saber cómo aparecerá el cargo. ¿Qué enunciado describe MEJOR cómo se factura esa compra?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Marketplace",
+        "facturación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/marketplace/latest/buyerguide/what-is-marketplace.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Basic Support, incluido automáticamente en todas las cuentas de AWS",
+            "explanation": "Descartada: no incluye casos técnicos con ingenieros y solo da acceso a algunas comprobaciones de Trusted Advisor."
+          },
+          {
+            "id": "b",
+            "text": "AWS Enterprise Support, con un Technical Account Manager designado para la empresa",
+            "explanation": "Descartada: cubre lo pedido, pero añade un Technical Account Manager que no se necesita; un plan mayor incumple el calificador MENOR."
+          },
+          {
+            "id": "c",
+            "text": "AWS Unified Operations, con especialistas de dominio designados para la aplicación",
+            "explanation": "Descartada: cubre lo pedido, pero añade especialistas y monitorización que no se piden; un plan mayor incumple el calificador MENOR."
+          },
+          {
+            "id": "d",
+            "text": "AWS Business Support+, con respuestas asistidas por IA y soporte de software de terceros",
+            "explanation": "Es correcta: incluye acceso 24x7 a ingenieros por teléfono, web y chat y todas las comprobaciones de Trusted Advisor, sin un TAM designado."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-quiz-07",
+      "type": "QUIZ",
+      "title": "Qué plan cubre soporte técnico 24x7 con el menor nivel contratado",
+      "statement": "Una empresa tiene cargas de producción y su equipo quiere abrir casos técnicos 24x7 por teléfono, web y chat y ver el conjunto completo de comprobaciones de Trusted Advisor. No necesita un Technical Account Manager designado. ¿Qué plan cubre esas necesidades con el MENOR nivel de servicio contratado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Business Support+",
+        "planes de soporte"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/",
+        "https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Usar AWS Trusted Advisor para recibir recomendaciones de ahorro, seguridad y rendimiento",
+            "explanation": "Descartada: recomienda mejoras sobre el entorno; no muestra el estado de los servicios ni avisa de los recursos afectados."
+          },
+          {
+            "id": "b",
+            "text": "Leer la documentación y los documentos técnicos de AWS para conocer el estado de los servicios",
+            "explanation": "Descartada: explican cómo funcionan los servicios y las buenas prácticas, pero no son una vista personalizada ni emiten alertas."
+          },
+          {
+            "id": "c",
+            "text": "Usar AWS Health Dashboard para seguir el estado de los servicios y los avisos de la cuenta",
+            "explanation": "Es correcta: AWS Health ofrece una vista personalizada del estado de los servicios de AWS y alertas cuando tus recursos se ven afectados."
+          },
+          {
+            "id": "d",
+            "text": "Crear un caso en el centro de soporte cada vez que se quiera conocer el estado de los servicios",
+            "explanation": "Descartada: un caso es una petición manual; la vista personalizada y las alertas automáticas son la función de AWS Health."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 4,
+        "task": "4.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-quiz-08",
+      "type": "QUIZ",
+      "title": "Qué recurso informa del estado de los servicios y de los recursos afectados",
+      "statement": "Un equipo quiere ver una vista personalizada del estado de los servicios de AWS y recibir alertas cuando sus propios recursos se vean afectados. ¿Qué recurso es el MÁS adecuado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "AWS Health Dashboard",
+        "estado de los servicios"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://aws.amazon.com/premiumsupport/plans/",
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C1"
+      ],
+      "slug": "aws-u1-4-3-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué plan de soporte y qué recursos de ayuda eliges",
+      "statement": "Elige un proyecto que conozcas (por ejemplo, una tienda en línea con cuentas de pruebas y una carga de producción) y escribe su estrategia de soporte como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué plan de soporte elegirías para cada tipo de cuenta, qué recursos de ayuda consultarías primero y si usarías AWS Marketplace para algún software de terceros.\n\n2) Alternativa descartada: un plan más pequeño o más grande que el elegido (por ejemplo, quedarte con Basic Support para producción, o contratar un plan con Technical Account Manager sin necesitarlo) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué recae en tu equipo (revisar las recomendaciones de Trusted Advisor, vigilar los avisos de AWS Health, repasar las condiciones vigentes de cada plan).\n\n4) Evidencia: qué página oficial de los planes de soporte, de Trusted Advisor o de AWS Marketplace usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento relacione cada necesidad con lo que incluye cada plan. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo elegiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "planes de soporte",
+        "AWS Trusted Advisor",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+        "https://aws.amazon.com/premiumsupport/plans/",
+        "https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html",
+        "https://docs.aws.amazon.com/marketplace/latest/buyerguide/what-is-marketplace.html"
+      ],
+      "order": 18
+    }
+  ]
+}
