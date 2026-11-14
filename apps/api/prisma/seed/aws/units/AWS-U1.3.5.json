@@ -1,0 +1,1364 @@
+{
+  "code": "AWS-U1.3.5",
+  "lessons": [
+    {
+      "slug": "aws-u1-3-5-redes-y-entrega-de-contenido-vpc-route-53-cloudfront-elb-vpn-direct-connect",
+      "title": "Redes y entrega de contenido: VPC, Route 53, CloudFront, ELB, VPN y Direct Connect",
+      "estimatedMin": 50,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Para elegir un servicio de red en AWS primero miras qué problema resuelves: dónde viven tus recursos, cómo los encuentran los usuarios, cómo se reparte el tráfico y cómo se conecta tu red local. Amazon VPC es una red virtual lógicamente aislada que defines tú, donde lanzas tus recursos de AWS. Amazon Route 53 es un servicio de DNS. Amazon CloudFront acelera la entrega de contenido desde ubicaciones de borde. Elastic Load Balancing reparte el tráfico entrante entre varios destinos. AWS Site-to-Site VPN y AWS Direct Connect conectan tu red local con AWS. La tarea 3.5 del examen pide identificar los componentes de una VPC (por ejemplo, subredes y puertas de enlace), entender su seguridad (por ejemplo, grupos de seguridad), entender el propósito de Route 53 e identificar las opciones de conectividad hacia AWS (AWS VPN y AWS Direct Connect). Los balanceadores de carga se piden en la tarea 3.3 y las ubicaciones de borde, en la 3.2."
+        },
+        {
+          "type": "list",
+          "title": "Los servicios y para qué sirven",
+          "items": [
+            "Amazon VPC: red virtual lógicamente aislada que se parece a una red de tu propio centro de datos. Después de crear la VPC, añades subredes. Tu cuenta incluye una VPC predeterminada en cada Región.",
+            "Amazon Route 53: servicio web de DNS altamente disponible y escalable. Hace tres funciones, en cualquier combinación: registro de dominios, enrutamiento DNS y comprobación de estado de tus recursos.",
+            "Amazon CloudFront: servicio web que acelera la distribución de contenido estático y dinámico, como archivos .html, .css, .js e imágenes, a través de una red mundial de centros de datos llamados ubicaciones de borde.",
+            "Elastic Load Balancing: distribuye automáticamente el tráfico entrante entre varios destinos, como instancias de EC2, contenedores y direcciones IP, en una o más zonas de disponibilidad.",
+            "AWS Site-to-Site VPN: conexión IPsec entre tu red local y tus VPC. Cada conexión incluye dos túneles que puedes usar a la vez para alta disponibilidad.",
+            "AWS Direct Connect: enlaza tu red interna con una ubicación de Direct Connect mediante un cable Ethernet de fibra óptica estándar. Con interfaces virtuales llegas a los servicios públicos de AWS o a una VPC sin pasar por los proveedores de servicios de internet."
+          ]
+        },
+        {
+          "type": "mermaid",
+          "title": "Del usuario y de la oficina a la VPC",
+          "code": "flowchart TD\n  U[\"Usuarios\"] -->|\"Resuelven el nombre\"| R53[\"Amazon Route 53 (DNS)\"]\n  U -->|\"Piden el contenido\"| CF[\"Amazon CloudFront (ubicación de borde)\"]\n  CF -->|\"Si no tiene la copia, la pide al origen\"| ELB[\"Elastic Load Balancing\"]\n  subgraph VPC[\"VPC con una subred por zona de disponibilidad\"]\n    IGW[\"Internet gateway\"]\n    subgraph ZA[\"Zona de disponibilidad A\"]\n      SA[\"Subred A y su tabla de rutas\"] --> EA[\"Instancias de EC2 con security group\"]\n    end\n    subgraph ZB[\"Zona de disponibilidad B\"]\n      SB[\"Subred B y su tabla de rutas\"] --> EB[\"Instancias de EC2 con security group\"]\n    end\n  end\n  ELB --> EA\n  ELB --> EB\n  IGW --- SA\n  IGW --- SB\n  OFI[\"Red local de la empresa\"] -.->|\"Túneles IPsec: Site-to-Site VPN\"| VPC\n  OFI -.->|\"Cable de fibra: Direct Connect\"| VPC"
+        },
+        {
+          "type": "list",
+          "title": "Los componentes de una VPC y su seguridad",
+          "items": [
+            "Subred: rango de direcciones IP de tu VPC. Una subred debe residir en una sola zona de disponibilidad.",
+            "Tabla de rutas: determina hacia dónde se dirige el tráfico de una subred o de una puerta de enlace.",
+            "Internet gateway: puerta de enlace que conecta tu VPC con internet. Un punto de conexión de VPC conecta con servicios de AWS de forma privada, sin internet gateway ni dispositivo NAT.",
+            "VPC peering: enruta tráfico entre los recursos de dos VPC. Una transit gateway actúa como centro de conexión entre tus VPC, conexiones VPN y conexiones de Direct Connect.",
+            "Security group: cortafuegos virtual de un recurso. Solo llega al recurso el tráfico que permiten sus reglas, cada regla de entrada indica origen, rango de puertos y protocolo, y cada regla de salida indica destino, rango de puertos y protocolo.",
+            "Un security group es con estado: la respuesta a una petición que sale de la instancia llega aunque las reglas de entrada no la contemplen, y las respuestas a tráfico de entrada permitido salen aunque las reglas de salida no las contemplen. Además, puedes asignar varios security groups a un mismo recurso."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: seis necesidades, seis servicios",
+          "text": "Una empresa tiene seis necesidades. Necesidad 1: lanzar sus servidores en una red aislada que ella define. Pide una red virtual propia, así que usa Amazon VPC. Necesidad 2: que quien escriba www.ejemplo.com llegue a la aplicación y que el tráfico se aparte de un servidor que no responde. Pide DNS y comprobación de estado, así que usa Route 53. Necesidad 3: que usuarios de varios países reciban imágenes y archivos JavaScript con baja latencia. Pide copias cerca del usuario, así que usa CloudFront. Necesidad 4: repartir las peticiones entre instancias de dos zonas, solo a las que están en buen estado. Pide un reparto con comprobación de estado, así que usa Elastic Load Balancing. Necesidad 5: conectar la oficina con la VPC mediante túneles cifrados con IPsec. Pide una conexión IPsec, así que usa Site-to-Site VPN. Necesidad 6: enlazar el centro de datos con AWS por un cable de fibra hasta una ubicación de Direct Connect. Pide ese cable, así que usa Direct Connect. Cada servicio resuelve un problema distinto: el nombre del servicio no decide, la necesidad sí."
+        },
+        {
+          "type": "code",
+          "title": "El modelo de una VPC con una subred pública, como lo usarás en el laboratorio",
+          "language": "typescript",
+          "code": "export const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el problema decide el servicio, no la palabra «red»",
+          "text": "Lee qué pide el enunciado. Registrar un dominio, enrutar nombres o comprobar el estado de un servidor es Route 53. Entregar contenido desde ubicaciones de borde, con copias cerca de los usuarios, es CloudFront. Repartir peticiones entre destinos en buen estado es Elastic Load Balancing. Un túnel cifrado con IPsec entre tu red y la VPC es Site-to-Site VPN, y un cable de fibra hasta una ubicación de Direct Connect es Direct Connect. Si la pregunta habla de aislar recursos, de subredes o de qué tráfico se permite, estás dentro de la VPC y sus security groups."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: abrir un puerto a 0.0.0.0/0 porque «así funciona»",
+          "text": "Causa: al probar un servicio se pone como origen de la regla de entrada 0.0.0.0/0, que equivale a cualquier dirección IPv4, y esa regla se queda en producción, incluso en el security group de una base de datos o en los puertos de administración. Consecuencia: cualquiera puede intentar conectarse a ese puerto desde cualquier dirección, y la regla se salta el principio de dar acceso solo a quien lo necesita. Solución: abre cada puerto solo a los orígenes que lo requieren, por ejemplo la subred de la aplicación para una base de datos, deja 0.0.0.0/0 solo en los puertos públicos de la web y no abras rangos de puertos grandes. En el laboratorio lo comprobarás con aws.network.canConnect: un puerto abierto de más es un defecto."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: dar por hecho que basta con la regla del security group para llegar a internet",
+          "text": "Causa: se crea la regla de entrada del puerto 443 y se supone que la instancia ya es alcanzable, sin revisar que la tabla de rutas de su subred tenga una ruta hacia un internet gateway. Consecuencia: la regla del security group es correcta, pero el tráfico no sabe por dónde entrar ni salir de la VPC, y la web sigue inaccesible sin ningún mensaje claro. Solución: sigue el camino completo, de la ruta de la subred a la regla de entrada y a la de salida, y comprueba cada paso. En el laboratorio, la propiedad reason del resultado de aws.network.canConnect te dice en qué paso se detiene el tráfico."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir el servicio de red o de entrega de contenido de AWS que encaja con una necesidad y configurar el modelo de una VPC para que un servidor web sea alcanzable desde internet y una base de datos solo desde la subred de la aplicación. Esta unidad prepara el examen CLF-C02, dominio 3 «Tecnología y servicios en la nube», tarea 3.5 (identificar los servicios de red de AWS), con apoyo en las tareas 3.2 y 3.3. Criterio: ante un escenario nuevo, nombras el servicio, descartas los demás con una razón y compruebas con aws.network.canConnect que las rutas y las reglas del security group permiten solo el tráfico pedido, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo de las seis necesidades tapando las respuestas: para cada una, di si pide una red propia, DNS, entrega desde el borde, reparto de peticiones, un túnel IPsec o un cable de fibra, y qué servicio encaja. Después responde de memoria qué hace un security group, por qué es con estado y qué función cumple una tabla de rutas."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Un sitio web que no llega a internet». Ejecuta primero aws.network.canConnect sobre el código inicial y lee la propiedad reason antes de editar. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y el SSH desde internet sigue bloqueado."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve el laboratorio «Web pública y base de datos privada, sin pistas». Parte de los criterios del enunciado, comprueba cada conexión con aws.network.canConnect y el plan de subredes con aws.cidr.validateSubnetPlan, y corrige las subredes, las rutas y los security groups. Criterio de paso: la web llega por HTTPS, la web llega a la base de datos y la base de datos no es alcanzable desde internet."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente propuso qué servicio usar en cinco casos de red y una de sus elecciones dejaría la oficina sin túneles cifrados. Resuelve «Un servicio de conectividad mal asignado»: corrige solo la fila equivocada y contrasta cada elección con las páginas oficiales de Route 53, CloudFront, Elastic Load Balancing, Site-to-Site VPN y Direct Connect (leídas el 2026-11-13)."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde sin apuntes las 8 preguntas de escenario de la unidad. Antes de elegir, escribe qué problema pide resolver el enunciado: nombres, entrega de contenido, reparto de tráfico, conexión de la red local o reglas dentro de la VPC; al corregir, lee la explicación de cada opción y anota si fallaste por confundir VPN con Direct Connect, Route 53 con CloudFront o un security group con una tabla de rutas. Criterio de paso: al menos 6 de 8 correctas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Piensa en una aplicación web que conozcas con usuarios en varios países y una oficina que debe llegar a sus servidores, y escribe qué servicio usarías para cada tramo del camino y por qué. Después completa la reflexión de la unidad. Pregunta de cierre: un compañero abrió el puerto de la base de datos a 0.0.0.0/0 para «probar más rápido»; ¿qué le respondes y qué regla propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-vpc-que-es",
+          "order": 0,
+          "note": "Qué es Amazon VPC: red virtual aislada, subredes en una zona de disponibilidad, tablas de rutas, internet gateway, puntos de conexión, peering y transit gateway."
+        },
+        {
+          "resourceSlug": "aws-vpc-grupos-de-seguridad",
+          "order": 1,
+          "note": "Grupos de seguridad: cortafuegos virtual con reglas de entrada y de salida, con estado, y buenas prácticas para no abrir 0.0.0.0/0."
+        },
+        {
+          "resourceSlug": "aws-route53-que-es",
+          "order": 2,
+          "note": "Qué es Route 53: registro de dominios, enrutamiento DNS y comprobaciones de estado."
+        },
+        {
+          "resourceSlug": "aws-cloudfront-que-es",
+          "order": 3,
+          "note": "Qué es CloudFront: entrega de contenido desde ubicaciones de borde con copias en caché y un origen."
+        },
+        {
+          "resourceSlug": "aws-elb-que-es",
+          "order": 4,
+          "note": "Qué es Elastic Load Balancing: reparto del tráfico entre destinos en buen estado en una o más zonas."
+        },
+        {
+          "resourceSlug": "aws-site-to-site-vpn-que-es",
+          "order": 5,
+          "note": "Qué es Site-to-Site VPN: conexión IPsec entre la red local y la VPC, con dos túneles."
+        },
+        {
+          "resourceSlug": "aws-direct-connect-que-es",
+          "order": 6,
+          "note": "Qué es Direct Connect: cable de fibra hasta una ubicación de Direct Connect e interfaces virtuales."
+        },
+        {
+          "resourceSlug": "aws-clf-c02-guia-de-examen",
+          "order": 7,
+          "note": "Guía de CLF-C02: el dominio 3, tarea 3.5, trata los servicios de red; la 3.2, las ubicaciones de borde, y la 3.3, los balanceadores."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": "typescript",
+      "starterCode": "// Servidor web en una subred pública de la VPC 10.0.0.0/16. Los visitantes no consiguen entrar.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [{ destination: \"10.0.0.0/16\", target: \"local\" }],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"10.0.0.0/16\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Servidor web en una subred pública de la VPC 10.0.0.0/16: ruta a internet y HTTP y HTTPS abiertos.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Sigue el camino de la petición: primero la tabla de rutas de la subred, después la regla de entrada del security group y por último la de salida. La propiedad `reason` de `aws.network.canConnect` dice en qué paso se detiene."
+        },
+        {
+          "level": 2,
+          "text": "Una subred llega a internet solo si su tabla de rutas envía el tráfico de 0.0.0.0/0 a un internet gateway, cuyo destino empieza por igw-. Además, el origen de una regla de entrada debe ser 0.0.0.0/0 para aceptar a cualquier visitante, y el HTTPS usa el puerto 443."
+        },
+        {
+          "level": 3,
+          "text": "Añade a `routes` la ruta { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" }, cambia el origen de la regla del puerto 80 a \"0.0.0.0/0\" y añade otra regla de entrada tcp con fromPort y toPort 443 y el mismo origen. No añadas ninguna regla para el puerto 22."
+        }
+      ],
+      "tests": [
+        {
+          "name": "un visitante de internet llega al servidor web por HTTPS",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nconst resultado = aws.network.canConnect(vpc, { from: visitante, to: web, protocol: \"tcp\", port: 443 });\nassert.strictEqual(resultado.allowed, true, \"El HTTPS no llega: \" + resultado.reason);"
+          }
+        },
+        {
+          "name": "un visitante de internet llega al servidor web por HTTP",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nconst resultado = aws.network.canConnect(vpc, { from: visitante, to: web, protocol: \"tcp\", port: 80 });\nassert.strictEqual(resultado.allowed, true, \"El HTTP no llega: \" + resultado.reason);"
+          }
+        },
+        {
+          "name": "la subred sigue dentro de la VPC",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const subred = vpc.subnets[0];\nassert.ok(subred, \"Falta la subred pública\");\nassert.ok(aws.cidr.contains(vpc.cidr, subred.cidr), subred.cidr + \" queda fuera de la VPC \" + vpc.cidr);"
+          }
+        },
+        {
+          "name": "el servidor web sale a internet",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nconst resultado = aws.network.canConnect(vpc, { from: web, to: visitante, protocol: \"tcp\", port: 443 });\nassert.strictEqual(resultado.allowed, true, \"La salida a internet no funciona: \" + resultado.reason);"
+          }
+        },
+        {
+          "name": "el SSH desde internet sigue bloqueado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nconst resultado = aws.network.canConnect(vpc, { from: visitante, to: web, protocol: \"tcp\", port: 22 });\nassert.strictEqual(resultado.allowed, false, \"El puerto 22 no debe quedar abierto a internet\");"
+          }
+        },
+        {
+          "name": "la ruta por defecto de la subred es un internet gateway",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const destino = aws.network.routeFor(vpc.subnets[0].routes, \"8.8.8.8\");\nassert.ok(destino !== null && destino.startsWith(\"igw-\"), \"El tráfico de internet debe salir por un internet gateway y sale por \" + String(destino));\nassert.strictEqual(aws.network.routeFor(vpc.subnets[0].routes, \"10.0.1.50\"), \"local\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-sitio-web-guiado",
+      "type": "LAB",
+      "title": "Un sitio web que no llega a internet",
+      "statement": "Una VPC con el bloque 10.0.0.0/16 tiene una subred pública (10.0.1.0/24) con un servidor web (10.0.1.10) protegido por el security group sg-web. Los visitantes de internet deben poder abrir el sitio por HTTP (puerto 80) y por HTTPS (puerto 443) desde cualquier dirección, y el servidor debe poder salir a internet. El SSH (puerto 22) no debe quedar abierto a internet. La NACL de la subred ya permite todo el tráfico: no la cambies. El código inicial exporta un modelo que no cumple: corrígelo sin cambiar la forma del valor exportado (`export const vpc = { cidr, subnets, securityGroups }`) y comprueba cada conexión con `aws.network.canConnect`.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "VPC",
+        "tabla de rutas",
+        "internet gateway",
+        "security group"
+      ],
+      "estimatedMin": 30,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// VPC 10.10.0.0/16 con una subred para el servidor web y otra para la base de datos.\n// Cumple los criterios del enunciado: el modelo actual tiene varios defectos.\nexport const vpc = {\n  cidr: \"10.10.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-web\",\n      cidr: \"10.10.1.0/24\",\n      routes: [{ destination: \"10.10.0.0/16\", target: \"local\" }],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-db\",\n      cidr: \"10.10.1.128/25\",\n      routes: [\n        { destination: \"10.10.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 80, toPort: 80, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-db\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 3306, toPort: 3306, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// VPC 10.10.0.0/16: la web es pública por HTTPS y la base de datos solo se alcanza desde la subred web.\nexport const vpc = {\n  cidr: \"10.10.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-web\",\n      cidr: \"10.10.1.0/24\",\n      routes: [\n        { destination: \"10.10.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-db\",\n      cidr: \"10.10.2.0/24\",\n      routes: [{ destination: \"10.10.0.0/16\", target: \"local\" }],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-db\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 3306, toPort: 3306, cidr: \"10.10.1.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el plan de subredes no tiene problemas según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const plan = { vpc: vpc.cidr, subnets: vpc.subnets.map((subred: { id: string; cidr: string }) => ({ name: subred.id, cidr: subred.cidr })) };\nassert.deepStrictEqual(aws.cidr.validateSubnetPlan(plan), []);"
+          }
+        },
+        {
+          "name": "los visitantes de internet llegan a la web por HTTPS",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.10.1.10\", securityGroups: [\"sg-web\"] };\nconst db = { ip: \"10.10.2.10\", securityGroups: [\"sg-db\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nconst resultado = aws.network.canConnect(vpc, { from: visitante, to: web, protocol: \"tcp\", port: 443 });\nassert.strictEqual(resultado.allowed, true, \"El HTTPS no llega a la web: \" + resultado.reason);"
+          }
+        },
+        {
+          "name": "la web llega a la base de datos por el puerto 3306",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.10.1.10\", securityGroups: [\"sg-web\"] };\nconst db = { ip: \"10.10.2.10\", securityGroups: [\"sg-db\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nconst resultado = aws.network.canConnect(vpc, { from: web, to: db, protocol: \"tcp\", port: 3306 });\nassert.strictEqual(resultado.allowed, true, \"La web no llega a la base de datos: \" + resultado.reason);"
+          }
+        },
+        {
+          "name": "la base de datos no es alcanzable desde internet",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const web = { ip: \"10.10.1.10\", securityGroups: [\"sg-web\"] };\nconst db = { ip: \"10.10.2.10\", securityGroups: [\"sg-db\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nconst resultado = aws.network.canConnect(vpc, { from: visitante, to: db, protocol: \"tcp\", port: 3306 });\nassert.strictEqual(resultado.allowed, false, \"La base de datos no debe ser alcanzable desde internet\");"
+          }
+        },
+        {
+          "name": "el security group de la base de datos solo admite el 3306 desde la subred web",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const grupo = vpc.securityGroups.find((candidato: { id: string }) => candidato.id === \"sg-db\");\nassert.ok(grupo, \"Falta el security group sg-db\");\nconst entra = (peer: string, port: number) => aws.network.securityGroupAllows(grupo.rules, { direction: \"inbound\", protocol: \"tcp\", port, peer });\nassert.strictEqual(entra(\"10.10.1.50\", 3306), true, \"La subred web debe poder usar el 3306\");\nassert.strictEqual(entra(\"198.51.100.7\", 3306), false, \"Una dirección de internet no debe usar el 3306\");\nassert.strictEqual(entra(\"10.10.2.20\", 3306), false, \"Otra dirección fuera de la subred web no debe usar el 3306\");\nassert.strictEqual(entra(\"10.10.1.50\", 22), false, \"El 22 no debe estar abierto en la base de datos\");"
+          }
+        },
+        {
+          "name": "la web solo acepta HTTPS desde internet",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.10.1.10\", securityGroups: [\"sg-web\"] };\nconst db = { ip: \"10.10.2.10\", securityGroups: [\"sg-db\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nfor (const port of [22, 80, 3306]) {\n  const resultado = aws.network.canConnect(vpc, { from: visitante, to: web, protocol: \"tcp\", port });\n  assert.strictEqual(resultado.allowed, false, \"El puerto \" + port + \" no debe estar abierto a internet\");\n}"
+          }
+        },
+        {
+          "name": "el servidor web sale a internet por HTTPS",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.10.1.10\", securityGroups: [\"sg-web\"] };\nconst db = { ip: \"10.10.2.10\", securityGroups: [\"sg-db\"] };\nconst visitante = { ip: \"198.51.100.7\" };\nconst resultado = aws.network.canConnect(vpc, { from: web, to: visitante, protocol: \"tcp\", port: 443 });\nassert.strictEqual(resultado.allowed, true, \"La web no sale a internet: \" + resultado.reason);"
+          }
+        },
+        {
+          "name": "cada subred ofrece al menos 250 direcciones utilizables",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(vpc.subnets.length, 2);\nfor (const subred of vpc.subnets as { id: string; cidr: string }[]) {\n  const utilizables = aws.cidr.usableAddresses(subred.cidr);\n  assert.ok(utilizables >= 250, subred.id + \" ofrece \" + utilizables + \" direcciones utilizables y se piden 250\");\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-web-y-base-de-datos-autonomo",
+      "type": "LAB",
+      "title": "Web pública y base de datos privada, sin pistas",
+      "statement": "Diseña la red de una aplicación en la VPC 10.10.0.0/16 con dos subredes: `subnet-web` (servidor web 10.10.1.10, security group sg-web) y `subnet-db` (base de datos 10.10.2.10, security group sg-db). Criterios: (1) el plan de subredes es válido, sin solapes y dentro de la VPC, y cada subred ofrece al menos 250 direcciones utilizables; (2) los visitantes de internet llegan a la web solo por HTTPS (443); (3) la web llega a la base de datos por el puerto 3306; (4) la base de datos no es alcanzable desde internet y su security group solo admite el 3306 desde la subred web; (5) el servidor web puede salir a internet por HTTPS. Mantén la forma del valor exportado (`export const vpc = { cidr, subnets, securityGroups }`) y deja las NACL como están: permiten todo el tráfico. Comprueba el plan con `aws.cidr.validateSubnetPlan` y cada conexión con `aws.network.canConnect`.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "VPC",
+        "subredes",
+        "security group",
+        "tabla de rutas",
+        "mínimo privilegio"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Red virtual lógicamente aislada que defines tú y que se parece a una red de tu propio centro de datos. Contiene subredes, tablas de rutas y puertas de enlace; cada subred reside en una sola zona de disponibilidad."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon VPC",
+      "statement": "¿Qué es Amazon VPC y qué contiene?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "VPC",
+        "subred",
+        "red virtual"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cortafuegos virtual de un recurso: solo llega el tráfico que permiten sus reglas de entrada y de salida. Al ser con estado, la respuesta a un tráfico permitido pasa sin necesitar una regla propia."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: security group",
+      "statement": "¿Qué hace un security group y qué significa que sea con estado?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "security group",
+        "con estado",
+        "reglas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio web de DNS altamente disponible y escalable. Cubre registro de dominios, enrutamiento DNS y comprobaciones de estado, con las que puede apartar el tráfico de los recursos que no responden."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon Route 53",
+      "statement": "¿Qué funciones cubre Amazon Route 53?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Route 53",
+        "DNS",
+        "comprobación de estado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio web que acelera la entrega de contenido estático y dinámico desde ubicaciones de borde. Sirve la copia de la ubicación con menor latencia y, si no la tiene, la pide al origen, por ejemplo un bucket de S3."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Amazon CloudFront",
+      "statement": "¿Qué es Amazon CloudFront y cómo entrega el contenido?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "CloudFront",
+        "ubicación de borde",
+        "origen"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Lo reparte entre varios destinos (instancias de EC2, contenedores y direcciones IP) en una o más zonas de disponibilidad y lo envía solo a los que están en buen estado. Los tipos actuales son Application, Network y Gateway."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Elastic Load Balancing",
+      "statement": "¿Qué hace Elastic Load Balancing con el tráfico entrante?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "ELB",
+        "balanceador de carga",
+        "comprobación de estado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Site-to-Site VPN crea una conexión IPsec entre tu red y tu VPC, con dos túneles por conexión. Direct Connect enlaza tu red con una ubicación de Direct Connect por un cable de fibra y usa interfaces virtuales que evitan a los proveedores de internet."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Site-to-Site VPN y Direct Connect",
+      "statement": "¿En qué se diferencian AWS Site-to-Site VPN y AWS Direct Connect?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "VPN",
+        "Direct Connect",
+        "conectividad híbrida"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "vpc",
+            "term": "Amazon VPC",
+            "definition": "Red virtual aislada donde lanzas tus recursos de AWS"
+          },
+          {
+            "id": "subred",
+            "term": "Subred de una VPC",
+            "definition": "Rango de direcciones IP que reside en una sola zona de disponibilidad"
+          },
+          {
+            "id": "igw",
+            "term": "Internet gateway",
+            "definition": "Puerta de enlace que conecta la VPC con internet"
+          },
+          {
+            "id": "sg",
+            "term": "Security group",
+            "definition": "Cortafuegos virtual con estado que permite solo el tráfico de sus reglas"
+          },
+          {
+            "id": "route53",
+            "term": "Amazon Route 53",
+            "definition": "Servicio de DNS con registro de dominios y comprobaciones de estado"
+          },
+          {
+            "id": "cloudfront",
+            "term": "Amazon CloudFront",
+            "definition": "Entrega contenido desde ubicaciones de borde cercanas a los usuarios"
+          },
+          {
+            "id": "elb",
+            "term": "Elastic Load Balancing",
+            "definition": "Reparte el tráfico entre destinos en buen estado de varias zonas"
+          },
+          {
+            "id": "vpn",
+            "term": "AWS Site-to-Site VPN",
+            "definition": "Conexión IPsec entre la red local y la VPC con dos túneles"
+          },
+          {
+            "id": "dx",
+            "term": "AWS Direct Connect",
+            "definition": "Cable de fibra hasta una ubicación de Direct Connect, sin pasar por los proveedores de internet"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio o componente de red con el caso que resuelve. Si dudas, pregúntate qué pide el enunciado: una red propia, un nombre, contenido cerca del usuario, reparto de tráfico o conectar tu red local.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Dentro de la VPC: subred, internet gateway y security group",
+              "Hacia los usuarios: Route 53 resuelve el nombre, CloudFront entrega contenido y ELB reparte peticiones",
+              "Hacia tu red local: Site-to-Site VPN usa túneles IPsec y Direct Connect usa un cable de fibra"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-memoria-01",
+      "type": "MEMORY",
+      "title": "Servicio de red y caso que resuelve",
+      "statement": "Empareja cada servicio o componente de red de AWS con el caso que resuelve.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "VPC",
+        "Route 53",
+        "CloudFront",
+        "ELB",
+        "VPN",
+        "Direct Connect"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Servicio de red que elige un asistente para cinco casos. Corrige la elección equivocada.\nexport const conectividad = {\n  casos: [\n    { necesidad: \"Traducir el nombre de dominio de la tienda a la dirección de su aplicación\", servicio: \"route53\" },\n    { necesidad: \"Servir imágenes y archivos JavaScript desde ubicaciones de borde cercanas a los usuarios\", servicio: \"cloudfront\" },\n    { necesidad: \"Repartir las peticiones entre instancias de dos zonas de disponibilidad, solo a las que están en buen estado\", servicio: \"elb\" },\n    { necesidad: \"Conectar la oficina con la VPC mediante túneles cifrados con IPsec\", servicio: \"directconnect\" },\n    { necesidad: \"Enlazar el centro de datos con AWS por un cable de fibra hasta una ubicación de Direct Connect\", servicio: \"directconnect\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Servicio de red que elige un asistente para cinco casos. Corrige la elección equivocada.\nexport const conectividad = {\n  casos: [\n    { necesidad: \"Traducir el nombre de dominio de la tienda a la dirección de su aplicación\", servicio: \"route53\" },\n    { necesidad: \"Servir imágenes y archivos JavaScript desde ubicaciones de borde cercanas a los usuarios\", servicio: \"cloudfront\" },\n    { necesidad: \"Repartir las peticiones entre instancias de dos zonas de disponibilidad, solo a las que están en buen estado\", servicio: \"elb\" },\n    { necesidad: \"Conectar la oficina con la VPC mediante túneles cifrados con IPsec\", servicio: \"vpn\" },\n    { necesidad: \"Enlazar el centro de datos con AWS por un cable de fibra hasta una ubicación de Direct Connect\", servicio: \"directconnect\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Fíjate en «túneles cifrados con IPsec»: ese es el tipo de conexión que describe un servicio concreto, y no es un cable de fibra."
+        },
+        {
+          "level": 2,
+          "text": "Solo una fila está mal. Direct Connect enlaza la red con una ubicación de Direct Connect por un cable de fibra; los túneles IPsec son de otro servicio."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el campo `servicio` de la fila de los túneles cifrados con IPsec de \"directconnect\" a \"vpn\". No toques las demás filas."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la oficina se conecta con túneles IPsec mediante Site-to-Site VPN",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const fila = conectividad.casos.find((f) => f.necesidad.startsWith(\"Conectar la oficina\"));\nassert.ok(fila, \"debe existir la fila de la oficina\");\nassert.strictEqual(fila.servicio, \"vpn\");"
+          }
+        },
+        {
+          "name": "los servicios solo pueden ser route53, cloudfront, elb, vpn o directconnect",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const fila of conectividad.casos) {\n  assert.ok([\"route53\", \"cloudfront\", \"elb\", \"vpn\", \"directconnect\"].includes(fila.servicio), fila.necesidad + \" tiene un servicio no válido\");\n}"
+          }
+        },
+        {
+          "name": "las demás filas conservan su servicio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const esperado = {\n  \"Traducir el nombre de dominio de la tienda a la dirección de su aplicación\": \"route53\",\n  \"Servir imágenes y archivos JavaScript desde ubicaciones de borde cercanas a los usuarios\": \"cloudfront\",\n  \"Repartir las peticiones entre instancias de dos zonas de disponibilidad, solo a las que están en buen estado\": \"elb\",\n  \"Enlazar el centro de datos con AWS por un cable de fibra hasta una ubicación de Direct Connect\": \"directconnect\",\n};\nfor (const [necesidad, servicio] of Object.entries(esperado)) {\n  const fila = conectividad.casos.find((f) => f.necesidad === necesidad);\n  assert.ok(fila, necesidad + \" debe seguir existiendo\");\n  assert.strictEqual(fila.servicio, servicio);\n}"
+          }
+        },
+        {
+          "name": "siguen las cinco filas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(conectividad.casos.length, 5);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-debug-01",
+      "type": "DEBUG",
+      "title": "Un servicio de conectividad mal asignado",
+      "statement": "El objeto `conectividad` asigna un servicio de red (route53, cloudfront, elb, vpn o directconnect) a cada uno de cinco casos. Una de las filas asigna el servicio equivocado: con él, la oficina no tendría túneles cifrados con IPsec hacia la VPC. Corrígela sin añadir ni quitar filas y sin cambiar las demás, y mantén la forma del valor exportado (`export const conectividad = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "Site-to-Site VPN",
+        "Direct Connect",
+        "conectividad híbrida"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear una subred que abarque las dos zonas de disponibilidad y lanzar las instancias en ella",
+            "explanation": "Descartada: una subred debe residir en una sola zona de disponibilidad, así que no puede abarcar las dos."
+          },
+          {
+            "id": "b",
+            "text": "Crear una subred en cada zona de disponibilidad y lanzar instancias en las dos subredes",
+            "explanation": "Es la opción adecuada: cada subred reside en una sola zona, y con una subred en cada zona hay instancias en ambas."
+          },
+          {
+            "id": "c",
+            "text": "Crear una VPC adicional dentro de la misma zona de disponibilidad y lanzar instancias en las dos VPC",
+            "explanation": "Descartada: dos VPC en la misma zona dejan todas las instancias en una sola zona de disponibilidad, y el requisito pide las dos."
+          },
+          {
+            "id": "d",
+            "text": "Crear una subred en una sola zona de disponibilidad y lanzar más instancias en esa misma subred",
+            "explanation": "Descartada: todas las instancias seguirían en la zona de esa subred, y el requisito pide tenerlas también en la otra."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué diseño de subredes pone instancias en las dos zonas de disponibilidad",
+      "statement": "Un equipo crea una VPC en una Región con dos zonas de disponibilidad y quiere tener instancias de EC2 en las dos zonas. ¿Qué diseño de subredes es el MEJOR para lograrlo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "subred",
+        "zona de disponibilidad",
+        "VPC"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon CloudFront, que entrega el contenido desde ubicaciones de borde",
+            "explanation": "Descartada: CloudFront acelera la entrega de contenido desde ubicaciones de borde; el registro de dominios y las comprobaciones de estado son funciones de Route 53."
+          },
+          {
+            "id": "b",
+            "text": "Elastic Load Balancing, que reparte el tráfico entre destinos en buen estado",
+            "explanation": "Descartada: Elastic Load Balancing distribuye el tráfico entre destinos y vigila su estado, pero no registra dominios ni enruta el DNS."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Route 53, que ofrece registro de dominios, DNS y comprobaciones de estado",
+            "explanation": "Es la opción adecuada: Route 53 realiza las tres funciones, el registro de dominios, el enrutamiento DNS y la comprobación de estado de los recursos."
+          },
+          {
+            "id": "d",
+            "text": "AWS Site-to-Site VPN, que conecta la red local con la VPC mediante túneles IPsec",
+            "explanation": "Descartada: Site-to-Site VPN conecta una red local con una VPC; no registra dominios ni enruta el tráfico de los usuarios."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué servicio cubre el registro de dominios, el DNS y las comprobaciones de estado",
+      "statement": "Una empresa quiere registrar el nombre de dominio de su tienda, enrutar a los usuarios que escriban ese nombre hacia su aplicación y recibir un aviso cuando un servidor deje de responder. Quiere cubrir las TRES funciones con un solo servicio. ¿Qué servicio debe elegir?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Route 53",
+        "DNS",
+        "registro de dominios"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear una distribución de Amazon CloudFront con el bucket como origen",
+            "explanation": "Es la opción adecuada: CloudFront guarda copias en ubicaciones de borde y entrega cada petición desde la de menor latencia; si falta la copia, la pide al origen."
+          },
+          {
+            "id": "b",
+            "text": "Colocar un balanceador de Elastic Load Balancing delante del bucket",
+            "explanation": "Descartada: Elastic Load Balancing reparte el tráfico entre destinos como instancias de EC2, contenedores y direcciones IP, y no guarda copias cerca de los usuarios."
+          },
+          {
+            "id": "c",
+            "text": "Contratar una conexión de AWS Direct Connect hacia la Región del bucket",
+            "explanation": "Descartada: Direct Connect enlaza una red propia con una ubicación de Direct Connect; los usuarios de varios países no usan esa red y el contenido seguiría saliendo de una sola Región."
+          },
+          {
+            "id": "d",
+            "text": "Crear un registro de DNS de Amazon Route 53 que apunte al bucket",
+            "explanation": "Descartada: Route 53 resuelve nombres y enruta el DNS, pero no guarda copias; con un solo origen en una Región, el contenido seguiría saliendo siempre de ella."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-quiz-03",
+      "type": "QUIZ",
+      "title": "Qué solución acerca el contenido de un bucket a usuarios de varios países",
+      "statement": "Una empresa aloja las imágenes y los archivos JavaScript de su sitio en un bucket de Amazon S3 de una sola Región. Sus usuarios están repartidos por varios países y notan que la primera carga es lenta. La empresa quiere que cada usuario reciba el contenido desde un punto cercano. ¿Qué solución ofrece la MENOR latencia?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CloudFront",
+        "ubicación de borde",
+        "origen"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un security group con una regla de entrada por cada instancia",
+            "explanation": "Descartada: un security group controla qué tráfico puede llegar a un recurso, pero no reparte las peticiones entre instancias ni comprueba su estado."
+          },
+          {
+            "id": "b",
+            "text": "Una tabla de rutas con una ruta hacia cada instancia",
+            "explanation": "Descartada: una tabla de rutas determina hacia dónde se dirige el tráfico de una subred; no distribuye las peticiones ni vigila el estado de los destinos."
+          },
+          {
+            "id": "c",
+            "text": "Un punto de conexión de VPC hacia las instancias",
+            "explanation": "Descartada: un punto de conexión de VPC conecta con servicios de AWS de forma privada, sin internet gateway ni dispositivo NAT; no reparte el tráfico entre instancias."
+          },
+          {
+            "id": "d",
+            "text": "Un balanceador de carga de Elastic Load Balancing con las instancias como destinos",
+            "explanation": "Es la opción adecuada: distribuye el tráfico entre los destinos de varias zonas, solo envía a los que están en buen estado y escala su capacidad automáticamente."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-quiz-04",
+      "type": "QUIZ",
+      "title": "Qué opción reparte las peticiones solo entre instancias en buen estado",
+      "statement": "Una tienda ejecuta su aplicación web en varias instancias de EC2 repartidas en dos zonas de disponibilidad. Los clientes deben usar una única entrada, las peticiones solo deben llegar a instancias en buen estado y la capacidad de esa entrada debe crecer sola cuando sube el tráfico. ¿Qué opción cumple los requisitos con la MENOR intervención manual?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Elastic Load Balancing",
+        "comprobación de estado",
+        "zonas de disponibilidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Direct Connect con una interfaz virtual privada hacia la VPC",
+            "explanation": "Descartada: Direct Connect enlaza la red con una ubicación de Direct Connect mediante un cable de fibra, justo lo que la empresa no quiere contratar."
+          },
+          {
+            "id": "b",
+            "text": "AWS Site-to-Site VPN con una puerta de enlace privada virtual asociada a la VPC",
+            "explanation": "Es la opción adecuada: Site-to-Site VPN admite conexiones IPsec entre la red local y la VPC, con la puerta de enlace privada virtual como extremo del lado de Amazon."
+          },
+          {
+            "id": "c",
+            "text": "Una conexión de VPC peering entre la red local y la VPC",
+            "explanation": "Descartada: un VPC peering enruta el tráfico entre dos VPC; no conecta una red local con una VPC."
+          },
+          {
+            "id": "d",
+            "text": "Un internet gateway asociado a la VPC y una ruta hacia la red local",
+            "explanation": "Descartada: un internet gateway conecta la VPC con internet; no crea una conexión con la red local mediante túneles IPsec."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué conexión híbrida usa túneles IPsec sin cable de fibra dedicado",
+      "statement": "Una empresa quiere conectar su red local con una VPC mediante un túnel cifrado con IPsec. No quiere contratar un cable de fibra hasta una ubicación de Direct Connect ni colocar su equipo allí. ¿Qué opción cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Site-to-Site VPN",
+        "Direct Connect",
+        "IPsec"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una interfaz virtual privada, que da acceso a una VPC con direcciones IP privadas",
+            "explanation": "Descartada: la interfaz virtual privada da acceso a una VPC con direcciones IP privadas, y el destino pedido es un servicio público de AWS."
+          },
+          {
+            "id": "b",
+            "text": "Una interfaz virtual de tránsito, que da acceso a puertas de enlace de tránsito",
+            "explanation": "Descartada: la interfaz virtual de tránsito da acceso a transit gateways asociados a una puerta de enlace de Direct Connect, no a un servicio público de AWS."
+          },
+          {
+            "id": "c",
+            "text": "Un túnel de Site-to-Site VPN, que enlaza la red local con una VPC mediante IPsec",
+            "explanation": "Descartada: un túnel de VPN conecta la red local con una VPC, y no es un tipo de interfaz virtual de Direct Connect."
+          },
+          {
+            "id": "d",
+            "text": "Una interfaz virtual pública, que da acceso a servicios públicos de AWS con direcciones IP públicas",
+            "explanation": "Es la opción adecuada: la interfaz virtual pública da acceso a los servicios públicos de AWS, como S3, sin pasar por los proveedores de servicios de internet."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué interfaz virtual de Direct Connect llega a los servicios públicos de AWS",
+      "statement": "Una empresa tiene su centro de datos en una ubicación de Direct Connect y ya dispone de una conexión de Direct Connect. Quiere enviar copias de seguridad a Amazon S3 sin pasar por los proveedores de servicios de internet. ¿Qué interfaz virtual es la MEJOR opción?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Direct Connect",
+        "interfaz virtual pública",
+        "interfaz virtual privada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Los security groups solo filtran el tráfico de entrada, así que las reglas de salida no se aplican a ningún tráfico",
+            "explanation": "Descartada: un security group controla tanto el tráfico de entrada como el de salida, cada uno con sus reglas; las respuestas salen por otra razón."
+          },
+          {
+            "id": "b",
+            "text": "El security group abre automáticamente todos los puertos de salida cuando existe una regla de entrada para el puerto 443",
+            "explanation": "Descartada: el security group no abre puertos de salida por sí solo; las respuestas salen por el comportamiento del security group, no porque se amplíen sus reglas de salida."
+          },
+          {
+            "id": "c",
+            "text": "El security group es con estado: la respuesta a un tráfico de entrada permitido sale sin necesitar una regla de salida",
+            "explanation": "Es la opción adecuada: los security groups son con estado, y las respuestas al tráfico de entrada permitido salen aunque las reglas de salida no las contemplen."
+          },
+          {
+            "id": "d",
+            "text": "El security group deja pasar la respuesta porque el internet gateway ignora las reglas de salida del security group",
+            "explanation": "Descartada: el internet gateway solo conecta la VPC con internet y no cambia cómo un security group trata las respuestas, que salen porque es con estado."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-quiz-07",
+      "type": "QUIZ",
+      "title": "Por qué las respuestas salen aunque las reglas de salida sean más estrictas",
+      "statement": "Una instancia de EC2 acepta tráfico HTTPS de internet porque su security group tiene una regla de entrada para el puerto 443. Un administrador limita después las reglas de salida de ese security group a un único puerto de otro destino, y los clientes siguen recibiendo las respuestas a sus peticiones HTTPS. ¿Qué explicación describe MEJOR lo ocurrido?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "security group",
+        "con estado",
+        "reglas de salida"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Un internet gateway conecta la VPC con internet",
+            "explanation": "Cumple: un internet gateway es la puerta de enlace que conecta los recursos de la VPC con internet."
+          },
+          {
+            "id": "b",
+            "text": "Una tabla de rutas abre en una instancia los puertos que necesita su aplicación",
+            "explanation": "No cumple: una tabla de rutas determina hacia dónde se dirige el tráfico de una subred; los puertos se permiten con las reglas de un security group."
+          },
+          {
+            "id": "c",
+            "text": "Un VPC peering enruta el tráfico entre una VPC y la red local de la empresa",
+            "explanation": "No cumple: un VPC peering enruta el tráfico entre los recursos de dos VPC; la red local se conecta con una VPN o con Direct Connect."
+          },
+          {
+            "id": "d",
+            "text": "Un punto de conexión de VPC conecta con servicios de AWS sin internet gateway ni dispositivo NAT",
+            "explanation": "Cumple: un punto de conexión de VPC conecta con servicios de AWS de forma privada, sin usar un internet gateway ni un dispositivo NAT."
+          },
+          {
+            "id": "e",
+            "text": "Una transit gateway solo puede conectar dos VPC entre sí y ninguna otra red",
+            "explanation": "No cumple: una transit gateway actúa como centro de conexión entre VPC, conexiones VPN y conexiones de Direct Connect, no solo entre dos VPC."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "CLF-C02",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre los componentes de una VPC",
+      "statement": "Un equipo documenta los componentes de la VPC de su aplicación. Selecciona DOS afirmaciones correctas sobre esos componentes.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "internet gateway",
+        "punto de conexión de VPC",
+        "VPC peering",
+        "transit gateway"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u1-3-5-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: cómo llega el tráfico a tu aplicación y qué servicio usas en cada tramo",
+      "statement": "Elige una aplicación web que conozcas, con usuarios en varios países y una oficina que debe llegar a sus servidores, y escribe un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué servicio usarías en cada tramo del camino (Route 53, CloudFront, Elastic Load Balancing, la VPC con sus subredes y security groups, y Site-to-Site VPN o Direct Connect para la oficina) y qué tráfico permite cada regla.\n\n2) Alternativa descartada: otro servicio que te tentaba (por ejemplo, Direct Connect en lugar de Site-to-Site VPN, o abrir un puerto a 0.0.0.0/0 para probar) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué cambia para tu equipo con esa decisión, por ejemplo qué tendría que contratar o administrar y qué quedaría expuesto a internet.\n\n4) Evidencia: qué parte de las páginas oficiales de VPC, grupos de seguridad, Route 53, CloudFront, Elastic Load Balancing, Site-to-Site VPN o Direct Connect usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre cada servicio, distinga la entrega de contenido, el reparto de tráfico y la conexión de la red local, y justifique cada puerto abierto. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo elegiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "servicios de red de AWS",
+        "mínimo privilegio",
+        "decisión"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html"
+      ],
+      "order": 19
+    }
+  ]
+}
