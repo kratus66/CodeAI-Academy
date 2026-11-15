@@ -1026,7 +1026,7 @@ describe("guarda de calidad de las preguntas tipo examen AWS", () => {
  * archivo ya tiene al menos un QUIZ, es decir, cuyo paquete ya se empezó.
  */
 
-const PACKAGE_STAGE_IDS: readonly number[] = [100, 101];
+const PACKAGE_STAGE_IDS: readonly number[] = [100, 101, 102];
 const A1_STAGE_ID = 101;
 const A1_CERTIFICATION = "CLF-C02";
 
@@ -1081,6 +1081,51 @@ const PACKAGE_RULES: Readonly<Record<string, PackageRule>> = {
   "AWS-U1.4.2": { practice: "excepción", memory: false },
   "AWS-U1.4.3": { practice: "excepción", memory: false },
   "AWS-U1.5.1": { practice: "preparación", memory: false },
+  "AWS-U2.1.1": { practice: "arnés", memory: true },
+  "AWS-U2.1.2": { practice: "excepción", memory: true },
+  "AWS-U2.1.3": { practice: "arnés", memory: false },
+  "AWS-U2.1.4": { practice: "excepción", memory: true },
+  "AWS-U2.1.5": { practice: "excepción", memory: true },
+  "AWS-U2.2.1": { practice: "arnés", memory: false },
+  "AWS-U2.2.2": { practice: "arnés", memory: false },
+  "AWS-U2.2.3": { practice: "arnés", memory: false },
+  "AWS-U2.2.4": { practice: "excepción", memory: true },
+  "AWS-U2.2.5": { practice: "excepción", memory: true },
+  "AWS-U2.2.6": { practice: "excepción", memory: true },
+  "AWS-U2.3.1": { practice: "excepción", memory: true },
+  "AWS-U2.3.2": { practice: "excepción", memory: true },
+  "AWS-U2.3.3": { practice: "arnés", memory: false },
+  "AWS-U2.3.4": { practice: "excepción", memory: true },
+  "AWS-U2.3.5": { practice: "excepción", memory: false },
+  "AWS-U2.4.1": { practice: "excepción", memory: true },
+  "AWS-U2.4.2": { practice: "arnés", memory: false },
+  "AWS-U2.4.3": { practice: "excepción", memory: false },
+  "AWS-U2.4.4": { practice: "excepción", memory: true },
+  "AWS-U2.4.5": { practice: "excepción", memory: true },
+  "AWS-U2.5.1": { practice: "excepción", memory: false },
+  "AWS-U2.5.2": { practice: "excepción", memory: false },
+  "AWS-U2.5.3": { practice: "arnés", memory: true },
+  "AWS-U2.5.4": { practice: "excepción", memory: true },
+  "AWS-U2.5.5": { practice: "excepción", memory: true },
+  "AWS-U2.6.1": { practice: "excepción", memory: false },
+  "AWS-U2.6.2": { practice: "arnés", memory: true },
+  "AWS-U2.6.3": { practice: "arnés", memory: false },
+  "AWS-U2.6.4": { practice: "excepción", memory: false },
+  "AWS-U2.6.5": { practice: "excepción", memory: true },
+  "AWS-U2.7.1": { practice: "arnés", memory: false },
+  "AWS-U2.7.2": { practice: "excepción", memory: true },
+  "AWS-U2.7.3": { practice: "excepción", memory: true },
+  "AWS-U2.7.4": { practice: "excepción", memory: true },
+  "AWS-U2.8.1": { practice: "excepción", memory: false },
+  "AWS-U2.8.2": { practice: "excepción", memory: true },
+  "AWS-U2.8.3": { practice: "excepción", memory: false },
+  "AWS-U2.9.1": { practice: "excepción", memory: true },
+  "AWS-U2.9.2": { practice: "arnés", memory: true },
+  "AWS-U2.9.3": { practice: "excepción", memory: false },
+  "AWS-U2.9.4": { practice: "excepción", memory: true },
+  "AWS-U2.9.5": { practice: "excepción", memory: true },
+  "AWS-U2.10.1": { practice: "preparación", memory: false },
+  "AWS-U2.10.2": { practice: "preparación", memory: false },
 };
 
 type PackageLesson = Pick<ContentSeedLesson, "slug" | "content" | "steps">;
@@ -1410,25 +1455,25 @@ const without = (
 ): CourseSeedExercise[] => exercises.filter((exercise) => !predicate(exercise));
 
 describe("guarda de completitud del paquete de las unidades AWS", () => {
-  it("la tabla PACKAGE_RULES tiene las 35 unidades de A0 y A1 del esqueleto", () => {
+  it("la tabla PACKAGE_RULES tiene las 80 unidades de A0, A1 y A2 del esqueleto", () => {
     const skeletonCodes = skeleton.stages
       .filter((stage) => PACKAGE_STAGE_IDS.includes(stage.id))
       .flatMap((stage) => stage.modules.flatMap((module) => module.units.map((unit) => unit.code)));
 
-    expect(Object.keys(PACKAGE_RULES)).toHaveLength(35);
+    expect(Object.keys(PACKAGE_RULES)).toHaveLength(80);
     expect([...Object.keys(PACKAGE_RULES)].sort()).toEqual([...skeletonCodes].sort());
   });
 
-  it("la tabla marca 12 unidades con MEMORY y reparte las prácticas como el sprint 17", () => {
+  it("la tabla marca 38 unidades con MEMORY y reparte las prácticas de A0, A1 y A2", () => {
     const rules = Object.values(PACKAGE_RULES);
     const count = (practice: PracticeKind): number =>
       rules.filter((rule) => rule.practice === practice).length;
 
-    expect(rules.filter((rule) => rule.memory)).toHaveLength(12);
+    expect(rules.filter((rule) => rule.memory)).toHaveLength(38);
     expect(count("diagnóstico")).toBe(1);
-    expect(count("preparación")).toBe(1);
-    expect(count("arnés")).toBe(10);
-    expect(count("excepción")).toBe(23);
+    expect(count("preparación")).toBe(3);
+    expect(count("arnés")).toBe(22);
+    expect(count("excepción")).toBe(54);
   });
 
   it("una unidad de arnés completa no tiene problemas", () => {
