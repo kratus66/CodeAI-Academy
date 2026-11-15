@@ -1,0 +1,1320 @@
+{
+  "code": "AWS-U2.1.5",
+  "lessons": [
+    {
+      "slug": "aws-u2-1-5-cognito-grupos-de-usuarios-y-grupos-de-identidades",
+      "title": "Cognito: grupos de usuarios y grupos de identidades",
+      "estimatedMin": 55,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon Cognito es una plataforma de identidad para aplicaciones web y móviles: es a la vez un directorio de usuarios, un servidor de autenticación y un servicio de autorización para tokens de acceso de OAuth 2.0 y credenciales de AWS. Se compone de dos piezas que funcionan por separado o juntas, y cada una responde a una pregunta distinta. El grupo de usuarios responde «¿quién es este usuario?»: es un directorio que autentica a las personas y entrega tokens JWT a tu aplicación o API. El grupo de identidades responde «¿a qué recursos de AWS puede llegar?»: canjea un token de confianza por credenciales de AWS temporales y limitadas para que la aplicación llame a servicios como Amazon S3 o Amazon DynamoDB en nombre del usuario. En A2 el examen no te pide recitar la definición, sino decidir entre estos dos vecinos según lo que la aplicación debe hacer."
+        },
+        {
+          "type": "list",
+          "title": "Grupo de usuarios y grupo de identidades, frente a frente",
+          "items": [
+            "Pregunta que responde: el grupo de usuarios, quién es el usuario (autenticación); el grupo de identidades, qué recursos de AWS puede alcanzar (autorización).",
+            "Qué entrega: el grupo de usuarios emite tokens JWT (de ID y de acceso); el grupo de identidades emite credenciales de AWS temporales mediante AWS STS.",
+            "Directorio: solo el grupo de usuarios almacena perfiles de usuario y gestiona el registro y el inicio de sesión; el grupo de identidades es una colección de identidades que se autorizan a recibir credenciales.",
+            "Invitados: el grupo de identidades puede emitir credenciales de alcance limitado a usuarios que no han iniciado sesión, sin ningún token; el grupo de usuarios solo autentica a quien se registra o se federa.",
+            "Dependencia: ninguno de los dos exige al otro; un grupo de usuarios puede emitir tokens a tu propio back end sin grupo de identidades, y un grupo de identidades puede aceptar tokens de un proveedor sin grupo de usuarios."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "El grupo de usuarios: directorio y proveedor de tokens",
+          "text": "Desde el punto de vista de la aplicación, un grupo de usuarios es un proveedor de identidad (IdP) de OpenID Connect (OIDC). Los usuarios se registran por sí mismos, los crea un administrador o se importan, e inician sesión con las páginas de inicio de sesión administrado que aloja Cognito o con tu propia interfaz que llama a la API del grupo. Puedes añadir autenticación multifactor (MFA) y flujos de autenticación personalizados. También puede federar: acepta a los usuarios de proveedores sociales como Google, Facebook, Amazon y Apple, y de proveedores de identidad SAML u OIDC, y convierte sus notificaciones (claims) en un conjunto estándar de tokens para tu app. Con los tokens que emite, la aplicación acepta un token de ID para autenticar al usuario, un token de acceso en su API con los ámbitos OIDC que autorizan las llamadas, o recupera credenciales de AWS de un grupo de identidades. Los grupos de usuarios, además, permiten crear agrupaciones lógicas de usuarios que figuran en los tokens de ID y de acceso."
+        },
+        {
+          "type": "paragraph",
+          "title": "El grupo de identidades: credenciales de AWS temporales",
+          "text": "Un grupo de identidades es un directorio de identidades federadas que puedes canjear por credenciales de AWS. Cuando presentas una prueba de autenticación (las notificaciones de un proveedor SAML 2.0, OIDC o social OAuth 2.0, o un token de un grupo de usuarios), asocias al usuario con una identidad del grupo, y esa identidad puede recuperar credenciales de sesión temporales de AWS Security Token Service (AWS STS). Con los roles y políticas de IAM eliges el nivel de permiso. Hay dos formas de integrarse con IAM: el control de acceso basado en roles, en el que Cognito elige el rol según un rol predeterminado, unas reglas sobre las notificaciones del usuario o su pertenencia a un grupo de un grupo de usuarios; y el control de acceso basado en atributos, en el que el grupo lee atributos de las notificaciones y los convierte en etiquetas de principal de la sesión temporal, con las que las políticas permiten o deniegan el acceso. Además, un grupo de identidades puede emitir credenciales de alcance estrecho a los invitados que aún no han iniciado sesión."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: una aplicación móvil con tres necesidades",
+          "text": "Una aplicación móvil necesita (1) que las personas se registren e inicien sesión con correo y contraseña, y que también puedan entrar con su cuenta de Google; (2) que cada usuario autenticado suba archivos a un bucket de Amazon S3 con permisos limitados; y (3) que un visitante sin sesión lea un catálogo público almacenado en S3. Paso 1: la necesidad (1) pide autenticar y mantener un directorio, es decir, un grupo de usuarios, con Google como proveedor social federado. Paso 2: la necesidad (2) pide credenciales de AWS temporales, así que la app canjea el token del grupo de usuarios en un grupo de identidades, que le devuelve credenciales de un rol de IAM con permisos acotados sobre S3. Paso 3: la necesidad (3) la cubre el acceso de invitados del grupo de identidades, con un rol de alcance estrecho y sin token. Resultado: dos piezas independientes, cada una con su responsabilidad: el grupo de usuarios autentica y el grupo de identidades autoriza el acceso a AWS."
+        },
+        {
+          "type": "code",
+          "title": "La configuración de las dos piezas como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const identidad = {\n  grupoDeUsuarios: {\n    id: \"grupo-usuarios-app\",\n    proveedoresExternos: [\"Google\"],\n    grupos: [{ nombre: \"marketing\", rol: \"rol-marketing\" }],\n  },\n  grupoDeIdentidades: {\n    id: \"grupo-identidades-app\",\n    proveedores: [{ tipo: \"grupoDeUsuarios\", id: \"grupo-usuarios-app\" }],\n    accesoDeInvitados: true,\n    rolAutenticado: \"rol-autenticado\",\n    rolInvitado: \"rol-invitado\",\n  },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la pregunta de la aplicación a la pieza de Cognito",
+          "code": "flowchart TB\n  A[\"Aplicación con usuarios\"] --> B{\"¿Qué debe resolver?\"}\n  B -->|\"Quién es el usuario: registro e inicio de sesión\"| U[\"Grupo de usuarios: directorio y tokens JWT\"]\n  B -->|\"A qué recursos de AWS llega\"| I[\"Grupo de identidades: credenciales AWS temporales\"]\n  U -->|\"Proveedor externo: Google, SAML u OIDC\"| U\n  U -->|\"Token del grupo de usuarios\"| I\n  I --> S[\"Servicios como S3 y DynamoDB\"]\n  V[\"Visitante sin sesión\"] --> I"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir autenticar con dar acceso a AWS",
+          "text": "Cuando el enunciado dice «iniciar sesión», «directorio de usuarios» o «tokens JWT», la pieza es el grupo de usuarios; cuando dice «credenciales de AWS temporales», «acceso a S3 o DynamoDB» o «usuarios invitados», es el grupo de identidades. Las dos opciones suelen aparecer juntas, y el examen premia la que responde a la pregunta del enunciado y no la que suena más completa. Subraya la pregunta y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: esperar credenciales de AWS de un grupo de usuarios",
+          "text": "Causa: pensar que quien autentica al usuario también le da acceso a S3. Consecuencia: la aplicación recibe tokens JWT, los presenta a Amazon S3 y la llamada se rechaza, porque los tokens no son credenciales de AWS. Solución: añade un grupo de identidades que confíe en el grupo de usuarios y canjea el token por credenciales temporales, con un rol de IAM de permisos acotados."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: creer que cada pieza necesita a la otra",
+          "text": "Causa: tomar por obligatoria la combinación que muestra el diagrama de ejemplo. Consecuencia: se despliega un grupo de usuarios para una app que solo necesita credenciales de un proveedor social, o un grupo de identidades para una API que solo valida tokens, con una pieza de más que mantener. Solución: parte de la necesidad; un grupo de usuarios puede entregar tokens a tu back end sin grupo de identidades y un grupo de identidades acepta tokens de proveedores externos sin grupo de usuarios."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: suponer que los usuarios federados disponen de todas las funciones",
+          "text": "Causa: dar por hecho que un usuario que entra con un proveedor externo se comporta como uno local. Consecuencia: funciones como la autenticación multifactor o la API para tu propia interfaz no están disponibles para los usuarios federados, y la aplicación falla al exigirlas. Solución: comprueba qué funciones del grupo de usuarios cubren a los usuarios federados y, si hace falta, vincula el perfil federado a un perfil nativo del directorio."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre grupo de usuarios y grupo de identidades de Cognito el componente que cubre cada necesidad de identidad de una aplicación, distinguiendo autenticación de credenciales de AWS temporales. Esta unidad prepara el examen SAA-C03, dominio 1 «Diseñar arquitecturas seguras», tarea 1.1. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la pregunta que resuelve la aplicación, la pieza de Cognito y por qué la otra queda fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres necesidades del ejemplo: para cada una, nombra la pieza de Cognito y qué recibe la aplicación (tokens o credenciales). Explica con tus palabras el diagrama «De la pregunta de la aplicación a la pieza de Cognito». Después responde: si una app solo valida el token de acceso en su propia API, ¿hace falta un grupo de identidades y por qué?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La aplicación que no puede canjear su token por credenciales de AWS». Una configuración escrita como objeto tiene un grupo de usuarios y un grupo de identidades que no se conocen. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas el resto de la configuración."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El rol por grupo que nunca se aplica». Una configuración de grupo de usuarios y de grupo de identidades, escrita como objeto, entrega a todos los usuarios el rol predeterminado. Decide qué ajustes hacen falta sin tocar el rol predeterminado ni el acceso de invitados. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la guía de Cognito."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre la identidad de una aplicación con Cognito. Audítalo en «Auditar un informe de Cognito generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de Cognito (leídas el 2026-11-15) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué pregunta resuelve cada pieza; qué emite cada una; cuál tiene directorio; qué hace falta para dar acceso a invitados; y cómo se elige el rol de IAM de un usuario autenticado. Repasa también el juego de emparejar piezas y casos. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la pregunta y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la aplicación ahora admite a empleados que inician sesión con el proveedor SAML de su empresa y necesita que cada departamento acceda solo a su prefijo de S3. Decide qué pieza autentica, cuál da las credenciales y cómo eliges el rol o las etiquetas de la sesión. Pregunta de cierre: un compañero dice «el usuario inicia sesión bien, pero S3 rechaza su petición»; ¿qué revisas primero y en qué orden?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-cognito-que-es",
+          "order": 0,
+          "note": "Fuente de qué es Cognito, de las dos preguntas que responde y de cuándo usar cada pieza o las dos juntas."
+        },
+        {
+          "resourceSlug": "aws-cognito-grupos-de-usuarios",
+          "order": 1,
+          "note": "Fuente del grupo de usuarios: directorio, registro, inicio de sesión, federación, tokens y grupos de usuarios."
+        },
+        {
+          "resourceSlug": "aws-cognito-grupos-de-identidades",
+          "order": 2,
+          "note": "Fuente del grupo de identidades: credenciales de AWS temporales, invitados y control de acceso por roles y atributos."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 3,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un directorio de usuarios para la autenticación y la autorización de aplicaciones web y móviles. Para la app es un proveedor de identidad OIDC: gestiona el registro y el inicio de sesión y emite tokens JWT."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Grupo de usuarios",
+      "statement": "¿Qué es un grupo de usuarios de Cognito y qué entrega a la aplicación?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "grupo de usuarios",
+        "autenticación"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un directorio de identidades federadas que se canjean por credenciales de AWS. Genera credenciales temporales y limitadas con AWS STS para que la app llame a servicios como S3 o DynamoDB; los permisos los fijan los roles de IAM."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Grupo de identidades",
+      "statement": "¿Qué hace un grupo de identidades de Cognito?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "grupo de identidades",
+        "credenciales temporales"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "«¿Quién es este usuario?» (autenticación) se contesta con un grupo de usuarios. «¿A qué recursos de AWS puede llegar?» (autorización) se contesta con un grupo de identidades."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Las dos preguntas de Cognito",
+      "statement": "¿Qué dos preguntas distintas responde Cognito y con qué pieza se contesta cada una?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "autenticación",
+        "autorización"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El usuario inicia sesión en el grupo de usuarios y la app canjea su token en el grupo de identidades por credenciales de AWS temporales. Ninguna pieza exige a la otra: cada una puede usarse sola."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Usar las dos piezas juntas",
+      "statement": "¿Cómo se combinan un grupo de usuarios y un grupo de identidades, y se necesita siempre la pareja?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "token",
+        "credenciales"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Acepta proveedores sociales como Google, Facebook, Amazon y Apple, y proveedores SAML u OIDC. Convierte sus notificaciones en un conjunto estándar de tokens para tu app; algunas funciones no cubren a los usuarios federados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Proveedores externos",
+      "statement": "¿Qué proveedores externos admite el grupo de usuarios y qué hace con ellos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "federación",
+        "proveedor de identidad"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Puede emitir credenciales de alcance estrecho sin que el usuario haya iniciado sesión. Para un autenticado, Cognito aplica un rol predeterminado, reglas sobre sus notificaciones o su pertenencia a un grupo del grupo de usuarios."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Invitados y elección del rol",
+      "statement": "¿Cómo trata un grupo de identidades a un invitado y cómo elige el rol de IAM de un usuario autenticado?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "acceso de invitados",
+        "rol de IAM"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Grupo de usuarios y grupo de identidades que no se conocen. Corrige su defecto principal.\nexport const identidad = {\n  grupoDeUsuarios: { id: \"grupo-usuarios-app\", proveedoresExternos: [\"Google\"] },\n  grupoDeIdentidades: {\n    id: \"grupo-identidades-app\",\n    proveedores: [],\n    accesoDeInvitados: false,\n    rolAutenticado: \"rol-autenticado\",\n  },\n};\n",
+      "solution": {
+        "code": "export const identidad = {\n  grupoDeUsuarios: { id: \"grupo-usuarios-app\", proveedoresExternos: [\"Google\"] },\n  grupoDeIdentidades: {\n    id: \"grupo-identidades-app\",\n    proveedores: [{ tipo: \"grupoDeUsuarios\", id: \"grupo-usuarios-app\" }],\n    accesoDeInvitados: false,\n    rolAutenticado: \"rol-autenticado\",\n  },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El grupo de identidades solo canjea tokens de los proveedores en los que confía. Revisa qué proveedores tiene configurados."
+        },
+        {
+          "level": 2,
+          "text": "La lista `proveedores` del grupo de identidades está vacía, así que un token del grupo de usuarios no se puede canjear por credenciales de AWS."
+        },
+        {
+          "level": 3,
+          "text": "Añade a `proveedores` el elemento { tipo: \"grupoDeUsuarios\", id: \"grupo-usuarios-app\" }. No actives el acceso de invitados ni cambies el rol ni el grupo de usuarios."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el grupo de identidades confía en el grupo de usuarios",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const prov = identidad.grupoDeIdentidades.proveedores;\nassert.ok(prov.some((p) => p.tipo === \"grupoDeUsuarios\" && p.id === identidad.grupoDeUsuarios.id), \"falta el grupo de usuarios como proveedor\");"
+          }
+        },
+        {
+          "name": "el grupo de usuarios aparece una sola vez como proveedor",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const prov = identidad.grupoDeIdentidades.proveedores.filter((p) => p.tipo === \"grupoDeUsuarios\");\nassert.strictEqual(prov.length, 1);"
+          }
+        },
+        {
+          "name": "el rol y el grupo de usuarios no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(identidad.grupoDeIdentidades.rolAutenticado, \"rol-autenticado\");\nassert.deepStrictEqual(identidad.grupoDeUsuarios, { id: \"grupo-usuarios-app\", proveedoresExternos: [\"Google\"] });"
+          }
+        },
+        {
+          "name": "el acceso de invitados sigue desactivado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(identidad.grupoDeIdentidades.accesoDeInvitados, false);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-debug-01",
+      "type": "DEBUG",
+      "title": "La aplicación que no puede canjear su token por credenciales de AWS",
+      "statement": "El objeto `identidad` describe un grupo de usuarios de Cognito donde se autentican los usuarios y un grupo de identidades que debe entregarles credenciales de AWS temporales. La aplicación no consigue canjear el token del grupo de usuarios por credenciales. Corrige la configuración sin activar el acceso de invitados ni cambiar el rol, y mantén la forma del valor exportado (`export const identidad = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "grupo de identidades",
+        "grupo de usuarios",
+        "credenciales temporales"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Los usuarios del grupo marketing deben recibir el rol rol-marketing. Corrige su defecto principal.\nexport const config = {\n  grupoDeUsuarios: {\n    id: \"grupo-usuarios-app\",\n    grupos: [{ nombre: \"marketing\", rol: null }],\n  },\n  grupoDeIdentidades: {\n    proveedores: [{ tipo: \"grupoDeUsuarios\", id: \"grupo-usuarios-app\" }],\n    seleccionDeRol: { origen: \"predeterminado\", rolPredeterminado: \"rol-autenticado\" },\n    accesoDeInvitados: true,\n    rolInvitado: \"rol-invitado\",\n  },\n};\n",
+      "solution": {
+        "code": "export const config = {\n  grupoDeUsuarios: {\n    id: \"grupo-usuarios-app\",\n    grupos: [{ nombre: \"marketing\", rol: \"rol-marketing\" }],\n  },\n  grupoDeIdentidades: {\n    proveedores: [{ tipo: \"grupoDeUsuarios\", id: \"grupo-usuarios-app\" }],\n    seleccionDeRol: { origen: \"grupoDeUsuarios\", rolPredeterminado: \"rol-autenticado\" },\n    accesoDeInvitados: true,\n    rolInvitado: \"rol-invitado\",\n  },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el grupo marketing está vinculado al rol rol-marketing",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const g = config.grupoDeUsuarios.grupos.find((x) => x.nombre === \"marketing\");\nassert.ok(g, \"debe existir el grupo marketing\");\nassert.strictEqual(g.rol, \"rol-marketing\");"
+          }
+        },
+        {
+          "name": "el grupo de identidades elige el rol según el grupo de usuarios",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(config.grupoDeIdentidades.seleccionDeRol.origen, \"grupoDeUsuarios\");"
+          }
+        },
+        {
+          "name": "el rol predeterminado y los invitados no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(config.grupoDeIdentidades.seleccionDeRol.rolPredeterminado, \"rol-autenticado\");\nassert.strictEqual(config.grupoDeIdentidades.accesoDeInvitados, true);\nassert.strictEqual(config.grupoDeIdentidades.rolInvitado, \"rol-invitado\");"
+          }
+        },
+        {
+          "name": "se conserva el proveedor y solo hay un grupo",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(config.grupoDeIdentidades.proveedores, [{ tipo: \"grupoDeUsuarios\", id: \"grupo-usuarios-app\" }]);\nassert.strictEqual(config.grupoDeUsuarios.grupos.length, 1);"
+          }
+        },
+        {
+          "name": "el rol de grupo solo se aplica si el grupo tiene un rol",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const usaGrupos = config.grupoDeIdentidades.seleccionDeRol.origen === \"grupoDeUsuarios\";\nassert.ok(!usaGrupos || config.grupoDeUsuarios.grupos.every((g) => typeof g.rol === \"string\"), \"cada grupo debe tener un rol\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-debug-02",
+      "type": "DEBUG",
+      "title": "El rol por grupo que nunca se aplica",
+      "statement": "El objeto `config` describe un grupo de usuarios con el grupo `marketing` y un grupo de identidades que entrega credenciales de AWS. Los usuarios de `marketing` deben recibir el rol `rol-marketing`, pero hoy todos reciben el rol predeterminado. Localiza los ajustes que faltan y corrígelos sin cambiar el rol predeterminado, el acceso de invitados ni el proveedor, y mantén la forma del valor exportado (`export const config = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "grupos de usuarios",
+        "rol de IAM",
+        "control de acceso basado en roles"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de identidad con Amazon Cognito (borrador generado por un asistente)\nCarga de trabajo: aplicación móvil con inicio de sesión de usuarios y acceso a Amazon S3.\n1. Un grupo de usuarios es un directorio de usuarios y un proveedor de identidad OIDC que autentica a las personas y emite tokens JWT.\n2. El grupo de usuarios emite directamente las credenciales de AWS temporales con las que la aplicación llama a Amazon S3.\n3. Un grupo de identidades puede emitir credenciales de alcance limitado a invitados que no han iniciado sesión, sin necesidad de ningún token.\n4. Un grupo de identidades solo funciona si existe antes un grupo de usuarios: ninguno de los dos componentes sirve sin el otro.\n5. El grupo de usuarios puede federar con proveedores sociales como Google o Apple y con proveedores SAML u OIDC, y entrega a la app un conjunto estándar de tokens.\n6. Los grupos de un grupo de usuarios solo se ven en la consola: no figuran en los tokens ni se pueden vincular a roles de IAM.\n7. Con el control de acceso basado en atributos, el grupo de identidades convierte los atributos de las notificaciones del usuario en etiquetas de principal de la sesión temporal de AWS STS."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Grupo de usuarios",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: un grupo de usuarios es un directorio de usuarios y, para la app, un proveedor de identidad OIDC que autentica y emite tokens JWT."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Credenciales de AWS del grupo de usuarios",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "El grupo de usuarios emite tokens JWT. Las credenciales de AWS temporales las genera un grupo de identidades, que canjea un token de confianza con AWS STS."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Acceso de invitados",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: un grupo de identidades puede emitir credenciales de alcance limitado a invitados que no han iniciado sesión, sin ningún token."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Dependencia entre las dos piezas",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Ninguna pieza exige a la otra: un grupo de identidades puede aceptar tokens directamente de proveedores sociales, SAML u OIDC, y un grupo de usuarios puede emitir tokens a tu back end sin grupo de identidades."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Federación del grupo de usuarios",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el grupo de usuarios acepta proveedores sociales (Google, Facebook, Amazon, Apple) y SAML u OIDC, y convierte sus notificaciones en un conjunto estándar de tokens."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Grupos de usuarios y roles de IAM",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Los grupos figuran en los tokens de ID y de acceso y se pueden vincular a roles de IAM cuando el token de ID se pasa a un grupo de identidades."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Control de acceso basado en atributos",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el grupo de identidades lee atributos de las notificaciones del usuario y los asigna a etiquetas de principal de la sesión temporal para filtrar el acceso con políticas."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-5-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de Cognito generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre la identidad de una aplicación móvil con Amazon Cognito. Audítalo contra las páginas oficiales de Cognito: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "grupo de usuarios",
+        "grupo de identidades",
+        "credenciales temporales",
+        "federación"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un grupo de identidades, que almacena los perfiles de usuario y autentica sus inicios de sesión",
+            "explanation": "Descartada: el directorio de usuarios y la autenticación son del grupo de usuarios; el grupo de identidades canjea tokens de confianza por credenciales de AWS."
+          },
+          {
+            "id": "b",
+            "text": "Un grupo de identidades, que emite credenciales de AWS temporales a los usuarios invitados",
+            "explanation": "Descartada: es una función del grupo de identidades, pero no crea un directorio ni gestiona el registro y el inicio de sesión."
+          },
+          {
+            "id": "c",
+            "text": "Un grupo de usuarios, que es un directorio con registro, inicio de sesión y tokens JWT",
+            "explanation": "Es la correcta: un grupo de usuarios es un directorio de usuarios y un proveedor OIDC que autentica y emite tokens JWT para tu app o API."
+          },
+          {
+            "id": "d",
+            "text": "Un grupo de usuarios, que emite directamente las credenciales de AWS temporales de cada usuario",
+            "explanation": "Descartada: el grupo de usuarios emite tokens; las credenciales temporales las genera el grupo de identidades con AWS STS."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-1-5-quiz-01",
+      "title": "Autenticar a los usuarios y mantener su directorio",
+      "statement": "Una aplicación web necesita registro e inicio de sesión de sus usuarios, un directorio de usuarios propio y tokens JWT que valide su API. ¿Qué componente de Cognito cubre MEJOR el requisito?",
+      "concepts": [
+        "grupo de usuarios",
+        "tokens JWT"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Canjear su token en un grupo de identidades por credenciales de AWS temporales",
+            "explanation": "Es la correcta: el grupo de identidades intercambia un token del grupo de usuarios por credenciales temporales y limitadas de AWS STS para llamar a S3."
+          },
+          {
+            "id": "b",
+            "text": "Incluir en el token JWT las claves de acceso de un usuario de IAM para cada persona",
+            "explanation": "Descartada: un token JWT no contiene credenciales de AWS; las credenciales las obtiene la app canjeando el token en un grupo de identidades."
+          },
+          {
+            "id": "c",
+            "text": "Presentar el token de acceso directamente a Amazon S3 para que autorice las llamadas",
+            "explanation": "Descartada: el token de acceso autoriza llamadas a tu API con ámbitos OAuth; para los servicios de AWS hacen falta credenciales del grupo de identidades."
+          },
+          {
+            "id": "d",
+            "text": "Crear un segundo grupo de usuarios cuya función sea emitir credenciales de AWS temporales",
+            "explanation": "Descartada: ningún grupo de usuarios emite credenciales de AWS; esa función corresponde al grupo de identidades."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-1-5-quiz-02",
+      "title": "Canjear el token por credenciales de AWS",
+      "statement": "Los usuarios de una aplicación móvil ya inician sesión en un grupo de usuarios de Cognito. La app debe subir archivos a Amazon S3 en nombre de cada usuario con credenciales temporales y de alcance limitado. ¿Qué solución describe con MÁS precisión el paso que falta?",
+      "concepts": [
+        "grupo de identidades",
+        "AWS STS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un grupo de identidades por proveedor, que canjea cada token externo por credenciales de AWS",
+            "explanation": "Descartada: esas credenciales sirven para llamar a servicios de AWS y el requisito pide un formato de token único para la API."
+          },
+          {
+            "id": "b",
+            "text": "Una validación escrita en la propia app para los tokens de cada proveedor externo",
+            "explanation": "Descartada: es más trabajo que mantener; el grupo de usuarios ya transforma las notificaciones de cada proveedor en tokens estándar."
+          },
+          {
+            "id": "c",
+            "text": "Un grupo de usuarios independiente por cada proveedor, con su propio dominio de inicio de sesión",
+            "explanation": "Descartada: un solo grupo de usuarios admite a la vez proveedores sociales y SAML, así que duplicar grupos solo añade administración."
+          },
+          {
+            "id": "d",
+            "text": "Un grupo de usuarios con ambos proveedores, que unifica sus notificaciones en tokens estándar",
+            "explanation": "Es la correcta: el grupo de usuarios federa proveedores sociales y SAML u OIDC y entrega a la app un conjunto estándar de tokens, sin validar cada proveedor a mano."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-1-5-quiz-03",
+      "title": "Federar proveedores externos con un solo formato de token",
+      "statement": "Una aplicación debe admitir usuarios que entran con su cuenta de Google y con el proveedor SAML de una empresa cliente, y su API quiere recibir un único formato de tokens. ¿Qué solución cumple el requisito con la MENOR sobrecarga operativa?",
+      "concepts": [
+        "federación",
+        "grupo de usuarios"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un grupo de usuarios al que los visitantes acceden sin registrarse para recibir credenciales de AWS",
+            "explanation": "Descartada: el grupo de usuarios autentica y emite tokens; las credenciales de AWS, incluidas las de invitados, las emite el grupo de identidades."
+          },
+          {
+            "id": "b",
+            "text": "Un grupo de identidades con acceso de invitados y un rol de IAM limitado, sin grupo de usuarios",
+            "explanation": "Es la correcta: el grupo de identidades puede emitir credenciales limitadas a quien no ha iniciado sesión y no requiere un grupo de usuarios."
+          },
+          {
+            "id": "c",
+            "text": "Un grupo de usuarios con registro obligatorio y un grupo de identidades que canjea cada token",
+            "explanation": "Descartada: usa dos componentes y exige registro, algo que no pide el requisito; el acceso de invitados no necesita token."
+          },
+          {
+            "id": "d",
+            "text": "Un grupo de identidades que antes exige un token de un grupo de usuarios para cualquier credencial",
+            "explanation": "Descartada: el grupo de identidades puede emitir credenciales a invitados sin token y no depende de un grupo de usuarios."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-1-5-quiz-04",
+      "title": "Visitantes sin sesión con acceso limitado a S3",
+      "statement": "Un sitio publica un catálogo en Amazon S3 que deben leer los visitantes sin sesión, con permisos mínimos. No hay registro de usuarios. ¿Qué configuración cumple el requisito con el MÍNIMO de componentes de Cognito?",
+      "concepts": [
+        "acceso de invitados",
+        "grupo de identidades"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Si el proveedor externo usa SAML u OIDC, porque cada protocolo exige un componente distinto",
+            "explanation": "Descartada: el grupo de usuarios y el de identidades aceptan proveedores SAML y OIDC, así que el protocolo no decide entre ellos."
+          },
+          {
+            "id": "b",
+            "text": "Si habrá usuarios invitados, porque entonces solo sirve el grupo de usuarios",
+            "explanation": "Descartada: los invitados sin sesión se cubren con un grupo de identidades; el grupo de usuarios autentica a quienes se registran o se federan."
+          },
+          {
+            "id": "c",
+            "text": "Si la app debe resolver quién es el usuario o a qué recursos de AWS puede llegar",
+            "explanation": "Es la correcta: Cognito responde dos preguntas distintas, la autenticación (grupo de usuarios) y la autorización con credenciales de AWS (grupo de identidades)."
+          },
+          {
+            "id": "d",
+            "text": "Si la app usará tokens JWT, porque solo el grupo de identidades los emite",
+            "explanation": "Descartada: los tokens JWT los emite el grupo de usuarios; el grupo de identidades entrega credenciales de AWS temporales."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-1-5-quiz-05",
+      "title": "La primera decisión entre grupo de usuarios y de identidades",
+      "statement": "Un equipo debe elegir entre un grupo de usuarios y un grupo de identidades de Cognito para una aplicación nueva. ¿Qué debe determinar PRIMERO para decidirse?",
+      "concepts": [
+        "autenticación",
+        "autorización"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Los grupos figuran en los tokens y se vinculan a roles de IAM al pasar el token de ID a un grupo de identidades",
+            "explanation": "Es la correcta: los grupos aparecen en los tokens de ID y de acceso y se pueden vincular a roles de IAM cuando el token de ID llega a un grupo de identidades."
+          },
+          {
+            "id": "b",
+            "text": "Los grupos conceden por sí mismos permisos de IAM, por lo que el grupo de identidades deja de hacer falta",
+            "explanation": "Descartada: los grupos solo agrupan usuarios y aportan la información de rol; las credenciales las sigue emitiendo el grupo de identidades."
+          },
+          {
+            "id": "c",
+            "text": "Los grupos solo se reflejan en el token de acceso y nunca en el token de ID, por lo que no sirven para elegir roles",
+            "explanation": "Descartada: los grupos figuran en los tokens de ID y de acceso, y la vinculación con roles se hace al pasar el token de ID."
+          },
+          {
+            "id": "d",
+            "text": "Los grupos existen solo en el grupo de identidades y se crean al registrar a los usuarios invitados",
+            "explanation": "Descartada: los grupos son una función del grupo de usuarios; los invitados no se registran ni pertenecen a grupos."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-1-5-quiz-06",
+      "title": "Grupos de usuarios y roles de IAM",
+      "statement": "Una empresa clasifica a sus usuarios en grupos dentro de un grupo de usuarios de Cognito y quiere que cada grupo reciba un rol de IAM distinto al obtener credenciales de AWS. ¿Qué afirmación describe con MAYOR exactitud cómo se logra?",
+      "concepts": [
+        "grupos de usuarios",
+        "rol de IAM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Un grupo de identidades solo funciona si antes se ha creado un grupo de usuarios que lo alimente",
+            "explanation": "No cumple: ninguno de los dos componentes requiere al otro; un grupo de identidades acepta tokens de proveedores sin grupo de usuarios."
+          },
+          {
+            "id": "b",
+            "text": "Un grupo de usuarios puede emitir tokens directamente a tu back end sin pasar por un grupo de identidades",
+            "explanation": "Cumple: los grupos de usuarios no requieren integración con un grupo de identidades; pueden emitir JWT a una app, un servidor web o una API."
+          },
+          {
+            "id": "c",
+            "text": "Un grupo de usuarios entrega a la app las credenciales de AWS temporales al iniciar sesión el usuario",
+            "explanation": "No cumple: las credenciales de AWS temporales las emite un grupo de identidades; el grupo de usuarios emite tokens."
+          },
+          {
+            "id": "d",
+            "text": "Un grupo de identidades puede aceptar tokens de proveedores sociales, SAML u OIDC directamente, sin grupo de usuarios",
+            "explanation": "Cumple: el grupo de identidades acepta las notificaciones de proveedores de identidad de personal y de consumidores sin un grupo de usuarios."
+          },
+          {
+            "id": "e",
+            "text": "Un grupo de identidades solo sirve para invitados y rechaza los tokens de cualquier proveedor externo",
+            "explanation": "No cumple: además de invitados, intercambia tokens de grupos de usuarios y de proveedores sociales, SAML y OIDC por credenciales."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-1-5-quiz-07",
+      "title": "Qué es cierto de la relación entre las dos piezas",
+      "statement": "Un arquitecto repasa cómo se relacionan el grupo de usuarios y el grupo de identidades de Cognito. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "grupo de usuarios",
+        "grupo de identidades"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Puede elegir el rol de IAM de un autenticado según sus notificaciones o su grupo del grupo de usuarios",
+            "explanation": "Cumple: Cognito puede pedir un rol predeterminado, uno basado en reglas sobre las notificaciones o uno basado en la pertenencia a un grupo."
+          },
+          {
+            "id": "b",
+            "text": "Es el grupo de usuarios el que convierte las notificaciones en etiquetas de principal de la sesión de AWS STS",
+            "explanation": "No cumple: esa conversión la hace el grupo de identidades, que asigna atributos de las notificaciones a etiquetas de la sesión temporal."
+          },
+          {
+            "id": "c",
+            "text": "Puede asignar atributos de las notificaciones a etiquetas de principal de la sesión para que las políticas filtren el acceso",
+            "explanation": "Cumple: el control de acceso basado en atributos mapea atributos a etiquetas de principal que las políticas basadas en recursos pueden evaluar."
+          },
+          {
+            "id": "d",
+            "text": "Los usuarios federados disponen de la autenticación multifactor del grupo de usuarios igual que los usuarios locales",
+            "explanation": "No cumple: algunas funciones del grupo de usuarios, como la MFA, no están disponibles para los usuarios federados."
+          },
+          {
+            "id": "e",
+            "text": "Un solo rol de IAM es obligatorio para todos los usuarios autenticados, sin posibilidad de elegirlo por usuario",
+            "explanation": "No cumple: puedes asignar un rol a todos los autenticados o elegirlo según las notificaciones de cada usuario."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-1-5-quiz-08",
+      "title": "Control de acceso en un grupo de identidades",
+      "statement": "Un equipo configura cómo un grupo de identidades de Cognito concede acceso a recursos de AWS. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "control de acceso basado en roles",
+        "etiquetas de principal"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "grupo-usuarios",
+            "term": "Grupo de usuarios",
+            "definition": "Directorio para registro e inicio de sesión: autentica y emite tokens JWT"
+          },
+          {
+            "id": "grupo-identidades",
+            "term": "Grupo de identidades",
+            "definition": "Da credenciales de AWS temporales y limitadas para acceder a servicios como S3"
+          },
+          {
+            "id": "token-usuarios",
+            "term": "Token del grupo de usuarios",
+            "definition": "Entrada al grupo de identidades: se canjea por credenciales de AWS temporales"
+          },
+          {
+            "id": "proveedor-externo",
+            "term": "Proveedor externo",
+            "definition": "Federación con Google, SAML u OIDC: el usuario entra con una identidad ajena"
+          },
+          {
+            "id": "invitados",
+            "term": "Acceso de invitados",
+            "definition": "Credenciales de alcance estrecho para quien aún no ha iniciado sesión, sin token"
+          },
+          {
+            "id": "grupos",
+            "term": "Grupos del grupo de usuarios",
+            "definition": "Agrupan usuarios y se vinculan a roles de IAM al pasar el token de ID"
+          },
+          {
+            "id": "token-acceso",
+            "term": "Token de acceso",
+            "definition": "Autoriza las llamadas del usuario a tu API según los ámbitos OIDC"
+          },
+          {
+            "id": "atributos",
+            "term": "Etiquetas de principal",
+            "definition": "Atributos del usuario en la sesión temporal para filtrar el acceso con políticas"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada pieza o concepto de Cognito con el caso que resuelve. Si dudas, pregúntate si el caso trata de saber quién es el usuario o de darle acceso a recursos de AWS.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Autenticar: grupo de usuarios, tokens y proveedores externos",
+              "Dar acceso a AWS: grupo de identidades y credenciales temporales",
+              "Elegir el acceso: invitados, grupos con rol y etiquetas de principal"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-1-5-memoria-01",
+      "title": "Pieza de Cognito y caso que resuelve",
+      "statement": "Empareja cada pieza o concepto de Cognito con el caso que resuelve.",
+      "concepts": [
+        "grupo de usuarios",
+        "grupo de identidades",
+        "federación",
+        "credenciales temporales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-1-5-reflexion-01",
+      "title": "Reflexión: qué pieza de Cognito y por qué",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una app móvil con inicio de sesión que guarda archivos de cada usuario en Amazon S3 y publica un catálogo para visitantes) y escribe un registro breve de decisión sobre su identidad, en 5 a 7 líneas:\n\n1) Decisión: qué pieza usarías para cada necesidad (grupo de usuarios, grupo de identidades o ambas) y qué recibe la aplicación de cada una (tokens o credenciales de AWS).\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, esperar credenciales de AWS de un grupo de usuarios, o desplegar un grupo de identidades para una API que solo valida tokens) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (proveedores externos configurados, roles de IAM de usuarios autenticados e invitados, grupos con su rol) y qué limitaciones recordar, como las funciones que no cubren a los usuarios federados.\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad) y por qué.\n\n5) Evidencia: qué página oficial de Cognito (qué es Cognito, grupos de usuarios o grupos de identidades) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la necesidad, la pieza y la restricción que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "Cognito",
+        "decisión",
+        "autenticación y autorización"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+        "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html"
+      ],
+      "order": 19
+    }
+  ]
+}
