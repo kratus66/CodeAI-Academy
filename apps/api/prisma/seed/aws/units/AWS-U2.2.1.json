@@ -1,0 +1,1258 @@
+{
+  "code": "AWS-U2.2.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-2-1-diseno-de-vpc-cidr-y-subredes-por-zona",
+      "title": "Diseño de VPC: CIDR y subredes públicas y privadas por zona",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Una VPC es una red virtual dedicada a tu cuenta de AWS, aislada de forma lógica de otras redes virtuales. Tú decides su rango de direcciones IP, añades subredes, gateways y security groups. Una subred es un rango de direcciones IP dentro de la VPC, y es ahí donde lanzas recursos como instancias de EC2; con las tablas de rutas decides hacia dónde va el tráfico de cada subred. Diseñar bien una VPC empieza por el direccionamiento: el bloque CIDR de la VPC, cómo lo repartes en subredes y qué subredes llegan a internet y cuáles no. La guía de configuración recuerda que dedicar tiempo a diseñar la red con cuidado da una base robusta y adaptable, y que el diseño puede responder a una aplicación de varias capas."
+        },
+        {
+          "type": "list",
+          "title": "Reglas de direccionamiento que el examen contrasta",
+          "items": [
+            "Toda VPC debe tener un bloque CIDR IPv4 asociado; el tamaño permitido va de una máscara /16 (65.536 direcciones) a una /28 (16 direcciones).",
+            "La guía recomienda elegir el bloque entre los rangos privados de RFC 1918: 10.0.0.0/8, 172.16.0.0/12 y 192.168.0.0/16.",
+            "No puedes usar como bloque de una VPC los rangos 0.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16 ni 224.0.0.0/4.",
+            "El bloque de una subred puede coincidir con el de la VPC (una sola subred) o ser un subconjunto de él; si creas varias subredes, sus bloques no pueden solaparse.",
+            "El tamaño permitido de una subred IPv4 va de /28 a /16, y en cada subred no puedes usar las cuatro primeras direcciones ni la última.",
+            "Si indicas un bloque con bits de host (100.68.0.18/18) mediante una herramienta de línea de comandos o la API, AWS lo convierte a su forma canónica (100.68.0.0/18)."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Las cinco direcciones que AWS se queda en cada subred",
+          "text": "En una subred IPv4 AWS reserva cinco direcciones. Con el bloque 10.0.0.0/24 son: 10.0.0.0 (dirección de red), 10.0.0.1 (reservada para el router de la VPC), 10.0.0.2 (reservada; la del servidor DNS es la base del rango de la VPC más dos), 10.0.0.3 (reservada para uso futuro) y 10.0.0.255 (difusión: no se admite en una VPC, por eso se reserva). Por eso una subred /24 de 256 direcciones ofrece 251 utilizables, y una /28 de 16 direcciones solo 11. La guía menciona una excepción: si traes un rango propio con BYOIP, puedes usar todas las direcciones del rango, incluidas la primera y la última."
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué hace pública o privada a una subred",
+          "text": "La guía distingue las subredes por cómo llegan a internet. En una VPC predeterminada, cada subred predeterminada es pública: la VPC tiene un internet gateway adjunto y una ruta en la tabla de rutas principal que envía todo el tráfico hacia él, y cada instancia recibe una dirección IPv4 privada y otra pública. En una subred que creas tú en una VPC propia, cada instancia tiene una dirección IPv4 privada y ninguna pública, salvo que la asignes al lanzarla o modifiques el atributo de IP pública de la subred; esas instancias se comunican entre sí, pero no acceden a internet. Para dar acceso a internet hay que adjuntar un internet gateway a la VPC y asociar una dirección IP elástica a la instancia. Para que una instancia inicie conexiones de salida a internet sin aceptar conexiones no solicitadas desde fuera, la guía propone un dispositivo NAT con una dirección IP elástica, conectado a internet mediante un internet gateway. La tabla de rutas es la pieza que lo decide: cada ruta indica un destino (un rango de direcciones) y un destino de envío; una subred sin asociación explícita usa la tabla de rutas principal."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro subredes en dos zonas",
+          "text": "Una empresa quiere una VPC 10.0.0.0/16 con una subred pública y una privada en cada una de dos zonas de disponibilidad (la guía de funcionamiento ilustra una VPC con subredes en dos zonas). Las públicas alojarán balanceadores y necesitan al menos 250 direcciones utilizables; las privadas alojarán las instancias de la aplicación y necesitan al menos 4000. Paso 1: un /24 ofrece 256 menos 5, es decir 251 utilizables, y cumple; un /20 tiene 4096 direcciones y ofrece 4091, y cumple, mientras que un /21 deja 2043 y no llega. Paso 2: reparte sin solapes y con cada bloque alineado a su tamaño: publica-a 10.0.0.0/24, publica-b 10.0.1.0/24, privada-a 10.0.16.0/20 (de 10.0.16.0 a 10.0.31.255) y privada-b 10.0.32.0/20 (de 10.0.32.0 a 10.0.47.255). Paso 3: comprueba con el arnés que `aws.cidr.validateSubnetPlan` no devuelve problemas, que `aws.cidr.usableAddresses` da 251 y 4091, y que `aws.cidr.split(\"10.0.0.0/16\", 20)` te muestra los dieciséis bloques /20 de la VPC para elegir los tuyos. Queda la mayor parte de la VPC libre para crecer. El arnés modela los tamaños, los rangos prohibidos, las cinco direcciones reservadas y el plan de subredes; no modela IPv6, CIDR secundarios ni conflictos con tablas de rutas."
+        },
+        {
+          "type": "code",
+          "title": "El plan de subredes como valor comprobable",
+          "language": "typescript",
+          "code": "export const plan = {\n  vpc: \"10.0.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"10.0.0.0/24\" },\n    { name: \"publica-b\", cidr: \"10.0.1.0/24\" },\n    { name: \"privada-a\", cidr: \"10.0.16.0/20\" },\n    { name: \"privada-b\", cidr: \"10.0.32.0/20\" },\n  ],\n};\n\n// aws.cidr.validateSubnetPlan(plan) debe devolver []\n// aws.cidr.usableAddresses(\"10.0.0.0/24\") === 251\n// aws.cidr.usableAddresses(\"10.0.16.0/20\") === 4091"
+        },
+        {
+          "type": "mermaid",
+          "title": "Una VPC con una subred pública y una privada por zona",
+          "code": "flowchart TB\n  I[\"Internet\"] --> G[\"Internet gateway\"]\n  subgraph V[\"VPC 10.0.0.0/16\"]\n    subgraph ZA[\"Zona a\"]\n      PA[\"publica-a 10.0.0.0/24 (ruta 0.0.0.0/0 al internet gateway)\"]\n      RA[\"privada-a 10.0.16.0/20 (solo ruta local)\"]\n    end\n    subgraph ZB[\"Zona b\"]\n      PB[\"publica-b 10.0.1.0/24 (ruta 0.0.0.0/0 al internet gateway)\"]\n      RB[\"privada-b 10.0.32.0/20 (solo ruta local)\"]\n    end\n    G --> PA\n    G --> PB\n    PA -.-> RA\n    PB -.-> RB\n  end"
+        },
+        {
+          "type": "paragraph",
+          "title": "Planificar el crecimiento y las conexiones",
+          "text": "Tras crear la VPC puedes asociar bloques IPv4 secundarios, pero no puedes aumentar ni reducir el tamaño de un bloque existente, y el bloque primario con el que creaste la VPC no se puede desasociar. Un bloque nuevo no puede solaparse con ninguno de los ya asociados. Si la VPC tiene una conexión de peering activa, los bloques que añadas no deben solaparse con los de la VPC par; y las VPC asociadas a un gateway de Direct Connect no deben tener bloques solapados entre sí. Además, la guía advierte de que algunos servicios de AWS usan el rango 172.17.0.0/16 (por ejemplo AWS Cloud9 y Amazon SageMaker AI) y que, para evitar conflictos, no debes usarlo al crear tu VPC. Todo esto aconseja dejar espacio sin asignar y elegir bloques que no choquen con las redes a las que te conectarás."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: la subred «privada» que llega a internet",
+          "text": "Si una pregunta dice que unas instancias no deben recibir conexiones desde internet pero sí descargar actualizaciones, la respuesta no es darles una dirección IP pública ni moverlas a una subred con ruta a un internet gateway: eso las deja alcanzables. La guía describe para ese caso un dispositivo NAT con una dirección IP elástica, que permite iniciar conexiones de salida y no acepta conexiones no solicitadas de fuera."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: sacar las cuentas con todas las direcciones del bloque",
+          "text": "Causa: dimensionar una subred con el total de direcciones del bloque (por ejemplo, 16 en un /28) sin descontar las cinco que AWS reserva. Consecuencia: la subred se queda corta al lanzar el último recurso y hay que recrearla, porque no puedes cambiar el tamaño de un bloque existente. Solución: calcula siempre direcciones totales menos cinco, elige el prefijo más pequeño que cubra la necesidad con holgura y comprueba el resultado con `aws.cidr.usableAddresses`."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: repartir subredes que se solapan o que no caben en la VPC",
+          "text": "Causa: escribir los bloques a mano sin alinear cada uno con su tamaño, de modo que un /20 empiece en una dirección que no es múltiplo de su tamaño o que un bloque salga del rango de la VPC. Consecuencia: las subredes con bloques solapados no pueden crearse y una subred fuera del bloque de la VPC no es un subconjunto de él. Solución: parte la VPC con `aws.cidr.split`, elige bloques de esa lista y valida el plan completo con `aws.cidr.validateSubnetPlan` antes de crear nada."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: elegir para la VPC un rango que choca con otras redes o servicios",
+          "text": "Causa: escoger el primer rango que viene a la cabeza (por ejemplo 172.17.0.0/16) sin mirar a qué redes se conectará la VPC. Consecuencia: los servicios que usan ese rango pueden dar conflictos de direcciones, y un bloque solapado con el de una VPC par o con otra VPC de un gateway de Direct Connect impide conectarlas. Solución: anota los bloques de las redes existentes, elige un bloque privado de RFC 1918 que no se solape con ninguno, evita 172.17.0.0/16 y deja espacio sin asignar para crecer."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Diseñar el plan de direccionamiento de una VPC: elegir su bloque CIDR, repartirlo en subredes públicas y privadas por zona con el tamaño justo y decidir cuáles llegan a internet. Prepara el examen SAA-C03, dominio 1 (Diseñar arquitecturas seguras), tarea 1.2. Criterio: las pruebas de los ejercicios pasan y sabes explicar, para cada subred de tu plan, cuántas direcciones utilizables ofrece, por qué su bloque no se solapa con otro y qué ruta la hace pública o privada."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y sigue paso a paso el ejemplo de las cuatro subredes: cuenta las direcciones utilizables de cada tamaño, comprueba que cada bloque está alineado y que ninguno se solapa. Explica con tus palabras, sin mirar el texto, el diagrama «Una VPC con una subred pública y una privada por zona». Después responde: si la subred privada necesitara 5000 direcciones utilizables, ¿qué prefijo elegirías y cuántas direcciones te quedarían sin usar?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Repartir una VPC en subredes públicas y privadas por zona»: corrige el plan inicial para que la VPC use un bloque válido y cada subred tenga el tamaño justo. Empieza por llamar a aws.cidr.validateSubnetPlan con el plan tal como está y lee cada problema. Usa las pistas por niveles solo si te atascas. Criterio de paso: el validador no devuelve problemas, las subredes ofrecen las direcciones pedidas sin pasarse de tamaño y la VPC no usa un rango que la guía desaconseja."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Plan de tres zonas que no choca con las redes existentes». Decide el bloque de la VPC, el prefijo de cada subred y su posición dentro de la VPC. Comprueba con aws.cidr que el plan no tiene problemas, que no se solapa con las redes existentes y que cada subred usa el prefijo más pequeño que cubre su necesidad. Criterio de paso: todas las comprobaciones dan el resultado previsto y justificas por escrito el tamaño de cada subred."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente que dimensione dos subredes de gestión de 20 direcciones utilizables y audita su respuesta contra la guía de tamaño de subredes (consultada con fecha) antes de aceptarla: anota si cuenta las direcciones reservadas y qué afirma que la guía no sostiene. Resuelve también «Depurar las subredes de gestión que se quedan sin direcciones» y escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué tamaños admiten una VPC y una subred; qué cuatro rangos no se pueden usar como bloque de una VPC; cuáles son las cinco direcciones reservadas de una subred; qué hace pública a una subred; y cómo sale a internet una instancia de una subred privada sin aceptar conexiones de fuera. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa añade una tercera zona y una conexión de peering con otra VPC que usa 10.1.0.0/16. Rehaz el plan sin cambiar las subredes ya creadas y decide qué bloque secundario podrías asociar si la VPC se queda sin direcciones. Pregunta de cierre: un equipo crea una subred y descubre que no puede alojar el número de instancias que calculó; ¿qué revisas primero y qué ocurre con el bloque que ya creó?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-vpc-como-funciona",
+          "order": 0,
+          "note": "Fuente de qué es una VPC y una subred, de la VPC predeterminada, de las tablas de rutas y de cómo una instancia accede a internet (internet gateway, dirección IP elástica y dispositivo NAT)."
+        },
+        {
+          "resourceSlug": "aws-vpc-configurar",
+          "order": 1,
+          "note": "Fuente de por qué conviene diseñar la VPC (varias capas, aislamiento entre cargas) y de las opciones de configuración y de ampliación del bloque."
+        },
+        {
+          "resourceSlug": "aws-vpc-bloques-cidr",
+          "order": 2,
+          "note": "Fuente del tamaño permitido del bloque de una VPC, los rangos prohibidos, los bloques secundarios, la forma canónica y las restricciones con peering y Direct Connect."
+        },
+        {
+          "resourceSlug": "aws-vpc-subnet-sizing",
+          "order": 3,
+          "note": "Fuente del tamaño permitido de una subred, de las cinco direcciones reservadas, del solape entre subredes y de la excepción de BYOIP."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) incluye la tarea 1.2, que menciona el diseño de VPC y la segmentación de la red con subredes públicas y privadas."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una máscara entre /16 (65.536 direcciones) y /28 (16 direcciones). No se pueden usar 0.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16 ni 224.0.0.0/4."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Tamaño y rangos prohibidos de una VPC",
+      "statement": "¿Qué tamaño de bloque CIDR IPv4 admite una VPC y qué rangos no puedes usar para ella?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "bloque CIDR de la VPC",
+        "rangos prohibidos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Las cuatro primeras y la última de cada bloque. En 10.0.0.0/24: .0 red, .1 router de la VPC, .2 reservada (DNS), .3 uso futuro y .255 difusión."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Direcciones reservadas de una subred",
+      "statement": "¿Qué direcciones de una subred IPv4 no puedes asignar a un recurso?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "direcciones reservadas",
+        "subred"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "AWS modifica el bloque a su forma canónica: se crea 100.68.0.0/18."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Forma canónica de un CIDR",
+      "statement": "¿Qué ocurre si creas una VPC o una subred con la API o la línea de comandos indicando 100.68.0.18/18?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "forma canónica",
+        "CIDR"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En la pública, la tabla de rutas envía el tráfico de internet a un internet gateway y las instancias tienen IPv4 pública. En una subred propia, sin IP pública asignada, las instancias solo tienen IPv4 privada y no acceden a internet."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Subred pública y subred privada",
+      "statement": "¿Qué diferencia a una subred pública de una privada según la guía de funcionamiento de VPC?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "subred pública",
+        "subred privada",
+        "tabla de rutas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Con un dispositivo NAT configurado con una dirección IP elástica y conectado a internet mediante un internet gateway: reenvía el tráfico de salida y las respuestas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Salida a internet desde una subred privada",
+      "statement": "¿Cómo puede una instancia iniciar conexiones a internet sin aceptar las no solicitadas desde fuera?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "NAT",
+        "salida a internet"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El bloque nuevo no puede solaparse con los asociados ni con el de una VPC par (peering activo); no se cambia el tamaño de un bloque existente y el primario no se desasocia."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Crecer y conectar una VPC",
+      "statement": "¿Qué reglas se aplican al asociar bloques CIDR adicionales a una VPC?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "CIDR secundario",
+        "solape"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de la VPC 10.50.0.0/16: una pública, dos subredes de gestión y una de datos.\nexport const plan = {\n  vpc: \"10.50.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"10.50.0.0/24\" },\n    { name: \"gestion-a\", cidr: \"10.50.1.0/28\" },\n    { name: \"gestion-b\", cidr: \"10.50.1.32/28\" },\n    { name: \"datos-a\", cidr: \"10.50.2.0/24\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Plan de la VPC 10.50.0.0/16: una pública, dos subredes de gestión y una de datos.\nexport const plan = {\n  vpc: \"10.50.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"10.50.0.0/24\" },\n    { name: \"gestion-a\", cidr: \"10.50.1.0/27\" },\n    { name: \"gestion-b\", cidr: \"10.50.1.32/27\" },\n    { name: \"datos-a\", cidr: \"10.50.2.0/24\" },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Calcula cuántas direcciones utilizables ofrece cada subred de gestión con aws.cidr.usableAddresses y compáralas con las 20 que necesita."
+        },
+        {
+          "level": 2,
+          "text": "Un /28 tiene 16 direcciones y AWS reserva cinco en cada subred, así que solo quedan 11. Busca el prefijo más pequeño que deje al menos 20 utilizables, sin cambiar la dirección de inicio de las subredes."
+        },
+        {
+          "level": 3,
+          "text": "Cambia gestion-a a 10.50.1.0/27 y gestion-b a 10.50.1.32/27: un /27 tiene 32 direcciones y deja 27 utilizables. Las dos siguen alineadas y no se solapan; no toques las demás subredes."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el plan no tiene problemas según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cidr.validateSubnetPlan(plan), []);"
+          }
+        },
+        {
+          "name": "cada subred de gestión ofrece al menos 20 direcciones utilizables",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const sub = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"gestion-a\", \"gestion-b\"]) {\n  const hay = aws.cidr.usableAddresses(sub(name).cidr);\n  assert.ok(hay >= 20, name + \" ofrece \" + hay + \" direcciones utilizables y se piden 20\");\n}"
+          }
+        },
+        {
+          "name": "la pública y la de datos no se han tocado",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const sub = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nassert.strictEqual(plan.subnets.length, 4);\nassert.strictEqual(sub(\"publica-a\").cidr, \"10.50.0.0/24\");\nassert.strictEqual(sub(\"datos-a\").cidr, \"10.50.2.0/24\");"
+          }
+        },
+        {
+          "name": "las subredes de gestión no se piden más grandes de lo necesario",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const sub = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"gestion-a\", \"gestion-b\"]) {\n  assert.ok(aws.cidr.usableAddresses(sub(name).cidr) <= 27, name + \" es más grande de lo necesario\");\n}"
+          }
+        },
+        {
+          "name": "las subredes de gestión conservan su dirección de inicio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sub = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nassert.strictEqual(aws.cidr.parse(sub(\"gestion-a\").cidr)?.network, \"10.50.1.0\");\nassert.strictEqual(aws.cidr.parse(sub(\"gestion-b\").cidr)?.network, \"10.50.1.32\");"
+          }
+        },
+        {
+          "name": "la VPC conserva su bloque y ninguna subred sale de ella ni se solapa",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(plan.vpc, \"10.50.0.0/16\");\nconst subnets: { name: string; cidr: string }[] = plan.subnets;\nfor (const [index, first] of subnets.entries()) {\n  assert.ok(aws.cidr.contains(plan.vpc, first.cidr), first.name + \" queda fuera de la VPC\");\n  for (const second of subnets.slice(index + 1)) {\n    assert.ok(!aws.cidr.overlaps(first.cidr, second.cidr), first.name + \" se solapa con \" + second.name);\n  }\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-debug-01",
+      "type": "DEBUG",
+      "title": "Depurar las subredes de gestión que se quedan sin direcciones",
+      "statement": "El equipo planifica la VPC 10.50.0.0/16 con una subred pública (publica-a), una de datos (datos-a) y dos subredes de gestión (gestion-a y gestion-b) que deben alojar cada una al menos 20 direcciones utilizables. El plan (`export const plan = { vpc, subnets: [{ name, cidr }] }`) pasa el validador, pero las subredes de gestión se quedan sin direcciones al desplegar: tiene un único defecto de cálculo, repetido en las dos. Localízalo con `aws.cidr.usableAddresses` y corrígelo con el cambio mínimo: sin cambiar la forma del valor exportado, sin mover las subredes de dirección de inicio, sin tocar las otras dos y sin pedir más tamaño del necesario. Explica por qué fallaba y cómo lo comprobaste.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "direcciones reservadas",
+        "tamaño de subred",
+        "plan de subredes"
+      ],
+      "estimatedMin": 30,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de la VPC de la tienda: dos zonas, una subred pública y otra privada en cada una.\nexport const plan = {\n  vpc: \"172.17.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"172.17.0.0/25\" },\n    { name: \"publica-b\", cidr: \"172.17.0.64/26\" },\n    { name: \"privada-a\", cidr: \"172.17.8.0/22\" },\n    { name: \"privada-b\", cidr: \"172.18.8.0/21\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Plan de la VPC de la tienda: un /16 privado sin chocar con 172.17.0.0/16 y subredes con el tamaño justo.\nexport const plan = {\n  vpc: \"10.30.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"10.30.0.0/25\" },\n    { name: \"publica-b\", cidr: \"10.30.0.128/25\" },\n    { name: \"privada-a\", cidr: \"10.30.8.0/21\" },\n    { name: \"privada-b\", cidr: \"10.30.16.0/21\" },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.cidr.validateSubnetPlan con el plan tal como está y lee cada problema: dice qué subred se solapa, cuál sale de la VPC y cuál tiene un tamaño no permitido. Mira también qué bloque tiene la VPC."
+        },
+        {
+          "level": 2,
+          "text": "Una subred ofrece su número de direcciones menos cinco: un /25 deja 123 utilizables (cubre 120) y un /21 deja 2043 (cubre 2000), mientras que un /22 solo deja 1019. La guía desaconseja 172.17.0.0/16 para la VPC: cámbiala a un /16 del rango 10.0.0.0/8 y recoloca las subredes dentro."
+        },
+        {
+          "level": 3,
+          "text": "Usa la VPC 10.30.0.0/16 con publica-a 10.30.0.0/25, publica-b 10.30.0.128/25, privada-a 10.30.8.0/21 y privada-b 10.30.16.0/21: cada bloque empieza en una dirección alineada con su tamaño y ninguno se solapa."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el plan no tiene problemas según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cidr.validateSubnetPlan(plan), []);"
+          }
+        },
+        {
+          "name": "el plan declara las cuatro subredes pedidas",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const names = plan.subnets.map((candidate: { name: string }) => candidate.name).sort();\nassert.deepStrictEqual(names, [\"privada-a\", \"privada-b\", \"publica-a\", \"publica-b\"]);"
+          }
+        },
+        {
+          "name": "la VPC usa un bloque válido que no es 172.17.0.0/16",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cidr.validateVpcCidr(plan.vpc), []);\nassert.ok(!aws.cidr.overlaps(plan.vpc, \"172.17.0.0/16\"), \"la VPC no debe usar 172.17.0.0/16\");"
+          }
+        },
+        {
+          "name": "cada subred ofrece al menos las direcciones utilizables pedidas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sub = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"publica-a\", \"publica-b\"]) {\n  const hay = aws.cidr.usableAddresses(sub(name).cidr);\n  assert.ok(hay >= 120, name + \" ofrece \" + hay + \" direcciones utilizables y se piden 120\");\n}\nfor (const name of [\"privada-a\", \"privada-b\"]) {\n  const hay = aws.cidr.usableAddresses(sub(name).cidr);\n  assert.ok(hay >= 2000, name + \" ofrece \" + hay + \" direcciones utilizables y se piden 2000\");\n}"
+          }
+        },
+        {
+          "name": "las subredes no se piden más grandes de lo necesario",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const sub = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"publica-a\", \"publica-b\"]) {\n  assert.ok(aws.cidr.usableAddresses(sub(name).cidr) <= 123, name + \" es más grande de lo necesario\");\n}\nfor (const name of [\"privada-a\", \"privada-b\"]) {\n  assert.ok(aws.cidr.usableAddresses(sub(name).cidr) <= 2043, name + \" es más grande de lo necesario\");\n}"
+          }
+        },
+        {
+          "name": "la VPC es un /16 del rango privado 10.0.0.0/8",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(aws.cidr.parse(plan.vpc)?.prefix, 16);\nassert.ok(aws.cidr.contains(\"10.0.0.0/8\", plan.vpc), plan.vpc + \" no está dentro de 10.0.0.0/8\");"
+          }
+        },
+        {
+          "name": "todos los bloques están escritos en su forma canónica",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const canonico = (cidr: string) => {\n  const parsed = aws.cidr.parse(cidr);\n  return parsed !== null && cidr === parsed.network + \"/\" + parsed.prefix;\n};\nassert.ok(canonico(plan.vpc), plan.vpc + \" no está en forma canónica\");\nfor (const { name, cidr } of plan.subnets) {\n  assert.ok(canonico(cidr), name + \" (\" + cidr + \") no está en forma canónica\");\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-lab-guiado-01",
+      "type": "LAB",
+      "title": "Repartir una VPC en subredes públicas y privadas por zona",
+      "statement": "Una tienda crea su VPC en dos zonas de disponibilidad y necesita cuatro subredes: `publica-a` y `publica-b`, con al menos 120 direcciones utilizables cada una, y `privada-a` y `privada-b`, con al menos 2000 direcciones utilizables cada una. La VPC debe usar un bloque /16 del rango privado 10.0.0.0/8 y no puede usar 172.17.0.0/16, un rango que algunos servicios de AWS emplean y que puede causar conflictos. Recuerda que AWS reserva cinco direcciones en cada subred. Las subredes no pueden solaparse ni salir de la VPC y cada una usa el prefijo más pequeño que cubra su necesidad. El código inicial exporta un plan que incumple esas reglas: corrígelo sin cambiar la forma del valor exportado (`export const plan = { vpc, subnets: [{ name, cidr }] }`) y compruébalo con `aws.cidr.validateSubnetPlan`, `aws.cidr.validateVpcCidr` y `aws.cidr.usableAddresses`.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "bloque CIDR de la VPC",
+        "subredes públicas y privadas",
+        "direcciones reservadas"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de la VPC de tres capas en tres zonas: públicas para el balanceador, privadas para la aplicación.\nexport const plan = {\n  vpc: \"10.2.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"10.2.0.0/27\" },\n    { name: \"publica-b\", cidr: \"10.2.0.0/26\" },\n    { name: \"publica-c\", cidr: \"10.2.0.128/26\" },\n    { name: \"privada-a\", cidr: \"10.2.16.0/21\" },\n    { name: \"privada-b\", cidr: \"10.2.32.0/20\" },\n    { name: \"privada-c\", cidr: \"10.2.200.0/20\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Plan de la VPC 10.3.0.0/16: sin solape con las redes existentes y con las seis subredes en la mitad inferior.\nexport const plan = {\n  vpc: \"10.3.0.0/16\",\n  subnets: [\n    { name: \"publica-a\", cidr: \"10.3.0.0/26\" },\n    { name: \"publica-b\", cidr: \"10.3.0.64/26\" },\n    { name: \"publica-c\", cidr: \"10.3.0.128/26\" },\n    { name: \"privada-a\", cidr: \"10.3.16.0/20\" },\n    { name: \"privada-b\", cidr: \"10.3.32.0/20\" },\n    { name: \"privada-c\", cidr: \"10.3.48.0/20\" },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el plan no tiene problemas según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cidr.validateSubnetPlan(plan), []);"
+          }
+        },
+        {
+          "name": "el plan declara las seis subredes pedidas",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const names = plan.subnets.map((candidate: { name: string }) => candidate.name).sort();\nassert.deepStrictEqual(names, [\"privada-a\",\"privada-b\",\"privada-c\",\"publica-a\",\"publica-b\",\"publica-c\"]);"
+          }
+        },
+        {
+          "name": "la VPC no se solapa con ninguna de las redes existentes",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const existente of [\"10.0.0.0/16\", \"10.1.0.0/16\", \"10.2.0.0/16\"]) {\n  assert.ok(!aws.cidr.overlaps(plan.vpc, existente), plan.vpc + \" se solapa con \" + existente);\n}"
+          }
+        },
+        {
+          "name": "cada subred ofrece al menos las direcciones utilizables de su capa",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sub = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"publica-a\", \"publica-b\", \"publica-c\"]) {\n  const hay = aws.cidr.usableAddresses(sub(name).cidr);\n  assert.ok(hay >= 28, name + \" ofrece \" + hay + \" direcciones utilizables y se piden 28\");\n}\nfor (const name of [\"privada-a\", \"privada-b\", \"privada-c\"]) {\n  const hay = aws.cidr.usableAddresses(sub(name).cidr);\n  assert.ok(hay >= 4000, name + \" ofrece \" + hay + \" direcciones utilizables y se piden 4000\");\n}"
+          }
+        },
+        {
+          "name": "ninguna subred es más grande de lo necesario",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const sub = (name: string) => {\n  const found = plan.subnets.find((candidate: { name: string }) => candidate.name === name);\n  assert.ok(found, \"Falta la subred \" + name);\n  return found;\n};\nfor (const name of [\"publica-a\", \"publica-b\", \"publica-c\"]) {\n  assert.ok(aws.cidr.usableAddresses(sub(name).cidr) <= 59, name + \" es más grande de lo necesario\");\n}\nfor (const name of [\"privada-a\", \"privada-b\", \"privada-c\"]) {\n  assert.ok(aws.cidr.usableAddresses(sub(name).cidr) <= 4091, name + \" es más grande de lo necesario\");\n}"
+          }
+        },
+        {
+          "name": "todas las subredes caben en la mitad inferior de la VPC",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const mitad = aws.cidr.split(plan.vpc, 17)[0];\nassert.ok(mitad, \"No se pudo calcular la mitad inferior de la VPC\");\nfor (const { name, cidr } of plan.subnets) {\n  assert.ok(aws.cidr.contains(mitad, cidr), name + \" (\" + cidr + \") queda fuera de la mitad inferior de la VPC \" + mitad);\n}"
+          }
+        },
+        {
+          "name": "la VPC es un /16 del rango privado 10.0.0.0/8",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cidr.validateVpcCidr(plan.vpc), []);\nassert.strictEqual(aws.cidr.parse(plan.vpc)?.prefix, 16);\nassert.ok(aws.cidr.contains(\"10.0.0.0/8\", plan.vpc), plan.vpc + \" no está dentro de 10.0.0.0/8\");"
+          }
+        },
+        {
+          "name": "todos los bloques están escritos en su forma canónica",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const canonico = (cidr: string) => {\n  const parsed = aws.cidr.parse(cidr);\n  return parsed !== null && cidr === parsed.network + \"/\" + parsed.prefix;\n};\nassert.ok(canonico(plan.vpc), plan.vpc + \" no está en forma canónica\");\nfor (const { name, cidr } of plan.subnets) {\n  assert.ok(canonico(cidr), name + \" (\" + cidr + \") no está en forma canónica\");\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-lab-autonomo-01",
+      "type": "LAB",
+      "title": "Plan de tres zonas que no choca con las redes existentes",
+      "statement": "Diseña el plan de direccionamiento de una VPC nueva de tres capas en tres zonas de disponibilidad. Debe conectarse más tarde con otras VPC que ya usan 10.0.0.0/16, 10.1.0.0/16 y 10.2.0.0/16, y los bloques de VPC conectadas no deben solaparse. Elige para la nueva VPC un bloque /16 del rango privado 10.0.0.0/8. Necesitas seis subredes: `publica-a`, `publica-b` y `publica-c`, con al menos 28 direcciones utilizables cada una, y `privada-a`, `privada-b` y `privada-c`, con al menos 4000. Recuerda que AWS reserva cinco direcciones en cada subred IPv4. Cada subred usa el prefijo MÁS pequeño que cubra su requisito, ninguna se solapa con otra, todos los bloques se escriben en su forma canónica y las seis caben en la mitad inferior de la VPC, para dejar la mitad superior libre para crecer. El código inicial exporta un plan que incumple varias de esas condiciones: corrígelo sin cambiar la forma del valor exportado (`export const plan = { vpc, subnets: [{ name, cidr }] }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "bloque CIDR de la VPC",
+        "solape de CIDR",
+        "plan de subredes por zona"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/configure-your-vpc.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Bloque 127.0.0.0/16, del rango de loopback del host",
+            "explanation": "Descartada: 127.0.0.0/8 es uno de los rangos que no se pueden usar como bloque CIDR de una VPC, y 127.0.0.0/16 está dentro de él."
+          },
+          {
+            "id": "b",
+            "text": "Bloque 10.20.0.0/16, del rango privado 10.0.0.0/8",
+            "explanation": "Es la correcta: es un bloque de uno de los rangos privados de RFC 1918 y su tamaño, /16, está dentro del intervalo permitido."
+          },
+          {
+            "id": "c",
+            "text": "Bloque 169.254.10.0/24, del rango de enlace local",
+            "explanation": "Descartada: 169.254.0.0/16 es el rango de enlace local y no se puede especificar como bloque de una VPC."
+          },
+          {
+            "id": "d",
+            "text": "Bloque 10.0.0.0/8, del rango privado 10.0.0.0/8",
+            "explanation": "Descartada: pertenece a un rango privado, pero una máscara /8 es mayor que el máximo permitido para una VPC, que es /16."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-quiz-01",
+      "type": "QUIZ",
+      "title": "Elegir el bloque CIDR IPv4 de una VPC nueva",
+      "statement": "Una empresa va a crear una VPC y debe decidir su bloque CIDR IPv4. El equipo de redes exige que el bloque pertenezca a un rango privado recomendado por la guía y que su tamaño esté dentro de lo que una VPC admite. ¿Qué bloque es el MEJOR candidato para la VPC?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "bloque CIDR de la VPC",
+        "rangos prohibidos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "La primera (10.0.4.0) y la última (10.0.4.255) de la subred",
+            "explanation": "Descartada: además de la dirección de red y la de difusión, AWS reserva otras tres direcciones al principio del bloque, entre ellas la del router de la VPC."
+          },
+          {
+            "id": "b",
+            "text": "Las dos primeras (10.0.4.0 y 10.0.4.1) y la última (10.0.4.255)",
+            "explanation": "Descartada: se queda corta; la guía reserva las cuatro primeras direcciones de cada bloque, no solo las dos primeras."
+          },
+          {
+            "id": "c",
+            "text": "Las tres primeras (10.0.4.0 a 10.0.4.2) y la última (10.0.4.255)",
+            "explanation": "Descartada: falta la cuarta dirección (10.0.4.3), que AWS reserva para uso futuro."
+          },
+          {
+            "id": "d",
+            "text": "Las cuatro primeras (10.0.4.0 a 10.0.4.3) y la última (10.0.4.255)",
+            "explanation": "Es la correcta: la red, el router de la VPC, la reservada junto al DNS, la reservada para uso futuro y la de difusión suman cinco."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-quiz-02",
+      "type": "QUIZ",
+      "title": "Direcciones que AWS reserva en una subred",
+      "statement": "Un equipo crea una subred con el bloque 10.0.4.0/24 y calcula cuántas direcciones podrá asignar a instancias de EC2. Necesita saber cuáles reserva AWS. ¿Qué conjunto describe las direcciones reservadas de esa subred con MAYOR precisión?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "direcciones reservadas",
+        "subred"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Tiene una IPv4 privada y ninguna pública: se comunica con otras instancias de la VPC, pero no accede a internet",
+            "explanation": "Es la correcta: en una subred no predeterminada, una instancia solo recibe IPv4 privada salvo que se asigne una pública, y sin ella no alcanza internet."
+          },
+          {
+            "id": "b",
+            "text": "Recibe una IPv4 pública al lanzarse y accede a internet por el internet gateway de la VPC",
+            "explanation": "Descartada: eso describe a una subred predeterminada; en una subred propia no se asigna IP pública por defecto."
+          },
+          {
+            "id": "c",
+            "text": "Tiene una IPv4 privada y accede a internet porque la ruta local de la tabla de rutas cubre cualquier destino",
+            "explanation": "Descartada: la ruta local solo cubre el bloque CIDR de la VPC; el tráfico a internet necesita una ruta propia hacia un internet gateway."
+          },
+          {
+            "id": "d",
+            "text": "No tiene ninguna dirección IPv4 hasta que se adjunta un internet gateway a la VPC",
+            "explanation": "Descartada: toda instancia lanzada en una subred recibe una dirección IPv4 privada; el internet gateway no cambia eso."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-quiz-03",
+      "type": "QUIZ",
+      "title": "Acceso a internet de una instancia en una subred propia",
+      "statement": "Una empresa crea una subred en una VPC no predeterminada y lanza en ella una instancia de EC2. No modifica el atributo de IP pública de la subred, no asigna una dirección IP al lanzarla ni asocia una IP elástica. ¿Qué describe con MAYOR precisión el acceso de esa instancia?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "subred privada",
+        "IP pública"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Asociar una IP elástica a cada instancia y enviar su tráfico por un internet gateway",
+            "explanation": "Descartada: cada instancia queda con una dirección pública y es alcanzable desde internet, lo que incumple la restricción de no aceptar conexiones no solicitadas."
+          },
+          {
+            "id": "b",
+            "text": "Lanzar las instancias en una subred predeterminada, donde reciben una IPv4 pública",
+            "explanation": "Descartada: en una subred predeterminada cada instancia tiene dirección pública y sale por el internet gateway, así que queda expuesta."
+          },
+          {
+            "id": "c",
+            "text": "Usar un dispositivo NAT con una IP elástica, conectado a internet por un internet gateway, y enrutar hacia él la salida",
+            "explanation": "Es la correcta: el NAT permite iniciar conexiones de salida y las respuestas, y no acepta conexiones no solicitadas desde internet."
+          },
+          {
+            "id": "d",
+            "text": "Asociar a la subred una tabla de rutas que solo contenga la ruta local de la VPC",
+            "explanation": "Descartada: la subred seguiría sin ruta a internet, de modo que las instancias no podrían descargar las actualizaciones."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-quiz-04",
+      "type": "QUIZ",
+      "title": "Salida a internet sin conexiones entrantes",
+      "statement": "Las instancias de una aplicación están en una subred sin acceso a internet. Deben descargar actualizaciones desde internet, pero no deben aceptar conexiones no solicitadas desde fuera. ¿Qué solución cumple los requisitos con la MENOR exposición de las instancias?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "NAT",
+        "subred privada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Bloque 10.1.128.0/17",
+            "explanation": "Descartada: queda dentro del bloque de la VPC par, y con un peering activo los bloques nuevos no pueden solaparse con los de la VPC par."
+          },
+          {
+            "id": "b",
+            "text": "Bloque 192.168.0.0/16",
+            "explanation": "Descartada: con un bloque existente del rango 10.0.0.0/8, la guía restringe la asociación de bloques de otros rangos RFC 1918, como 192.168.0.0/16."
+          },
+          {
+            "id": "c",
+            "text": "Bloque 10.0.128.0/17",
+            "explanation": "Descartada: queda dentro del bloque primario ya asociado, y un bloque nuevo no puede solaparse con los existentes."
+          },
+          {
+            "id": "d",
+            "text": "Bloque 10.2.0.0/16",
+            "explanation": "Es la correcta: no se solapa con el bloque primario ni con el de la VPC par, y pertenece al mismo rango 10.0.0.0/8 sin restricción."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-quiz-05",
+      "type": "QUIZ",
+      "title": "Bloque secundario compatible con un peering activo",
+      "statement": "Una empresa tiene una VPC con el bloque primario 10.0.0.0/16 y una conexión de peering activa con otra VPC, cuyo bloque es 10.1.0.0/16. Necesita asociar un bloque IPv4 secundario a su VPC. ¿Qué bloque es el MÁS adecuado según las reglas de la guía?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CIDR secundario",
+        "peering",
+        "solape"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cambiar el tamaño del bloque 10.0.0.0/20 existente para que pase a /16",
+            "explanation": "Descartada: la guía indica que no puedes aumentar ni reducir el tamaño de un bloque CIDR existente."
+          },
+          {
+            "id": "b",
+            "text": "Asociar a la VPC un bloque IPv4 secundario que no se solape con los ya asociados",
+            "explanation": "Es la correcta: la guía permite asociar bloques IPv4 secundarios tras crear la VPC, siempre que no se solapen con los existentes."
+          },
+          {
+            "id": "c",
+            "text": "Desasociar el bloque original de la VPC y asociar otro mayor en su lugar",
+            "explanation": "Descartada: el bloque primario con el que se creó la VPC no se puede desasociar."
+          },
+          {
+            "id": "d",
+            "text": "Crear subredes nuevas con direcciones de un rango tomado fuera de los bloques de la VPC",
+            "explanation": "Descartada: el bloque de una subred es un subconjunto del de la VPC; no puede salir de los bloques asociados."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-quiz-06",
+      "type": "QUIZ",
+      "title": "Ampliar el direccionamiento de una VPC ya creada",
+      "statement": "Una empresa creó su VPC con el bloque 10.0.0.0/20 y las subredes ya consumen casi todas las direcciones. Necesita más direcciones para la misma VPC sin recrearla. ¿Qué acción es la MEJOR según la guía?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "CIDR secundario",
+        "crecimiento de la VPC"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "El tamaño permitido de una subred IPv4 llega hasta una máscara /8",
+            "explanation": "No cumple: el tamaño permitido de una subred IPv4 va de /28 a /16."
+          },
+          {
+            "id": "b",
+            "text": "Si hay varias subredes en la VPC, sus bloques no pueden solaparse",
+            "explanation": "Cumple: la guía exige que, con más de una subred en la VPC, los bloques de las subredes no se solapen."
+          },
+          {
+            "id": "c",
+            "text": "Cada subred debe ocupar exactamente el mismo bloque que la VPC",
+            "explanation": "No cumple: el bloque de una subred puede coincidir con el de la VPC o ser un subconjunto de él, que es lo que permite varias subredes."
+          },
+          {
+            "id": "d",
+            "text": "Un bloque con bits de host se convierte a su forma canónica al crear la subred con la API",
+            "explanation": "Cumple: si indicas 100.68.0.18/18, la subred se crea con el bloque canónico 100.68.0.0/18."
+          },
+          {
+            "id": "e",
+            "text": "AWS reserva cinco direcciones solo en las subredes con bloque /24",
+            "explanation": "No cumple: las cinco direcciones se reservan en cada subred IPv4, sea cual sea su tamaño."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-quiz-07",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre los bloques de las subredes",
+      "statement": "Un arquitecto revisa con su equipo cómo se definen los bloques CIDR de las subredes de una VPC. Selecciona DOS afirmaciones correctas sobre los bloques CIDR de las subredes.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "subred",
+        "forma canónica",
+        "solape"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Tiene una subred predeterminada en cada zona de disponibilidad de la región",
+            "explanation": "Cumple: la VPC predeterminada incluye una subred predeterminada en cada zona de disponibilidad de la región."
+          },
+          {
+            "id": "b",
+            "text": "Sus instancias nunca reciben una dirección IPv4 pública",
+            "explanation": "No cumple: cada instancia lanzada en una subred predeterminada recibe una IPv4 privada y una pública."
+          },
+          {
+            "id": "c",
+            "text": "Se crea sin internet gateway y hay que adjuntarlo después",
+            "explanation": "No cumple: la VPC predeterminada ya tiene un internet gateway adjunto."
+          },
+          {
+            "id": "d",
+            "text": "Hay una sola para toda la cuenta, compartida entre todas las regiones",
+            "explanation": "No cumple: la cuenta tiene una VPC predeterminada en cada región, no una sola."
+          },
+          {
+            "id": "e",
+            "text": "Su tabla de rutas principal envía todo el tráfico de internet a un internet gateway",
+            "explanation": "Cumple: la ruta de la tabla principal hacia el internet gateway es lo que hace públicas las subredes predeterminadas."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las características de una VPC predeterminada",
+      "statement": "Un equipo explica a los nuevos arquitectos qué trae configurado una VPC predeterminada en cada región. Selecciona DOS características de una VPC predeterminada.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "VPC predeterminada",
+        "subred pública"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-1-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: cómo reparto el direccionamiento de una VPC",
+      "statement": "Elige una carga de trabajo que conozcas (por ejemplo, una aplicación web con balanceador, servidores de aplicación y base de datos en dos zonas) y escribe un registro breve de decisión sobre cómo repartirías su VPC, en 5 a 7 líneas:\n\n1) Decisión: qué bloque CIDR elegirías para la VPC, qué subredes públicas y privadas crearías por zona y con qué tamaño.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, usar un bloque pequeño sin margen, o dar dirección pública a las instancias para que descarguen actualizaciones) y la razón por la que la descartaste.\n\n3) Consecuencia: qué espacio dejas sin asignar para crecer, con qué redes tendrías que evitar el solape y qué harías si la VPC se quedara sin direcciones (recuerda que no puedes cambiar el tamaño de un bloque existente).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad) y por qué.\n\n5) Evidencia: qué parte de la guía de bloques CIDR, de tamaño de subredes o de funcionamiento de VPC usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el bloque, el tamaño de las subredes y la restricción que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "decisión",
+        "bloque CIDR de la VPC",
+        "subredes públicas y privadas"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-cidr-blocks.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html"
+      ],
+      "order": 18
+    }
+  ]
+}
