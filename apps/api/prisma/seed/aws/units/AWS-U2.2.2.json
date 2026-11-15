@@ -1,0 +1,1260 @@
+{
+  "code": "AWS-U2.2.2",
+  "lessons": [
+    {
+      "slug": "aws-u2-2-2-enrutamiento-igw-nat-y-tablas-de-rutas",
+      "title": "Enrutamiento: Internet Gateway, NAT Gateway y tablas de rutas",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "En Amazon VPC, la tabla de rutas es el controlador de tráfico de la VPC: cada tabla contiene un conjunto de reglas, llamadas rutas, que determinan hacia dónde se dirige el tráfico de una subred o de un gateway. Cada ruta indica un destino (un bloque CIDR o una lista de prefijos) y un objetivo, que puede ser un internet gateway, un NAT gateway, una conexión de peering o una conexión VPN, y el tráfico se encamina según su dirección IP de destino. Al crear una VPC se crea también su tabla de rutas principal, y puedes crear tablas adicionales para tener un control más granular de las rutas. Con ellas se construyen subredes públicas y privadas: lo que distingue a unas de otras no es su nombre, sino adónde apunta su tabla de rutas."
+        },
+        {
+          "type": "list",
+          "title": "Qué decide cada pieza",
+          "items": [
+            "Tabla de rutas: contiene las rutas que dirigen el tráfico de la subred a la que está asociada; la subred se comporta como pública o privada según esas rutas.",
+            "Internet gateway (IGW): componente escalado horizontalmente, redundante y de alta disponibilidad que permite la comunicación entre la VPC e Internet; para IPv4 realiza además la traducción de direcciones (NAT) uno a uno de la dirección pública de la instancia.",
+            "Subred pública: asociada con una tabla de rutas que tiene una ruta hacia un internet gateway. Subred privada: asociada con una tabla de rutas que no la tiene.",
+            "NAT gateway: permite que las instancias de una subred privada se conecten a servicios fuera de la VPC, mientras esos servicios no pueden iniciar una conexión con ellas.",
+            "Dirección pública: para comunicarse por Internet con IPv4, la instancia necesita una dirección IPv4 pública o una Elastic IP address, además de la ruta hacia el IGW."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "El internet gateway y la subred pública",
+          "text": "Para usar un internet gateway debes adjuntarlo a la VPC y configurar el enrutamiento. En la tabla de rutas de la subred pública puedes enviar al IGW todos los destinos que la tabla no conoce explícitamente (0.0.0.0/0 para IPv4) o, como alternativa, limitar la ruta a un rango más estrecho, por ejemplo las direcciones públicas de los endpoints de tu empresa fuera de AWS. Las instancias de la subred pública deben tener dirección pública o Elastic IP para comunicarse con Internet a través del IGW. En cambio, en una subred privada no hay ruta hacia el IGW, así que sus instancias no pueden comunicarse con Internet aunque tengan una dirección IP pública. Una VPC predeterminada ya incluye un internet gateway y la ruta 0.0.0.0/0 hacia él; una VPC no predeterminada no incluye ninguno de los dos."
+        },
+        {
+          "type": "paragraph",
+          "title": "El NAT gateway y la subred privada",
+          "text": "Un NAT gateway público se crea en una subred pública y debe tener una Elastic IP address asociada desde su creación. Las instancias de las subredes privadas se conectan a Internet a través de él, pero no reciben conexiones no solicitadas desde Internet: las conexiones deben iniciarse siempre desde dentro de la VPC que contiene el NAT gateway, y cuando llega la respuesta el NAT gateway traduce la dirección de nuevo a la del origen original. El tráfico del NAT gateway hacia Internet se enruta al internet gateway de la VPC. Existe también el NAT gateway privado, que sirve para conectar con otras VPC o con redes locales a través de un transit gateway o un virtual private gateway: no admite una Elastic IP address, y si enrutas su tráfico hacia el internet gateway, este lo descarta."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de qué subred sale cada tráfico",
+          "text": "La tienda tiene una VPC con una subred pública (servidor web) y una privada (aplicación). La tabla de la pública lleva 0.0.0.0/0 hacia el internet gateway; la de la privada lleva 0.0.0.0/0 hacia el NAT gateway, que vive en la pública. Un visitante abre HTTPS hacia el servidor web: entra por el internet gateway, que traduce la dirección pública a la privada de la instancia, y la subred es pública porque su tabla tiene la ruta al IGW. La aplicación descarga una actualización: su tráfico sale por el NAT gateway, de ahí al IGW y a Internet, y la respuesta vuelve por el mismo camino. Un visitante que intente abrir una conexión directa con la aplicación no tiene ruta que lo lleve hasta ella: la subred privada no enruta hacia el IGW y el NAT gateway no admite conexiones iniciadas desde fuera. En el arnés de laboratorio, `aws.network.routeFor` te dice qué objetivo gana para una dirección y `aws.network.canConnect` comprueba la conexión completa y su respuesta. El arnés, como convención propia y no como dato de la guía, añade la ruta `local` que cubre el CIDR de la VPC, resuelve cada dirección con la ruta más específica y reconoce como salida a Internet los objetivos que empiezan por `igw-` y `nat-`."
+        },
+        {
+          "type": "code",
+          "title": "Las tablas de rutas de una subred pública y una privada, como valores del arnés",
+          "language": "typescript",
+          "code": "export const rutasPublica = [\n  { destination: \"10.0.0.0/16\", target: \"local\" },\n  // Todo lo que la tabla no conoce sale por el internet gateway: subred pública.\n  { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n];\n\nexport const rutasPrivada = [\n  { destination: \"10.0.0.0/16\", target: \"local\" },\n  // Todo lo que la tabla no conoce sale por el NAT gateway: subred privada.\n  { destination: \"0.0.0.0/0\", target: \"nat-0a1b2c3d4e5f60718\" },\n];"
+        },
+        {
+          "type": "mermaid",
+          "title": "La ruta por defecto decide si una subred es pública o privada",
+          "code": "flowchart TB\n  I[\"Internet\"] <-->|\"tráfico de Internet\"| G[\"Internet gateway\"]\n  subgraph V[\"VPC\"]\n    subgraph P[\"Subred pública: tabla con ruta 0.0.0.0/0 al internet gateway\"]\n      W[\"Servidor web con dirección pública\"]\n      N[\"NAT gateway público con Elastic IP\"]\n    end\n    subgraph R[\"Subred privada: tabla con ruta 0.0.0.0/0 al NAT gateway\"]\n      A[\"Instancia de aplicación\"]\n    end\n  end\n  G <--> W\n  A -->|\"conexión iniciada desde dentro\"| N\n  N -->|\"su tabla de rutas lo envía al IGW\"| G"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: arreglar la salida a Internet con el gateway equivocado",
+          "text": "Si el enunciado pide que una subred privada salga a Internet sin que nadie de fuera pueda iniciar conexiones con ella, la respuesta es un NAT gateway público en una subred pública, no una ruta de la subred privada al internet gateway ni direcciones públicas en las instancias: con esas dos opciones la subred dejaría de ser privada y los recursos de Internet podrían iniciar conexiones con ellas. Si el enunciado habla de conectar con otras VPC o con redes locales, el candidato es el NAT gateway privado."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: darle ruta al internet gateway a la subred privada",
+          "text": "Causa: ver que las instancias privadas no llegan a Internet y añadir en su tabla una ruta 0.0.0.0/0 hacia el internet gateway. Consecuencia: la subred pasa a ser pública por definición y, si las instancias tienen dirección pública, los recursos de Internet pueden iniciar conexiones con ellas; si no la tienen, siguen sin salir. Solución: crea un NAT gateway público en una subred pública, con su Elastic IP address, y apunta a él la ruta 0.0.0.0/0 de la tabla de la subred privada; comprueba con `aws.network.routeFor` y `aws.network.canConnect` que nada de fuera inicia conexiones con ella."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: esperar que una dirección pública baste sin ruta al internet gateway",
+          "text": "Causa: asignar una dirección IPv4 pública o una Elastic IP a una instancia y dar por hecho que ya es accesible desde Internet. Consecuencia: si la tabla de la subred no tiene una ruta hacia el internet gateway, la instancia no puede comunicarse con Internet, y el tiempo se pierde buscando el fallo en los filtros de tráfico. Solución: comprueba primero la tabla de rutas de la subred (ruta hacia el IGW y IGW adjunto a la VPC) y después la dirección pública de la instancia; son dos requisitos distintos y necesitas los dos."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: olvidar la salida del propio NAT gateway",
+          "text": "Causa: crear el NAT gateway y apuntar a él la tabla de la subred privada, pero dejar la tabla de la subred pública del NAT gateway sin ruta hacia el internet gateway. Consecuencia: las instancias privadas siguen sin llegar a Internet porque el tráfico llega al NAT gateway y no tiene por dónde salir. Solución: en la tabla de la subred pública donde vive el NAT gateway, añade la ruta 0.0.0.0/0 hacia el internet gateway de la VPC; el NAT gateway público enruta su tráfico hacia el IGW."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Diseñar el enrutamiento de una VPC con subredes públicas y privadas, eligiendo la ruta hacia el internet gateway o hacia el NAT gateway según lo que el enunciado exige. Prepara el examen SAA-C03, dominio 1 (Diseñar arquitecturas seguras), tarea 1.2. Criterio: las pruebas de los ejercicios pasan y sabes explicar, para cada subred, qué objetivo tiene su ruta por defecto, por qué es pública o privada y quién puede iniciar conexiones con sus instancias."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y sigue, subred por subred, el camino de ida y de vuelta del ejemplo resuelto. Explica con tus palabras, sin mirar el texto, el diagrama «La ruta por defecto decide si una subred es pública o privada». Después responde: si la tabla de la subred privada apuntara 0.0.0.0/0 al internet gateway en lugar de al NAT gateway, ¿qué dos cosas cambiarían y qué requisito del enunciado dejaría de cumplirse?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Dar salida a Internet a la subred pública y a la privada de la tienda»: parte de una VPC cuyas dos subredes solo tienen la ruta local y completa sus tablas de rutas. Empieza por llamar a aws.network.canConnect con un visitante hacia el servidor web y con la aplicación hacia Internet, y lee el motivo del rechazo. Usa las pistas por niveles solo si te atascas. Criterio de paso: el visitante llega al servidor web, la aplicación sale a Internet y ningún visitante puede iniciar una conexión con la aplicación."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Enrutar tres capas: web pública, aplicación con NAT y datos aislados». Decide qué objetivo lleva la ruta por defecto de cada subred, o si no lleva ninguna, y comprueba con aws.network.routeFor y aws.network.canConnect cada requisito. Criterio de paso: todas las comprobaciones dan el resultado previsto y justificas por escrito por qué la capa de datos no tiene ruta por defecto."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente que explique cómo dar a una subred privada acceso de salida a Internet, y audita su respuesta contra la guía de internet gateway y la de NAT gateway (consultadas con fecha) antes de aceptarla. Anota qué afirma que la guía no sostiene, dónde debe crearse el NAT gateway y adónde debe apuntar cada tabla de rutas. Resuelve también «Depurar la ruta por defecto de la subred pública» y escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué contiene una ruta; qué hace pública a una subred; qué necesita una instancia para comunicarse con Internet por IPv4; dónde se crea un NAT gateway público y qué necesita; y qué diferencia hay entre un NAT gateway público y uno privado. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa añade una subred de herramientas internas cuyos servidores deben llegar solo a un rango público concreto de un proveedor, y a nada más de Internet. Decide qué ruta lleva su tabla y qué objetivo usa, y justifica por qué una ruta 0.0.0.0/0 sería excesiva. Pregunta de cierre: una instancia de una subred privada no llega a Internet; ¿qué tablas de rutas revisas y en qué orden?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-vpc-tablas-de-rutas",
+          "order": 0,
+          "note": "Fuente de qué es una tabla de rutas, de sus rutas (destino y objetivo), de la tabla principal y de las tablas adicionales."
+        },
+        {
+          "resourceSlug": "aws-vpc-internet-gateway",
+          "order": 1,
+          "note": "Fuente de qué es un internet gateway, de la ruta 0.0.0.0/0 de la subred pública, de la dirección pública requerida y de la diferencia entre subred pública y privada."
+        },
+        {
+          "resourceSlug": "aws-vpc-nat-gateway",
+          "order": 2,
+          "note": "Fuente de los NAT gateway público y privado, de dónde se crean, de la Elastic IP y de que las conexiones se inician siempre desde dentro de la VPC."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 3,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) incluye la tarea 1.2, que menciona las tablas de rutas y los NAT gateways entre los componentes de seguridad de una VPC."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una subred es pública si está asociada con una tabla de rutas que tiene una ruta hacia un internet gateway; es privada si su tabla de rutas no tiene esa ruta."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Subred pública y subred privada",
+      "statement": "¿Qué distingue a una subred pública de una privada?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "subred pública",
+        "subred privada"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Además de la ruta de su subred hacia el internet gateway, una dirección IPv4 pública o una Elastic IP address; en una subred privada no puede comunicarse ni con dirección pública."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Requisitos de una instancia pública",
+      "statement": "¿Qué necesita una instancia IPv4 de una subred pública para comunicarse con Internet?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "internet gateway",
+        "dirección pública"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cubre todos los destinos que la tabla no conoce de forma explícita (en IPv4). La alternativa es limitar la ruta a un rango más estrecho, como las direcciones públicas de endpoints propios fuera de AWS."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: La ruta 0.0.0.0/0",
+      "statement": "¿Qué cubre la ruta 0.0.0.0/0 hacia el internet gateway y qué alternativa tiene?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "0.0.0.0/0",
+        "ruta por defecto"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Permite que instancias de subredes privadas se conecten a Internet sin recibir conexiones no solicitadas. Se crea en una subred pública, con una Elastic IP address asociada, y su tráfico se enruta al internet gateway."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: NAT gateway público",
+      "statement": "¿Para qué sirve un NAT gateway público y dónde se crea?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "NAT gateway",
+        "Elastic IP"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El público lleva una Elastic IP address y sale a Internet por el internet gateway. El privado no admite Elastic IP y conecta con otras VPC o redes locales por un transit gateway o un virtual private gateway; si se enruta al IGW, este descarta el tráfico."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: NAT público frente a NAT privado",
+      "statement": "¿En qué se diferencian el NAT gateway público y el privado?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "NAT público",
+        "NAT privado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cada ruta indica un destino (bloque CIDR o lista de prefijos) y un objetivo (internet gateway, NAT gateway, peering, VPN...), y el tráfico se encamina por su IP de destino. Con la VPC se crea la tabla principal; se pueden crear tablas adicionales."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué es una ruta",
+      "statement": "¿Qué indica cada ruta de una tabla y qué tabla se crea con la VPC?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "tabla de rutas",
+        "tabla principal"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Route_Tables.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Modelo de la VPC de la tienda: subred pública (servidor web) y privada (aplicación).\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"nat-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-privada\",\n      cidr: \"10.0.2.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"nat-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-app\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 8080, toPort: 8080, cidr: \"10.0.1.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Modelo de la VPC de la tienda: subred pública (servidor web) y privada (aplicación).\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-privada\",\n      cidr: \"10.0.2.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"nat-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-app\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 8080, toPort: 8080, cidr: \"10.0.1.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.network.canConnect con un visitante de Internet (198.51.100.7) hacia 10.0.1.10 por tcp/443 y lee el campo reason: te dice qué subred no enruta al visitante por un internet gateway. Compara con aws.network.routeFor qué objetivo gana para 8.8.8.8 en cada subred."
+        },
+        {
+          "level": 2,
+          "text": "Las dos subredes tienen la misma ruta por defecto, hacia el NAT gateway. Un NAT gateway no admite conexiones iniciadas desde Internet, así que la subred pública no puede salir ni recibir visitantes por él. La subred privada está bien como está."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el objetivo de la ruta 0.0.0.0/0 de subnet-publica a \"igw-0a1b2c3d4e5f60718\" y deja la ruta local, la tabla de subnet-privada, las NACL y los security groups tal como están."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el modelo conserva las dos subredes y la ruta de la aplicación hacia el NAT gateway",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.deepStrictEqual(vpc.subnets.map((s) => s.id), [\"subnet-publica\", \"subnet-privada\"]);\nassert.strictEqual(vpc.subnets[0].routes.length, 2);\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-privada\").routes, \"8.8.8.8\"), \"nat-0a1b2c3d4e5f60718\");"
+          }
+        },
+        {
+          "name": "un visitante de Internet llega al servidor web por HTTPS",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst r = conecta(internet(\"198.51.100.7\"), web, 443);\nassert.strictEqual(r.allowed, true, r.reason);"
+          }
+        },
+        {
+          "name": "la ruta por defecto de la subred pública apunta al internet gateway y conserva la ruta local",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-publica\").routes, \"8.8.8.8\"), \"igw-0a1b2c3d4e5f60718\");\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-publica\").routes, \"10.0.2.20\"), \"local\");"
+          }
+        },
+        {
+          "name": "el servidor web sigue saliendo a Internet y llegando a la aplicación",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst sale = conecta(web, internet(\"8.8.8.8\"), 443);\nassert.strictEqual(sale.allowed, true, sale.reason);\nconst a = conecta(web, app, 8080);\nassert.strictEqual(a.allowed, true, a.reason);"
+          }
+        },
+        {
+          "name": "la aplicación sigue saliendo por el NAT gateway y nadie de Internet inicia conexiones con ella",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst sale = conecta(app, internet(\"203.0.113.10\"), 443);\nassert.strictEqual(sale.allowed, true, sale.reason);\nfor (const ip of [\"198.51.100.7\", \"203.0.113.50\"]) {\n  const r = aws.network.canConnect(abierto(\"sg-app\", 8080), { from: internet(ip), to: app, protocol: \"tcp\", port: 8080 });\n  assert.strictEqual(r.allowed, false, ip + \" no debe poder iniciar una conexión con la aplicación\");\n}"
+          }
+        },
+        {
+          "name": "los security groups y las NACL no se ampliaron",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.strictEqual(vpc.securityGroups.find((g) => g.id === \"sg-web\")!.rules.length, 2);\nassert.strictEqual(vpc.securityGroups.find((g) => g.id === \"sg-app\")!.rules[0].cidr, \"10.0.1.0/24\");\nfor (const s of vpc.subnets) {\n  assert.strictEqual(s.nacl.length, 2);\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-debug-01",
+      "type": "DEBUG",
+      "title": "Depurar la ruta por defecto de la subred pública",
+      "statement": "La tienda tiene una subred pública (10.0.1.0/24) con el servidor web (10.0.1.10, sg-web) y una subred privada (10.0.2.0/24) con la aplicación (10.0.2.20, sg-app). El internet gateway es igw-0a1b2c3d4e5f60718 y el NAT gateway es nat-0a1b2c3d4e5f60718. El servidor web debe aceptar HTTPS de cualquier visitante de Internet, pero nadie de fuera consigue conectarse a él: el modelo (`export const vpc = {...}`) tiene un único defecto, en una tabla de rutas. Localízalo con `aws.network.canConnect` (por ejemplo, un visitante 198.51.100.7 hacia 10.0.1.10 por tcp/443), lee el campo `reason` y compara el objetivo de las rutas con `aws.network.routeFor`. Corrígelo con el cambio mínimo, sin cambiar la forma del valor exportado: la aplicación debe seguir saliendo por el NAT gateway, nadie de Internet debe poder iniciar conexiones con ella y no se amplía ningún security group ni NACL. Explica por qué fallaba y cómo lo comprobaste.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "tabla de rutas",
+        "internet gateway",
+        "NAT gateway",
+        "subred pública"
+      ],
+      "estimatedMin": 30,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Route_Tables.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Modelo de la VPC de la tienda: una subred pública (servidor web) y una privada (aplicación).\n// El internet gateway es igw-0a1b2c3d4e5f60718 y el NAT gateway, nat-0a1b2c3d4e5f60718, vive en la subred pública.\n// Las NACL y los security groups ya están completos: solo falta el enrutamiento.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-privada\",\n      cidr: \"10.0.2.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-app\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 8080, toPort: 8080, cidr: \"10.0.1.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Modelo de la VPC de la tienda: una subred pública (servidor web) y una privada (aplicación).\n// El internet gateway es igw-0a1b2c3d4e5f60718 y el NAT gateway, nat-0a1b2c3d4e5f60718, vive en la subred pública.\n// Las NACL y los security groups ya están completos: solo falta el enrutamiento.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-privada\",\n      cidr: \"10.0.2.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"nat-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-app\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 8080, toPort: 8080, cidr: \"10.0.1.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.network.canConnect con un visitante de Internet (198.51.100.7) hacia 10.0.1.10 por tcp/443, y con la aplicación (10.0.2.20) hacia 203.0.113.10 por tcp/443. Lee el campo reason de cada rechazo: te dice qué subred no tiene ruta. Las NACL y los security groups ya están bien."
+        },
+        {
+          "level": 2,
+          "text": "Las dos tablas de rutas solo tienen la ruta local. La subred pública necesita una ruta por defecto (0.0.0.0/0) hacia el internet gateway, y la privada necesita su ruta por defecto hacia el NAT gateway, que vive en la pública. Los objetivos del arnés empiezan por igw- y nat-: comprueba con aws.network.routeFor qué objetivo gana para 8.8.8.8 en cada subred."
+        },
+        {
+          "level": 3,
+          "text": "Añade a las rutas de subnet-publica { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" } y a las de subnet-privada { destination: \"0.0.0.0/0\", target: \"nat-0a1b2c3d4e5f60718\" }. Conserva la ruta local en las dos y no toques las NACL ni los security groups."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el modelo conserva las dos subredes, sus NACL y los security groups",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.deepStrictEqual(vpc.subnets.map((s) => [s.id, s.cidr]), [[\"subnet-publica\", \"10.0.1.0/24\"], [\"subnet-privada\", \"10.0.2.0/24\"]]);\nassert.deepStrictEqual(vpc.securityGroups.map((g) => g.id), [\"sg-web\", \"sg-app\"]);\nfor (const s of vpc.subnets) {\n  assert.strictEqual(s.nacl.length, 2);\n}"
+          }
+        },
+        {
+          "name": "un visitante de Internet llega al servidor web por HTTPS y recibe la respuesta",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst r = conecta(internet(\"198.51.100.7\"), web, 443);\nassert.strictEqual(r.allowed, true, r.reason);"
+          }
+        },
+        {
+          "name": "la aplicación inicia una conexión HTTPS hacia Internet",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst r = conecta(app, internet(\"203.0.113.10\"), 443);\nassert.strictEqual(r.allowed, true, r.reason);"
+          }
+        },
+        {
+          "name": "la ruta por defecto de cada subred apunta al objetivo correcto",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-publica\").routes, \"8.8.8.8\"), \"igw-0a1b2c3d4e5f60718\");\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-privada\").routes, \"8.8.8.8\"), \"nat-0a1b2c3d4e5f60718\");"
+          }
+        },
+        {
+          "name": "el tráfico dentro de la VPC sigue por la ruta local en las dos subredes",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-publica\").routes, \"10.0.2.20\"), \"local\");\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-privada\").routes, \"10.0.1.10\"), \"local\");\nconst r = conecta(web, app, 8080);\nassert.strictEqual(r.allowed, true, r.reason);"
+          }
+        },
+        {
+          "name": "nadie de Internet puede iniciar una conexión con la aplicación, ni aunque su security group se abriera",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst modelo = abierto(\"sg-app\", 8080);\nfor (const ip of [\"198.51.100.7\", \"203.0.113.50\", \"8.8.8.8\"]) {\n  const r = aws.network.canConnect(modelo, { from: internet(ip), to: app, protocol: \"tcp\", port: 8080 });\n  assert.strictEqual(r.allowed, false, ip + \" no debe poder iniciar una conexión con la aplicación\");\n}"
+          }
+        },
+        {
+          "name": "la aplicación sale a distintos destinos de Internet y los visitantes llegan con distintos puertos de cliente",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nfor (const ip of [\"8.8.8.8\", \"198.51.100.7\", \"203.0.113.99\"]) {\n  const r = conecta(app, internet(ip), 443);\n  assert.strictEqual(r.allowed, true, ip + \": \" + r.reason);\n}\nfor (const clientPort of [32768, 49152, 65535]) {\n  const r = conecta(internet(\"198.51.100.7\"), web, 443, clientPort);\n  assert.strictEqual(r.allowed, true, \"puerto de cliente \" + clientPort + \": \" + r.reason);\n}"
+          }
+        },
+        {
+          "name": "cada tabla tiene solo la ruta local y la ruta por defecto, y los filtros no se tocaron",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nfor (const s of vpc.subnets) {\n  assert.strictEqual(s.routes.length, 2, s.id + \" debe tener la ruta local y una ruta por defecto\");\n  assert.deepStrictEqual(s.nacl.map((r) => r.action), [\"allow\", \"allow\"]);\n}\nconst sgApp = vpc.securityGroups.find((g) => g.id === \"sg-app\")!;\nassert.strictEqual(sgApp.rules.length, 2);\nassert.strictEqual(sgApp.rules[0].cidr, \"10.0.1.0/24\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-lab-guiado-01",
+      "type": "LAB",
+      "title": "Dar salida a Internet a la subred pública y a la privada de la tienda",
+      "statement": "La tienda tiene una VPC (10.0.0.0/16) con una subred pública (10.0.1.0/24, servidor web 10.0.1.10 con sg-web) y una subred privada (10.0.2.0/24, aplicación 10.0.2.20 con sg-app). El internet gateway es igw-0a1b2c3d4e5f60718 y el NAT gateway, nat-0a1b2c3d4e5f60718, está en la subred pública. Las NACL y los security groups ya están completos; las tablas de rutas solo tienen la ruta local. Criterios: (1) un visitante de Internet llega al servidor web por tcp/443 y recibe la respuesta; (2) la aplicación inicia conexiones por tcp/443 hacia Internet; (3) la subred privada sale por el NAT gateway y la pública por el internet gateway, de modo que nadie de Internet puede iniciar una conexión con la aplicación; (4) el tráfico entre las dos subredes sigue por la ruta local; (5) cada tabla tiene solo la ruta local y una ruta por defecto, y no se modifican las NACL ni los security groups. Comprueba cada criterio con `aws.network.routeFor` y `aws.network.canConnect`. Completa las tablas de rutas sin cambiar la forma del valor exportado (`export const vpc = {...}`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "tabla de rutas",
+        "internet gateway",
+        "NAT gateway",
+        "subred pública",
+        "subred privada"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Route_Tables.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Modelo de la VPC de la tienda en tres capas: web pública, aplicación privada y datos.\n// Internet gateway: igw-0a1b2c3d4e5f60718. NAT gateway (en la subred pública): nat-0a1b2c3d4e5f60718.\n// Las NACL y los security groups ya están completos: solo falta el enrutamiento.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-privada\",\n      cidr: \"10.0.2.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-datos\",\n      cidr: \"10.0.3.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-app\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 8080, toPort: 8080, cidr: \"10.0.1.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-db\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 5432, toPort: 5432, cidr: \"10.0.2.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Modelo de la VPC de la tienda en tres capas: web pública, aplicación privada y datos.\n// Internet gateway: igw-0a1b2c3d4e5f60718. NAT gateway (en la subred pública): nat-0a1b2c3d4e5f60718.\n// Las NACL y los security groups ya están completos: solo falta el enrutamiento.\nexport const vpc = {\n  cidr: \"10.0.0.0/16\",\n  subnets: [\n    {\n      id: \"subnet-publica\",\n      cidr: \"10.0.1.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"igw-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-privada\",\n      cidr: \"10.0.2.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n        { destination: \"0.0.0.0/0\", target: \"nat-0a1b2c3d4e5f60718\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"subnet-datos\",\n      cidr: \"10.0.3.0/24\",\n      routes: [\n        { destination: \"10.0.0.0/16\", target: \"local\" },\n      ],\n      nacl: [\n        { direction: \"inbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", number: 100, action: \"allow\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n  securityGroups: [\n    {\n      id: \"sg-web\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 443, toPort: 443, cidr: \"0.0.0.0/0\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-app\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 8080, toPort: 8080, cidr: \"10.0.1.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n    {\n      id: \"sg-db\",\n      rules: [\n        { direction: \"inbound\", protocol: \"tcp\", fromPort: 5432, toPort: 5432, cidr: \"10.0.2.0/24\" },\n        { direction: \"outbound\", protocol: \"-1\", cidr: \"0.0.0.0/0\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el modelo conserva las tres subredes y los tres security groups",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.deepStrictEqual(vpc.subnets.map((s) => [s.id, s.cidr]), [[\"subnet-publica\", \"10.0.1.0/24\"], [\"subnet-privada\", \"10.0.2.0/24\"], [\"subnet-datos\", \"10.0.3.0/24\"]]);\nassert.deepStrictEqual(vpc.securityGroups.map((g) => g.id), [\"sg-web\", \"sg-app\", \"sg-db\"]);"
+          }
+        },
+        {
+          "name": "un visitante de Internet llega al servidor web por HTTPS",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst r = conecta(internet(\"198.51.100.7\"), web, 443);\nassert.strictEqual(r.allowed, true, r.reason);"
+          }
+        },
+        {
+          "name": "la aplicación llega a Internet para sus actualizaciones",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst r = conecta(app, internet(\"203.0.113.10\"), 443);\nassert.strictEqual(r.allowed, true, r.reason);"
+          }
+        },
+        {
+          "name": "la cadena web, aplicación y base de datos sigue funcionando por la ruta local",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst a = conecta(web, app, 8080);\nassert.strictEqual(a.allowed, true, a.reason);\nconst b = conecta(app, db, 5432);\nassert.strictEqual(b.allowed, true, b.reason);\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-datos\").routes, \"10.0.2.20\"), \"local\");"
+          }
+        },
+        {
+          "name": "la capa de datos no tiene ninguna ruta hacia Internet, ni de salida ni de entrada",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-datos\").routes, \"8.8.8.8\"), null);\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-datos\").routes, \"203.0.113.10\"), null);\nfor (const ip of [\"8.8.8.8\", \"198.51.100.7\"]) {\n  const sale = conecta(db, internet(ip), 443);\n  assert.strictEqual(sale.allowed, false, \"la base de datos no debe llegar a \" + ip);\n  const entra = aws.network.canConnect(abierto(\"sg-db\", 5432), { from: internet(ip), to: db, protocol: \"tcp\", port: 5432 });\n  assert.strictEqual(entra.allowed, false, ip + \" no debe llegar a la base de datos\");\n}"
+          }
+        },
+        {
+          "name": "la aplicación sale por el NAT gateway y nadie de Internet inicia conexiones con ella",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-privada\").routes, \"8.8.8.8\"), \"nat-0a1b2c3d4e5f60718\");\nfor (const ip of [\"198.51.100.7\", \"203.0.113.50\"]) {\n  const r = aws.network.canConnect(abierto(\"sg-app\", 8080), { from: internet(ip), to: app, protocol: \"tcp\", port: 8080 });\n  assert.strictEqual(r.allowed, false, ip + \" no debe poder iniciar una conexión con la aplicación\");\n}"
+          }
+        },
+        {
+          "name": "la subred pública sale por el internet gateway y recibe visitantes con distintos puertos de cliente",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nassert.strictEqual(aws.network.routeFor(subred(\"subnet-publica\").routes, \"8.8.8.8\"), \"igw-0a1b2c3d4e5f60718\");\nfor (const clientPort of [32768, 49152, 65535]) {\n  const r = conecta(internet(\"203.0.113.50\"), web, 443, clientPort);\n  assert.strictEqual(r.allowed, true, \"puerto de cliente \" + clientPort + \": \" + r.reason);\n}\nconst sale = conecta(web, internet(\"8.8.8.8\"), 443);\nassert.strictEqual(sale.allowed, true, sale.reason);"
+          }
+        },
+        {
+          "name": "solo hay dos rutas por defecto y los security groups y las NACL no se tocaron",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const web = { ip: \"10.0.1.10\", securityGroups: [\"sg-web\"] };\nconst app = { ip: \"10.0.2.20\", securityGroups: [\"sg-app\"] };\nconst db = { ip: \"10.0.3.30\", securityGroups: [\"sg-db\"] };\nconst internet = (ip: string) => ({ ip });\nconst conecta = (from: { ip: string; securityGroups?: string[] }, to: { ip: string; securityGroups?: string[] }, port: number, clientPort?: number) =>\n  aws.network.canConnect(vpc, { from, to, protocol: \"tcp\", port, clientPort });\nconst subred = (id: string) => vpc.subnets.find((s) => s.id === id)!;\n// Mismo modelo con el security group de destino abierto a Internet: así solo el enrutamiento decide.\nconst abierto = (id: string, port: number) => ({\n  ...vpc,\n  securityGroups: vpc.securityGroups.map((g) => g.id === id\n    ? { id, rules: [{ direction: \"inbound\" as const, protocol: \"tcp\" as const, fromPort: port, toPort: port, cidr: \"0.0.0.0/0\" }, { direction: \"outbound\" as const, protocol: \"-1\" as const, cidr: \"0.0.0.0/0\" }] }\n    : g),\n});\nconst porDefecto = vpc.subnets.filter((s) => s.routes.some((r) => r.destination === \"0.0.0.0/0\")).map((s) => s.id);\nassert.deepStrictEqual(porDefecto, [\"subnet-publica\", \"subnet-privada\"]);\nfor (const s of vpc.subnets) {\n  assert.deepStrictEqual(s.nacl.map((r) => r.action), [\"allow\", \"allow\"]);\n}\nassert.deepStrictEqual(vpc.securityGroups.find((g) => g.id === \"sg-db\")!.rules.map((r) => r.cidr), [\"10.0.2.0/24\", \"0.0.0.0/0\"]);\nassert.deepStrictEqual(vpc.securityGroups.find((g) => g.id === \"sg-app\")!.rules.map((r) => r.cidr), [\"10.0.1.0/24\", \"0.0.0.0/0\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-lab-autonomo-01",
+      "type": "LAB",
+      "title": "Enrutar tres capas: web pública, aplicación con NAT y datos aislados",
+      "statement": "La tienda tiene una VPC (10.0.0.0/16) en tres capas: subnet-publica (10.0.1.0/24, servidor web 10.0.1.10, sg-web), subnet-privada (10.0.2.0/24, aplicación 10.0.2.20, sg-app) y subnet-datos (10.0.3.0/24, base de datos 10.0.3.30, sg-db). El internet gateway es igw-0a1b2c3d4e5f60718 y el NAT gateway, nat-0a1b2c3d4e5f60718, está en la subred pública. Las NACL y los security groups ya permiten el tráfico entre capas; las tablas de rutas solo tienen la ruta local. Criterios: (1) los visitantes de Internet llegan al servidor web por tcp/443; (2) el servidor web y la aplicación inician conexiones hacia Internet; (3) nadie de Internet puede iniciar una conexión con la aplicación ni con la base de datos, ni aunque se abrieran sus security groups; (4) la base de datos no tiene ninguna ruta hacia Internet; (5) la cadena servidor web a aplicación por tcp/8080 y aplicación a base de datos por tcp/5432 sigue funcionando; (6) solo las subredes que necesitan salida a Internet tienen una ruta por defecto; (7) no se modifican las NACL ni los security groups. Comprueba cada criterio con `aws.network.routeFor` y `aws.network.canConnect`. Mantén la forma del valor exportado (`export const vpc = {...}`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "tabla de rutas",
+        "NAT gateway",
+        "internet gateway",
+        "subred aislada",
+        "alcanzabilidad"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Route_Tables.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Su network ACL permite todo el tráfico de entrada procedente de Internet",
+            "explanation": "Descartada: la guía define la subred pública por su tabla de rutas, no por los filtros de tráfico; una NACL permisiva no crea una ruta hacia Internet."
+          },
+          {
+            "id": "b",
+            "text": "Sus instancias tienen direcciones IPv4 públicas, aunque su tabla de rutas no tenga ninguna ruta hacia Internet",
+            "explanation": "Descartada: sin ruta hacia el internet gateway, las instancias de una subred privada no pueden comunicarse con Internet aunque tengan dirección IP pública."
+          },
+          {
+            "id": "c",
+            "text": "Está asociada con una tabla de rutas que contiene una ruta hacia un internet gateway",
+            "explanation": "Es la correcta: según la guía, una subred asociada con una tabla de rutas que tiene una ruta hacia un internet gateway es una subred pública."
+          },
+          {
+            "id": "d",
+            "text": "Su tabla de rutas contiene una ruta hacia un NAT gateway para todos los destinos de Internet",
+            "explanation": "Descartada: el NAT gateway es el objetivo de las instancias de subredes privadas, que solo inician conexiones; la subred pública se define por la ruta al internet gateway."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué define a una subred pública",
+      "statement": "Un equipo revisa una VPC y debe clasificar sus subredes como públicas o privadas. ¿Qué criterio identifica con MAYOR precisión a una subred pública?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "subred pública",
+        "internet gateway"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir en su tabla de rutas una ruta 0.0.0.0/0 hacia un internet gateway y asignar direcciones IPv4 públicas a las instancias",
+            "explanation": "Descartada: con esa ruta la subred pasa a ser pública y los recursos de Internet pueden iniciar conexiones con las instancias, lo que el enunciado prohíbe."
+          },
+          {
+            "id": "b",
+            "text": "Crear un NAT gateway público en una subred pública, con Elastic IP, y apuntar a él la ruta 0.0.0.0/0 de la subred privada",
+            "explanation": "Es la correcta: el NAT gateway público permite conexiones salientes desde la subred privada y no admite conexiones iniciadas desde Internet."
+          },
+          {
+            "id": "c",
+            "text": "Crear un NAT gateway privado en una subred pública y apuntar a él la ruta 0.0.0.0/0 de la subred privada",
+            "explanation": "Descartada: el NAT gateway privado no admite Elastic IP y conecta con otras VPC o redes locales; si su tráfico se enruta al internet gateway, este lo descarta."
+          },
+          {
+            "id": "d",
+            "text": "Crear un NAT gateway público dentro de la propia subred privada y apuntar a él la ruta 0.0.0.0/0 de esa subred",
+            "explanation": "Descartada: la guía indica que el NAT gateway público se crea en una subred pública y que su tráfico se enruta al internet gateway; en la privada no tendría salida."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-quiz-02",
+      "type": "QUIZ",
+      "title": "Salida a Internet para una subred privada sin conexiones entrantes",
+      "statement": "Las instancias de una subred privada deben descargar actualizaciones desde Internet, pero ningún servicio externo debe poder iniciar una conexión con ellas. ¿Qué solución es la MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "NAT gateway",
+        "subred privada"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir en la misma tabla una segunda ruta 0.0.0.0/0 hacia un NAT gateway público",
+            "explanation": "Descartada: un NAT gateway no admite conexiones iniciadas desde fuera de la VPC y no da a la instancia una dirección pública que Internet pueda usar."
+          },
+          {
+            "id": "b",
+            "text": "Crear un segundo internet gateway y adjuntarlo a la VPC para que traduzca la dirección privada",
+            "explanation": "Descartada: el internet gateway ya adjunto realiza la traducción, pero para IPv4 la instancia necesita una dirección pública; otro gateway no se la proporciona."
+          },
+          {
+            "id": "c",
+            "text": "Mover la instancia a una subred privada y enrutar su tráfico de Internet por un NAT gateway",
+            "explanation": "Descartada: una subred privada con NAT gateway solo permite conexiones iniciadas desde dentro de la VPC, lo contrario de lo que el servidor necesita."
+          },
+          {
+            "id": "d",
+            "text": "Asociar una Elastic IP address a la instancia sin modificar la tabla de rutas",
+            "explanation": "Es la correcta: la ruta hacia el internet gateway ya existe y, para comunicarse por Internet con IPv4, la instancia necesita una dirección pública o una Elastic IP."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-quiz-03",
+      "type": "QUIZ",
+      "title": "Servidor web con ruta al internet gateway que no se alcanza desde Internet",
+      "statement": "Un servidor web está en una subred cuya tabla de rutas ya envía 0.0.0.0/0 a un internet gateway adjunto a la VPC. La instancia solo tiene una dirección IPv4 privada y no se puede alcanzar desde Internet. ¿Qué cambio lo resuelve con el MÍNIMO de modificaciones?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "internet gateway",
+        "Elastic IP"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "La instancia no puede comunicarse con Internet, porque su subred no tiene ruta hacia un internet gateway",
+            "explanation": "Es la correcta: según la guía, sin ruta hacia el internet gateway las instancias de la subred no pueden comunicarse con Internet aunque tengan dirección IP pública."
+          },
+          {
+            "id": "b",
+            "text": "La instancia puede iniciar conexiones hacia Internet, pero no recibir conexiones iniciadas desde Internet",
+            "explanation": "Descartada: ese comportamiento es el de las subredes que salen por un NAT gateway; sin ruta hacia el internet gateway la comunicación falla en los dos sentidos."
+          },
+          {
+            "id": "c",
+            "text": "La instancia puede comunicarse con Internet, porque su dirección pública basta para que el internet gateway encamine el tráfico",
+            "explanation": "Descartada: la dirección pública es un requisito, pero la tabla de rutas de la subred también debe tener una ruta hacia el internet gateway."
+          },
+          {
+            "id": "d",
+            "text": "La instancia recibe conexiones desde Internet, pero sus respuestas no salen porque falta la ruta de retorno",
+            "explanation": "Descartada: sin ruta hacia el internet gateway no hay comunicación con Internet en ningún sentido, ni siquiera para recibir las conexiones entrantes."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-quiz-04",
+      "type": "QUIZ",
+      "title": "Dirección pública en una subred sin ruta al internet gateway",
+      "statement": "Una instancia tiene una dirección IPv4 pública, pero su subred está asociada con una tabla de rutas que no contiene ninguna ruta hacia un internet gateway. ¿Cuál es el resultado MÁS probable?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "subred privada",
+        "dirección pública"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que las instancias privadas tengan asignada una dirección IPv4 pública o una Elastic IP address propia",
+            "explanation": "Descartada: el NAT gateway traduce las direcciones privadas de las instancias, por lo que no necesitan una dirección pública para salir a Internet."
+          },
+          {
+            "id": "b",
+            "text": "Que el NAT gateway no tenga ninguna Elastic IP address asociada desde su creación",
+            "explanation": "Descartada: el NAT gateway público debe tener una Elastic IP address asociada en su creación; que no la tenga no es un estado correcto que comprobar."
+          },
+          {
+            "id": "c",
+            "text": "Que la tabla de rutas de la subred privada tenga también una ruta hacia el internet gateway",
+            "explanation": "Descartada: la subred privada se define por no tener ruta hacia el internet gateway; el que enruta hacia él es el NAT gateway desde su subred pública."
+          },
+          {
+            "id": "d",
+            "text": "Que la tabla de la subred pública del NAT gateway tenga una ruta hacia el internet gateway de la VPC",
+            "explanation": "Es la correcta: el tráfico del NAT gateway público hacia Internet se enruta al internet gateway; sin esa ruta, el tráfico llega al NAT y no sale."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-quiz-05",
+      "type": "QUIZ",
+      "title": "Qué revisar cuando la subred privada ya apunta al NAT gateway",
+      "statement": "Un NAT gateway público está creado en una subred pública y la tabla de rutas de la subred privada ya envía 0.0.0.0/0 hacia él, pero las instancias privadas siguen sin llegar a Internet. ¿Qué debe revisar el equipo PRIMERO?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "NAT gateway",
+        "tabla de rutas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dejar todas las subredes asociadas con la tabla principal y añadir en ella una ruta 0.0.0.0/0 hacia el internet gateway de la VPC",
+            "explanation": "Descartada: toda subred asociada con una tabla que tiene ruta hacia el internet gateway es pública, así que las privadas dejarían de serlo."
+          },
+          {
+            "id": "b",
+            "text": "Adjuntar un segundo internet gateway a la VPC y reservar cada uno de los dos para un tipo distinto de subred",
+            "explanation": "Descartada: adjuntar más internet gateways no cambia que una subred con ruta hacia uno de ellos sea pública; lo que decide es la tabla de rutas asociada."
+          },
+          {
+            "id": "c",
+            "text": "Crear una tabla con 0.0.0.0/0 al internet gateway y otra con 0.0.0.0/0 al NAT gateway, y asociar cada subred con la suya",
+            "explanation": "Es la correcta: la guía permite crear tablas adicionales para tener control más granular, y cada tipo de subred se define por la ruta de su tabla."
+          },
+          {
+            "id": "d",
+            "text": "Crear una tabla de rutas solo para las subredes públicas y dejar las privadas sin ruta por defecto hacia ningún gateway",
+            "explanation": "Descartada: las subredes privadas necesitan la ruta hacia el NAT gateway para salir a Internet; sin ella no podrían descargar actualizaciones."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-quiz-06",
+      "type": "QUIZ",
+      "title": "Tablas de rutas distintas para subredes públicas y privadas",
+      "statement": "Una VPC tiene subredes públicas y privadas. El tráfico de Internet de las públicas debe ir a un internet gateway y el de las privadas a un NAT gateway. ¿Qué diseño es el MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "tabla de rutas",
+        "subred pública",
+        "NAT gateway"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Route_Tables.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Permite que los servicios externos inicien conexiones con las instancias de la subred privada",
+            "explanation": "Descartada: las instancias de la subred privada no reciben conexiones no solicitadas desde Internet a través de un NAT gateway."
+          },
+          {
+            "id": "b",
+            "text": "Se crea en una subred pública y requiere una Elastic IP address asociada al crearlo",
+            "explanation": "Es correcta: la guía indica que el NAT gateway público se crea en una subred pública y debe tener una Elastic IP address asociada en su creación."
+          },
+          {
+            "id": "c",
+            "text": "Admite una Elastic IP address asociada, igual que un NAT gateway privado",
+            "explanation": "Descartada: el NAT gateway privado no admite Elastic IP, así que no se cumple que ambos tipos la admitan."
+          },
+          {
+            "id": "d",
+            "text": "Exige que las conexiones se inicien siempre desde dentro de la VPC que lo contiene",
+            "explanation": "Es correcta: la guía lista como consideración que las conexiones deben iniciarse siempre desde dentro de la VPC que contiene el NAT gateway."
+          },
+          {
+            "id": "e",
+            "text": "Enruta su tráfico hacia Internet a través de un virtual private gateway",
+            "explanation": "Descartada: el NAT gateway público enruta su tráfico hacia el internet gateway; el virtual private gateway o el transit gateway sirven para llegar a redes locales u otras VPC."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-quiz-07",
+      "type": "QUIZ",
+      "title": "Afirmaciones correctas sobre el NAT gateway público",
+      "statement": "Un arquitecto resume para su equipo el comportamiento de un NAT gateway público. Selecciona DOS afirmaciones correctas sobre el NAT gateway público.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "NAT gateway",
+        "Elastic IP"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Es un componente de la VPC escalado horizontalmente, redundante y de alta disponibilidad",
+            "explanation": "Es correcta: la guía lo describe como un componente escalado horizontalmente, redundante y de alta disponibilidad que no causa riesgos de disponibilidad."
+          },
+          {
+            "id": "b",
+            "text": "Una VPC no predeterminada incluye uno desde su creación, con la ruta 0.0.0.0/0 hacia él",
+            "explanation": "Descartada: según la guía, una VPC no predeterminada no incluye internet gateway ni la ruta hacia él; hay que crearlos y configurarlos."
+          },
+          {
+            "id": "c",
+            "text": "Permite que las instancias de una subred privada se comuniquen con Internet si tienen una dirección IPv4 pública",
+            "explanation": "Descartada: sin ruta hacia el internet gateway, las instancias de una subred privada no se comunican con Internet aunque tengan dirección pública."
+          },
+          {
+            "id": "d",
+            "text": "Su ruta debe usar siempre 0.0.0.0/0 y no admite rangos de destino más estrechos",
+            "explanation": "Descartada: la guía permite limitar la ruta hacia el internet gateway a un rango más estrecho, por ejemplo las direcciones públicas de endpoints propios."
+          },
+          {
+            "id": "e",
+            "text": "Para el tráfico IPv4, traduce la dirección privada de la instancia a su dirección pública y a la inversa",
+            "explanation": "Es correcta: la guía explica que el internet gateway realiza la traducción de direcciones uno a uno en nombre de la instancia."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-quiz-08",
+      "type": "QUIZ",
+      "title": "Afirmaciones correctas sobre el internet gateway",
+      "statement": "Una empresa documenta cómo funciona el internet gateway de su VPC. Selecciona DOS afirmaciones correctas sobre el internet gateway.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "internet gateway",
+        "NAT uno a uno"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-2-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué ruta decide si una subred es pública",
+      "statement": "Elige una carga de trabajo que conozcas (por ejemplo, una web con su aplicación en una subred privada que descarga actualizaciones) y escribe un registro breve de decisión sobre cómo la enrutarías, en 5 a 7 líneas:\n\n1) Decisión: qué objetivo llevaría la ruta por defecto de cada subred (internet gateway, NAT gateway o ninguno) y por qué cada subred queda pública o privada.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, dar ruta al internet gateway a la subred privada o confiar en una dirección pública sin revisar la tabla de rutas) y la razón por la que la descartaste.\n\n3) Consecuencia: qué debe mantener tu equipo (la ruta del NAT gateway hacia el internet gateway, la Elastic IP) y quién puede iniciar conexiones con cada capa.\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad) y por qué.\n\n5) Evidencia: qué parte de la guía de tablas de rutas, de internet gateway o de NAT gateway usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el objetivo de cada ruta, quién inicia las conexiones y la restricción que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "decisión",
+        "tabla de rutas",
+        "NAT gateway"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Route_Tables.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html"
+      ],
+      "order": 18
+    }
+  ]
+}
