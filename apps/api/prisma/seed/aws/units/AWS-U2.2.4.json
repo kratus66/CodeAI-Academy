@@ -1,0 +1,1339 @@
+{
+  "code": "AWS-U2.2.4",
+  "lessons": [
+    {
+      "slug": "aws-u2-2-4-vpc-endpoints-gateway-e-interface-y-privatelink",
+      "title": "VPC endpoints: gateway e interface, y AWS PrivateLink",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Una instancia en una subred privada no tiene ruta a un internet gateway, así que para llegar a un servicio de AWS la solución habitual es poner un NAT device en una subred pública. AWS ofrece otra: los VPC endpoints. AWS PrivateLink es una tecnología altamente disponible y escalable con la que conectas tu VPC de forma privada a servicios y recursos como si estuvieran dentro de ella, sin internet gateway, NAT device, dirección IP pública, conexión de Direct Connect ni Site-to-Site VPN desde las subredes privadas. Así controlas qué API, sitios, servicios y recursos concretos son alcanzables desde tu VPC. Hay dos tipos que el examen contrasta una y otra vez: el gateway endpoint, que solo existe para Amazon S3 y Amazon DynamoDB y no usa PrivateLink, y el interface endpoint, que sí lo usa. En A2 no basta con reconocerlos: tienes que decidir cuál encaja con la restricción del enunciado (el servicio al que se llega, el cargo adicional o la forma de resolver el nombre)."
+        },
+        {
+          "type": "list",
+          "title": "Gateway endpoint e interface endpoint, frente a frente",
+          "items": [
+            "Servicios: el gateway endpoint solo conecta con Amazon S3 y DynamoDB; el interface endpoint conecta con servicios que usan PrivateLink, entre ellos muchos servicios de AWS, y S3 y DynamoDB admiten los dos tipos.",
+            "PrivateLink: el gateway endpoint no lo usa; el interface endpoint sí.",
+            "Cómo llega el tráfico: el gateway endpoint añade a la tabla de rutas una ruta cuyo destino es una lista de prefijos del servicio y cuyo objetivo es el endpoint; el interface endpoint crea una interfaz de red de endpoint, con una IP privada de la subred, en cada subred que indiques, y el tráfico hacia el servicio se resuelve mediante DNS.",
+            "Cargo: el gateway endpoint no tiene cargo adicional; el interface endpoint se factura por hora de uso y por datos procesados.",
+            "Seguridad de red: con un gateway endpoint, el security group de las instancias debe permitir el tráfico hacia el servicio (puede referenciar su lista de prefijos) y la NACL de la subred también; con un interface endpoint, se asocia un security group a las interfaces de red del endpoint y la NACL debe permitir el tráfico entre tus recursos y esas interfaces."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "El gateway endpoint y la tabla de rutas",
+          "text": "Al crear un gateway endpoint eliges las tablas de rutas de las subredes que quieres habilitar, y AWS añade a cada una la ruta automáticamente: el destino es una lista de prefijos del servicio propiedad de AWS y el objetivo es el gateway endpoint. Puedes consultar esas rutas, pero no modificarlas ni borrarlas; desaparecen cuando desasocias la tabla del endpoint o eliminas el endpoint. Todas las instancias de las subredes asociadas a una tabla de rutas asociada al endpoint lo usan de forma automática; las instancias de subredes cuyas tablas no están asociadas usan el endpoint de servicio público, no el gateway endpoint. Una tabla de rutas puede tener una ruta de endpoint a S3 y otra a DynamoDB, y el mismo servicio puede aparecer en varias tablas, pero no puedes tener varias rutas de endpoint al mismo servicio en una misma tabla. Se aplica la ruta más específica: si hay una ruta 0.0.0.0/0 hacia un internet gateway, la ruta del endpoint gana para el tráfico hacia el servicio de la Región actual. Como las listas de prefijos son específicas de cada Región, el tráfico hacia S3 o DynamoDB de otra Región va al internet gateway."
+        },
+        {
+          "type": "paragraph",
+          "title": "El interface endpoint, la interfaz de red y el DNS",
+          "text": "Por cada subred que indicas, AWS crea una interfaz de red de endpoint y le asigna una IP privada del rango de esa subred. Es una interfaz administrada por el solicitante: la ves en tu cuenta, pero no la gestionas. Puedes elegir una subred por zona de disponibilidad, pero no varias de la misma zona. Al crearlo se asocia, por defecto, el security group predeterminado de la VPC, así que conviene elegir uno que permita el tráfico esperado (por ejemplo, HTTPS de entrada desde tus recursos). Para usar el DNS privado, la VPC debe tener habilitados los nombres de host DNS y la resolución DNS; con la opción de nombre DNS habilitada, las peticiones que usan el nombre público del servicio, como las del SDK, se resuelven hacia tu endpoint. Una política de endpoint, que es una política de recursos de IAM adjunta al endpoint, fija qué entidades pueden usarlo; la predeterminada permite todas las acciones a todas las entidades sobre todos los recursos. Y un detalle que cae en el examen: los interface endpoints no responden a ping."
+        },
+        {
+          "type": "paragraph",
+          "title": "PrivateLink entre cuentas: proveedor y consumidor",
+          "text": "PrivateLink también sirve para compartir un servicio. El proveedor crea un endpoint service para ofrecer su servicio en una Región y debe indicar un load balancer, que recibe las peticiones de los consumidores y las enruta al servicio. Por defecto, el servicio no está disponible: el proveedor añade permisos para que entidades concretas de AWS puedan conectarse. El consumidor crea un VPC endpoint e indica el nombre del servicio; el proveedor acepta o rechaza la solicitud (el endpoint queda en PendingAcceptance si las solicitudes se aceptan a mano). El tráfico entre el endpoint y el servicio permanece dentro de la red de AWS, sin recorrer internet. Además de gateway e interface existen los tipos Gateway Load Balancer (envía tráfico a una flota de dispositivos virtuales), resource (acceso a un recurso compartido de otra VPC, como una base de datos), tunnel (acceso a un segmento de red) y service network."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: una aplicación en subredes privadas con tres necesidades",
+          "text": "Una aplicación corre en instancias de EC2 en subredes privadas de dos zonas. Necesita (1) leer y escribir en un bucket de S3 y en una tabla de DynamoDB de la misma Región, sin internet gateway ni NAT en esa ruta y sin cargo adicional; (2) llamar a un servicio de AWS compatible con PrivateLink que no es S3 ni DynamoDB, con IP privadas; y (3) consumir un servicio que ofrece un proveedor de otra cuenta. Paso 1: la necesidad (1) pide un gateway endpoint para S3 y otro para DynamoDB, asociados a las tablas de rutas de ambas subredes; cada tabla recibe la ruta con la lista de prefijos y la NACL y el security group deben permitir HTTPS hacia el servicio. Paso 2: la necesidad (2) descarta el gateway endpoint, que no existe para ese servicio, y pide un interface endpoint con una subred por zona, un security group que permita HTTPS desde las instancias y el DNS privado habilitado, para lo que la VPC necesita nombres de host DNS y resolución DNS. Paso 3: la necesidad (3) la cubre un interface endpoint hacia el endpoint service del proveedor, que debe aceptar la solicitud. Resultado: ninguna de las tres rutas usa un NAT device ni un internet gateway."
+        },
+        {
+          "type": "code",
+          "title": "La ruta que añade un gateway endpoint, como valor de una tabla de rutas (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const tablaPrivada = {\n  id: \"rtb-privada-a\",\n  subredes: [\"subnet-privada-a\"],\n  rutas: [\n    { destino: \"10.0.0.0/16\", objetivo: \"local\" },\n    // La añade AWS al asociar la tabla al gateway endpoint:\n    { destino: \"pl-s3\", objetivo: \"gateway-endpoint-s3\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la restricción al tipo de endpoint",
+          "code": "flowchart TB\n  A[\"Instancia en una subred privada\"] --> B{\"¿A qué llega?\"}\n  B -->|\"Amazon S3 o DynamoDB, sin cargo adicional\"| G[\"Gateway endpoint: ruta con lista de prefijos en la tabla de rutas\"]\n  B -->|\"Otro servicio de AWS con PrivateLink\"| I[\"Interface endpoint: interfaz de red con IP privada en la subred\"]\n  B -->|\"Servicio de un proveedor de otra cuenta\"| E[\"Interface endpoint hacia el endpoint service del proveedor\"]\n  G --> S[\"Servicio, sin internet gateway ni NAT device\"]\n  I --> S\n  E --> S"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el tipo de endpoint que se elige por costumbre",
+          "text": "S3 y DynamoDB admiten gateway endpoint e interface endpoint, así que una pregunta puede describir un acceso a S3 y esperar que te decidas por la restricción: si el enunciado excluye el cargo adicional o pide una ruta en la tabla de rutas, el gateway endpoint; si pide una IP privada en la subred, el interface endpoint. Al revés, ante un servicio que no es S3 ni DynamoDB el gateway endpoint no existe. Subraya el servicio, la restricción y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: crear el gateway endpoint y no asociar las tablas de rutas",
+          "text": "Causa: creer que el endpoint funciona para toda la VPC por haberlo creado en ella. Consecuencia: solo las subredes cuya tabla de rutas está asociada al endpoint lo usan; las demás siguen llegando a S3 o DynamoDB por el endpoint de servicio público, a través del NAT device o del internet gateway, y el tráfico y el cargo del NAT no desaparecen. Solución: al crear o modificar el endpoint, selecciona las tablas de rutas de todas las subredes que deben usarlo y comprueba que cada una muestra la ruta con la lista de prefijos."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: pedir un gateway endpoint para un servicio o una Región que no cubre",
+          "text": "Causa: pensar que el gateway endpoint sirve para cualquier servicio de AWS o para cualquier Región. Consecuencia: para un servicio que no es S3 ni DynamoDB no existe, y el tráfico hacia un bucket o una tabla de otra Región no coincide con la lista de prefijos de la Región actual, de modo que sigue la ruta 0.0.0.0/0 hacia el internet gateway. Solución: usa un interface endpoint para los demás servicios de PrivateLink y, para otra Región, comprueba qué ruta se aplica antes de dar la conectividad por resuelta."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: crear el interface endpoint y olvidar el DNS, el security group y la NACL",
+          "text": "Causa: dar por hecho que crear el endpoint basta. Consecuencia: si la VPC no tiene habilitados los nombres de host DNS y la resolución DNS, el nombre público del servicio no se resuelve hacia el endpoint; si el security group del endpoint no permite HTTPS de entrada desde tus recursos o la NACL de la subred bloquea el tráfico hacia las interfaces de red del endpoint, las peticiones fallan. Solución: habilita ambos atributos DNS, deja la opción de nombre DNS marcada, asocia un security group que permita el tráfico esperado y comprueba la NACL. No diagnostiques con ping, porque el endpoint no responde."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre gateway endpoint, interface endpoint y AWS PrivateLink el tipo de VPC endpoint que da acceso privado a un servicio desde subredes privadas según la restricción del escenario. Esta unidad prepara el examen SAA-C03, dominio 1 «Diseñar arquitecturas seguras», tarea 1.2. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el servicio, la restricción y el tipo de endpoint, y explicas por qué los otros quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres necesidades del ejemplo: para cada una, nombra el tipo de endpoint y dibuja qué cambia en la tabla de rutas o en la subred. Explica con tus palabras el diagrama «De la restricción al tipo de endpoint». Después responde: si una subred cuya tabla de rutas no está asociada al gateway endpoint lee de S3, ¿por dónde sale el tráfico y por qué?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La subred que no usa el gateway endpoint de S3». Una red escrita como objeto tiene un gateway endpoint y dos tablas de rutas, y una de ellas no tiene la ruta del endpoint. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas las demás rutas de ambas tablas."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El interface endpoint cuyo nombre público no se resuelve». Una configuración de VPC e interface endpoint, escrita como objeto, no consigue que el SDK llegue al endpoint con el nombre público. Decide qué ajustes hacen falta sin tocar subredes ni security group. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la guía de interface endpoints."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre los VPC endpoints de una aplicación. Audítalo en «Auditar un informe de VPC endpoints generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de PrivateLink (leídas el 2026-11-15) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué servicios cubre cada tipo de endpoint; cuál usa PrivateLink; qué añade a la tabla de rutas el gateway endpoint; qué crea el interface endpoint en la subred; y qué necesita la VPC para el DNS privado. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la aplicación ahora también escribe en una tabla de DynamoDB de otra Región y llama a un servicio que ofrece otra cuenta. Decide, para cada acceso, qué endpoint usarías y qué ruta o qué DNS cambia. Pregunta de cierre: un compañero dice «ya creamos el gateway endpoint de S3 y el NAT gateway sigue cobrando»; ¿qué revisas primero y en qué orden?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-privatelink-que-es",
+          "order": 0,
+          "note": "Fuente de qué es PrivateLink y de la conectividad privada a servicios sin internet gateway, NAT device ni VPN."
+        },
+        {
+          "resourceSlug": "aws-privatelink-conceptos",
+          "order": 1,
+          "note": "Fuente de los tipos de VPC endpoint, del endpoint service, de proveedor y consumidor y de las políticas de endpoint."
+        },
+        {
+          "resourceSlug": "aws-vpc-endpoints-de-gateway",
+          "order": 2,
+          "note": "Fuente de que el gateway endpoint solo cubre S3 y DynamoDB, de la ruta con lista de prefijos y de su seguridad y su ausencia de cargo."
+        },
+        {
+          "resourceSlug": "aws-vpc-endpoints-de-interfaz",
+          "order": 3,
+          "note": "Fuente de la interfaz de red de endpoint con IP privada, del security group, del DNS privado y de su facturación."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es una tecnología altamente disponible y escalable para conectar tu VPC de forma privada a servicios y recursos como si estuvieran en ella. Desde las subredes privadas no necesitas internet gateway, NAT device, IP pública, Direct Connect ni Site-to-Site VPN, y controlas qué servicios concretos son alcanzables."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: AWS PrivateLink",
+      "statement": "¿Qué es AWS PrivateLink y qué te ahorra en las subredes privadas?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "PrivateLink",
+        "conectividad privada"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Solo Amazon S3 y Amazon DynamoDB. Da conectividad sin internet gateway ni NAT device, no usa AWS PrivateLink y no tiene cargo adicional."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Gateway endpoint",
+      "statement": "¿Qué servicios cubre un gateway endpoint y cuánto cuesta?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "gateway endpoint",
+        "S3",
+        "DynamoDB"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Crea una interfaz de red de endpoint, con una IP privada del rango de la subred, en cada subred que indicas. Es una interfaz administrada por el solicitante y el endpoint se factura por hora de uso y por datos procesados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Interface endpoint",
+      "statement": "¿Qué crea un interface endpoint en tu VPC y cómo se factura?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "interface endpoint",
+        "interfaz de red de endpoint"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "AWS añade a cada tabla de rutas seleccionada una ruta con destino la lista de prefijos del servicio y objetivo el endpoint; no puedes modificarla ni borrarla. Lo usan las instancias de las subredes con tablas asociadas al endpoint; las demás usan el endpoint de servicio público."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Ruta del gateway endpoint",
+      "statement": "¿Qué ruta añade un gateway endpoint y qué subredes lo usan?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "tabla de rutas",
+        "lista de prefijos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El proveedor crea un endpoint service con un load balancer y da permisos a entidades concretas de AWS. El consumidor crea un VPC endpoint con el nombre del servicio y el proveedor acepta o rechaza la solicitud. El tráfico permanece en la red de AWS."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Endpoint service, proveedor y consumidor",
+      "statement": "¿Quién crea qué cuando una cuenta ofrece un servicio por PrivateLink?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "endpoint service",
+        "proveedor",
+        "consumidor"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El security group del endpoint debe permitir el tráfico esperado (por ejemplo, HTTPS de entrada) y la NACL debe permitir el tráfico hacia sus interfaces de red. Para el DNS privado, la VPC necesita nombres de host DNS y resolución DNS habilitados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Seguridad y DNS de los endpoints",
+      "statement": "¿Qué debe permitir la red y qué necesita la VPC para el DNS privado de un interface endpoint?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "security group",
+        "DNS privado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Red con un gateway endpoint de S3 y dos tablas de rutas. Corrige su defecto principal.\nexport const red = {\n  gatewayEndpoint: { id: \"gateway-endpoint-s3\", servicio: \"s3\" },\n  tablas: [\n    {\n      id: \"rtb-app-a\",\n      subredes: [\"subnet-app-a\"],\n      rutas: [\n        { destino: \"10.0.0.0/16\", objetivo: \"local\" },\n        { destino: \"0.0.0.0/0\", objetivo: \"nat-gateway-1\" },\n        { destino: \"pl-s3\", objetivo: \"gateway-endpoint-s3\" },\n      ],\n    },\n    {\n      id: \"rtb-app-b\",\n      subredes: [\"subnet-app-b\"],\n      rutas: [\n        { destino: \"10.0.0.0/16\", objetivo: \"local\" },\n        { destino: \"0.0.0.0/0\", objetivo: \"nat-gateway-2\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "export const red = {\n  gatewayEndpoint: { id: \"gateway-endpoint-s3\", servicio: \"s3\" },\n  tablas: [\n    {\n      id: \"rtb-app-a\",\n      subredes: [\"subnet-app-a\"],\n      rutas: [\n        { destino: \"10.0.0.0/16\", objetivo: \"local\" },\n        { destino: \"0.0.0.0/0\", objetivo: \"nat-gateway-1\" },\n        { destino: \"pl-s3\", objetivo: \"gateway-endpoint-s3\" },\n      ],\n    },\n    {\n      id: \"rtb-app-b\",\n      subredes: [\"subnet-app-b\"],\n      rutas: [\n        { destino: \"10.0.0.0/16\", objetivo: \"local\" },\n        { destino: \"0.0.0.0/0\", objetivo: \"nat-gateway-2\" },\n        { destino: \"pl-s3\", objetivo: \"gateway-endpoint-s3\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El gateway endpoint solo lo usan las subredes cuya tabla de rutas está asociada a él, y esa asociación se refleja en una ruta de la tabla. Compara las rutas de las dos tablas."
+        },
+        {
+          "level": 2,
+          "text": "La tabla `rtb-app-a` tiene la ruta del endpoint y `rtb-app-b` no la tiene, así que las instancias de la subred B usan el endpoint de servicio público por el NAT gateway."
+        },
+        {
+          "level": 3,
+          "text": "Añade a las rutas de `rtb-app-b` la ruta { destino: \"pl-s3\", objetivo: \"gateway-endpoint-s3\" }. No toques las rutas existentes ni la otra tabla."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la tabla de rutas de la subred B tiene la ruta del gateway endpoint",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const tabla = red.tablas.find((t) => t.id === \"rtb-app-b\");\nassert.ok(tabla, \"debe existir la tabla rtb-app-b\");\nassert.ok(tabla.rutas.some((r) => r.destino === \"pl-s3\" && r.objetivo === red.gatewayEndpoint.id), \"falta la ruta del endpoint en rtb-app-b\");"
+          }
+        },
+        {
+          "name": "cada tabla tiene una sola ruta de endpoint hacia S3",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const tabla of red.tablas) {\n  const rutasS3 = tabla.rutas.filter((r) => r.destino === \"pl-s3\");\n  assert.strictEqual(rutasS3.length, 1, tabla.id + \" debe tener una sola ruta de endpoint a S3\");\n}"
+          }
+        },
+        {
+          "name": "las demás rutas de ambas tablas se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const a = red.tablas.find((t) => t.id === \"rtb-app-a\");\nconst b = red.tablas.find((t) => t.id === \"rtb-app-b\");\nassert.ok(a.rutas.some((r) => r.destino === \"10.0.0.0/16\" && r.objetivo === \"local\"));\nassert.ok(a.rutas.some((r) => r.destino === \"0.0.0.0/0\" && r.objetivo === \"nat-gateway-1\"));\nassert.ok(b.rutas.some((r) => r.destino === \"10.0.0.0/16\" && r.objetivo === \"local\"));\nassert.ok(b.rutas.some((r) => r.destino === \"0.0.0.0/0\" && r.objetivo === \"nat-gateway-2\"));"
+          }
+        },
+        {
+          "name": "siguen las dos tablas con sus subredes",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(red.tablas.length, 2);\nassert.deepStrictEqual(red.tablas.map((t) => t.subredes[0]), [\"subnet-app-a\", \"subnet-app-b\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-debug-01",
+      "type": "DEBUG",
+      "title": "La subred que no usa el gateway endpoint de S3",
+      "statement": "El objeto `red` modela una VPC con un gateway endpoint de S3 y dos tablas de rutas de subredes privadas. Las instancias de una de las subredes siguen llegando a S3 por el NAT gateway, es decir, por el endpoint de servicio público, y no por el gateway endpoint. Corrige la configuración sin quitar ninguna ruta existente ni añadir tablas, y mantén la forma del valor exportado (`export const red = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "gateway endpoint",
+        "tabla de rutas",
+        "lista de prefijos"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// VPC e interface endpoint con DNS privado. Corrige su defecto principal.\nexport const config = {\n  vpc: { id: \"vpc-app\", enableDnsSupport: true, enableDnsHostnames: false },\n  endpoint: {\n    tipo: \"Interface\",\n    servicio: \"servicio-de-aws-con-privatelink\",\n    privateDnsEnabled: false,\n    subredes: [\n      { id: \"subnet-a\", zona: \"zona-a\" },\n      { id: \"subnet-b\", zona: \"zona-b\" },\n    ],\n    securityGroup: { entrada: [{ protocolo: \"tcp\", puerto: 443, origen: \"10.0.0.0/16\" }] },\n  },\n};\n",
+      "solution": {
+        "code": "export const config = {\n  vpc: { id: \"vpc-app\", enableDnsSupport: true, enableDnsHostnames: true },\n  endpoint: {\n    tipo: \"Interface\",\n    servicio: \"servicio-de-aws-con-privatelink\",\n    privateDnsEnabled: true,\n    subredes: [\n      { id: \"subnet-a\", zona: \"zona-a\" },\n      { id: \"subnet-b\", zona: \"zona-b\" },\n    ],\n    securityGroup: { entrada: [{ protocolo: \"tcp\", puerto: 443, origen: \"10.0.0.0/16\" }] },\n  },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el endpoint tiene el DNS privado habilitado",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(config.endpoint.privateDnsEnabled, true);"
+          }
+        },
+        {
+          "name": "la VPC tiene habilitados los nombres de host DNS y la resolución DNS",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(config.vpc.enableDnsHostnames, true, \"faltan los nombres de host DNS\");\nassert.strictEqual(config.vpc.enableDnsSupport, true, \"falta la resolución DNS\");"
+          }
+        },
+        {
+          "name": "las subredes y el security group no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(config.endpoint.subredes, [\n  { id: \"subnet-a\", zona: \"zona-a\" },\n  { id: \"subnet-b\", zona: \"zona-b\" },\n]);\nassert.deepStrictEqual(config.endpoint.securityGroup.entrada, [{ protocolo: \"tcp\", puerto: 443, origen: \"10.0.0.0/16\" }]);"
+          }
+        },
+        {
+          "name": "el endpoint sigue siendo de tipo Interface en la misma VPC",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(config.endpoint.tipo, \"Interface\");\nassert.strictEqual(config.vpc.id, \"vpc-app\");"
+          }
+        },
+        {
+          "name": "un endpoint con DNS privado exige ambos atributos de la VPC",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(config.endpoint.privateDnsEnabled, \"el DNS privado debe estar activo\");\nassert.ok(config.vpc.enableDnsHostnames && config.vpc.enableDnsSupport, \"la VPC necesita ambos atributos DNS\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-debug-02",
+      "type": "DEBUG",
+      "title": "El interface endpoint cuyo nombre público no se resuelve",
+      "statement": "El objeto `config` describe una VPC y un interface endpoint cuyo servicio admite DNS privado. Las llamadas del SDK con el nombre público del servicio no llegan al endpoint. Localiza los ajustes que faltan para que el DNS privado funcione y corrígelos sin cambiar las subredes, el security group ni el tipo de endpoint, y mantén la forma del valor exportado (`export const config = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "interface endpoint",
+        "DNS privado",
+        "atributos DNS de la VPC"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de VPC endpoints (borrador generado por un asistente)\nCarga de trabajo: aplicación en subredes privadas que usa Amazon S3 y un servicio de AWS compatible con PrivateLink.\n1. Los gateway endpoints dan acceso a Amazon S3 y a Amazon DynamoDB sin internet gateway ni NAT device, y no tienen cargo adicional.\n2. Al crear un gateway endpoint hay que añadir a mano la ruta hacia el servicio en cada tabla de rutas, porque AWS no la crea.\n3. Un interface endpoint crea una interfaz de red con una IP privada en cada subred que se indica, y se le asocia un security group.\n4. Un gateway endpoint usa AWS PrivateLink igual que un interface endpoint.\n5. Para que el nombre público del servicio se resuelva hacia un interface endpoint hay que habilitar los nombres de host DNS y la resolución DNS en la VPC.\n6. El tráfico hacia un bucket de S3 de otra Región también usa el gateway endpoint, porque su lista de prefijos cubre todas las Regiones.\n7. Para comprobar un interface endpoint no sirve ping: no responde a esas peticiones y se pueden usar nc o nmap."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Gateway endpoint: servicios y cargo",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: los gateway endpoints dan conectividad a S3 y a DynamoDB sin internet gateway ni NAT device, y no tienen cargo adicional."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Ruta del gateway endpoint",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Al crear el gateway endpoint eliges las tablas de rutas y AWS añade la ruta automáticamente, con la lista de prefijos como destino y el endpoint como objetivo. No se puede modificar ni borrar a mano."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Interfaz de red del interface endpoint",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: por cada subred indicada se crea una interfaz de red de endpoint con una IP privada de su rango, y se asocia un security group (por defecto, el predeterminado de la VPC)."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Gateway endpoint y PrivateLink",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Los gateway endpoints no usan AWS PrivateLink, a diferencia de los demás tipos de VPC endpoint como el interface endpoint."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Atributos DNS de la VPC",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: para usar el DNS privado, la VPC debe tener habilitados los nombres de host DNS y la resolución DNS."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Bucket de S3 de otra Región",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Las listas de prefijos son específicas de cada Región: el tráfico hacia S3 de una Región distinta no coincide con la ruta del endpoint y va al internet gateway."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Comprobación con ping",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: los interface endpoints no responden a las peticiones ping y la guía propone usar los comandos nc o nmap."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de VPC endpoints generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre los VPC endpoints de una aplicación en subredes privadas. Audítalo contra las páginas oficiales de PrivateLink: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "gateway endpoint",
+        "interface endpoint",
+        "PrivateLink",
+        "DNS privado"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear un interface endpoint para S3 y asociarle un security group que permita HTTPS",
+            "explanation": "Descartada: un interface endpoint se factura por hora de uso y por datos procesados, y el requisito excluye el cargo adicional, que sí evita el gateway endpoint."
+          },
+          {
+            "id": "b",
+            "text": "Colocar un NAT gateway en una subred pública y enrutar hacia él la subred privada",
+            "explanation": "Descartada: es justo el NAT device que el requisito quiere evitar para llegar a S3 desde una subred privada."
+          },
+          {
+            "id": "c",
+            "text": "Crear un gateway endpoint para S3 y asociarlo a la tabla de rutas de la subred",
+            "explanation": "Es la correcta: un gateway endpoint da conectividad a S3 sin internet gateway ni NAT device, no tiene cargo adicional y AWS añade a la tabla de rutas seleccionada la ruta hacia el endpoint."
+          },
+          {
+            "id": "d",
+            "text": "Añadir un internet gateway a la VPC y asignar direcciones IP públicas a las instancias",
+            "explanation": "Descartada: reintroduce el internet gateway que el requisito excluye; por definición, una subred privada no tiene rutas hacia un internet gateway."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-quiz-01",
+      "type": "QUIZ",
+      "title": "Acceder a Amazon S3 desde una subred privada sin NAT ni cargo adicional",
+      "statement": "Una empresa tiene instancias de Amazon EC2 en una subred privada que leen objetos de un bucket de Amazon S3 de la misma Región. El equipo no quiere internet gateway ni NAT device en esa ruta y tampoco quiere pagar un cargo adicional por el tipo de endpoint. ¿Qué solución cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "gateway endpoint",
+        "S3",
+        "cargo adicional"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Llega a S3 por el endpoint de servicio público, no por el gateway endpoint",
+            "explanation": "Es la correcta: las instancias de subredes cuyas tablas de rutas no están asociadas al gateway endpoint usan el endpoint de servicio público del servicio."
+          },
+          {
+            "id": "b",
+            "text": "Queda sin acceso a S3 hasta que su tabla de rutas se asocie al gateway endpoint",
+            "explanation": "Descartada: la asociación solo decide por dónde sale el tráfico; sin ella, las instancias siguen usando el endpoint de servicio público."
+          },
+          {
+            "id": "c",
+            "text": "Llega a S3 por el gateway endpoint, porque está creado en la misma VPC que la subred",
+            "explanation": "Descartada: lo usan solo las instancias de subredes con una tabla de rutas asociada al endpoint; crearlo en la VPC no basta."
+          },
+          {
+            "id": "d",
+            "text": "Llega a S3 por una interfaz de red del endpoint que AWS crea en la subred B",
+            "explanation": "Descartada: crear interfaces de red en las subredes es propio de los interface endpoints; un gateway endpoint funciona con una ruta en la tabla de rutas."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-quiz-02",
+      "type": "QUIZ",
+      "title": "Subred cuya tabla de rutas no está asociada al gateway endpoint",
+      "statement": "Una VPC tiene un gateway endpoint para Amazon S3 asociado únicamente a la tabla de rutas de la subred A. Las instancias de la subred B, cuya tabla de rutas no está asociada al endpoint, también llegan a S3 mediante su ruta hacia un NAT gateway. ¿Qué afirmación describe con MAYOR precisión cómo llega a S3 el tráfico de la subred B?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "gateway endpoint",
+        "asociación de tablas de rutas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Va por el gateway endpoint, porque su ruta es más específica que 0.0.0.0/0",
+            "explanation": "Descartada: la ruta del endpoint gana solo para el servicio de la Región actual; la lista de prefijos es específica de cada Región, así que el tráfico a otra Región no coincide con ella."
+          },
+          {
+            "id": "b",
+            "text": "Se bloquea, porque el gateway endpoint no admite tráfico hacia otras Regiones",
+            "explanation": "Descartada: el tráfico a otra Región simplemente no coincide con la ruta del endpoint y sigue la otra ruta de la tabla, la de 0.0.0.0/0."
+          },
+          {
+            "id": "c",
+            "text": "Va por el gateway endpoint si se añade una segunda ruta de S3 a la misma tabla",
+            "explanation": "Descartada: no puedes tener varias rutas de endpoint al mismo servicio en una sola tabla de rutas, y esa ruta tampoco cubriría otra Región."
+          },
+          {
+            "id": "d",
+            "text": "Va al internet gateway, porque la lista de prefijos es específica de cada Región",
+            "explanation": "Es la correcta: el tráfico hacia el servicio de una Región distinta no coincide con la lista de prefijos del endpoint y se encamina por la ruta hacia el internet gateway."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-quiz-03",
+      "type": "QUIZ",
+      "title": "Bucket de S3 de otra Región con un gateway endpoint",
+      "statement": "Una subred tiene una tabla de rutas con una ruta 0.0.0.0/0 hacia un internet gateway y la ruta que añade un gateway endpoint de Amazon S3. Las instancias acceden a un bucket de S3 ubicado en una Región distinta de la de la VPC. ¿Qué afirmación es la MÁS precisa sobre ese tráfico?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "gateway endpoint",
+        "lista de prefijos",
+        "ruta más específica"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un gateway endpoint, que añade a la tabla de rutas una ruta hacia el servicio",
+            "explanation": "Descartada: los gateway endpoints solo existen para Amazon S3 y DynamoDB; para cualquier otro servicio hace falta un interface endpoint."
+          },
+          {
+            "id": "b",
+            "text": "Un interface endpoint, con una interfaz de red en cada subred indicada",
+            "explanation": "Es la correcta: crea una interfaz de red de endpoint con una IP privada de la subred y conecta con servicios de PrivateLink sin internet gateway ni NAT device."
+          },
+          {
+            "id": "c",
+            "text": "Una conexión Site-to-Site VPN entre la VPC y el servicio de AWS",
+            "explanation": "Descartada: PrivateLink conecta con el servicio sin necesidad de una VPN, y la VPN añade una conexión que el requisito no pide."
+          },
+          {
+            "id": "d",
+            "text": "Un NAT gateway en una subred pública con ruta desde las subredes privadas",
+            "explanation": "Descartada: es el NAT device que el requisito quiere evitar; PrivateLink permite llegar al servicio sin NAT device."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-quiz-04",
+      "type": "QUIZ",
+      "title": "Elegir el endpoint para un servicio de AWS distinto de S3 y DynamoDB",
+      "statement": "Una aplicación en subredes privadas necesita llamar a un servicio de AWS compatible con AWS PrivateLink que no es Amazon S3 ni Amazon DynamoDB. El tráfico debe usar direcciones IP privadas, sin internet gateway ni NAT device. ¿Qué tipo de endpoint cubre MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "interface endpoint",
+        "gateway endpoint",
+        "PrivateLink"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear un gateway endpoint en su VPC y compartir su identificador con los consumidores",
+            "explanation": "Descartada: los gateway endpoints solo conectan con S3 y DynamoDB y no sirven para publicar un servicio propio."
+          },
+          {
+            "id": "b",
+            "text": "Crear un interface endpoint en su VPC que apunte a cada VPC de los consumidores",
+            "explanation": "Descartada: quien crea el VPC endpoint e indica el nombre del servicio es el consumidor; el proveedor crea el endpoint service."
+          },
+          {
+            "id": "c",
+            "text": "Crear un endpoint service con el load balancer y dar permisos a las entidades consumidoras",
+            "explanation": "Es la correcta: el proveedor crea el endpoint service con un load balancer y, como por defecto no está disponible, añade permisos para que entidades concretas se conecten."
+          },
+          {
+            "id": "d",
+            "text": "Asignar una dirección IP pública al load balancer y filtrar el acceso con un security group",
+            "explanation": "Descartada: publicar el servicio con una IP pública contradice el requisito; PrivateLink permite compartirlo sin exponerlo en internet."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-quiz-05",
+      "type": "QUIZ",
+      "title": "Ofrecer un servicio propio a otras cuentas por PrivateLink",
+      "statement": "Una empresa aloja un servicio detrás de un load balancer y quiere que clientes de otras cuentas de AWS lo consuman con direcciones IP privadas, sin publicarlo en internet. ¿Qué debe hacer el proveedor para cumplirlo MEJOR?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "endpoint service",
+        "proveedor",
+        "consumidor"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que la VPC tenga habilitados los nombres de host DNS y la resolución DNS",
+            "explanation": "Es la correcta: para usar el DNS privado, la VPC debe tener habilitados ambos atributos; sin ellos, el nombre público no se resuelve hacia el endpoint."
+          },
+          {
+            "id": "b",
+            "text": "Que la tabla de rutas tenga una ruta con la lista de prefijos hacia el endpoint",
+            "explanation": "Descartada: esa ruta es propia de los gateway endpoints; el tráfico hacia un interface endpoint se resuelve mediante DNS, no por una lista de prefijos."
+          },
+          {
+            "id": "c",
+            "text": "Que la subred del endpoint tenga una ruta 0.0.0.0/0 hacia un internet gateway",
+            "explanation": "Descartada: el endpoint no necesita internet gateway; su interfaz de red tiene una IP privada de la subred y la resolución depende de los atributos DNS de la VPC."
+          },
+          {
+            "id": "d",
+            "text": "Que el security group del endpoint permita tráfico de salida hacia internet",
+            "explanation": "Descartada: el security group del endpoint debe permitir el tráfico esperado hacia sus interfaces, como HTTPS de entrada; una salida a internet no influye en la resolución del nombre."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-quiz-06",
+      "type": "QUIZ",
+      "title": "El nombre público del servicio no resuelve al interface endpoint",
+      "statement": "Se crea un interface endpoint para un servicio de AWS y se mantiene marcada la opción de nombre DNS, pero las llamadas del SDK con el nombre público del servicio no llegan al endpoint. ¿Qué comprobación explica MÁS probablemente el fallo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "interface endpoint",
+        "DNS privado",
+        "atributos DNS de la VPC"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo dan acceso a Amazon S3 y a Amazon DynamoDB",
+            "explanation": "Cumple: los gateway endpoints existen únicamente para S3 y DynamoDB; los demás servicios usan interface endpoints."
+          },
+          {
+            "id": "b",
+            "text": "Crean una interfaz de red con una IP privada en cada subred indicada",
+            "explanation": "No cumple: eso describe a los interface endpoints; un gateway endpoint funciona con una ruta en la tabla de rutas."
+          },
+          {
+            "id": "c",
+            "text": "Se facturan por hora de uso y por los datos que procesan",
+            "explanation": "No cumple: los gateway endpoints no tienen cargo adicional; la facturación por hora y por datos es la de los interface endpoints."
+          },
+          {
+            "id": "d",
+            "text": "Añaden a la tabla de rutas una ruta con una lista de prefijos",
+            "explanation": "Cumple: AWS añade a cada tabla de rutas seleccionada una ruta cuyo destino es la lista de prefijos del servicio y cuyo objetivo es el endpoint."
+          },
+          {
+            "id": "e",
+            "text": "Usan AWS PrivateLink, igual que los interface endpoints",
+            "explanation": "No cumple: los gateway endpoints no usan AWS PrivateLink, a diferencia de los demás tipos de VPC endpoint."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-quiz-07",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre los gateway endpoints",
+      "statement": "Un arquitecto resume los gateway endpoints para su equipo. Selecciona DOS afirmaciones correctas sobre los gateway endpoints de una VPC.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "gateway endpoint",
+        "S3",
+        "lista de prefijos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo existen para Amazon S3 y Amazon DynamoDB",
+            "explanation": "No cumple: conectan con servicios que usan PrivateLink, entre ellos muchos servicios de AWS; el límite a S3 y DynamoDB es el de los gateway endpoints."
+          },
+          {
+            "id": "b",
+            "text": "Crean una interfaz de red con IP privada en cada subred indicada",
+            "explanation": "Cumple: por cada subred que especificas se crea una interfaz de red de endpoint con una IP privada del rango de esa subred."
+          },
+          {
+            "id": "c",
+            "text": "Responden a las peticiones ping, que sirven para comprobar la conectividad",
+            "explanation": "No cumple: los interface endpoints no responden a las peticiones ping; se pueden usar los comandos nc o nmap."
+          },
+          {
+            "id": "d",
+            "text": "Añaden a la tabla de rutas de la subred una ruta con una lista de prefijos",
+            "explanation": "No cumple: esa ruta es propia de los gateway endpoints; el tráfico hacia un interface endpoint se resuelve mediante DNS."
+          },
+          {
+            "id": "e",
+            "text": "Admiten un security group asociado a sus interfaces de red",
+            "explanation": "Cumple: al crear el endpoint se eligen los security groups que se asocian a sus interfaces de red; por defecto, el predeterminado de la VPC."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre los interface endpoints",
+      "statement": "Un arquitecto resume los interface endpoints para su equipo. Selecciona DOS afirmaciones correctas sobre los interface endpoints de una VPC.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "interface endpoint",
+        "interfaz de red de endpoint",
+        "security group"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "gateway",
+            "term": "Gateway endpoint",
+            "definition": "Da acceso a Amazon S3 y DynamoDB mediante una ruta en la tabla de rutas, sin cargo adicional"
+          },
+          {
+            "id": "interface",
+            "term": "Interface endpoint",
+            "definition": "Crea una interfaz de red con IP privada en cada subred indicada para llegar a un servicio de PrivateLink"
+          },
+          {
+            "id": "gwlb",
+            "term": "Gateway Load Balancer endpoint",
+            "definition": "Envía el tráfico por IP privadas a una flota de dispositivos virtuales, enrutado con tablas de rutas"
+          },
+          {
+            "id": "resource",
+            "term": "Resource endpoint",
+            "definition": "Accede a un recurso compartido de otra VPC, como una base de datos, sin necesitar un load balancer"
+          },
+          {
+            "id": "tunnel",
+            "term": "Tunnel endpoint",
+            "definition": "Accede a un segmento de red compartido, con el tráfico de la aplicación encapsulado en GENEVE"
+          },
+          {
+            "id": "service-network",
+            "term": "Service-network endpoint",
+            "definition": "Un solo endpoint da acceso privado a varios recursos y servicios asociados a una red de servicios"
+          },
+          {
+            "id": "endpoint-service",
+            "term": "Endpoint service",
+            "definition": "Lo crea el proveedor para ofrecer su servicio en una Región; exige un load balancer y permisos"
+          },
+          {
+            "id": "prefix-list",
+            "term": "Lista de prefijos del servicio",
+            "definition": "Destino de la ruta que AWS añade a la tabla de rutas al asociarla a un gateway endpoint"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada endpoint con el caso que cubre. Si dudas entre dos, pregúntate a qué servicio llega, si necesita una ruta en la tabla de rutas o una interfaz de red en la subred, y quién lo crea.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Gateway o interface: S3 y DynamoDB con una ruta, frente a los demás servicios de PrivateLink con una interfaz de red",
+              "Otros tipos de endpoint: Gateway Load Balancer, resource, tunnel y service network",
+              "Quién crea qué: el proveedor, el endpoint service; la ruta con la lista de prefijos la añade AWS"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-memoria-01",
+      "type": "MEMORY",
+      "title": "Endpoint y caso que cubre",
+      "statement": "Empareja cada tipo de VPC endpoint, o su pieza clave, con el caso que cubre.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "tipos de VPC endpoint",
+        "endpoint service",
+        "lista de prefijos"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-4-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué endpoint y por qué",
+      "statement": "Elige una carga de trabajo que conozcas (por ejemplo, instancias en subredes privadas que leen de un bucket de S3 y llaman a otro servicio de AWS) y escribe un registro breve de decisión sobre cómo le darías acceso privado, en 5 a 7 líneas:\n\n1) Decisión: qué tipo de endpoint usarías para cada servicio y qué cambia en la tabla de rutas o en la subred.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, un NAT gateway, o un gateway endpoint para un servicio que no es S3 ni DynamoDB) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (tablas de rutas asociadas, security group y NACL, atributos DNS de la VPC) y qué cargos adicionales aparecen.\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad) y por qué.\n\n5) Evidencia: qué página oficial de PrivateLink, de gateway endpoints o de interface endpoints usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el servicio, el tipo de endpoint y la restricción que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "VPC endpoints",
+        "decisión",
+        "gateway frente a interface"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html"
+      ],
+      "order": 19
+    }
+  ]
+}
