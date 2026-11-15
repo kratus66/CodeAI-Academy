@@ -1,0 +1,1331 @@
+{
+  "code": "AWS-U2.2.5",
+  "lessons": [
+    {
+      "slug": "aws-u2-2-5-conectar-redes-peering-transit-gateway-site-to-site-vpn-y-direct-connect",
+      "title": "Conectar redes: peering, Transit Gateway, Site-to-Site VPN y Direct Connect",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Conectar una VPC con otras redes tiene cuatro respuestas, y cada una contesta una pregunta distinta: ¿qué redes unes y con qué medio? Una conexión de VPC peering une dos VPC y enruta el tráfico entre ellas con direcciones IP privadas; pueden ser VPC propias o de otra cuenta, e incluso estar en Regiones distintas. AWS Transit Gateway es un hub de tránsito de red que interconecta VPC y redes locales. AWS Site-to-Site VPN conecta tu red local con tus VPC mediante conexiones IPsec, y sin ella, por defecto, una instancia de una VPC no puede comunicarse con una red local. AWS Direct Connect enlaza tu red interna con una ubicación de Direct Connect mediante un cable de fibra Ethernet estándar y esquiva a los proveedores de internet de tu ruta. En A2 no basta con definirlos: el enunciado fija una restricción (cuántas redes, si hace falta un hub, si se exige un túnel cifrado IPsec o un enlace dedicado) y tú decides cuál encaja y por qué los otros tres no. Esta unidad prepara el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes»."
+        },
+        {
+          "type": "list",
+          "title": "Los cuatro medios, frente a frente",
+          "items": [
+            "VPC peering: conecta dos VPC con IP privadas, de una misma cuenta o de cuentas y Regiones distintas; no es un gateway ni una VPN y no depende de hardware físico aparte.",
+            "Transit Gateway: hub de tránsito al que se adjuntan VPC, conexiones VPN, gateways de Direct Connect y otros transit gateways; tiene tablas de rutas propias.",
+            "Site-to-Site VPN: conexión IPsec entre tu equipo local y tus VPC; cada conexión incluye dos túneles cifrados que puedes usar a la vez para la alta disponibilidad.",
+            "Direct Connect: enlace de fibra a una ubicación de Direct Connect, con interfaces virtuales privada, pública y de tránsito, y BGP y VLAN 802.1Q en tu equipo.",
+            "Cargo: crear un peering no cuesta, pero la transferencia que cruza zonas de disponibilidad o Regiones sí; Transit Gateway cobra por hora por cada attachment y por el tráfico procesado; Direct Connect cobra por horas de puerto y por transferencia saliente."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "VPC peering: dos VPC, sin gateway ni VPN",
+          "text": "AWS crea la conexión de peering sobre la infraestructura existente de la VPC: no es un gateway ni una conexión VPN, y no depende de una pieza física aparte, así que no hay un punto único de fallo en la comunicación ni un cuello de botella de ancho de banda. Las instancias de ambas VPC se comunican como si estuvieran en la misma red, usando direcciones IPv4 o IPv6 privadas. Entre Regiones distintas, el tráfico queda en el espacio de direcciones IP privadas, se cifra antes de salir de las instalaciones de AWS y viaja siempre por la red troncal global de AWS, sin recorrer nunca internet público. Crear la conexión no tiene cargo; la transferencia dentro de una zona de disponibilidad es gratuita, pero la que cruza zonas o Regiones sí se factura. Es la opción natural cuando solo hay que unir dos VPC."
+        },
+        {
+          "type": "paragraph",
+          "title": "Transit Gateway: attachments, tablas de rutas y propagación",
+          "text": "Cuando las redes son muchas, un hub central sustituye a conexiones individuales. A un transit gateway se le pueden adjuntar una o más VPC, un gateway de Direct Connect, una conexión VPN, una conexión de peering con otro transit gateway y otros tipos de attachment; el peering entre transit gateways los une a través de la infraestructura global de AWS. Un transit gateway tiene una tabla de rutas predeterminada y, de forma opcional, otras adicionales; cada attachment se asocia con exactamente una tabla de rutas, y una tabla puede tener cero o muchos attachments asociados. Una VPC, una conexión VPN o un gateway de Direct Connect pueden propagar rutas de forma dinámica a una tabla del transit gateway, pero con una VPC debes crear rutas estáticas para enviar el tráfico al transit gateway, y con un attachment de peering debes crear una ruta estática en la tabla del transit gateway que apunte a él. Se cobra por hora por cada attachment y por el tráfico procesado."
+        },
+        {
+          "type": "paragraph",
+          "title": "Site-to-Site VPN y Direct Connect: del equipo local a AWS",
+          "text": "En una conexión Site-to-Site VPN participan un customer gateway (un recurso de AWS con la información de tu dispositivo), el customer gateway device (el equipo físico o software de tu lado) y, en el lado de Amazon, un target gateway: un virtual private gateway, que es el extremo VPN que se adjunta a una sola VPC, o un transit gateway, que sirve a varias VPC y redes locales. La conexión incluye dos túneles VPN cifrados que se pueden usar a la vez. Direct Connect es otro medio: creas una conexión en una ubicación de Direct Connect y, sobre ella, interfaces virtuales. Una interfaz virtual privada da acceso a una VPC con IP privadas (una VPC por interfaz, o varios virtual private gateways de cualquier cuenta y Región si la conectas a un gateway de Direct Connect); una interfaz virtual pública da acceso a los servicios públicos de AWS, como Amazon S3; una interfaz virtual de tránsito da acceso a uno o más transit gateways de varias cuentas y Regiones. Tu equipo debe admitir BGP y VLAN 802.1Q."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de dos VPC a una red híbrida",
+          "text": "Una empresa tiene una VPC de aplicación y otra de datos, en cuentas distintas, y una oficina con su propia red. Necesidad (1): que aplicación y datos se comuniquen con IP privadas, sin gateway, sin VPN y sin un punto único de fallo. Necesidad (2): meses después son muchas VPC y hace falta un hub central que las una a todas y a la oficina. Necesidad (3): la oficina debe llegar a las VPC por una conexión IPsec cifrada, con dos túneles para la alta disponibilidad. Necesidad (4): la oficina exige un enlace dedicado de fibra que no dependa de los proveedores de internet de su ruta. Paso 1: la (1) pide un VPC peering entre las dos VPC, porque solo se unen dos redes y no hace falta un hub. Paso 2: la (2) pide un transit gateway con un attachment por VPC y rutas estáticas en cada VPC hacia él. Paso 3: la (3) pide una conexión Site-to-Site VPN con el transit gateway como extremo del lado de AWS, porque un virtual private gateway solo se adjunta a una VPC. Paso 4: la (4) pide Direct Connect, con una interfaz virtual de tránsito hacia el transit gateway. Resultado: cada medio aparece donde su restricción lo justifica."
+        },
+        {
+          "type": "code",
+          "title": "Un transit gateway como valor: attachments, asociaciones y rutas (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const hub = {\n  id: \"tgw-hub\",\n  tablas: [{ id: \"tgw-rtb-principal\" }],\n  attachments: [\n    { id: \"att-vpc-app\", tipo: \"vpc\", tabla: \"tgw-rtb-principal\" },\n    { id: \"att-vpc-datos\", tipo: \"vpc\", tabla: \"tgw-rtb-principal\" },\n    { id: \"att-vpn-oficina\", tipo: \"vpn\", tabla: \"tgw-rtb-principal\" },\n  ],\n  vpcs: [\n    {\n      id: \"vpc-app\",\n      rutas: [\n        { destino: \"10.0.0.0/16\", objetivo: \"local\" },\n        // Con una VPC hay que crear la ruta estática hacia el transit gateway:\n        { destino: \"10.1.0.0/16\", objetivo: \"tgw-hub\" },\n      ],\n    },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la restricción al medio de conexión",
+          "code": "flowchart TB\n  A[\"Hay que conectar una VPC con otra red\"] --> B{\"¿Qué redes unes?\"}\n  B -->|\"Dos VPC, con IP privadas\"| P[\"VPC peering: sin gateway, VPN ni hardware aparte\"]\n  B -->|\"Muchas VPC y redes locales con un hub\"| T[\"Transit Gateway: attachments y tablas de rutas\"]\n  B -->|\"Red local, con conexión IPsec cifrada\"| V[\"Site-to-Site VPN: dos túneles por conexión\"]\n  B -->|\"Red local, con enlace dedicado de fibra\"| D[\"Direct Connect: interfaz virtual privada, pública o de tránsito\"]\n  V --> E[\"Extremo en AWS: virtual private gateway (una VPC) o transit gateway\"]\n  D --> F[\"Interfaz virtual de tránsito hacia uno o más transit gateways\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el medio que se elige por costumbre",
+          "text": "Un enunciado puede describir dos VPC y ofrecer un transit gateway entre las opciones: con dos redes y sin necesidad de un hub, la respuesta es el VPC peering, que no es un gateway. Y al revés, si piden unir muchas VPC y una red local con un solo punto central, un peering por pareja no es un hub. Con la red local, la restricción decide: conexión IPsec cifrada con dos túneles, Site-to-Site VPN; enlace de fibra dedicado a una ubicación de AWS, Direct Connect. Subraya las redes, la restricción y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: adjuntar la VPC al transit gateway y no crear las rutas de la VPC",
+          "text": "Causa: creer que el attachment basta para que el tráfico llegue al transit gateway. Consecuencia: con una VPC las rutas no se propagan hacia su tabla de rutas; sin una ruta estática cuyo objetivo sea el transit gateway, el tráfico no sale de la VPC hacia él. Solución: tras crear el attachment, añade en la tabla de rutas de cada VPC la ruta estática hacia el transit gateway y comprueba que el attachment está asociado a una tabla de rutas del transit gateway."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar un virtual private gateway para varias VPC",
+          "text": "Causa: pensar que el extremo VPN de Amazon sirve a todas las VPC de la empresa. Consecuencia: un virtual private gateway solo se puede adjuntar a una VPC, así que la oficina solo llega a una de ellas con esa conexión y las demás quedan sin ruta hacia la red local. Solución: si hay varias VPC, usa un transit gateway como extremo de la conexión Site-to-Site VPN, o crea un virtual private gateway por VPC cuando la restricción lo permita."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: tratar el VPC peering como gratuito en todos los casos",
+          "text": "Causa: recordar solo que crear la conexión no tiene cargo. Consecuencia: la transferencia de datos que cruza zonas de disponibilidad o Regiones sí se factura, y un diseño con mucho tráfico entre Regiones puede costar más de lo esperado. Solución: distingue crear la conexión, que es gratis, de los datos transferidos, que se cobran al cruzar zonas o Regiones, y consulta la página de precios de Amazon EC2 antes de dar el costo por cerrado."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre VPC peering, Transit Gateway, Site-to-Site VPN y Direct Connect el medio que conecta una VPC con otras redes según la restricción del escenario. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras las redes que se unen, la restricción y el medio, y explicas por qué los otros tres quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro necesidades del ejemplo: para cada una, nombra el medio y qué recurso o ruta crea. Explica con tus palabras el diagrama «De la restricción al medio de conexión». Después responde: si una VPC está adjunta a un transit gateway pero su tabla de rutas no tiene la ruta hacia él, ¿qué pasa con el tráfico y por qué?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La VPC que no enruta hacia el transit gateway». Una red escrita como objeto tiene un transit gateway con dos VPC adjuntas, y una de ellas no tiene la ruta hacia él. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas las demás rutas de ambas VPC."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La VPN que no llega a las dos VPC». Una conexión Site-to-Site VPN, escrita como objeto, debe dar acceso a dos VPC y aprovechar sus dos túneles, pero no lo consigue. Decide qué ajustes hacen falta sin tocar el customer gateway. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la guía de Site-to-Site VPN."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre cómo conectar las redes de una empresa. Audítalo en «Auditar un informe de conectividad de redes generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de VPC peering, Transit Gateway, Site-to-Site VPN y Direct Connect (leídas el 2026-11-15) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué une cada medio; cuál de ellos no es un gateway ni una VPN; qué se adjunta a un transit gateway y con cuántas tablas de rutas se asocia cada attachment; cuántos túneles trae una conexión Site-to-Site VPN; y qué tres tipos de interfaz virtual tiene Direct Connect. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe las redes que se unen y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa ahora tiene VPC en dos Regiones y exige que una caída de la fibra no la deje sin conexión con la oficina. Decide qué medios combinarías, qué se adjunta a qué y qué ruta cambia en cada VPC. Pregunta de cierre: un compañero dice «ya adjuntamos la VPC al transit gateway y no llega tráfico»; ¿qué revisas primero y en qué orden?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-vpc-peering-que-es",
+          "order": 0,
+          "note": "Fuente de qué es un VPC peering, de que no es un gateway ni una VPN, del tráfico entre Regiones y de su cargo."
+        },
+        {
+          "resourceSlug": "aws-transit-gateway-que-es",
+          "order": 1,
+          "note": "Fuente del transit gateway como hub, de los attachments, las tablas de rutas, la propagación y el cargo por attachment."
+        },
+        {
+          "resourceSlug": "aws-site-to-site-vpn-que-es",
+          "order": 2,
+          "note": "Fuente de la conexión IPsec, de los dos túneles, del customer gateway y del virtual private gateway o transit gateway como extremo."
+        },
+        {
+          "resourceSlug": "aws-direct-connect-que-es",
+          "order": 3,
+          "note": "Fuente del enlace de fibra a una ubicación de Direct Connect, de las interfaces virtuales y de su facturación."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es una conexión de red entre dos VPC que enruta el tráfico con direcciones IP privadas, IPv4 o IPv6. Pueden ser VPC propias o de otra cuenta, y de Regiones distintas. No es un gateway ni una VPN y no depende de hardware físico aparte: no hay un punto único de fallo ni un cuello de botella de ancho de banda."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: VPC peering",
+      "statement": "¿Qué es una conexión de VPC peering y qué no es?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "VPC peering",
+        "dos VPC"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Queda en el espacio de IP privadas, se cifra antes de salir de las instalaciones de AWS y viaja por la red troncal de AWS, sin recorrer nunca internet público. Crear la conexión no tiene cargo; la transferencia dentro de una zona de disponibilidad es gratuita y la que cruza zonas o Regiones se factura."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Tráfico y cargo del peering",
+      "statement": "¿Por dónde viaja el tráfico de un peering entre Regiones y qué se cobra?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "peering entre Regiones",
+        "cargo"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un hub de tránsito de red para interconectar VPC y redes locales. Se le adjuntan VPC, gateways de Direct Connect, conexiones VPN, conexiones de peering con otros transit gateways y otros tipos de attachment. Se cobra por hora por cada attachment y por el tráfico procesado."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Transit Gateway",
+      "statement": "¿Qué es AWS Transit Gateway y qué se le puede adjuntar?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Transit Gateway",
+        "hub de tránsito"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cada attachment se asocia con exactamente una tabla de rutas, y una tabla puede tener cero o muchos attachments. Una VPC, una VPN o un gateway de Direct Connect pueden propagar rutas, pero con una VPC debes crear rutas estáticas hacia el transit gateway, y con un attachment de peering, una ruta estática en la tabla del transit gateway."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Rutas del transit gateway",
+      "statement": "¿Cómo se asocian los attachments a las tablas de rutas y qué rutas hay que crear a mano?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "tabla de rutas",
+        "propagación"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es una conexión IPsec entre tu equipo local y tus VPC, con enrutamiento configurado para pasar el tráfico por ella. Cada conexión incluye dos túneles VPN cifrados que puedes usar a la vez para la alta disponibilidad. El extremo de Amazon es un virtual private gateway, que se adjunta a una sola VPC, o un transit gateway."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Site-to-Site VPN",
+      "statement": "¿Qué es una conexión Site-to-Site VPN y qué incluye cada una?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Site-to-Site VPN",
+        "dos túneles"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Enlaza tu red interna con una ubicación de Direct Connect mediante un cable de fibra Ethernet estándar, sin pasar por los proveedores de internet de tu ruta. Admite interfaz virtual privada (acceso a una VPC), pública (servicios públicos de AWS, como Amazon S3) y de tránsito (uno o más transit gateways). Se cobra por horas de puerto y transferencia saliente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Direct Connect",
+      "statement": "¿Qué es Direct Connect y qué tipos de interfaz virtual admite?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Direct Connect",
+        "interfaz virtual"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Transit gateway con dos VPC adjuntas. Corrige su defecto principal.\nexport const red = {\n  transitGateway: { id: \"tgw-hub\", tablaRutas: \"tgw-rtb-principal\" },\n  attachments: [\n    { id: \"att-vpc-app\", vpc: \"vpc-app\", tabla: \"tgw-rtb-principal\" },\n    { id: \"att-vpc-datos\", vpc: \"vpc-datos\", tabla: \"tgw-rtb-principal\" },\n  ],\n  vpcs: [\n    {\n      id: \"vpc-app\",\n      cidr: \"10.0.0.0/16\",\n      rutas: [\n        { destino: \"10.0.0.0/16\", objetivo: \"local\" },\n        { destino: \"10.1.0.0/16\", objetivo: \"tgw-hub\" },\n      ],\n    },\n    {\n      id: \"vpc-datos\",\n      cidr: \"10.1.0.0/16\",\n      rutas: [\n        { destino: \"10.1.0.0/16\", objetivo: \"local\" },\n      ],\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "export const red = {\n  transitGateway: { id: \"tgw-hub\", tablaRutas: \"tgw-rtb-principal\" },\n  attachments: [\n    { id: \"att-vpc-app\", vpc: \"vpc-app\", tabla: \"tgw-rtb-principal\" },\n    { id: \"att-vpc-datos\", vpc: \"vpc-datos\", tabla: \"tgw-rtb-principal\" },\n  ],\n  vpcs: [\n    {\n      id: \"vpc-app\",\n      cidr: \"10.0.0.0/16\",\n      rutas: [\n        { destino: \"10.0.0.0/16\", objetivo: \"local\" },\n        { destino: \"10.1.0.0/16\", objetivo: \"tgw-hub\" },\n      ],\n    },\n    {\n      id: \"vpc-datos\",\n      cidr: \"10.1.0.0/16\",\n      rutas: [\n        { destino: \"10.1.0.0/16\", objetivo: \"local\" },\n        { destino: \"10.0.0.0/16\", objetivo: \"tgw-hub\" },\n      ],\n    },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Con una VPC adjunta a un transit gateway, el tráfico solo llega a él si la tabla de rutas de la VPC tiene una ruta cuyo objetivo es el transit gateway. Compara las rutas de las dos VPC."
+        },
+        {
+          "level": 2,
+          "text": "La tabla de rutas de `vpc-app` tiene la ruta hacia `tgw-hub` para el CIDR de `vpc-datos`, pero `vpc-datos` solo tiene la ruta local, así que no sabe cómo llegar al CIDR de `vpc-app`."
+        },
+        {
+          "level": 3,
+          "text": "Añade a las rutas de `vpc-datos` la ruta { destino: \"10.0.0.0/16\", objetivo: \"tgw-hub\" }. No toques las rutas existentes ni los attachments."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la VPC de datos tiene la ruta estática hacia el transit gateway",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const datos = red.vpcs.find((v) => v.id === \"vpc-datos\");\nassert.ok(datos, \"debe existir vpc-datos\");\nassert.ok(datos.rutas.some((r) => r.destino === \"10.0.0.0/16\" && r.objetivo === red.transitGateway.id), \"falta la ruta hacia el transit gateway en vpc-datos\");"
+          }
+        },
+        {
+          "name": "cada VPC tiene una sola ruta hacia el transit gateway",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "for (const vpc of red.vpcs) {\n  const rutasTgw = vpc.rutas.filter((r) => r.objetivo === red.transitGateway.id);\n  assert.strictEqual(rutasTgw.length, 1, vpc.id + \" debe tener una sola ruta hacia el transit gateway\");\n}"
+          }
+        },
+        {
+          "name": "las demás rutas de ambas VPC se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const app = red.vpcs.find((v) => v.id === \"vpc-app\");\nconst datos = red.vpcs.find((v) => v.id === \"vpc-datos\");\nassert.ok(app.rutas.some((r) => r.destino === \"10.0.0.0/16\" && r.objetivo === \"local\"));\nassert.ok(app.rutas.some((r) => r.destino === \"10.1.0.0/16\" && r.objetivo === \"tgw-hub\"));\nassert.ok(datos.rutas.some((r) => r.destino === \"10.1.0.0/16\" && r.objetivo === \"local\"));"
+          }
+        },
+        {
+          "name": "siguen las dos VPC y sus attachments",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(red.vpcs.length, 2);\nassert.deepStrictEqual(red.attachments.map((a) => a.vpc), [\"vpc-app\", \"vpc-datos\"]);\nassert.ok(red.attachments.every((a) => a.tabla === red.transitGateway.tablaRutas));"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-debug-01",
+      "type": "DEBUG",
+      "title": "La VPC que no enruta hacia el transit gateway",
+      "statement": "El objeto `red` modela un transit gateway con dos VPC adjuntas, cada una asociada a una tabla de rutas del transit gateway. Las instancias de `vpc-datos` no consiguen enviar tráfico hacia `vpc-app` a través del transit gateway. Corrige la configuración sin quitar ninguna ruta existente ni añadir VPC, y mantén la forma del valor exportado (`export const red = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "Transit Gateway",
+        "attachment",
+        "rutas estáticas de la VPC"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Conexión Site-to-Site VPN de una oficina hacia dos VPC. Corrige su defecto principal.\nexport const vpn = {\n  customerGateway: { id: \"cgw-oficina\", dispositivo: \"router-oficina\" },\n  extremoAmazon: { tipo: \"virtual-private-gateway\", id: \"vgw-1\", vpcsAdjuntas: [\"vpc-app\", \"vpc-datos\"] },\n  tuneles: [\n    { id: \"tunel-1\", activo: true },\n    { id: \"tunel-2\", activo: false },\n  ],\n  vpcsAccesibles: [\"vpc-app\", \"vpc-datos\"],\n};\n",
+      "solution": {
+        "code": "export const vpn = {\n  customerGateway: { id: \"cgw-oficina\", dispositivo: \"router-oficina\" },\n  extremoAmazon: { tipo: \"transit-gateway\", id: \"tgw-hub\", vpcsAdjuntas: [\"vpc-app\", \"vpc-datos\"] },\n  tuneles: [\n    { id: \"tunel-1\", activo: true },\n    { id: \"tunel-2\", activo: true },\n  ],\n  vpcsAccesibles: [\"vpc-app\", \"vpc-datos\"],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el extremo de Amazon es un transit gateway",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(vpn.extremoAmazon.tipo, \"transit-gateway\", \"un virtual private gateway solo se adjunta a una VPC\");"
+          }
+        },
+        {
+          "name": "los dos túneles están activos a la vez",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(vpn.tuneles.length, 2);\nassert.ok(vpn.tuneles.every((t) => t.activo === true), \"los dos túneles deben usarse simultáneamente\");"
+          }
+        },
+        {
+          "name": "un virtual private gateway no puede tener más de una VPC",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "if (vpn.extremoAmazon.tipo === \"virtual-private-gateway\") {\n  assert.ok(vpn.extremoAmazon.vpcsAdjuntas.length <= 1, \"un virtual private gateway se adjunta a una sola VPC\");\n}\nassert.ok([\"virtual-private-gateway\", \"transit-gateway\"].includes(vpn.extremoAmazon.tipo));"
+          }
+        },
+        {
+          "name": "el customer gateway y las VPC accesibles no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(vpn.customerGateway, { id: \"cgw-oficina\", dispositivo: \"router-oficina\" });\nassert.deepStrictEqual(vpn.vpcsAccesibles, [\"vpc-app\", \"vpc-datos\"]);"
+          }
+        },
+        {
+          "name": "ambas VPC siguen adjuntas al extremo de Amazon",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(vpn.extremoAmazon.vpcsAdjuntas, [\"vpc-app\", \"vpc-datos\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-debug-02",
+      "type": "DEBUG",
+      "title": "La VPN que no llega a las dos VPC",
+      "statement": "El objeto `vpn` describe una conexión Site-to-Site VPN de una oficina que debe dar acceso a `vpc-app` y a `vpc-datos`, y aprovechar los dos túneles de la conexión para la alta disponibilidad. Tal como está, la configuración no cumple lo que AWS permite en el extremo de Amazon ni usa sus dos túneles. Localiza los ajustes que faltan y corrígelos sin cambiar el customer gateway ni la lista de VPC accesibles, y mantén la forma del valor exportado (`export const vpn = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "Site-to-Site VPN",
+        "virtual private gateway",
+        "dos túneles"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de conectividad de redes (borrador generado por un asistente)\nCarga de trabajo: dos VPC de una misma empresa, más una oficina con red local.\n1. Un VPC peering conecta dos VPC con direcciones IP privadas, y pueden ser de cuentas o de Regiones distintas.\n2. El tráfico de un peering entre Regiones viaja cifrado por internet público, porque no usa la red troncal de AWS.\n3. Un transit gateway es un hub de tránsito que interconecta VPC y redes locales, y cada attachment se asocia con una sola tabla de rutas.\n4. Un transit gateway solo cobra el tráfico que procesa: los attachments no tienen cargo.\n5. Cada conexión Site-to-Site VPN incluye dos túneles cifrados que se pueden usar a la vez para la alta disponibilidad.\n6. Un virtual private gateway se puede adjuntar a varias VPC a la vez, así que una sola conexión VPN las atiende todas.\n7. Direct Connect enlaza la red local con una ubicación de Direct Connect por fibra, sin pasar por los proveedores de internet de la ruta."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Qué conecta un VPC peering",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: un peering es una conexión entre dos VPC que enruta el tráfico con direcciones IP privadas, y pueden ser de cuentas o de Regiones distintas."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Tráfico del peering entre Regiones",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "El tráfico entre Regiones va cifrado y viaja siempre por la red troncal global de AWS, sin recorrer nunca internet público."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Transit gateway y tablas de rutas",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: es un hub de tránsito para interconectar VPC y redes locales, y cada attachment se asocia con exactamente una tabla de rutas."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Cargo del transit gateway",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Se cobra por hora por cada attachment y también por el tráfico procesado; los attachments sí tienen cargo."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Túneles de Site-to-Site VPN",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: cada conexión incluye dos túneles VPN cifrados que se pueden usar simultáneamente para la alta disponibilidad."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Virtual private gateway y VPC",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Un virtual private gateway se adjunta a una sola VPC; para varias VPC el extremo de Amazon puede ser un transit gateway."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Direct Connect y los proveedores de internet",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Direct Connect enlaza tu red con una ubicación de Direct Connect por fibra Ethernet y esquiva a los proveedores de internet de tu ruta."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de conectividad de redes generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre cómo conectar las redes de una empresa. Audítalo contra las páginas oficiales de VPC peering, Transit Gateway, Site-to-Site VPN y Direct Connect: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "VPC peering",
+        "Transit Gateway",
+        "Site-to-Site VPN",
+        "Direct Connect"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html",
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear una conexión Site-to-Site VPN entre las dos VPC con un virtual private gateway",
+            "explanation": "Descartada: una VPN es justo la conexión que el requisito excluye, y su extremo es un virtual private gateway, no una conexión directa entre VPC."
+          },
+          {
+            "id": "b",
+            "text": "Crear una conexión de VPC peering entre las dos VPC y enrutar el tráfico por ella",
+            "explanation": "Es la correcta: un peering conecta dos VPC con IP privadas, de cuentas distintas si hace falta, y no es un gateway ni una VPN ni depende de hardware aparte."
+          },
+          {
+            "id": "c",
+            "text": "Adjuntar las dos VPC a un transit gateway y crear las rutas estáticas de cada VPC",
+            "explanation": "Descartada: un transit gateway es un gateway, un hub pensado para interconectar muchas redes, y el requisito excluye precisamente un gateway."
+          },
+          {
+            "id": "d",
+            "text": "Crear una interfaz virtual privada de Direct Connect desde cada una de las VPC",
+            "explanation": "Descartada: Direct Connect enlaza una red local con AWS por fibra y no sirve para comunicar dos VPC entre sí."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-quiz-01",
+      "type": "QUIZ",
+      "title": "Unir dos VPC de cuentas distintas sin gateway ni VPN",
+      "statement": "Una empresa necesita que las instancias de dos VPC de cuentas distintas se comuniquen con direcciones IP privadas. El equipo no quiere un gateway, ni una VPN, ni una pieza de hardware aparte, y exige que no haya un punto único de fallo ni un cuello de botella de ancho de banda. ¿Qué solución cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "VPC peering",
+        "dos VPC",
+        "sin punto único de fallo"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html",
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear una conexión de VPC peering por cada pareja de VPC y otra hacia la oficina",
+            "explanation": "Descartada: un peering conecta solo dos VPC y no es un hub, de modo que se necesitaría una conexión por pareja y ninguna llega a la red local."
+          },
+          {
+            "id": "b",
+            "text": "Crear un virtual private gateway por VPC y una conexión Site-to-Site VPN por cada una",
+            "explanation": "Descartada: cada virtual private gateway se adjunta a una sola VPC, así que serían muchas conexiones independientes en lugar de un hub único."
+          },
+          {
+            "id": "c",
+            "text": "Pedir una conexión de Direct Connect y una interfaz virtual pública para cada VPC",
+            "explanation": "Descartada: una interfaz virtual pública da acceso a los servicios públicos de AWS, no interconecta VPC, y la conexión no es un hub."
+          },
+          {
+            "id": "d",
+            "text": "Crear un transit gateway y adjuntarle cada VPC y la conexión con la red local",
+            "explanation": "Es la correcta: es un hub de tránsito de red que interconecta VPC y redes locales mediante attachments, sin una conexión por cada pareja."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-quiz-02",
+      "type": "QUIZ",
+      "title": "Interconectar muchas VPC y la red local con un hub central",
+      "statement": "Una empresa tiene muchas VPC en varias cuentas y una oficina con red local. Quiere interconectarlas a todas a través de un único hub de tránsito de red, sin una conexión independiente por cada pareja de redes. ¿Qué solución cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Transit Gateway",
+        "hub de tránsito",
+        "redes locales"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html",
+        "https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear una conexión de Direct Connect e interfaces virtuales sobre ella",
+            "explanation": "Es la correcta: Direct Connect enlaza tu red con una ubicación de Direct Connect por fibra Ethernet y esquiva a los proveedores de internet de tu ruta."
+          },
+          {
+            "id": "b",
+            "text": "Crear una conexión Site-to-Site VPN con sus dos túneles cifrados hacia la VPC",
+            "explanation": "Descartada: una VPN es una conexión IPsec entre tu equipo y tus VPC; no es un cable de fibra hasta una ubicación de AWS."
+          },
+          {
+            "id": "c",
+            "text": "Crear una conexión de VPC peering entre la red de la empresa y la VPC",
+            "explanation": "Descartada: un peering conecta dos VPC entre sí y no puede unir una red local con AWS."
+          },
+          {
+            "id": "d",
+            "text": "Crear un transit gateway y adjuntarle el equipo de la oficina como attachment",
+            "explanation": "Descartada: un transit gateway es un hub lógico de red; no aporta un enlace físico de fibra desde la oficina hasta AWS."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-quiz-03",
+      "type": "QUIZ",
+      "title": "Enlace de fibra a AWS sin los proveedores de internet",
+      "statement": "Una empresa quiere conectar su red interna con AWS mediante un cable de fibra hasta una ubicación de AWS, de modo que el tráfico no pase por los proveedores de internet de su ruta. ¿Qué solución cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Direct Connect",
+        "enlace de fibra",
+        "ubicación de Direct Connect"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cada conexión adjunta automáticamente un VPC peering de respaldo a la VPC",
+            "explanation": "Descartada: un peering conecta dos VPC y no forma parte de una conexión VPN, que no crea ningún peering de respaldo."
+          },
+          {
+            "id": "b",
+            "text": "El virtual private gateway se adjunta a dos VPC para repartir la carga",
+            "explanation": "Descartada: un virtual private gateway se adjunta a una sola VPC, y adjuntarlo a dos no daría alta disponibilidad."
+          },
+          {
+            "id": "c",
+            "text": "Cada conexión incluye dos túneles VPN que se pueden usar de forma simultánea",
+            "explanation": "Es la correcta: cada conexión Site-to-Site VPN trae dos túneles cifrados que se pueden usar a la vez para la alta disponibilidad."
+          },
+          {
+            "id": "d",
+            "text": "El customer gateway device crea un túnel adicional por cada subred de la VPC",
+            "explanation": "Descartada: el dispositivo del cliente no crea túneles por subred; la conexión incluye dos túneles, no uno por cada subred."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-quiz-04",
+      "type": "QUIZ",
+      "title": "Alta disponibilidad de una conexión Site-to-Site VPN",
+      "statement": "Una empresa crea una conexión Site-to-Site VPN entre su oficina y una VPC y quiere que la comunicación siga funcionando si falla uno de los caminos cifrados. ¿Qué característica de la conexión da MEJOR esa alta disponibilidad?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Site-to-Site VPN",
+        "dos túneles",
+        "alta disponibilidad"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Esperar a que la VPC propague dinámicamente sus rutas hacia su propia tabla de rutas",
+            "explanation": "Descartada: con una VPC debes crear rutas estáticas para enviar el tráfico al transit gateway; no se propagan hacia la tabla de rutas de la VPC."
+          },
+          {
+            "id": "b",
+            "text": "Crear en la tabla de rutas de la VPC una ruta estática cuyo objetivo sea el transit gateway",
+            "explanation": "Es la correcta: con una VPC debes crear rutas estáticas para enviar tráfico al transit gateway, además de tener el attachment asociado a una tabla."
+          },
+          {
+            "id": "c",
+            "text": "Asociar el attachment a una segunda tabla de rutas del transit gateway a la vez",
+            "explanation": "Descartada: cada attachment se asocia con exactamente una tabla de rutas del transit gateway, de modo que no se puede asociar a dos."
+          },
+          {
+            "id": "d",
+            "text": "Crear una conexión de VPC peering entre la VPC y el transit gateway",
+            "explanation": "Descartada: un VPC peering conecta dos VPC, no una VPC con un transit gateway, que se enlaza mediante un attachment."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-quiz-05",
+      "type": "QUIZ",
+      "title": "Enviar el tráfico de una VPC adjunta hacia el transit gateway",
+      "statement": "Un equipo adjunta una VPC a un transit gateway, pero el tráfico de las instancias hacia las otras VPC no sale de su VPC. ¿Qué acción resuelve MEJOR el problema?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Transit Gateway",
+        "rutas estáticas",
+        "tabla de rutas de la VPC"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una interfaz virtual privada conectada directamente a una única VPC",
+            "explanation": "Descartada: una interfaz virtual privada, sin un gateway de Direct Connect, da acceso a una sola VPC en la misma Región, no a transit gateways."
+          },
+          {
+            "id": "b",
+            "text": "Una interfaz virtual pública hacia los servicios públicos de AWS",
+            "explanation": "Descartada: una interfaz virtual pública da acceso a los servicios públicos de AWS con IP públicas, como Amazon S3, no a transit gateways."
+          },
+          {
+            "id": "c",
+            "text": "Una conexión Site-to-Site VPN sobre la conexión de Direct Connect",
+            "explanation": "Descartada: una VPN no es un tipo de interfaz virtual de Direct Connect, y la pregunta pide uno de los tipos de interfaz virtual."
+          },
+          {
+            "id": "d",
+            "text": "Una interfaz virtual de tránsito asociada a un gateway de Direct Connect",
+            "explanation": "Es la correcta: una interfaz virtual de tránsito da acceso a uno o más transit gateways asociados a gateways de Direct Connect, en varias cuentas y Regiones."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-quiz-06",
+      "type": "QUIZ",
+      "title": "Direct Connect hacia varios transit gateways de otras cuentas",
+      "statement": "Una empresa tiene una conexión de Direct Connect y quiere usar un solo tipo de interfaz virtual para llegar a transit gateways de varias cuentas y Regiones. ¿Qué tipo de interfaz virtual cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Direct Connect",
+        "interfaz virtual de tránsito",
+        "Transit Gateway"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Conecta dos VPC con IP privadas, también si son de otra cuenta",
+            "explanation": "Cumple: un peering es una conexión entre dos VPC con direcciones privadas, y puede ser entre VPC propias o de otra cuenta."
+          },
+          {
+            "id": "b",
+            "text": "Exige un gateway de tránsito para comunicar las dos VPC entre sí",
+            "explanation": "No cumple: el peering no es un gateway ni depende de uno; el transit gateway es otro servicio, pensado como hub de muchas redes."
+          },
+          {
+            "id": "c",
+            "text": "Entre Regiones, el tráfico recorre internet público con cifrado",
+            "explanation": "No cumple: entre Regiones el tráfico viaja siempre por la red troncal de AWS y nunca recorre internet público."
+          },
+          {
+            "id": "d",
+            "text": "La transferencia que cruza zonas o Regiones se factura, pero crearlo es gratis",
+            "explanation": "Cumple: crear la conexión no tiene cargo, y se cobra la transferencia que cruza zonas de disponibilidad y Regiones."
+          },
+          {
+            "id": "e",
+            "text": "Se factura por hora por cada attachment y por el tráfico procesado",
+            "explanation": "No cumple: esa facturación es la de un transit gateway; crear un peering no tiene cargo y no usa attachments."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-quiz-07",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre el VPC peering",
+      "statement": "Un arquitecto resume el VPC peering para su equipo. Selecciona DOS afirmaciones correctas sobre una conexión de VPC peering.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "VPC peering",
+        "entre Regiones",
+        "cargo"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo admite attachments de VPC, no de conexiones VPN",
+            "explanation": "No cumple: admite también conexiones VPN, gateways de Direct Connect y conexiones de peering con otros transit gateways."
+          },
+          {
+            "id": "b",
+            "text": "Interconecta VPC y redes locales como un hub de tránsito de red",
+            "explanation": "Cumple: es un hub de tránsito de red usado para interconectar VPC y redes locales mediante attachments."
+          },
+          {
+            "id": "c",
+            "text": "Cada attachment se asocia a todas las tablas de rutas a la vez",
+            "explanation": "No cumple: cada attachment se asocia con exactamente una tabla de rutas, aunque una tabla puede tener muchos attachments."
+          },
+          {
+            "id": "d",
+            "text": "No permite unirse a otro transit gateway mediante peering",
+            "explanation": "No cumple: el peering entre transit gateways es un tipo de attachment que los conecta por la infraestructura global de AWS."
+          },
+          {
+            "id": "e",
+            "text": "Se cobra por hora por cada attachment y por el tráfico procesado",
+            "explanation": "Cumple: el cargo combina las horas de cada attachment y los datos que procesa el transit gateway."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre Transit Gateway",
+      "statement": "Un arquitecto resume AWS Transit Gateway para su equipo. Selecciona DOS afirmaciones correctas sobre un transit gateway.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "Transit Gateway",
+        "attachments",
+        "cargo"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "peering",
+            "term": "VPC peering",
+            "definition": "Conecta dos VPC con IP privadas, sin gateway, VPN ni hardware aparte, aun entre cuentas o Regiones"
+          },
+          {
+            "id": "tgw",
+            "term": "Transit Gateway",
+            "definition": "Hub de tránsito que interconecta muchas VPC y redes locales mediante attachments y tablas de rutas"
+          },
+          {
+            "id": "vpn",
+            "term": "Site-to-Site VPN",
+            "definition": "Conexión IPsec cifrada entre tu red local y tus VPC, con dos túneles utilizables a la vez"
+          },
+          {
+            "id": "dx",
+            "term": "Direct Connect",
+            "definition": "Enlace dedicado de fibra a una ubicación de AWS que esquiva a los proveedores de internet de tu ruta"
+          },
+          {
+            "id": "vgw",
+            "term": "Virtual private gateway",
+            "definition": "Extremo VPN del lado de Amazon que se adjunta a una sola VPC"
+          },
+          {
+            "id": "cgw",
+            "term": "Customer gateway",
+            "definition": "Recurso de AWS con la información del dispositivo de tu lado de la conexión Site-to-Site VPN"
+          },
+          {
+            "id": "vif-privada",
+            "term": "Interfaz virtual privada",
+            "definition": "Interfaz de Direct Connect que da acceso a una VPC con IP privadas, una VPC por interfaz"
+          },
+          {
+            "id": "vif-transito",
+            "term": "Interfaz virtual de tránsito",
+            "definition": "Interfaz de Direct Connect para acceder a uno o más transit gateways de varias cuentas y Regiones"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada conexión con el caso que cubre. Si dudas entre dos, pregúntate cuántas redes se unen, si hace falta un hub, si el enlace es una conexión IPsec cifrada o un cable de fibra dedicado, y qué recurso hay en cada extremo.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Dos VPC o muchas: el peering frente al hub de tránsito del transit gateway",
+              "Red local: la conexión IPsec de Site-to-Site VPN frente al enlace de fibra de Direct Connect",
+              "Las piezas: customer gateway, virtual private gateway e interfaces virtuales privada y de tránsito"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-memoria-01",
+      "type": "MEMORY",
+      "title": "Conexión y caso que cubre",
+      "statement": "Empareja cada medio de conexión de redes, o su pieza clave, con el caso que cubre.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "VPC peering",
+        "Transit Gateway",
+        "Site-to-Site VPN",
+        "Direct Connect"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html",
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-5-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué conexión y por qué",
+      "statement": "Elige una situación que conozcas (por ejemplo, una empresa con varias VPC y una oficina con red local que deben comunicarse) y escribe un registro breve de decisión sobre cómo conectarías sus redes, en 5 a 7 líneas:\n\n1) Decisión: qué medio usarías (VPC peering, Transit Gateway, Site-to-Site VPN o Direct Connect) para cada par de redes y qué recurso o ruta crea cada uno.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, un transit gateway para unir solo dos VPC, o un virtual private gateway para varias VPC) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (rutas estáticas en las VPC, tablas de rutas del transit gateway, túneles de la VPN) y qué cargos aparecen (attachments, transferencia entre zonas o Regiones, horas de puerto).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial de VPC peering, Transit Gateway, Site-to-Site VPN o Direct Connect usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre las redes, el medio y la restricción que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "conectividad de redes",
+        "decisión",
+        "peering frente a Transit Gateway"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html",
+        "https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html",
+        "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+        "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html"
+      ],
+      "order": 19
+    }
+  ]
+}
