@@ -1,0 +1,1326 @@
+{
+  "code": "AWS-U2.2.6",
+  "lessons": [
+    {
+      "slug": "aws-u2-2-6-route-53-registros-politicas-de-enrutamiento-y-comprobaciones-de-estado",
+      "title": "Route 53: registros, políticas de enrutamiento y comprobaciones de estado",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon Route 53 es un servicio web de Sistema de Nombres de Dominio (DNS) altamente disponible y escalable, y hace tres funciones que puedes combinar: registrar dominios, enrutar el tráfico DNS y comprobar el estado de tus recursos. En esta unidad importan las dos últimas. Cuando creas un registro eliges una política de enrutamiento, que determina cómo responde Route 53 a las consultas: simple, ponderada, de latencia, de geolocalización, de geoproximidad, de conmutación por error, multivalor o basada en IP. Las comprobaciones de estado vigilan si un recurso responde, y con ellas puedes configurar una conmutación por error de DNS que aparta el tráfico de un recurso no sano. En A2 no basta con recitar la lista: el enunciado fija un requisito (un solo recurso, proporciones, la mejor latencia, la ubicación de los usuarios o de los recursos, un respaldo pasivo, varias respuestas sanas) y tú eliges la política que lo cumple y descartas las demás con una razón. Esta unidad prepara el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes»."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas de Route 53, frente a frente",
+          "items": [
+            "Zona alojada: contenedor de registros que dicen cómo enrutar el tráfico de un dominio y de todos sus subdominios; tiene el mismo nombre que el dominio.",
+            "Registro: objeto de una zona alojada que define cómo enrutar el tráfico del dominio o de un subdominio; los de tipo A usan direcciones IPv4 y los de tipo AAAA, IPv6.",
+            "Registro alias: tipo de registro de Route 53 para enrutar el tráfico a recursos de AWS, como distribuciones de Amazon CloudFront o buckets de Amazon S3.",
+            "TTL: segundos que un resolvedor DNS guarda en caché los valores de un registro; uno largo reduce el cargo por consultas y uno corto reduce el tiempo que se enruta a recursos antiguos tras un cambio.",
+            "Comprobación de estado: componente que vigila un endpoint, otras comprobaciones o una alarma de CloudWatch, y puede avisar o activar la conmutación por error de DNS."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Registros, zonas alojadas y la política de cada registro",
+          "text": "Una zona alojada guarda los registros de un dominio, y los servidores de nombres de Route 53 son los servidores autoritativos de cada dominio que usa Route 53 como servicio DNS: al recibir una consulta para www.example.com buscan el registro y devuelven el valor que contiene, por ejemplo una dirección IP. Un resolvedor DNS, a menudo gestionado por un proveedor de internet, hace de intermediario entre el usuario y los servidores de nombres y guarda la respuesta durante el TTL del registro. Por eso el TTL es una decisión de diseño: más largo abarata las consultas, más corto hace que un cambio de dirección se note antes. Si necesitas resolver nombres dentro de una VPC, el DNS privado enruta el tráfico de un dominio hacia instancias de Amazon EC2 de una o más VPC. Sobre cada registro se elige la política de enrutamiento: es el ajuste que decide a qué valor responde Route 53."
+        },
+        {
+          "type": "paragraph",
+          "title": "Las políticas de enrutamiento: qué requisito resuelve cada una",
+          "text": "La política simple sirve para un único recurso que cumple una función para el dominio, como un servidor web que sirve el contenido de un sitio. La ponderada enruta el tráfico a varios recursos en las proporciones que especificas, por ejemplo para enviar una fracción a una versión nueva. La de latencia se usa cuando tienes recursos en varias Regiones de AWS y quieres dirigir el tráfico a la Región con la mejor latencia. La de geolocalización decide según la ubicación de los usuarios; la de geoproximidad decide según la ubicación de los recursos y, de forma opcional, desplaza tráfico de los recursos de una ubicación a los de otra; la basada en IP decide según la ubicación de los usuarios cuando conoces las direcciones IP de origen. La multivalor responde a las consultas con hasta ocho registros sanos elegidos al azar. La de conmutación por error configura una arquitectura activa-pasiva. Según la página de elección de política, todas menos la basada en IP se pueden usar en zonas alojadas privadas."
+        },
+        {
+          "type": "paragraph",
+          "title": "Comprobaciones de estado y conmutación por error de DNS",
+          "text": "Una comprobación de estado vigila la salud y el rendimiento de tus aplicaciones web, servidores web y otros recursos. Cada una puede monitorear el estado de un recurso concreto, como un servidor web (el endpoint se indica por dirección IPv4, IPv6 o nombre de dominio), el estado de otras comprobaciones o el estado de una alarma de Amazon CloudWatch. Route 53 envía solicitudes automáticas por internet al recurso para verificar que es accesible, está disponible y funciona. Para recibir un aviso cuando cambia el estado, configuras una alarma de CloudWatch por cada comprobación. Si tienes varios recursos que cumplen la misma función, configuras la conmutación por error de DNS para que Route 53 enrute el tráfico de un recurso no sano a uno sano: con dos servidores web y uno no sano, el tráfico va al otro. Con Amazon Application Recovery Controller (ARC) también puedes usar comprobaciones de control de enrutamiento con registros de conmutación por error de DNS."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de un sitio simple a una arquitectura resiliente",
+          "text": "Una empresa publica su sitio en un solo servidor web. Necesidad (1): que www.example.com resuelva a ese servidor. Necesidad (2): meses después añade un servidor de respaldo y quiere que solo reciba tráfico si el principal falla. Necesidad (3): el servicio crece a varias Regiones y quiere responder desde la de mejor latencia. Necesidad (4): lanza una versión nueva y quiere darle una fracción del tráfico que ella fije. Paso 1: la (1) pide un registro con política simple, porque hay un único recurso. Paso 2: la (2) pide política de conmutación por error y una comprobación de estado que vigile el servidor principal; sin comprobación, Route 53 no sabe cuándo apartar el tráfico. Paso 3: la (3) pide política de latencia, con un registro por cada Región. Paso 4: la (4) pide política ponderada, con un peso mayor para la versión actual. Resultado: la política cambia con el requisito, y la comprobación de estado es la pieza que hace posible la conmutación."
+        },
+        {
+          "type": "code",
+          "title": "Registros de conmutación por error como valor (direcciones de documentación)",
+          "language": "typescript",
+          "code": "export const dns = {\n  zona: \"example.com\",\n  comprobaciones: [\n    { id: \"hc-principal\", endpoint: \"192.0.2.10\", tipoEndpoint: \"ipv4\" },\n  ],\n  registros: [\n    // El registro principal necesita una comprobación que vigile su endpoint:\n    { nombre: \"www.example.com\", tipo: \"A\", politica: \"failover\", rol: \"primary\", valor: \"192.0.2.10\", comprobacion: \"hc-principal\" },\n    { nombre: \"www.example.com\", tipo: \"A\", politica: \"failover\", rol: \"secondary\", valor: \"192.0.2.20\", comprobacion: null },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del requisito a la política de enrutamiento",
+          "code": "flowchart TB\n  A[\"Hay que elegir cómo responde Route 53\"] --> B{\"¿Qué exige el enunciado?\"}\n  B -->|\"Un único recurso\"| S[\"Simple\"]\n  B -->|\"Proporciones que tú fijas\"| W[\"Ponderada\"]\n  B -->|\"Recursos en varias Regiones, mejor latencia\"| L[\"Latencia\"]\n  B -->|\"Ubicación de los usuarios\"| G[\"Geolocalización\"]\n  B -->|\"Ubicación de los recursos, desplazar tráfico\"| P[\"Geoproximidad\"]\n  B -->|\"Respaldo activo-pasivo\"| F[\"Conmutación por error + comprobación de estado\"]\n  B -->|\"Hasta ocho registros sanos al azar\"| M[\"Multivalor\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: la política que se elige por el nombre",
+          "text": "Geolocalización y geoproximidad suenan parecidas, pero la primera decide por la ubicación de los usuarios y la segunda por la de los recursos, con la opción de desplazar tráfico entre ubicaciones. Latencia no mira dónde está el usuario en un mapa, sino qué Región da la mejor latencia. Y conmutación por error y multivalor tratan la salud de forma distinta: la primera es activa-pasiva, la segunda responde con varios registros sanos elegidos al azar. Subraya el requisito y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar la política simple para repartir tráfico entre varios recursos",
+          "text": "Causa: creer que un registro simple sirve para cualquier número de recursos. Consecuencia: la política simple está pensada para un único recurso que cumple una función, así que no fija proporciones ni elige por Región ni aparta recursos no sanos. Solución: si hay que repartir en proporciones, usa ponderada; si hay recursos en varias Regiones y cuenta la latencia, usa latencia; y si hay un respaldo, usa conmutación por error."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: configurar la conmutación por error sin una comprobación de estado",
+          "text": "Causa: pensar que elegir la política de conmutación por error basta para que Route 53 sepa qué recurso falla. Consecuencia: sin una comprobación de estado que vigile el recurso principal, Route 53 no tiene forma de saber que está no sano ni de enrutar el tráfico a otro. Solución: crea la comprobación que monitorea el endpoint principal, asóciala al registro y mantén al menos dos recursos que cumplan la misma función."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: dejar un TTL largo antes de cambiar la dirección de un recurso",
+          "text": "Causa: fijarse solo en que un TTL largo reduce el cargo por consultas. Consecuencia: los resolvedores siguen devolviendo el valor guardado hasta que vence el TTL, así que tras cambiar la dirección envían tráfico al recurso antiguo durante más tiempo. Solución: usa un TTL corto cuando esperas cambios o conmutaciones y acepta que Route 53 responderá a más consultas, que es lo que se cobra."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la política de enrutamiento de Route 53 y la comprobación de estado que cumplen un requisito de disponibilidad o de reparto de tráfico. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el requisito, la política y la comprobación que hace falta, y explicas por qué las demás políticas quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro necesidades del ejemplo: para cada una, nombra la política y qué otra pieza hace falta. Explica con tus palabras el diagrama «Del requisito a la política de enrutamiento». Después responde: si un registro de conmutación por error no tiene comprobación de estado, ¿qué no puede hacer Route 53 y por qué?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El registro de conmutación por error sin comprobación». Una zona escrita como objeto tiene un registro principal y otro secundario, pero Route 53 no puede saber cuándo falla el principal. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas los demás registros y valores."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La política multivalor que responde con registros no vigilados». Una configuración multivalor, escrita como objeto, debe responder con registros sanos y respetar el máximo de respuestas, pero no lo consigue. Decide qué ajustes hacen falta sin tocar los valores de los registros. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la guía de Route 53."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre cómo configurar el DNS de una empresa con Route 53. Audítalo en «Auditar un informe de DNS y comprobaciones de estado generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de Route 53 (leídas el 2026-11-15) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué tres funciones tiene Route 53; qué requisito resuelve cada política (simple, ponderada, latencia, geolocalización, geoproximidad, conmutación por error y multivalor); qué puede vigilar una comprobación de estado; y qué efecto tiene un TTL largo frente a uno corto. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el requisito y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa ahora tiene servidores en dos Regiones y quiere responder desde la de mejor latencia, pero apartar una Región entera si deja de estar sana. Decide qué políticas combinarías, qué comprobaciones crearías y a qué registro se asocia cada una. Pregunta de cierre: un compañero dice «configuramos conmutación por error y el tráfico sigue yendo al servidor caído»; ¿qué revisas primero y en qué orden?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-route53-que-es",
+          "order": 0,
+          "note": "Fuente de las tres funciones de Route 53 y de cómo envía solicitudes automáticas a un recurso para comprobar su estado."
+        },
+        {
+          "resourceSlug": "aws-route53-conceptos",
+          "order": 1,
+          "note": "Fuente de zonas alojadas, registros, alias, TTL, DNS privado y de la lista de políticas de enrutamiento."
+        },
+        {
+          "resourceSlug": "aws-route53-politicas-de-enrutamiento",
+          "order": 2,
+          "note": "Fuente del requisito que resuelve cada política: simple, ponderada, latencia, geolocalización, geoproximidad, conmutación por error y multivalor."
+        },
+        {
+          "resourceSlug": "aws-route53-comprobaciones-de-estado",
+          "order": 3,
+          "note": "Fuente de lo que vigila una comprobación de estado, de las notificaciones con CloudWatch y de la conmutación por error de DNS."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es un servicio web de DNS altamente disponible y escalable. Hace tres funciones, en cualquier combinación: registro de dominios, enrutamiento del tráfico DNS hacia los recursos del dominio y comprobación del estado de los recursos, con la opción de apartar el tráfico de los no sanos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Route 53",
+      "statement": "¿Qué es Amazon Route 53 y qué tres funciones tiene?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Route 53",
+        "DNS"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una zona alojada es un contenedor de registros con la información de cómo enrutar el tráfico de un dominio y de sus subdominios, y lleva el mismo nombre que el dominio. Un registro es un objeto de la zona que define cómo enrutar el tráfico del dominio o de un subdominio. Los de tipo A usan IPv4 y los de tipo AAAA, IPv6."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Zona alojada y registro",
+      "statement": "¿Qué es una zona alojada y qué define un registro?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "zona alojada",
+        "registro"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un alias es un tipo de registro de Route 53 que enruta el tráfico a recursos de AWS, como distribuciones de CloudFront o buckets de S3. El TTL son los segundos que un resolvedor guarda en caché los valores de un registro: uno largo reduce el cargo por consultas y uno corto reduce el tiempo que se enruta a recursos antiguos tras un cambio."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Registro alias y TTL",
+      "statement": "¿Para qué sirve un registro alias y qué decide el TTL?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "alias",
+        "TTL"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Simple: un único recurso que cumple una función para el dominio. Ponderada: enrutar el tráfico a varios recursos en las proporciones que especificas. Latencia: tener recursos en varias Regiones de AWS y enrutar a la Región con la mejor latencia. Cada una responde a una pregunta distinta sobre cómo repartir las consultas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Políticas de reparto",
+      "statement": "¿Qué requisito resuelven las políticas simple, ponderada y de latencia?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "simple",
+        "ponderada",
+        "latencia"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Geolocalización enruta según la ubicación de los usuarios. Geoproximidad enruta según la ubicación de los recursos y, de forma opcional, desplaza tráfico de los recursos de una ubicación a los de otra. La basada en IP enruta según la ubicación de los usuarios cuando conoces las direcciones IP de las que parte el tráfico."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Políticas por ubicación",
+      "statement": "¿En qué se diferencian geolocalización, geoproximidad y la basada en IP?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "geolocalización",
+        "geoproximidad"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Monitorea un recurso concreto (endpoint por IPv4, IPv6 o nombre de dominio), el estado de otras comprobaciones o el de una alarma de CloudWatch. Con varios recursos que cumplen la misma función, la conmutación por error de DNS envía el tráfico de uno no sano a uno sano. La política de conmutación por error es activa-pasiva; la multivalor responde con hasta ocho registros sanos al azar."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Comprobaciones y conmutación",
+      "statement": "¿Qué vigila una comprobación de estado y cómo se usa en la conmutación por error?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "comprobación de estado",
+        "conmutación por error"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Registros de conmutación por error de www.example.com. Corrige su defecto principal.\nexport const dns = {\n  zona: \"example.com\",\n  comprobaciones: [\n    { id: \"hc-principal\", endpoint: \"192.0.2.10\", tipoEndpoint: \"ipv4\" },\n  ],\n  registros: [\n    { nombre: \"www.example.com\", tipo: \"A\", politica: \"failover\", rol: \"primary\", valor: \"192.0.2.10\", comprobacion: null },\n    { nombre: \"www.example.com\", tipo: \"A\", politica: \"failover\", rol: \"secondary\", valor: \"192.0.2.20\", comprobacion: null },\n  ],\n};\n",
+      "solution": {
+        "code": "export const dns = {\n  zona: \"example.com\",\n  comprobaciones: [\n    { id: \"hc-principal\", endpoint: \"192.0.2.10\", tipoEndpoint: \"ipv4\" },\n  ],\n  registros: [\n    { nombre: \"www.example.com\", tipo: \"A\", politica: \"failover\", rol: \"primary\", valor: \"192.0.2.10\", comprobacion: \"hc-principal\" },\n    { nombre: \"www.example.com\", tipo: \"A\", politica: \"failover\", rol: \"secondary\", valor: \"192.0.2.20\", comprobacion: null },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Para apartar el tráfico de un recurso no sano, Route 53 necesita una comprobación de estado que vigile ese recurso y que el registro esté asociado a ella. Mira el campo `comprobacion` de cada registro."
+        },
+        {
+          "level": 2,
+          "text": "Existe la comprobación `hc-principal`, cuyo endpoint es la dirección del servidor principal, pero el registro principal tiene `comprobacion: null`, así que ninguna comprobación lo vigila."
+        },
+        {
+          "level": 3,
+          "text": "Cambia en el registro con `rol: \"primary\"` el valor de `comprobacion` de `null` a `\"hc-principal\"`. No toques el registro secundario, los valores ni la lista de comprobaciones."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el registro principal usa una comprobación que vigila su endpoint",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const principal = dns.registros.find((r) => r.rol === \"primary\");\nassert.ok(principal, \"debe existir el registro principal\");\nconst hc = dns.comprobaciones.find((c) => c.id === principal.comprobacion);\nassert.ok(hc, \"el registro principal debe referirse a una comprobación existente\");\nassert.strictEqual(hc.endpoint, principal.valor, \"la comprobación debe vigilar el endpoint del principal\");"
+          }
+        },
+        {
+          "name": "hay un registro principal y uno secundario de conmutación por error",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(dns.registros.length, 2);\nassert.ok(dns.registros.every((r) => r.politica === \"failover\"));\nassert.deepStrictEqual(dns.registros.map((r) => r.rol).sort(), [\"primary\", \"secondary\"]);"
+          }
+        },
+        {
+          "name": "los valores de los registros no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const principal = dns.registros.find((r) => r.rol === \"primary\");\nconst secundario = dns.registros.find((r) => r.rol === \"secondary\");\nassert.strictEqual(principal.valor, \"192.0.2.10\");\nassert.strictEqual(secundario.valor, \"192.0.2.20\");\nassert.ok(dns.registros.every((r) => r.nombre === \"www.example.com\" && r.tipo === \"A\"));"
+          }
+        },
+        {
+          "name": "la comprobación y la zona se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(dns.zona, \"example.com\");\nassert.deepStrictEqual(dns.comprobaciones, [{ id: \"hc-principal\", endpoint: \"192.0.2.10\", tipoEndpoint: \"ipv4\" }]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-debug-01",
+      "type": "DEBUG",
+      "title": "El registro de conmutación por error sin comprobación",
+      "statement": "El objeto `dns` modela una zona con un registro principal y otro secundario de conmutación por error, y una comprobación de estado que vigila el servidor principal. Tal como está, Route 53 no puede saber cuándo falla el principal y no apartaría el tráfico. Corrige la configuración sin quitar ningún registro ni cambiar sus valores, y mantén la forma del valor exportado (`export const dns = { … }`).",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "conmutación por error",
+        "comprobación de estado",
+        "registro principal"
+      ],
+      "estimatedMin": 10,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política multivalor de api.example.com. Corrige sus defectos.\nexport const dns = {\n  zona: \"example.com\",\n  politica: \"multivalue\",\n  respuestasMaximas: 12,\n  comprobaciones: [\n    { id: \"hc-a\", endpoint: \"192.0.2.31\" },\n    { id: \"hc-b\", endpoint: \"192.0.2.32\" },\n  ],\n  registros: [\n    { nombre: \"api.example.com\", tipo: \"A\", valor: \"192.0.2.31\", comprobacion: \"hc-a\" },\n    { nombre: \"api.example.com\", tipo: \"A\", valor: \"192.0.2.32\", comprobacion: \"hc-b\" },\n    { nombre: \"api.example.com\", tipo: \"A\", valor: \"192.0.2.33\", comprobacion: null },\n  ],\n};\n",
+      "solution": {
+        "code": "export const dns = {\n  zona: \"example.com\",\n  politica: \"multivalue\",\n  respuestasMaximas: 8,\n  comprobaciones: [\n    { id: \"hc-a\", endpoint: \"192.0.2.31\" },\n    { id: \"hc-b\", endpoint: \"192.0.2.32\" },\n    { id: \"hc-c\", endpoint: \"192.0.2.33\" },\n  ],\n  registros: [\n    { nombre: \"api.example.com\", tipo: \"A\", valor: \"192.0.2.31\", comprobacion: \"hc-a\" },\n    { nombre: \"api.example.com\", tipo: \"A\", valor: \"192.0.2.32\", comprobacion: \"hc-b\" },\n    { nombre: \"api.example.com\", tipo: \"A\", valor: \"192.0.2.33\", comprobacion: \"hc-c\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "las respuestas máximas no superan las que admite la política",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(Number.isInteger(dns.respuestasMaximas) && dns.respuestasMaximas >= 1, \"debe haber al menos una respuesta\");\nassert.ok(dns.respuestasMaximas <= 8, \"multivalor responde con hasta ocho registros\");"
+          }
+        },
+        {
+          "name": "cada registro está vigilado por una comprobación de su endpoint",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "for (const r of dns.registros) {\n  const hc = dns.comprobaciones.find((c) => c.id === r.comprobacion);\n  assert.ok(hc, r.valor + \" debe tener una comprobación existente\");\n  assert.strictEqual(hc.endpoint, r.valor, \"la comprobación debe vigilar \" + r.valor);\n}"
+          }
+        },
+        {
+          "name": "los valores de los registros y la política no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(dns.politica, \"multivalue\");\nassert.deepStrictEqual(dns.registros.map((r) => r.valor), [\"192.0.2.31\", \"192.0.2.32\", \"192.0.2.33\"]);\nassert.ok(dns.registros.every((r) => r.nombre === \"api.example.com\" && r.tipo === \"A\"));"
+          }
+        },
+        {
+          "name": "las comprobaciones originales se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const a = dns.comprobaciones.find((c) => c.id === \"hc-a\");\nconst b = dns.comprobaciones.find((c) => c.id === \"hc-b\");\nassert.deepStrictEqual(a, { id: \"hc-a\", endpoint: \"192.0.2.31\" });\nassert.deepStrictEqual(b, { id: \"hc-b\", endpoint: \"192.0.2.32\" });\nassert.strictEqual(dns.registros.length, 3);"
+          }
+        },
+        {
+          "name": "cada comprobación se usa en un solo registro",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const ids = dns.registros.map((r) => r.comprobacion);\nassert.strictEqual(new Set(ids).size, ids.length);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-debug-02",
+      "type": "DEBUG",
+      "title": "La política multivalor que responde con registros no vigilados",
+      "statement": "El objeto `dns` describe una configuración multivalor de `api.example.com` que debe responder a cada consulta solo con registros sanos y respetar lo que permite la política. Tal como está, uno de los registros no tiene ninguna comprobación que lo vigile y el máximo de respuestas configurado no es el que admite la política. Localiza los ajustes que faltan y corrígelos sin cambiar los valores de los registros, y mantén la forma del valor exportado (`export const dns = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "multivalor",
+        "comprobación de estado",
+        "hasta ocho registros sanos"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de DNS con Route 53 (borrador generado por un asistente)\nCarga de trabajo: un sitio web con servidores en varias Regiones y un respaldo pasivo.\n1. Route 53 hace tres funciones, en cualquier combinación: registro de dominios, enrutamiento del tráfico DNS y comprobación del estado de los recursos.\n2. La política simple sirve para repartir el tráfico entre varios recursos en las proporciones que se especifiquen.\n3. La política de latencia se usa cuando hay recursos en varias Regiones de AWS y se quiere enrutar a la Región con la mejor latencia.\n4. La política multivalor responde con hasta ocho registros elegidos al azar, estén o no sanos.\n5. La conmutación por error configura una arquitectura activa-pasiva, y la conmutación por error de DNS aparta el tráfico de un recurso no sano.\n6. Un TTL más largo hace que, tras cambiar la dirección de un servidor, los resolvedores dejen de enviar tráfico al valor antiguo antes.\n7. Un registro alias permite enrutar el tráfico a recursos de AWS como una distribución de CloudFront o un bucket de S3."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Funciones de Route 53",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Route 53 hace registro de dominios, enrutamiento DNS y comprobación de estado, en cualquier combinación."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Para qué sirve la política simple",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "La política simple es para un único recurso que cumple una función para el dominio; repartir en proporciones es la política ponderada."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Política de latencia",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la latencia se usa con recursos en varias Regiones de AWS para enrutar a la Región con la mejor latencia."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Registros que devuelve la política multivalor",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Multivalor responde con hasta ocho registros sanos elegidos al azar; no devuelve registros no sanos."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Conmutación por error",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la política de conmutación por error es activa-pasiva, y la conmutación por error de DNS enruta el tráfico de un recurso no sano a uno sano."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Efecto de un TTL largo",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Un TTL largo hace que los resolvedores guarden el valor más tiempo y enruten a recursos antiguos durante más tiempo; el corto reduce ese tiempo."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Registro alias",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: un alias es un tipo de registro de Route 53 para enrutar el tráfico a recursos de AWS como distribuciones de CloudFront y buckets de S3."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-auditoria-01",
+      "type": "AUDIT",
+      "title": "Auditar un informe de DNS y comprobaciones de estado generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre cómo configurar el DNS de una empresa con Route 53. Audítalo contra las páginas oficiales de Route 53 (qué es, conceptos, políticas de enrutamiento y comprobaciones de estado): marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "concepts": [
+        "políticas de enrutamiento",
+        "comprobaciones de estado",
+        "TTL",
+        "registro alias"
+      ],
+      "estimatedMin": 15,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Política ponderada, con una proporción de tráfico fija para cada Región",
+            "explanation": "Descartada: la ponderada reparte el tráfico en las proporciones que tú especificas; no mide qué Región ofrece la mejor latencia."
+          },
+          {
+            "id": "b",
+            "text": "Política simple, con un registro independiente para cada Región",
+            "explanation": "Descartada: la simple está pensada para un único recurso que cumple una función para el dominio, no para elegir entre Regiones."
+          },
+          {
+            "id": "c",
+            "text": "Política de latencia, con un registro por cada Región con recursos",
+            "explanation": "Es la correcta: la latencia se usa cuando hay recursos en varias Regiones de AWS y se quiere enrutar a la Región con la mejor latencia."
+          },
+          {
+            "id": "d",
+            "text": "Política de geolocalización, según la ubicación de los usuarios",
+            "explanation": "Descartada: la geolocalización decide por la ubicación de los usuarios, no por la latencia que ofrece cada Región."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-quiz-01",
+      "type": "QUIZ",
+      "title": "Enrutar a la Región con la mejor latencia",
+      "statement": "Una tienda tiene su aplicación web desplegada en varias Regiones de AWS y quiere que cada consulta DNS de su dominio se responda con el recurso de la Región que ofrece la mejor latencia. ¿Qué política de enrutamiento es la MÁS adecuada para el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "política de latencia",
+        "varias Regiones"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una comprobación de estado que monitoree el servidor principal",
+            "explanation": "Es la correcta: una comprobación de estado vigila un recurso, y con ella Route 53 sabe cuándo apartar el tráfico del recurso no sano."
+          },
+          {
+            "id": "b",
+            "text": "Un registro alias que apunte a una distribución de CloudFront",
+            "explanation": "Descartada: un alias enruta el tráfico a recursos de AWS como CloudFront o S3, pero no vigila el estado del servidor principal."
+          },
+          {
+            "id": "c",
+            "text": "Un conjunto de delegación reutilizable con cuatro servidores de nombres",
+            "explanation": "Descartada: un conjunto de delegación reutilizable sirve para asignar los mismos servidores de nombres a varias zonas, no para detectar fallos."
+          },
+          {
+            "id": "d",
+            "text": "Una zona alojada privada con el nombre del dominio del servidor",
+            "explanation": "Descartada: el DNS privado enruta el tráfico dentro de una o más VPC; no informa del estado de un servidor."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué crear para que la conmutación detecte el fallo",
+      "statement": "Un equipo tiene dos servidores web que cumplen la misma función y quiere una configuración activa-pasiva: Route 53 debe enviar el tráfico al servidor secundario cuando el principal no esté sano. Ya eligió la política de conmutación por error. ¿Qué debe crear PRIMERO para que Route 53 detecte el estado del servidor principal?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "comprobación de estado",
+        "conmutación por error"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Fijar un TTL largo, para que los resolvedores guarden el valor más tiempo",
+            "explanation": "Descartada: un TTL largo reduce el cargo por consultas, pero aumenta el tiempo durante el que se enruta a los recursos antiguos."
+          },
+          {
+            "id": "b",
+            "text": "Cambiar la política del registro a ponderada con un peso muy alto",
+            "explanation": "Descartada: la política ponderada reparte tráfico en proporciones; no cambia cuánto tiempo guardan el valor los resolvedores."
+          },
+          {
+            "id": "c",
+            "text": "Mover el registro a una zona alojada privada de la VPC del equipo",
+            "explanation": "Descartada: el DNS privado resuelve nombres para instancias dentro de VPC; no acorta el tiempo de caché de los resolvedores públicos."
+          },
+          {
+            "id": "d",
+            "text": "Fijar un TTL corto, para que los resolvedores consulten con más frecuencia",
+            "explanation": "Es la correcta: un TTL corto reduce el tiempo que se enruta a recursos antiguos tras un cambio, a cambio de que Route 53 responda a más consultas."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-quiz-03",
+      "type": "QUIZ",
+      "title": "Reducir el tiempo con la dirección antigua",
+      "statement": "Un equipo va a cambiar la dirección IP del servidor de www.example.com y quiere que los resolvedores DNS sigan enviando tráfico a la dirección antigua durante el MENOR tiempo posible tras el cambio, aunque eso suponga más consultas. ¿Qué ajuste del registro lo consigue?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "TTL",
+        "resolvedor DNS",
+        "registro"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Política de geolocalización, con un registro por cada país",
+            "explanation": "Descartada: la geolocalización responde según la ubicación de los usuarios, no con varios registros sanos elegidos al azar."
+          },
+          {
+            "id": "b",
+            "text": "Política multivalor, con una comprobación de estado por registro",
+            "explanation": "Es la correcta: multivalor responde a las consultas con hasta ocho registros sanos elegidos al azar."
+          },
+          {
+            "id": "c",
+            "text": "Política de conmutación por error, con un registro principal y otro de respaldo",
+            "explanation": "Descartada: la conmutación por error es activa-pasiva y envía el tráfico a un recurso sano, no a varios elegidos al azar."
+          },
+          {
+            "id": "d",
+            "text": "Política ponderada, con el mismo peso en cada registro",
+            "explanation": "Descartada: la ponderada reparte el tráfico en las proporciones que se especifican; no limita las respuestas a ocho registros sanos."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-quiz-04",
+      "type": "QUIZ",
+      "title": "Varias respuestas sanas elegidas al azar",
+      "statement": "Una API se publica con varios servidores equivalentes y el equipo quiere que cada consulta DNS reciba como respuesta varias direcciones, solo de servidores sanos y elegidas al azar, hasta un máximo de ocho. ¿Qué política de enrutamiento cumple ÚNICAMENTE ese comportamiento?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "política multivalor",
+        "registros sanos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Política de latencia, con un registro por Región",
+            "explanation": "Descartada: la latencia enruta a la Región con la mejor latencia; el equipo no controla qué proporción recibe cada recurso."
+          },
+          {
+            "id": "b",
+            "text": "Política de conmutación por error, con la versión nueva como respaldo",
+            "explanation": "Descartada: la conmutación por error es activa-pasiva; el respaldo solo recibe tráfico si el principal deja de estar sano."
+          },
+          {
+            "id": "c",
+            "text": "Política ponderada, con un peso para cada versión",
+            "explanation": "Es la correcta: la ponderada enruta el tráfico a varios recursos en las proporciones que se especifican."
+          },
+          {
+            "id": "d",
+            "text": "Política de geolocalización, con la versión nueva en una ubicación",
+            "explanation": "Descartada: la geolocalización decide según la ubicación de los usuarios, no según una proporción de tráfico fijada por el equipo."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": null,
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-quiz-05",
+      "type": "QUIZ",
+      "title": "Dar una fracción del tráfico a una versión nueva",
+      "statement": "Un equipo publica una versión nueva de su aplicación y quiere enviarle una proporción pequeña del tráfico, que él mismo fija, mientras la versión actual recibe el resto. ¿Qué política de enrutamiento da MAYOR control sobre esa proporción?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "política ponderada",
+        "proporciones"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Política de latencia, con un registro por cada ubicación",
+            "explanation": "Descartada: la latencia enruta a la Región con la mejor latencia; no se basa en la ubicación de los recursos ni permite desplazar tráfico."
+          },
+          {
+            "id": "b",
+            "text": "Política de geolocalización, con un registro por cada ubicación",
+            "explanation": "Descartada: la geolocalización decide según la ubicación de los usuarios, no según la de los recursos."
+          },
+          {
+            "id": "c",
+            "text": "Política simple, con un registro que apunte a todas las ubicaciones",
+            "explanation": "Descartada: la simple está pensada para un único recurso que cumple una función, no para elegir entre ubicaciones."
+          },
+          {
+            "id": "d",
+            "text": "Política de geoproximidad, con un registro por cada ubicación",
+            "explanation": "Es la correcta: la geoproximidad enruta según la ubicación de los recursos y, opcionalmente, desplaza tráfico de una ubicación a otra."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-quiz-06",
+      "type": "QUIZ",
+      "title": "Desplazar tráfico según la ubicación de los recursos",
+      "statement": "Una empresa tiene recursos en varias ubicaciones y quiere enrutar el tráfico según la ubicación de esos recursos y, además, poder desplazar parte del tráfico de los recursos de una ubicación a los de otra. ¿Qué política de enrutamiento cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "geoproximidad",
+        "ubicación de los recursos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo pueden vigilar un servidor web, nunca otras comprobaciones",
+            "explanation": "No cumple: una comprobación también puede monitorear el estado de otras comprobaciones y el de una alarma de CloudWatch."
+          },
+          {
+            "id": "b",
+            "text": "Pueden monitorear el estado de otras comprobaciones de estado",
+            "explanation": "Cumple: cada comprobación puede vigilar un recurso, el estado de otras comprobaciones o el de una alarma de CloudWatch."
+          },
+          {
+            "id": "c",
+            "text": "Avisan por correo por sí solas, sin configurar una alarma de CloudWatch",
+            "explanation": "No cumple: para recibir un aviso cuando cambia el estado se configura una alarma de CloudWatch por cada comprobación."
+          },
+          {
+            "id": "d",
+            "text": "Pueden monitorear el estado de una alarma de Amazon CloudWatch",
+            "explanation": "Cumple: una comprobación puede basarse en el estado de una alarma de CloudWatch, además de vigilar un recurso concreto."
+          },
+          {
+            "id": "e",
+            "text": "Solo admiten un nombre de dominio como endpoint, no una dirección IP",
+            "explanation": "No cumple: el endpoint se puede indicar por dirección IPv4, por dirección IPv6 o por nombre de dominio."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-quiz-07",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre las comprobaciones de estado",
+      "statement": "Un equipo diseña la monitorización de un sitio con Route 53. Selecciona DOS afirmaciones correctas sobre las comprobaciones de estado de Route 53.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "comprobación de estado",
+        "CloudWatch"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Conmutación por error: configura una arquitectura activa-pasiva",
+            "explanation": "Cumple: la política de conmutación por error se usa para configurar un esquema activo-pasivo."
+          },
+          {
+            "id": "b",
+            "text": "Latencia: enruta según la ubicación geográfica de los usuarios",
+            "explanation": "No cumple: la latencia enruta a la Región con la mejor latencia; decidir por la ubicación de los usuarios es la geolocalización."
+          },
+          {
+            "id": "c",
+            "text": "Ponderada: responde con hasta ocho registros sanos elegidos al azar",
+            "explanation": "No cumple: responder con hasta ocho registros sanos al azar es la política multivalor; la ponderada reparte por proporciones."
+          },
+          {
+            "id": "d",
+            "text": "Simple: reparte el tráfico entre varios recursos en proporciones fijas",
+            "explanation": "No cumple: la simple es para un único recurso que cumple una función; las proporciones son de la política ponderada."
+          },
+          {
+            "id": "e",
+            "text": "Geolocalización: enruta según la ubicación de los usuarios",
+            "explanation": "Cumple: la geolocalización se usa para enrutar el tráfico según la ubicación de los usuarios."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-quiz-08",
+      "type": "QUIZ",
+      "title": "Selecciona las afirmaciones correctas sobre las políticas de enrutamiento",
+      "statement": "Un equipo repasa las políticas de enrutamiento de Route 53 antes de configurar sus registros. Selecciona DOS afirmaciones correctas sobre ellas.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "políticas de enrutamiento",
+        "geolocalización",
+        "conmutación por error"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "simple",
+            "term": "Política simple",
+            "definition": "Un único recurso que cumple una función para el dominio, como el servidor web de un sitio"
+          },
+          {
+            "id": "ponderada",
+            "term": "Política ponderada",
+            "definition": "Varios recursos que reciben el tráfico en las proporciones que tú especificas"
+          },
+          {
+            "id": "latencia",
+            "term": "Política de latencia",
+            "definition": "Recursos en varias Regiones de AWS; el tráfico va a la Región que da el mejor tiempo de respuesta"
+          },
+          {
+            "id": "geolocalizacion",
+            "term": "Política de geolocalización",
+            "definition": "Enrutamiento según la ubicación de los usuarios que hacen la consulta"
+          },
+          {
+            "id": "geoproximidad",
+            "term": "Política de geoproximidad",
+            "definition": "Enrutamiento según la ubicación de los recursos, con opción de desplazar tráfico entre ubicaciones"
+          },
+          {
+            "id": "failover",
+            "term": "Política de conmutación por error",
+            "definition": "Arquitectura activa-pasiva que aparta el tráfico de un recurso que no está sano"
+          },
+          {
+            "id": "multivalor",
+            "term": "Política multivalor",
+            "definition": "Respuesta con hasta ocho registros sanos elegidos al azar"
+          },
+          {
+            "id": "hc",
+            "term": "Comprobación de estado",
+            "definition": "Vigila un recurso, otras comprobaciones o una alarma de CloudWatch"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada política con el caso que cubre. Si dudas entre dos, pregúntate cuántos recursos hay, si el reparto es por proporciones, por latencia, por la ubicación de los usuarios o de los recursos, y si hace falta vigilar la salud.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Un recurso o varios: la simple frente a la ponderada y la multivalor",
+              "Qué decide la respuesta: latencia, ubicación de los usuarios o ubicación de los recursos",
+              "Salud: la conmutación por error activa-pasiva y la comprobación de estado que la hace posible"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-memoria-01",
+      "type": "MEMORY",
+      "title": "Política de enrutamiento y caso que cubre",
+      "statement": "Empareja cada política de enrutamiento de Route 53, o la comprobación de estado, con el caso que cubre.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "políticas de enrutamiento",
+        "comprobación de estado"
+      ],
+      "estimatedMin": 6,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "slug": "aws-u2-2-6-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: qué política y por qué",
+      "statement": "Elige una situación que conozcas (por ejemplo, un sitio web con servidores en dos Regiones y un respaldo) y escribe un registro breve de decisión sobre cómo configurarías su DNS en Route 53, en 5 a 7 líneas:\n\n1) Decisión: qué política de enrutamiento usarías para cada registro (simple, ponderada, latencia, geolocalización, geoproximidad, conmutación por error o multivalor) y qué comprobaciones de estado crearías.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, la política simple para repartir tráfico, o la conmutación por error sin comprobación de estado) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (comprobaciones, registros de respaldo, el TTL) y qué cargos aparecen (más consultas con un TTL corto, comprobaciones).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial de Route 53 (políticas de enrutamiento o comprobaciones de estado) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el requisito, la política y la comprobación que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "DNS",
+        "decisión",
+        "política de enrutamiento"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/route-53-concepts.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html"
+      ],
+      "order": 19
+    }
+  ]
+}
