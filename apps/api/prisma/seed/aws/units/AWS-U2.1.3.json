@@ -1,0 +1,1271 @@
+{
+  "code": "AWS-U2.1.3",
+  "lessons": [
+    {
+      "slug": "aws-u2-1-3-recurso-limites-y-condiciones",
+      "title": "Política de recurso, límite de permisos y condiciones: cuándo y hasta dónde se permite",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "En la unidad anterior viste cómo se decide una petición: denegación explícita, permiso o denegación implícita. Aquí añades tres piezas que el examen mezcla en el mismo escenario: la política de recurso (quién puede hacer qué sobre un recurso concreto), el límite de permisos (hasta dónde puede llegar una identidad) y la condición (en qué circunstancias de la petición vale una sentencia). Según la guía de IAM, las políticas de identidad se asocian a un usuario, un grupo o un rol y fijan lo que esa identidad puede hacer; las políticas de recurso se asocian a un recurso, como un bucket de Amazon S3, una cola de SQS, un punto de enlace de VPC, una clave de KMS o una tabla de DynamoDB, y fijan quién tiene acceso a él y qué acciones puede hacer. Las políticas de recurso solo existen en línea: no hay versión administrada."
+        },
+        {
+          "type": "list",
+          "title": "Tres piezas, tres preguntas",
+          "items": [
+            "Política de recurso: ¿qué principal puede actuar sobre este recurso y con qué acciones? Puede conceder permisos a un usuario que no tiene ninguna política de identidad, y puede contener una denegación explícita que anule el permiso de la identidad.",
+            "Límite de permisos: ¿cuál es el máximo que pueden conceder las políticas de identidad de este usuario o rol? No concede nada por sí solo: sin una política de identidad que permita la acción, el límite no da acceso.",
+            "Condición: ¿cuándo se aplica esta sentencia? Compara claves del contexto de la petición (por ejemplo aws:SourceIp o aws:MultiFactorAuthAge) con valores de la política mediante un operador. Una sentencia con condición solo cuenta si la condición se cumple con esa petición."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Identidad y recurso: dentro de una cuenta y entre cuentas",
+          "text": "Las políticas de identidad y de recurso son políticas de permisos y se evalúan juntas. Para una petición dentro de una sola cuenta, AWS comprueba primero si hay un Deny en alguna de ellas; si existe, deniega. Después busca un Allow: si al menos una sentencia permite la acción, se permite, da igual que esté en la política de identidad o en la de recurso. La guía incluye el ejemplo de Zhang, que no tiene políticas de identidad y aun así tiene acceso completo porque la política de recurso se lo concede. Entre cuentas la regla cambia: quien pide, en la cuenta A, debe tener una política de identidad que le permita la petición y, además, la política de recurso de la cuenta B debe permitirle el acceso. Si falta una de las dos, la petición falla."
+        },
+        {
+          "type": "paragraph",
+          "title": "El límite de permisos y la intersección",
+          "text": "Un límite de permisos es una política administrada que fija el máximo que una política de identidad puede conceder a un usuario o a un rol. Los permisos efectivos son los que permiten a la vez las políticas de identidad y el límite: una intersección. En el ejemplo de la guía, el límite de Shirley permite acciones de S3, CloudWatch y EC2; si le añaden una política de identidad con iam:CreateUser, la operación falla porque el límite no la incluye. Una denegación explícita en la política de identidad o en el límite anula el Allow. El límite tiene una excepción que el examen disfruta: dentro de la misma cuenta, una política de recurso que concede permisos al ARN de un usuario IAM no queda limitada por una denegación implícita de la política de identidad ni del límite. Si el Principal es el ARN de un rol, en cambio, esa concesión sí queda limitada por una denegación implícita del límite."
+        },
+        {
+          "type": "paragraph",
+          "title": "La condición: contexto, operador y valor",
+          "text": "El elemento Condition es opcional y tiene la forma operador, clave de contexto y valor. Cuando se hace una petición, AWS reúne en un contexto la información de quién pide, sobre qué recurso, con qué acción y otras propiedades del entorno (por ejemplo aws:SourceIp o aws:CurrentTime), y la compara con la política. Las claves globales llevan el prefijo aws: y las de un servicio llevan el prefijo del servicio, como ec2:InstanceType. Dos reglas dan puntos en el examen. Primera: el nombre de una clave no distingue mayúsculas, pero el valor sí puede distinguirlas según el operador: StringEquals con john no coincide con John, mientras que StringEqualsIgnoreCase coincide con los dos. Segunda: una clave que no aparece en la petición se considera una discrepancia, de modo que una condición de tipo NumericLessThanEquals sobre aws:MultiFactorAuthAge no se cumple si quien pide usa claves de acceso sin MFA, porque esa clave no existe en su petición. El operador Null permite comprobar si una clave existe."
+        },
+        {
+          "type": "mermaid",
+          "title": "Cómo combina el arnés política de recurso, límite y condiciones",
+          "code": "flowchart TD\n  P[\"Petición y su contexto: acción, recurso, claves como aws:SourceIp\"] --> F[\"Una sentencia cuenta solo si acción, recurso, principal y condición coinciden\"]\n  F --> D{\"¿Algún Deny aplicable en identidad, recurso o límite?\"}\n  D -- \"Sí\" --> X[\"Denegación explícita\"]\n  D -- \"No\" --> A{\"¿Algún Allow aplicable en identidad o en recurso?\"}\n  A -- \"No\" --> I[\"Denegación implícita\"]\n  A -- \"Sí\" --> U{\"¿Lo concede la política de recurso con el ARN del usuario como Principal?\"}\n  U -- \"Sí, misma cuenta\" --> OK[\"Permiso\"]\n  U -- \"No\" --> L{\"¿Hay límite de permisos y no incluye la acción?\"}\n  L -- \"Sí\" --> I\n  L -- \"No\" --> OK"
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué dicen las fuentes y qué es modelo del curso",
+          "text": "Las fuentes enuncian cada regla por separado: la unión de identidad y recurso en una cuenta, las dos cuentas entre cuentas, la intersección con el límite, la excepción de la política de recurso para el ARN de un usuario, y la mecánica de claves, operadores y claves ausentes. El diagrama las reúne en un solo recorrido y es el modelo que implementa aws.iam.evaluate. En los ejercicios, el arnés evalúa además los operadores IpAddress y NotIpAddress, Bool, los numéricos y los de fecha; son parte del modelo del curso y no se pide nada que no puedas razonar con las reglas anteriores. El arnés no modela NotPrincipal: la guía de límites recomienda, en su lugar, ArnNotEquals con aws:PrincipalArn."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: facturas legibles solo desde la oficina",
+          "text": "El contable (usuario IAM de la cuenta 111122223333) tiene una política de identidad que permite leer y escribir objetos del bucket amzn-s3-demo-bucket-facturas. Su límite de permisos solo incluye s3:GetObject sobre esos objetos. La política del bucket contiene un Deny para cualquier principal con s3:* cuando la dirección de origen no está en el rango de la oficina. Primera petición: leer una factura desde la oficina. Ningún Deny se cumple, la identidad permite la acción y el límite también: permiso. Segunda: escribir una factura desde la oficina. La identidad lo permite, pero el límite no incluye s3:PutObject: denegación implícita. Tercera: leer una factura desde otra red. La condición del Deny se cumple y la denegación explícita gana a cualquier permiso. Cuarta: escribir desde otra red. El Deny también aplica: denegación explícita, aunque la acción ni siquiera estuviera permitida por el límite."
+        },
+        {
+          "type": "code",
+          "title": "Las cuatro peticiones comprobadas con aws.iam.evaluate",
+          "language": "typescript",
+          "code": "const identidad = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerYEscribirFacturas\",\n      Effect: \"Allow\",\n      Action: [\"s3:GetObject\", \"s3:PutObject\"],\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-facturas/*\",\n    },\n  ],\n};\nconst limite = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"SoloLeer\", Effect: \"Allow\", Action: \"s3:GetObject\", Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-facturas/*\" },\n  ],\n};\nconst recurso = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"SoloDesdeLaOficina\",\n      Effect: \"Deny\",\n      Principal: \"*\",\n      Action: \"s3:*\",\n      Resource: [\"arn:aws:s3:::amzn-s3-demo-bucket-facturas\", \"arn:aws:s3:::amzn-s3-demo-bucket-facturas/*\"],\n      Condition: { NotIpAddress: { \"aws:SourceIp\": \"203.0.113.0/24\" } },\n    },\n  ],\n};\nconst decide = (action: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/contable\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:s3:::amzn-s3-demo-bucket-facturas/2026/enero.pdf\", accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidad],\n    permissionsBoundary: limite,\n    resourcePolicy: recurso,\n  }).decision;\nconsole.log(decide(\"s3:GetObject\", \"203.0.113.20\"));  // Allow\nconsole.log(decide(\"s3:PutObject\", \"203.0.113.20\"));  // ImplicitDeny: el límite no incluye PutObject\nconsole.log(decide(\"s3:GetObject\", \"198.51.100.8\"));  // ExplicitDeny: la condición del Deny se cumple\nconsole.log(decide(\"s3:PutObject\", \"198.51.100.8\"));  // ExplicitDeny: el Deny gana al resto"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el permiso que ya está en la política de recurso",
+          "text": "Si una pregunta dice que un usuario de la misma cuenta aparece como Principal en la política de un recurso y tiene un límite de permisos que no incluye la acción, la política de recurso concede el acceso porque el límite no la recorta cuando el Principal es el ARN del usuario. La respuesta cambia si el Principal es un rol: ahí el límite sí recorta. Y si la pregunta mezcla dos cuentas, no basta con un solo Allow: hacen falta el de identidad y el de recurso."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que un límite de permisos concede acceso",
+          "text": "Causa: ver un Allow en el límite de permisos y suponer que el usuario ya puede hacer esa acción. Consecuencia: la persona sigue recibiendo una denegación implícita porque ninguna política de identidad ni de recurso concede la acción; el límite solo fija un máximo. Solución: comprueba que exista una política de identidad (o una política de recurso aplicable) que permita la acción y que el límite también la incluya; los permisos efectivos son la intersección de ambos."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: dar por suficiente un Allow en una sola cuenta cuando la petición es entre cuentas",
+          "text": "Causa: aplicar la regla de la misma cuenta, en la que basta un Allow en identidad o en recurso, a una petición de la cuenta A hacia la cuenta B. Consecuencia: añades solo la política de recurso en la cuenta B (o solo la de identidad en la cuenta A) y la petición sigue fallando. Solución: en una petición entre cuentas verifica los dos permisos: la política de identidad de quien pide y la política de recurso de la cuenta que posee el recurso."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: olvidar que los valores distinguen mayúsculas y que una clave ausente no coincide",
+          "text": "Causa: suponer que StringEquals ignora las mayúsculas o que una condición sobre una clave que no viene en la petición se cumple por defecto. Consecuencia: un Allow condicionado nunca se activa (por ejemplo, john frente a John, o una condición de edad de MFA con claves de acceso sin MFA) y diagnosticas un problema de permisos donde hay un problema de condición. Solución: lee el contexto de la petición, compara valor y operador carácter por carácter, usa StringEqualsIgnoreCase si debe ignorar mayúsculas y el operador Null si necesitas distinguir una clave ausente."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Decidir el resultado de una petición que combina política de identidad, política de recurso, límite de permisos y condiciones, y diseñar una combinación que dé el acceso mínimo. Prepara el examen SAA-C03, dominio 1 (Diseñar arquitecturas seguras), tarea 1.1. Criterio: las pruebas de los ejercicios pasan y sabes explicar, para cada petición, si la decide una denegación explícita, el límite de permisos, la falta de un Allow o una condición que no se cumple."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y sigue, petición por petición, el ejemplo del contable y las facturas. Explica con tus palabras, sin mirar el texto, el diagrama de la lección. Después responde: si el Principal de la sentencia de recurso fuera un rol en lugar del ARN del usuario, ¿qué cambia en la interacción con el límite? ¿Y si el usuario estuviera en otra cuenta?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Exportaciones solo desde la oficina: límite de permisos y política del bucket». Empieza por llamar a aws.iam.evaluate con el estado inicial, lee decision y reason de cinco peticiones (leer y borrar un objeto desde la oficina, leer desde otra red, una acción de EC2 y otro bucket) y decide qué defecto corresponde al límite y cuál a la política de recurso antes de editar."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Ventas en DynamoDB: región, MFA y congelación de una tabla». Decide qué va en el límite, qué va en la política de recurso de la tabla y qué condición usa cada sentencia. Comprueba con aws.iam.evaluate también las peticiones que deben terminar en denegación implícita. Criterio de paso: todas las pruebas del laboratorio pasan."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente que escriba una política de bucket que deniegue el acceso a quien no llegue desde la red de la oficina, y audita su respuesta contra las guías de políticas de identidad y de recurso, de límites de permisos y del elemento Condition (consultadas con fecha). Anota qué operador y qué clave de contexto usó y qué petición de prueba demostraría que acierta. Después resuelve «Depurar la política de bucket que bloquea a la oficina»."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: cuándo basta un Allow y cuándo hacen falta dos; qué efecto tiene un límite de permisos y qué no puede hacer; en qué caso una política de recurso no queda limitada por el límite; qué le ocurre a una condición cuando la clave no está en la petición; y cuándo distinguen mayúsculas los valores. Luego resuelve las 8 preguntas de la unidad sin apuntes."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa quiere que un equipo externo (otra cuenta) lea un único bucket durante el horario de una auditoría, sin crear usuarios en su cuenta. Diseña qué política va en cada cuenta, qué condición acota la ventana y qué límite de permisos aplicarías al rol del equipo externo, y di qué resultado recibiría una petición fuera de ventana. Explícalo en dos minutos como si fuera una pregunta de entrevista."
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-iam-politicas-identidad-y-recurso",
+          "order": 0,
+          "note": "Fuente de qué es una política de identidad y de recurso, de la unión dentro de una cuenta, de la regla entre cuentas y de que la denegación explícita anula un permiso."
+        },
+        {
+          "resourceSlug": "aws-iam-limites-de-permisos",
+          "order": 1,
+          "note": "Fuente del límite como máximo que no concede permisos, de la intersección, de la excepción de la política de recurso para el ARN de un usuario y de NotPrincipal."
+        },
+        {
+          "resourceSlug": "aws-iam-elemento-condition",
+          "order": 2,
+          "note": "Fuente de la forma de una condición, del contexto de la petición, de las claves globales y de servicio, de la sensibilidad a mayúsculas y de la clave ausente."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 3,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) incluye la tarea 1.1, diseñar el acceso seguro a los recursos de AWS, que cubre la autorización con políticas."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La de identidad se asocia a un usuario, grupo o rol y puede ser administrada o en línea. La de recurso se asocia a un recurso (bucket de S3, cola de SQS, clave de KMS, tabla de DynamoDB) y solo existe en línea."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Identidad frente a recurso",
+      "statement": "¿Dónde se asocia una política de identidad y dónde una de recurso, y cuál puede ser administrada?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "política de identidad",
+        "política de recurso"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En una sola cuenta basta un Allow en cualquiera de las dos, si no hay un Deny. Entre cuentas hacen falta los dos: la identidad de quien pide, en su cuenta, y la política de recurso de la cuenta del recurso."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Misma cuenta frente a entre cuentas",
+      "statement": "Si una política de identidad y una de recurso se evalúan juntas, ¿cuándo basta con un Allow y cuándo hacen falta dos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "unión",
+        "entre cuentas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Fija el máximo que las políticas de identidad pueden conceder a un usuario o rol. Los permisos efectivos son la intersección de ambos. Por sí solo no concede ningún permiso."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué hace un límite de permisos",
+      "statement": "¿Qué papel tiene un límite de permisos y qué no puede hacer?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "límite de permisos",
+        "intersección"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "No: la concesión al ARN de un usuario IAM no se limita por una denegación implícita de la política de identidad ni del límite. Si el Principal es el ARN de un rol, sí la limita una denegación implícita del límite."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Política de recurso y límite",
+      "statement": "En la misma cuenta, ¿una política de recurso que nombra el ARN de un usuario queda recortada por su límite de permisos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "política de recurso",
+        "límite de permisos"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Operador, clave de contexto y valor: se compara la clave de la petición con el valor de la política. Una clave que no aparece en la petición se considera una discrepancia y la condición no coincide."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Forma de una condición",
+      "statement": "¿Qué tres elementos tiene una condición y qué ocurre si la clave de contexto no está en la petición?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "condición",
+        "clave de contexto"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El nombre de la clave no las distingue (aws:SourceIp equivale a AWS:SourceIp). El valor depende del operador: StringEquals las distingue y StringEqualsIgnoreCase no."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Mayúsculas en claves y valores",
+      "statement": "¿Se distinguen las mayúsculas en una clave de contexto y en su valor dentro de una condición?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "StringEquals",
+        "mayúsculas"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cuenta 111122223333. La política de identidad de la analista NO se cambia.\nexport const identidad = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerContratos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n    },\n  ],\n};\n\n// Política del bucket de contratos: solo se debe poder entrar desde la red de la oficina.\nexport const recurso = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"SoloDesdeLaOficina\",\n      Effect: \"Deny\",\n      Principal: \"*\",\n      Action: \"s3:*\",\n      Resource: [\n        \"arn:aws:s3:::amzn-s3-demo-bucket-contratos\",\n        \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n      ],\n      Condition: { IpAddress: { \"aws:SourceIp\": \"203.0.113.0/24\" } },\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Cuenta 111122223333. La política de identidad de la analista NO se cambia.\nexport const identidad = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerContratos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n    },\n  ],\n};\n\n// Política del bucket de contratos: solo se debe poder entrar desde la red de la oficina.\nexport const recurso = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"SoloDesdeLaOficina\",\n      Effect: \"Deny\",\n      Principal: \"*\",\n      Action: \"s3:*\",\n      Resource: [\n        \"arn:aws:s3:::amzn-s3-demo-bucket-contratos\",\n        \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n      ],\n      Condition: { NotIpAddress: { \"aws:SourceIp\": \"203.0.113.0/24\" } },\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.iam.evaluate con la política de identidad, la política del bucket en resourcePolicy y el contexto {\"aws:SourceIp\": ...}. Prueba una dirección de la oficina y otra de fuera y lee decision y reason: ¿quién recibe la denegación explícita?"
+        },
+        {
+          "level": 2,
+          "text": "El reason dice que el Deny de la política del bucket se cumple para quien llega desde la red de la oficina: justo al revés de lo que se quiere. La sentencia debe cumplirse con las direcciones que NO son de la oficina."
+        },
+        {
+          "level": 3,
+          "text": "Cambia únicamente el operador de la condición por su opuesto. Conserva el Effect Deny, la acción, los recursos, la clave aws:SourceIp y el rango de la oficina."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la política del bucket es válida y la de identidad no se ha tocado",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerContratos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n    },\n  ],\n};\nconst decide = (action: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/2026/acuerdo.pdf\", accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    resourcePolicy: recurso,\n  }).decision;\nassert.deepStrictEqual(aws.iam.validatePolicy(recurso), []);\nassert.deepStrictEqual(identidad, identidadFija);"
+          }
+        },
+        {
+          "name": "la analista lee contratos desde la red de la oficina",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerContratos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n    },\n  ],\n};\nconst decide = (action: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/2026/acuerdo.pdf\", accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    resourcePolicy: recurso,\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"203.0.113.25\"), \"Allow\");"
+          }
+        },
+        {
+          "name": "desde fuera de la oficina recibe una denegación explícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerContratos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n    },\n  ],\n};\nconst decide = (action: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/2026/acuerdo.pdf\", accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    resourcePolicy: recurso,\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"198.51.100.7\"), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "el borde del rango de la oficina se respeta",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerContratos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n    },\n  ],\n};\nconst decide = (action: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/2026/acuerdo.pdf\", accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    resourcePolicy: recurso,\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", \"203.0.113.255\"), \"Allow\");\nassert.strictEqual(decide(\"s3:GetObject\", \"203.0.114.1\"), \"ExplicitDeny\");\nassert.strictEqual(decide(\"s3:GetObject\", \"203.0.112.254\"), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "lo que la identidad no concede sigue en denegación implícita desde la oficina",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerContratos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n    },\n  ],\n};\nconst decide = (action: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/2026/acuerdo.pdf\", accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    resourcePolicy: recurso,\n  }).decision;\nfor (const accion of [\"s3:PutObject\", \"s3:DeleteObject\"]) {\n  assert.strictEqual(decide(accion, \"203.0.113.25\"), \"ImplicitDeny\", accion + \" no está concedida\");\n}"
+          }
+        },
+        {
+          "name": "la denegación cubre todas las acciones de S3 fuera de la oficina",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerContratos\",\n      Effect: \"Allow\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/*\",\n    },\n  ],\n};\nconst decide = (action: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:s3:::amzn-s3-demo-bucket-contratos/2026/acuerdo.pdf\", accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    resourcePolicy: recurso,\n  }).decision;\nfor (const accion of [\"s3:PutObject\", \"s3:DeleteObject\", \"s3:GetObject\"]) {\n  assert.strictEqual(decide(accion, \"198.51.100.7\"), \"ExplicitDeny\", accion + \" fuera de la oficina\");\n}"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-debug-01",
+      "type": "DEBUG",
+      "title": "Depurar la política de bucket que bloquea a la oficina",
+      "statement": "El bucket amzn-s3-demo-bucket-contratos (cuenta 111122223333) debe poder leerse solo desde la red de la oficina, 203.0.113.0/24. La analista (usuario IAM analista) tiene una política de identidad que permite s3:GetObject sobre los objetos del bucket. Para cerrar el acceso desde fuera, la política del bucket contiene un Deny para cualquier principal con s3:* sobre el bucket y sus objetos, condicionado a la dirección de origen (clave aws:SourceIp). Sin embargo, la analista recibe `ExplicitDeny` al leer desde la oficina y puede leer desde cualquier otra red. El código exporta `identidad` (no la cambies) y `recurso` (`export const recurso = {...}`), y la política del bucket tiene un único defecto en la condición. Lee el campo `reason` de `aws.iam.evaluate`, corrígelo con el cambio mínimo, sin tocar el efecto, la acción, los recursos ni el rango, y explica por qué fallaba y cómo lo comprobaste.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "política de recurso",
+        "condición",
+        "denegación explícita"
+      ],
+      "estimatedMin": 25,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cuenta 111122223333. Usuaria: desarrolladora. Bucket: amzn-s3-demo-bucket-exportaciones.\n// La política de identidad NO se cambia.\nexport const identidad = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\n\n// Límite de permisos de la desarrolladora: ahora no limita nada.\nexport const limite = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"Todo\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\n\n// Política del bucket: de momento solo impide borrar el bucket.\nexport const recurso = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"SinBorrarElBucket\", Effect: \"Deny\", Principal: \"*\", Action: \"s3:DeleteBucket\", Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Cuenta 111122223333. Usuaria: desarrolladora. Bucket: amzn-s3-demo-bucket-exportaciones.\n// La política de identidad NO se cambia.\nexport const identidad = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\n\n// Límite de permisos de la desarrolladora: leer y escribir objetos del bucket y listarlo.\nexport const limite = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"ListarElBucket\", Effect: \"Allow\", Action: \"s3:ListBucket\", Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\" },\n    { Sid: \"LeerYEscribirObjetos\", Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones/*\" },\n  ],\n};\n\n// Política del bucket: ninguna acción de S3 desde fuera de la red de la oficina.\nexport const recurso = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"SinBorrarElBucket\", Effect: \"Deny\", Principal: \"*\", Action: \"s3:DeleteBucket\", Resource: \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\" },\n    {\n      Sid: \"SoloDesdeLaOficina\",\n      Effect: \"Deny\",\n      Principal: \"*\",\n      Action: \"s3:*\",\n      Resource: [\"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\", \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones/*\"],\n      Condition: { NotIpAddress: { \"aws:SourceIp\": \"203.0.113.0/24\" } },\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.iam.evaluate con identityPolicies, permissionsBoundary: limite y resourcePolicy: recurso, y con el contexto {\"aws:SourceIp\": ...}. Prueba s3:GetObject desde la oficina y desde otra red, s3:DeleteObject y ec2:StartInstances, y lee decision y reason: ¿qué política decide cada una?"
+        },
+        {
+          "level": 2,
+          "text": "Dos defectos distintos: el límite no recorta (la identidad permite s3:* y ec2:*, y el límite también), así que lo no listado debe quedar fuera del límite; y la política del bucket no deniega nada según la red. El límite solo fija el máximo, la red la decide un Deny con condición."
+        },
+        {
+          "level": 3,
+          "text": "En el límite deja solo tres permisos: s3:ListBucket sobre el bucket y s3:GetObject y s3:PutObject sobre sus objetos (recurso con /*). En la política del bucket añade, sin quitar la que existe, un Deny con Principal \"*\", s3:* sobre el bucket y sus objetos, y la condición NotIpAddress de aws:SourceIp con el rango 203.0.113.0/24."
+        }
+      ],
+      "tests": [
+        {
+          "name": "límite y política del bucket son válidos y la identidad no se ha tocado",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\nconst BUCKET = \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\";\nconst OFICINA = \"203.0.113.10\";\nconst FUERA = \"198.51.100.9\";\nconst decide = (action: string, resource: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/desarrolladora\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: resource.startsWith(BUCKET) ? recurso : null,\n  }).decision;\nassert.deepStrictEqual(aws.iam.validatePolicy(limite), []);\nassert.deepStrictEqual(aws.iam.validatePolicy(recurso), []);\nassert.deepStrictEqual(identidad, identidadFija);"
+          }
+        },
+        {
+          "name": "desde la oficina la desarrolladora lee un objeto del bucket",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\nconst BUCKET = \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\";\nconst OFICINA = \"203.0.113.10\";\nconst FUERA = \"198.51.100.9\";\nconst decide = (action: string, resource: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/desarrolladora\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: resource.startsWith(BUCKET) ? recurso : null,\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", BUCKET + \"/2026/q1.csv\", OFICINA), \"Allow\");"
+          }
+        },
+        {
+          "name": "desde otra red leer un objeto recibe una denegación explícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\nconst BUCKET = \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\";\nconst OFICINA = \"203.0.113.10\";\nconst FUERA = \"198.51.100.9\";\nconst decide = (action: string, resource: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/desarrolladora\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: resource.startsWith(BUCKET) ? recurso : null,\n  }).decision;\nassert.strictEqual(decide(\"s3:GetObject\", BUCKET + \"/2026/q1.csv\", FUERA), \"ExplicitDeny\");"
+          }
+        },
+        {
+          "name": "desde la oficina puede escribir objetos y listar el bucket",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\nconst BUCKET = \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\";\nconst OFICINA = \"203.0.113.10\";\nconst FUERA = \"198.51.100.9\";\nconst decide = (action: string, resource: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/desarrolladora\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: resource.startsWith(BUCKET) ? recurso : null,\n  }).decision;\nassert.strictEqual(decide(\"s3:PutObject\", BUCKET + \"/2026/q2.csv\", OFICINA), \"Allow\");\nassert.strictEqual(decide(\"s3:ListBucket\", BUCKET, OFICINA), \"Allow\");"
+          }
+        },
+        {
+          "name": "el límite recorta lo que la identidad permite: borrar y cambiar ACL quedan en denegación implícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\nconst BUCKET = \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\";\nconst OFICINA = \"203.0.113.10\";\nconst FUERA = \"198.51.100.9\";\nconst decide = (action: string, resource: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/desarrolladora\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: resource.startsWith(BUCKET) ? recurso : null,\n  }).decision;\nfor (const accion of [\"s3:DeleteObject\", \"s3:PutObjectAcl\"]) {\n  assert.strictEqual(decide(accion, BUCKET + \"/2026/q1.csv\", OFICINA), \"ImplicitDeny\", accion + \" debe quedar fuera del límite\");\n}"
+          }
+        },
+        {
+          "name": "EC2 y otro bucket quedan fuera del límite",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\nconst BUCKET = \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\";\nconst OFICINA = \"203.0.113.10\";\nconst FUERA = \"198.51.100.9\";\nconst decide = (action: string, resource: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/desarrolladora\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: resource.startsWith(BUCKET) ? recurso : null,\n  }).decision;\nassert.strictEqual(decide(\"ec2:StartInstances\", \"arn:aws:ec2:eu-west-1:111122223333:instance/i-0abc1234567890def\", OFICINA), \"ImplicitDeny\");\nassert.strictEqual(decide(\"s3:GetObject\", \"arn:aws:s3:::amzn-s3-demo-bucket-otro/2026/q1.csv\", OFICINA), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "la denegación por red es explícita incluso para acciones que el límite no concede",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"TodoS3YEc2\", Effect: \"Allow\", Action: [\"s3:*\", \"ec2:*\"], Resource: \"*\" }],\n};\nconst BUCKET = \"arn:aws:s3:::amzn-s3-demo-bucket-exportaciones\";\nconst OFICINA = \"203.0.113.10\";\nconst FUERA = \"198.51.100.9\";\nconst decide = (action: string, resource: string, ip: string) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/desarrolladora\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: resource, accountId: \"111122223333\" },\n      context: { \"aws:SourceIp\": ip },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: resource.startsWith(BUCKET) ? recurso : null,\n  }).decision;\nfor (const accion of [\"s3:DeleteObject\", \"s3:PutObject\", \"s3:PutObjectAcl\"]) {\n  assert.strictEqual(decide(accion, BUCKET + \"/2026/q1.csv\", FUERA), \"ExplicitDeny\", accion + \" desde fuera\");\n}\nassert.strictEqual(decide(\"s3:ListBucket\", BUCKET, FUERA), \"ExplicitDeny\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-lab-guiado-01",
+      "type": "LAB",
+      "title": "Exportaciones solo desde la oficina: límite de permisos y política del bucket",
+      "statement": "La desarrolladora (usuario IAM desarrolladora, cuenta 111122223333) tiene una política de identidad muy amplia: s3:* y ec2:* sobre todo. Debes acotarla sin tocar esa política, con dos piezas. (1) Un límite de permisos (`export const limite`) que fije su máximo: listar el bucket amzn-s3-demo-bucket-exportaciones y leer y escribir sus objetos (s3:ListBucket, s3:GetObject y s3:PutObject); nada más, ni borrar objetos, ni EC2, ni otros buckets. (2) La política del bucket (`export const recurso`): además de la sentencia que ya impide borrar el bucket, toda acción de S3 sobre el bucket y sus objetos hecha desde una dirección fuera de la red de la oficina, 203.0.113.0/24 (clave aws:SourceIp), debe recibir una denegación explícita. Lo que el límite no concede debe quedar en denegación implícita. Comprueba cada petición con `aws.iam.evaluate` pasando `permissionsBoundary`, `resourcePolicy` y el contexto, y lee `decision` y `reason`.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "límite de permisos",
+        "política de recurso",
+        "condición",
+        "intersección"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cuenta 111122223333. Usuaria: analista-datos. Tablas: ventas-2025, ventas-2026 y clientes.\n// La política de identidad NO se cambia.\nexport const identidad = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\n\n// Límite de permisos de la analista: ahora no limita nada.\nexport const limite = {\n  Version: \"2012-10-17\",\n  Statement: [{ Sid: \"Todo\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"*\" }],\n};\n\n// Política de recurso de la tabla ventas-2025.\nexport const recurso = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"SinBorrarLaTabla\", Effect: \"Deny\", Principal: \"*\", Action: \"dynamodb:DeleteTable\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/ventas-2025\" },\n  ],\n};\n",
+      "solution": {
+        "code": "// Cuenta 111122223333. Usuaria: analista-datos. Tablas: ventas-2025, ventas-2026 y clientes.\n// La política de identidad NO se cambia.\nexport const identidad = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\n\n// Límite de permisos de la analista.\nexport const limite = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"LeerVentasEnIrlanda\",\n      Effect: \"Allow\",\n      Action: [\"dynamodb:GetItem\", \"dynamodb:Query\"],\n      Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/ventas-*\",\n      Condition: { StringEquals: { \"aws:RequestedRegion\": \"eu-west-1\" } },\n    },\n    {\n      Sid: \"EscribirVentasConMfaReciente\",\n      Effect: \"Allow\",\n      Action: [\"dynamodb:PutItem\", \"dynamodb:UpdateItem\"],\n      Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/ventas-*\",\n      Condition: {\n        StringEquals: { \"aws:RequestedRegion\": \"eu-west-1\" },\n        NumericLessThanEquals: { \"aws:MultiFactorAuthAge\": \"3600\" },\n      },\n    },\n    { Sid: \"SinBorrarTablas\", Effect: \"Deny\", Action: \"dynamodb:DeleteTable\", Resource: \"*\" },\n  ],\n};\n\n// Política de recurso de la tabla ventas-2025: congelada desde 2026.\nexport const recurso = {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Sid: \"CongelarEscrituras\",\n      Effect: \"Deny\",\n      Principal: \"*\",\n      Action: [\"dynamodb:PutItem\", \"dynamodb:UpdateItem\"],\n      Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/ventas-2025\",\n      Condition: { DateGreaterThan: { \"aws:CurrentTime\": \"2026-01-01T00:00:00Z\" } },\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "límite y política de la tabla son válidos y la identidad no se ha tocado",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nassert.deepStrictEqual(aws.iam.validatePolicy(limite), []);\nassert.deepStrictEqual(aws.iam.validatePolicy(recurso), []);\nassert.deepStrictEqual(identidad, identidadFija);"
+          }
+        },
+        {
+          "name": "en eu-west-1 puede leer las tablas de ventas",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nfor (const tabla of [\"ventas-2025\", \"ventas-2026\"]) {\n  assert.strictEqual(decide(\"dynamodb:GetItem\", tabla), \"Allow\", \"GetItem en \" + tabla);\n  assert.strictEqual(decide(\"dynamodb:Query\", tabla), \"Allow\", \"Query en \" + tabla);\n}"
+          }
+        },
+        {
+          "name": "fuera de eu-west-1 leer queda en denegación implícita",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nassert.strictEqual(decide(\"dynamodb:GetItem\", \"ventas-2026\", { \"aws:RequestedRegion\": \"us-east-1\" }), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "con MFA reciente puede escribir en ventas-2025 antes de la congelación",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2025\", { \"aws:MultiFactorAuthAge\": 1200 }), \"Allow\");\nassert.strictEqual(decide(\"dynamodb:UpdateItem\", \"ventas-2026\", { \"aws:MultiFactorAuthAge\": 1200 }), \"Allow\");"
+          }
+        },
+        {
+          "name": "sin MFA o con MFA antiguo escribir queda en denegación implícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2026\"), \"ImplicitDeny\", \"sin la clave de MFA\");\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2026\", { \"aws:MultiFactorAuthAge\": 7200 }), \"ImplicitDeny\", \"MFA antiguo\");\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2026\", { \"aws:MultiFactorAuthAge\": 3601 }), \"ImplicitDeny\", \"MFA justo fuera de plazo\");\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2026\", { \"aws:MultiFactorAuthAge\": 3600 }), \"Allow\", \"MFA en el límite del plazo\");"
+          }
+        },
+        {
+          "name": "escribir exige además la región eu-west-1",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2026\", { \"aws:MultiFactorAuthAge\": 600, \"aws:RequestedRegion\": \"us-east-1\" }), \"ImplicitDeny\");"
+          }
+        },
+        {
+          "name": "después de la congelación, escribir en ventas-2025 recibe una denegación explícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nfor (const accion of [\"dynamodb:PutItem\", \"dynamodb:UpdateItem\"]) {\n  assert.strictEqual(decide(accion, \"ventas-2025\", { ...TARDE, \"aws:MultiFactorAuthAge\": 600 }), \"ExplicitDeny\", accion + \" en ventas-2025\");\n}\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2025\", { ...TARDE }), \"ExplicitDeny\", \"sin MFA, la denegación explícita prevalece\");\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2025\", { ...TARDE, \"aws:MultiFactorAuthAge\": 600, \"aws:RequestedRegion\": \"us-east-1\" }), \"ExplicitDeny\", \"fuera de región\");"
+          }
+        },
+        {
+          "name": "la congelación solo afecta a escribir en ventas-2025",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"ventas-2026\", { ...TARDE, \"aws:MultiFactorAuthAge\": 600 }), \"Allow\", \"otra tabla\");\nassert.strictEqual(decide(\"dynamodb:GetItem\", \"ventas-2025\", { ...TARDE }), \"Allow\", \"leer sigue permitido\");\nassert.strictEqual(decide(\"dynamodb:Query\", \"ventas-2025\", { ...TARDE }), \"Allow\", \"consultar sigue permitido\");"
+          }
+        },
+        {
+          "name": "borrar una tabla recibe una denegación explícita en cualquier tabla",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nfor (const tabla of [\"ventas-2025\", \"ventas-2026\", \"clientes\"]) {\n  assert.strictEqual(decide(\"dynamodb:DeleteTable\", tabla), \"ExplicitDeny\", \"DeleteTable en \" + tabla);\n}"
+          }
+        },
+        {
+          "name": "lo que el límite no concede queda en denegación implícita",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const identidadFija = {\n  Version: \"2012-10-17\",\n  Statement: [\n    { Sid: \"TodoDynamoDB\", Effect: \"Allow\", Action: \"dynamodb:*\", Resource: \"arn:aws:dynamodb:eu-west-1:111122223333:table/*\" },\n  ],\n};\nconst decide = (action: string, tabla: string, extra: Record<string, string | number> = {}) =>\n  aws.iam.evaluate({\n    request: {\n      principal: { arn: \"arn:aws:iam::111122223333:user/analista-datos\", accountId: \"111122223333\" },\n      action,\n      resource: { arn: \"arn:aws:dynamodb:eu-west-1:111122223333:table/\" + tabla, accountId: \"111122223333\" },\n      context: { \"aws:RequestedRegion\": \"eu-west-1\", \"aws:CurrentTime\": \"2025-11-30T09:00:00Z\", ...extra },\n    },\n    identityPolicies: [identidadFija],\n    permissionsBoundary: limite,\n    resourcePolicy: tabla === \"ventas-2025\" ? recurso : null,\n  }).decision;\nconst TARDE = { \"aws:CurrentTime\": \"2026-03-10T09:00:00Z\" };\nassert.strictEqual(decide(\"dynamodb:GetItem\", \"clientes\"), \"ImplicitDeny\", \"tabla fuera de ventas-*\");\nassert.strictEqual(decide(\"dynamodb:PutItem\", \"clientes\", { \"aws:MultiFactorAuthAge\": 600 }), \"ImplicitDeny\", \"escribir en clientes\");\nassert.strictEqual(decide(\"dynamodb:DeleteItem\", \"ventas-2026\", { \"aws:MultiFactorAuthAge\": 600 }), \"ImplicitDeny\", \"DeleteItem\");\nassert.strictEqual(decide(\"dynamodb:Scan\", \"ventas-2026\"), \"ImplicitDeny\", \"Scan\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-lab-autonomo-01",
+      "type": "LAB",
+      "title": "Ventas en DynamoDB: región, MFA y congelación de una tabla",
+      "statement": "La analista de datos (usuario IAM analista-datos, cuenta 111122223333) tiene una política de identidad que permite dynamodb:* sobre todas las tablas de la cuenta en eu-west-1. Escribe dos políticas, sin tocar la de identidad: el límite de permisos (`export const limite`) y la política de recurso de la tabla ventas-2025 (`export const recurso`). Criterios. (1) Límite: puede leer (dynamodb:GetItem y dynamodb:Query) las tablas cuyo nombre empieza por ventas- solo si la clave aws:RequestedRegion es eu-west-1. (2) Límite: puede escribir (dynamodb:PutItem y dynamodb:UpdateItem) en esas mismas tablas solo si además su sesión tiene MFA con una edad de 3600 segundos como máximo (clave aws:MultiFactorAuthAge); sin la clave en la petición no se permite. (3) Límite: dynamodb:DeleteTable sobre cualquier tabla recibe una denegación explícita siempre. (4) Todo lo demás (DeleteItem, Scan, la tabla clientes, otras regiones) no se concede y debe quedar en denegación implícita. (5) Política de recurso de ventas-2025: a partir del 1 de enero de 2026 (clave aws:CurrentTime posterior a 2026-01-01T00:00:00Z) dynamodb:PutItem y dynamodb:UpdateItem reciben una denegación explícita para cualquier principal; antes de esa fecha y para las lecturas no deniega nada. Comprueba cada petición con `aws.iam.evaluate`, también las que deben terminar en denegación implícita.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "límite de permisos",
+        "política de recurso",
+        "condiciones",
+        "denegación implícita"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Se permite, porque en una sola cuenta basta con que una política permita la acción y la de identidad ya la concede",
+            "explanation": "Descartada: la petición va de la cuenta A a la B; la regla de la unión solo vale dentro de una cuenta. Entre cuentas hacen falta permisos en las dos."
+          },
+          {
+            "id": "b",
+            "text": "Se deniega, porque la política de identidad de la cuenta A debería llevar además un límite de permisos",
+            "explanation": "Descartada: un límite no es un requisito para que una petición entre cuentas funcione; la guía pide la política de identidad y la de recurso, no un límite."
+          },
+          {
+            "id": "c",
+            "text": "Se deniega, porque la política de recurso de la cuenta B también tiene que permitir el acceso a la usuaria",
+            "explanation": "Es la correcta: entre cuentas la identidad de la cuenta A y la política de recurso de la cuenta B deben permitir la operación; si falta una, la petición falla."
+          },
+          {
+            "id": "d",
+            "text": "Se permite, porque la política de recurso solo se evalúa cuando la política de identidad no concede la acción",
+            "explanation": "Descartada: ambas se evalúan juntas, y entre cuentas la política de recurso es obligatoria; no es un recurso de reserva para cuando la identidad no concede."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-quiz-01",
+      "type": "QUIZ",
+      "title": "Qué exige una petición entre cuentas",
+      "statement": "Una usuaria IAM de la cuenta A tiene una política de identidad que permite s3:GetObject sobre los objetos de un bucket de la cuenta B. La política del bucket de la cuenta B no menciona a la usuaria ni a la cuenta A. La usuaria solicita un objeto. ¿Qué razonamiento justifica con MÁS precisión el resultado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "entre cuentas",
+        "política de recurso"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Asignar a cada usuario nuevo una política administrada como límite de permisos que defina el máximo permitido",
+            "explanation": "Es la correcta: el límite fija lo máximo que las políticas de identidad pueden conceder, de modo que lo que el administrador adjunte por encima del máximo no tiene efecto."
+          },
+          {
+            "id": "b",
+            "text": "Adjuntar a cada usuario nuevo una política de identidad que enumere exactamente las acciones que seguridad permite",
+            "explanation": "Descartada: una política de identidad concede permisos pero no pone techo; el administrador puede adjuntar otra política que añada más acciones."
+          },
+          {
+            "id": "c",
+            "text": "Añadir a cada recurso una política de recurso que solo permita las acciones que seguridad ha aprobado",
+            "explanation": "Descartada: una política de recurso regula el acceso a ese recurso, no el máximo de la identidad; no impide que otras políticas concedan permisos sobre otros recursos."
+          },
+          {
+            "id": "d",
+            "text": "Crear un grupo con una política que permita solo esas acciones y añadir a los usuarios nuevos a ese grupo",
+            "explanation": "Descartada: el grupo concede permisos, no los limita; las políticas que se adjunten directamente al usuario suman permisos por encima del grupo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-quiz-02",
+      "type": "QUIZ",
+      "title": "Qué mecanismo fija un máximo de permisos al delegar",
+      "statement": "Una empresa quiere que los administradores de proyecto creen usuarios IAM para sus equipos, pero ningún usuario nuevo debe poder tener más permisos que un máximo definido por seguridad, aunque su administrador le adjunte políticas con más acciones. ¿Qué mecanismo cumple MEJOR el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "límite de permisos",
+        "delegación"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Adjuntar a maria una política de identidad con s3:GetObject y dejar su límite de permisos como está",
+            "explanation": "Descartada: sin s3:GetObject en el límite, el permiso de la identidad queda fuera del máximo y la petición termina en denegación implícita."
+          },
+          {
+            "id": "b",
+            "text": "Ampliar el límite de maria con s3:GetObject y, además, adjuntarle una política de identidad con el mismo permiso",
+            "explanation": "Descartada: funciona, pero exige dos cambios sobre la identidad; el requisito pide el mínimo y existe un cambio único que basta."
+          },
+          {
+            "id": "c",
+            "text": "Añadir un Allow de s3:GetObject solo al límite de maria, sin ninguna política de identidad ni cambios en el bucket",
+            "explanation": "Descartada: un límite no concede permisos por sí solo; sin una política de identidad o de recurso que lo conceda, maria sigue sin acceso."
+          },
+          {
+            "id": "d",
+            "text": "Añadir a la política del bucket un Allow de s3:GetObject cuyo Principal sea el ARN del usuario maria",
+            "explanation": "Es la correcta: en la misma cuenta, una concesión de recurso al ARN de un usuario IAM no queda limitada por su límite y no necesita política de identidad."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-quiz-03",
+      "type": "QUIZ",
+      "title": "Cambio mínimo para dar lectura a un usuario con límite",
+      "statement": "En una cuenta, el usuario IAM maria no tiene políticas de identidad y su límite de permisos solo incluye acciones de DynamoDB. El equipo quiere que lea objetos de un bucket de la misma cuenta con el MÍNIMO de cambios en IAM. ¿Qué cambio lo consigue?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "política de recurso",
+        "límite de permisos"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "El valor 3600 debería escribirse como número y no como cadena, así que la comparación nunca llega a evaluarse",
+            "explanation": "Descartada: la guía muestra este mismo ejemplo con el valor entre comillas; el formato del valor no es la causa del rechazo."
+          },
+          {
+            "id": "b",
+            "text": "La clave aws:MultiFactorAuthAge no está en la petición con claves de acceso sin MFA y una clave ausente no coincide",
+            "explanation": "Es la correcta: la guía indica que la clave no está presente en ese caso y que una clave ausente se considera una discrepancia, de modo que el Allow no se activa."
+          },
+          {
+            "id": "c",
+            "text": "El operador NumericLessThanEquals solo admite claves específicas de un servicio y no las claves globales aws:",
+            "explanation": "Descartada: las claves con prefijo aws: son globales y se pueden usar en condiciones; la guía usa justamente esta clave con un operador numérico."
+          },
+          {
+            "id": "d",
+            "text": "Una condición sobre una clave ausente se evalúa siempre como verdadera y por eso la sentencia se aplica de más",
+            "explanation": "Descartada: sucede lo contrario; con un operador simple, una clave que no está en la petición no coincide y la sentencia no se aplica."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-quiz-04",
+      "type": "QUIZ",
+      "title": "Por qué una condición de MFA no se cumple con claves de acceso",
+      "statement": "Un script usa las claves de acceso de un usuario IAM desde la CLI, sin MFA. La política que permite s3:GetObject lleva la condición NumericLessThanEquals sobre aws:MultiFactorAuthAge con el valor 3600, y el script nunca obtiene el permiso. ¿Qué causa tiene la MAYOR probabilidad de explicar el rechazo?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "condición",
+        "clave ausente"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cambiar el operador de la condición por StringEqualsIgnoreCase, que acepta los usuarios john y John",
+            "explanation": "Es la correcta: la guía indica que ese operador coincide con john y con John, y el cambio no toca ni la clave, ni el valor, ni el resto de la sentencia."
+          },
+          {
+            "id": "b",
+            "text": "Escribir la clave con otra combinación de mayúsculas, porque el nombre de la clave es lo que distingue a John de john",
+            "explanation": "Descartada: el nombre de una clave de contexto no distingue mayúsculas; lo que distingue john de John es el valor, según el operador."
+          },
+          {
+            "id": "c",
+            "text": "Quitar la condición y mantener la sentencia con el mismo Principal, para que no dependa del nombre del usuario",
+            "explanation": "Descartada: elimina la restricción por completo; el acceso dejaría de limitarse a esos usuarios, un alcance mucho mayor del que se pide."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar el operador por StringNotEquals con el valor john para que el usuario John quede incluido en la coincidencia",
+            "explanation": "Descartada: invierte el sentido de la condición; la sentencia se aplicaría a todos los usuarios menos john, incluidos los que no deben tener el acceso."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-quiz-05",
+      "type": "QUIZ",
+      "title": "Cómo aceptar mayúsculas y minúsculas en un nombre de usuario",
+      "statement": "Una sentencia permite el acceso con la condición StringEquals sobre aws:username con el valor john. Los usuarios llamados John deben recibir también el acceso. ¿Qué cambio tiene el MENOR alcance y cumple el requisito?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "StringEquals",
+        "mayúsculas"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Busca un Allow en cualquiera de las dos políticas, lo encuentra en la de identidad y permite la acción",
+            "explanation": "Descartada: antes de buscar un Allow se comprueban los Deny; el Allow de la identidad no se llega a considerar si hay un Deny aplicable."
+          },
+          {
+            "id": "b",
+            "text": "Evalúa solo la política de identidad de la usuaria porque la condición de la política de recurso solo afecta a otras cuentas",
+            "explanation": "Descartada: en una sola cuenta las políticas de identidad y de recurso se evalúan juntas y la condición del Deny se aplica igual a cualquier principal."
+          },
+          {
+            "id": "c",
+            "text": "Comprueba que el límite de permisos incluya la acción y, como la usuaria no tiene límite, concede el permiso",
+            "explanation": "Descartada: la ausencia de límite no concede nada ni evita un Deny; el orden pasa primero por buscar sentencias Deny en todas las políticas."
+          },
+          {
+            "id": "d",
+            "text": "Busca sentencias Deny aplicables en todas las políticas; la de la tabla se cumple por su condición y deniega la acción",
+            "explanation": "Es la correcta: la guía dice que AWS comprueba primero todos los Deny y que, si uno aplica, la petición se deniega aunque otra política la permita."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-quiz-06",
+      "type": "QUIZ",
+      "title": "Qué comprueba primero AWS con un Deny condicionado en el recurso",
+      "statement": "Una usuaria tiene en la misma cuenta una política de identidad que permite una acción sobre una tabla de DynamoDB. La política de recurso de la tabla contiene una sentencia Deny para esa acción, con una condición que la petición actual cumple. Según la guía, ¿qué comprueba AWS PRIMERO y cuál es el resultado?",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "denegación explícita",
+        "condición"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "El límite concede por sí solo las acciones que enumera, aunque ninguna política de identidad las permita",
+            "explanation": "No cumple: el límite fija un máximo y no concede permisos por sí solo; hace falta una política de identidad o de recurso que los conceda."
+          },
+          {
+            "id": "b",
+            "text": "Los permisos efectivos son los que permiten a la vez las políticas de identidad del usuario y su límite",
+            "explanation": "Cumple: la guía lo define como la intersección de ambos tipos de política, de modo que la acción debe estar en los dos."
+          },
+          {
+            "id": "c",
+            "text": "Un Allow de la política de identidad prevalece sobre una denegación explícita incluida en el límite de permisos",
+            "explanation": "No cumple: una denegación explícita en cualquiera de las dos políticas anula el Allow, sin importar cuál sea la más específica."
+          },
+          {
+            "id": "d",
+            "text": "Si el límite no menciona una acción, un Allow de la política de identidad para esa acción basta para permitirla",
+            "explanation": "No cumple: lo que el límite no incluye queda fuera del máximo, así que el Allow de la identidad no basta y la petición termina en denegación implícita."
+          },
+          {
+            "id": "e",
+            "text": "Una denegación explícita en la política de identidad o en el límite anula el Allow que haya en la otra",
+            "explanation": "Cumple: la guía indica que una denegación explícita en cualquiera de estas dos políticas anula el permiso del otro tipo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-quiz-07",
+      "type": "QUIZ",
+      "title": "Afirmaciones correctas sobre el límite de permisos",
+      "statement": "Sobre un usuario IAM con una política de identidad y un límite de permisos asociados, selecciona DOS afirmaciones correctas.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "límite de permisos",
+        "intersección"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Las claves específicas de un servicio llevan el prefijo de ese servicio, como ec2:InstanceType",
+            "explanation": "Cumple: según la guía, las claves de servicio usan el prefijo del servicio y las globales usan el prefijo aws:."
+          },
+          {
+            "id": "b",
+            "text": "Los nombres de clave distinguen mayúsculas, por lo que aws:SourceIp y AWS:SourceIp son dos claves distintas",
+            "explanation": "No cumple: la guía dice que los nombres de las claves de contexto no distinguen mayúsculas y que ambos nombres son equivalentes."
+          },
+          {
+            "id": "c",
+            "text": "Con StringEquals, el valor de la política y el de la petición se comparan sin distinguir mayúsculas",
+            "explanation": "No cumple: StringEquals distingue mayúsculas; para ignorarlas hace falta StringEqualsIgnoreCase, según la guía."
+          },
+          {
+            "id": "d",
+            "text": "El operador Null permite comprobar si una clave de contexto existe y tiene un valor no nulo",
+            "explanation": "Cumple: la guía lo propone para evitar que claves ausentes o con valor vacío se evalúen como verdaderas en algunas variantes."
+          },
+          {
+            "id": "e",
+            "text": "Las claves de contexto globales llevan el prefijo del servicio en lugar del prefijo aws:",
+            "explanation": "No cumple: lo que lleva prefijo de servicio son las claves de un servicio; las globales empiezan por aws:."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-quiz-08",
+      "type": "QUIZ",
+      "title": "Afirmaciones correctas sobre el contexto de una condición",
+      "statement": "Sobre el elemento Condition de una política de IAM, selecciona DOS afirmaciones correctas.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "condición",
+        "claves de contexto"
+      ],
+      "estimatedMin": 3,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-1-3-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: dónde poner el permiso, el máximo y la condición",
+      "statement": "Elige un acceso real que conozcas (por ejemplo, un bucket que leen aplicaciones de dos cuentas, o un equipo al que se delega la creación de usuarios) y escribe un registro breve de decisión sobre cómo lo controlarías, en 5 a 7 líneas:\n\n1) Decisión: qué parte pones en la política de identidad, qué parte en la política de recurso, si usarías un límite de permisos y qué condición acotaría cuándo vale cada sentencia.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, creer que el límite concede el permiso, o dar por suficiente un Allow en una sola cuenta cuando la petición es entre cuentas) y la razón por la que la descartaste.\n\n3) Consecuencia: qué peticiones recibirían una denegación explícita, cuáles una implícita y cuáles un permiso con tu diseño, y cómo lo comprobarías con aws.iam.evaluate.\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad, con mínimo privilegio) y por qué.\n\n5) Evidencia: qué parte de la guía de políticas de identidad y de recurso, de límites de permisos o del elemento Condition usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la política que concede, la que limita, la condición y el resultado de cada petición. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "política de recurso",
+        "límite de permisos",
+        "condición",
+        "mínimo privilegio"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html"
+      ],
+      "order": 18
+    }
+  ]
+}
