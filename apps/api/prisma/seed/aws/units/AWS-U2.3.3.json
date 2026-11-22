@@ -1,0 +1,1242 @@
+{
+  "code": "AWS-U2.3.3",
+  "lessons": [
+    {
+      "slug": "aws-u2-3-3-auto-scaling-politicas-estado-y-ciclo-de-vida",
+      "title": "Auto Scaling: políticas, comprobaciones de estado y ciclo de vida",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon EC2 Auto Scaling ayuda a tener el número correcto de instancias de Amazon EC2 para atender la carga de una aplicación. Creas colecciones de instancias llamadas grupos de Auto Scaling y declaras tres números: el tamaño mínimo (el servicio garantiza que el grupo nunca baja de él), el tamaño máximo (garantiza que nunca lo supera) y la capacidad deseada (si la especificas, al crear el grupo o más tarde, el servicio se asegura de que el grupo tenga ese número de instancias). Con políticas de escalado, el servicio puede lanzar o terminar instancias cuando la demanda sube o baja, siempre dentro de ese mínimo y ese máximo. La guía lo ilustra con un grupo de mínimo cuatro, deseada seis y máximo doce. Los grupos usan plantillas de lanzamiento (o configuraciones de lanzamiento) como plantilla de configuración de sus instancias."
+        },
+        {
+          "type": "list",
+          "title": "Las cuatro piezas que esta unidad conecta",
+          "items": [
+            "Grupo y capacidad: el grupo trata las instancias como una unidad lógica; el mínimo, el máximo y la capacidad deseada acotan cuántas hay.",
+            "Política de seguimiento de objetivo: eliges una métrica y un valor objetivo, y el servicio ajusta la capacidad para mantener la métrica cerca de ese valor.",
+            "Comprobaciones de estado: el servicio supervisa las instancias y sustituye las que no están sanas para mantener la capacidad deseada.",
+            "Ganchos de ciclo de vida: acciones personalizadas que se ejecutan mientras una instancia se lanza o antes de que se termine."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Seguimiento de objetivo: elegir una métrica y un valor",
+          "text": "Una política de seguimiento de objetivo escala la capacidad del grupo a partir de un valor objetivo de una métrica. Seleccionas la métrica y el valor que representan el nivel ideal de utilización o de rendimiento medio de tu aplicación; Amazon EC2 Auto Scaling crea y gestiona las alarmas de CloudWatch que disparan los eventos de escalado cuando la métrica se desvía del objetivo, de forma parecida a un termostato. La guía propone como ejemplo una CPU media del 50 %: el grupo escala hacia fuera (aumenta la capacidad) cuando la CPU supera el 50 % y escala hacia dentro (la reduce) cuando baja de ese valor. Para optimizar el coste, la guía recomienda fijar el valor objetivo lo más alto posible con un margen razonable para picos inesperados. Puedes combinar varias políticas de seguimiento de objetivo siempre que cada una use una métrica distinta: el grupo escala hacia fuera si cualquiera está lista para hacerlo y hacia dentro solo si todas lo están, porque prioriza la disponibilidad."
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué métrica sirve y qué métrica no",
+          "text": "El seguimiento de objetivo admite métricas predefinidas y métricas personalizadas. Las predefinidas son ASGAverageCPUUtilization (CPU media del grupo), ASGAverageCPUUtilizationHighResolution (la misma con una métrica de alta resolución), ASGAverageNetworkIn y ASGAverageNetworkOut (bytes medios recibidos y enviados por todas las interfaces de red) y ALBRequestCountPerTarget (solicitudes medias por destino de un Application Load Balancer). Para esta última debes indicar el parámetro ResourceLabel que identifica el grupo de destino. No todas las métricas valen: debe ser una métrica de utilización que describa lo ocupada que está una instancia y cuyo valor aumente o disminuya de forma proporcional al número de instancias. La guía señala que no funcionan, por ejemplo, el RequestCount del balanceador (no cambia con la utilización del grupo), la latencia del balanceador ni ApproximateNumberOfMessagesVisible de una cola de Amazon SQS. También recomienda métricas disponibles a intervalos de un minuto o menos y, con las métricas de Amazon EC2, activar la monitorización detallada, porque por defecto se publican cada cinco minutos. El tiempo de calentamiento (instance warmup) es el periodo durante el cual una instancia recién lanzada todavía no cuenta en las métricas agregadas del grupo. Por último, la guía pide no crear, editar ni borrar las alarmas de CloudWatch de estas políticas: las gestiona el servicio."
+        },
+        {
+          "type": "paragraph",
+          "title": "Comprobaciones de estado: quién avisa y qué hace el servicio",
+          "text": "Todas las instancias de un grupo empiezan con estado Healthy y se asumen sanas mientras Amazon EC2 Auto Scaling no reciba una notificación de lo contrario. Esas notificaciones pueden venir de Amazon EC2, de Elastic Load Balancing, de VPC Lattice, de Amazon EBS o de comprobaciones de estado personalizadas que definas. Cuando el servicio determina que una instancia InService no está sana, la sustituye por una instancia nueva para mantener la capacidad deseada, y la nueva se lanza con la configuración actual del grupo y de su plantilla de lanzamiento. Primero se aplican las comprobaciones de estado de instancia de EC2 que incorpora el servicio y, pasado el periodo de gracia, las comprobaciones opcionales que hayas activado en el grupo; se repiten de forma periódica y, si alguna falla, la instancia se sustituye. También se repone una instancia que termina de forma inesperada, por ejemplo por una interrupción de Spot o una terminación manual."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ganchos de ciclo de vida: parar la instancia para hacer algo",
+          "text": "Un gancho de ciclo de vida permite ejecutar una acción personalizada cuando ocurre un evento del ciclo de vida de la instancia. La instancia pasa a un estado de espera y el gancho da un tiempo (una hora por defecto) para que la acción termine antes de que la instancia pase al siguiente estado. En un escalado hacia fuera, la instancia recién lanzada puede instalar su software mientras espera y avisar con el comando complete-lifecycle-action cuando termina; así se asegura de estar lista antes de recibir tráfico, y un uso muy habitual es controlar cuándo se registra en Elastic Load Balancing. En un escalado hacia dentro, el gancho pausa la instancia antes de terminarla y avisa por Amazon EventBridge para que puedas, por ejemplo, invocar una función de AWS Lambda o descargar registros. El resultado del gancho es abandon o continue. En un lanzamiento, continue indica que las acciones tuvieron éxito y la instancia pasa a servicio; abandon indica que fallaron y el servicio puede terminar y sustituir la instancia. En una terminación, ambos resultados permiten que la instancia termine, pero abandon detiene las acciones restantes, como otros ganchos. Hay además un tiempo de espera global: 48 horas o 100 veces el tiempo de espera del gancho, el que sea menor. Por defecto, los ganchos de terminación funcionan con el mejor esfuerzo: si se agota su tiempo o se abandonan, el servicio termina la instancia de inmediato. Si añades un gancho de lanzamiento, el periodo de gracia de las comprobaciones de estado empieza cuando la instancia llega a InService."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: del requisito a la plantilla",
+          "text": "Requisito: un grupo web de 2 a 6 instancias que mantenga la CPU media cerca del 50 %. Primero decides los tres números: mínimo 2, máximo 6 y una capacidad deseada entre ambos, por ejemplo 3. Después eliges la política: seguimiento de objetivo con ASGAverageCPUUtilization y valor objetivo 50. Por último lo expresas como plantilla de CloudFormation: una plantilla de lanzamiento, el grupo que la referencia con Ref y la política que referencia el grupo. En el arnés de laboratorio, `aws.cfn.validateTemplate` comprueba la forma de la plantilla (tipos con la forma AWS::Servicio::Recurso, Ref hacia parámetros, recursos o pseudoparámetros, y ausencia de ciclos) y `aws.cfn.dependencyOrder` te devuelve el orden de creación que se deduce de los Ref. Ojo: esa forma es una convención del arnés y de CloudFormation, no un hecho de la guía de Auto Scaling, y el arnés no comprueba las propiedades de cada tipo de recurso; los conceptos (mínimo, máximo, deseada, seguimiento de objetivo, estado, ganchos) sí salen de la guía."
+        },
+        {
+          "type": "code",
+          "title": "Un grupo de Auto Scaling con su plantilla de lanzamiento y su política, como valor",
+          "language": "typescript",
+          "code": "// Plantilla del grupo web: valor de TypeScript con la forma de una plantilla de CloudFormation.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Grupo web con capacidad entre 2 y 6 instancias\",\n  Parameters: {\n    ImagenId: { Type: \"String\" },\n    Subredes: { Type: \"CommaDelimitedList\" },\n  },\n  Resources: {\n    PlantillaWeb: {\n      Type: \"AWS::EC2::LaunchTemplate\",\n      Properties: {\n        LaunchTemplateData: { ImageId: { Ref: \"ImagenId\" }, InstanceType: \"t3.micro\" },\n      },\n    },\n    GrupoWeb: {\n      Type: \"AWS::AutoScaling::AutoScalingGroup\",\n      Properties: {\n        MinSize: \"2\",\n        MaxSize: \"6\",\n        DesiredCapacity: \"3\",\n        VPCZoneIdentifier: { Ref: \"Subredes\" },\n        // El Ref hacia la plantilla de lanzamiento es lo que ordena la creación: primero la plantilla.\n        LaunchTemplate: {\n          LaunchTemplateId: { Ref: \"PlantillaWeb\" },\n          Version: { \"Fn::GetAtt\": [\"PlantillaWeb\", \"LatestVersionNumber\"] },\n        },\n      },\n    },\n    PoliticaCpu: {\n      Type: \"AWS::AutoScaling::ScalingPolicy\",\n      Properties: {\n        AutoScalingGroupName: { Ref: \"GrupoWeb\" },\n        PolicyType: \"TargetTrackingScaling\",\n        TargetTrackingConfiguration: {\n          PredefinedMetricSpecification: { PredefinedMetricType: \"ASGAverageCPUUtilization\" },\n          TargetValue: 50,\n        },\n      },\n    },\n  },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la instancia que se lanza a la instancia que se sustituye",
+          "code": "flowchart LR\n  L[\"Se lanza una instancia\"] --> W[\"Gancho de lanzamiento: estado de espera\"]\n  W -->|\"continue: acciones correctas\"| S[\"InService: la instancia recibe tráfico\"]\n  W -->|\"abandon: acciones fallidas\"| R[\"Se termina y se sustituye\"]\n  S --> H[\"Comprobaciones de estado periódicas\"]\n  H -->|\"sana\"| S\n  H -->|\"no sana\"| N[\"Auto Scaling la sustituye con la configuración actual del grupo\"]\n  S --> P[\"Política de seguimiento de objetivo: la métrica se aleja del valor objetivo\"]\n  P -->|\"escala hacia fuera o hacia dentro, entre el mínimo y el máximo\"| S"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: la métrica que parece lógica y no escala",
+          "text": "Si una pregunta pide escalar según las solicitudes que recibe cada instancia detrás de un Application Load Balancer, la respuesta es la métrica predefinida ALBRequestCountPerTarget con su ResourceLabel, no el RequestCount total del balanceador, porque este no cambia con la utilización del grupo y no sirve para seguimiento de objetivo. Si pide mantener la CPU en un valor sin gestionar alarmas, piensa en seguimiento de objetivo: es el servicio quien crea y mantiene las alarmas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: dejar la capacidad deseada fuera del rango del grupo",
+          "text": "Causa: fijar una capacidad deseada mayor que el máximo (o menor que el mínimo) al escribir el grupo. Consecuencia: el grupo nunca supera su tamaño máximo ni baja de su mínimo, así que la capacidad deseada no se puede cumplir y el comportamiento no es el que esperabas. Solución: mantén siempre mínimo, deseada y máximo en orden creciente y comprueba el rango antes de aplicar la plantilla."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: elegir como métrica de seguimiento una que no escala con el grupo",
+          "text": "Causa: usar el RequestCount del balanceador, su latencia o los mensajes visibles de una cola porque parecen medir la carga. Consecuencia: esas métricas no cambian de forma proporcional al número de instancias, por lo que la política no puede ajustar la capacidad de manera fiable. Solución: usa una métrica de utilización, como ASGAverageCPUUtilization o ALBRequestCountPerTarget (con su ResourceLabel), o una métrica personalizada que mida la carga por instancia."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: dar por hecho que el gancho de lanzamiento abandona o continúa solo",
+          "text": "Causa: escribir el script de arranque sin que envíe la señal de fin (complete-lifecycle-action) o sin decidir qué resultado debe darse si el tiempo se agota. Consecuencia: la instancia espera hasta agotar el tiempo del gancho (una hora por defecto) y el resultado con el que termine el gancho (continue o abandon) decide si pasa a servicio o se sustituye. Solución: haz que el script confirme el resultado continue al terminar bien, elige abandon si una instancia a medio preparar no debe recibir tráfico y ajusta el tiempo de espera a lo que de verdad tarda el arranque."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Configurar un grupo de Auto Scaling con una política de seguimiento de objetivo, comprobaciones de estado y un gancho de ciclo de vida, y expresarlo como plantilla de CloudFormation válida. Prepara el examen SAA-C03, dominio 2 (Diseñar arquitecturas resilientes). Criterio: las pruebas de los laboratorios pasan y sabes explicar, para cada pieza de tu plantilla, qué garantiza el servicio y qué comportamiento obtienes."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y sigue el ejemplo resuelto, del requisito a la plantilla. Explica con tus palabras, sin mirar el texto, el diagrama «De la instancia que se lanza a la instancia que se sustituye». Después responde: si la capacidad deseada es 3, el mínimo 2 y el máximo 6, ¿qué hace el servicio cuando una instancia InService falla una comprobación de estado y qué configuración de la plantilla utiliza para la sustituta?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Plantilla de un grupo de Auto Scaling con política de seguimiento de objetivo»: la plantilla inicial tiene varios defectos y le falta la política. Empieza por llamar a aws.cfn.validateTemplate y lee los problemas que devuelve; usa aws.cfn.dependencyOrder para ver el orden de creación. Usa las pistas por niveles solo si te atascas. Criterio de paso: la plantilla es válida, el grupo referencia a su plantilla de lanzamiento, la capacidad cumple mínimo, deseada y máximo, y la política sigue la CPU media."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Grupo con comprobaciones de estado del balanceador y gancho de lanzamiento». Decide qué tipo de comprobación de estado necesita el grupo, qué resultado debe dar el gancho y en qué orden se crean los recursos. Criterio de paso: todas las comprobaciones pasan y justificas por escrito cada propiedad que has cambiado."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente una política que escale un grupo según las solicitudes por instancia detrás de un Application Load Balancer, y audita su respuesta contra la guía de seguimiento de objetivo (consultada con fecha) antes de aceptarla. Anota qué métrica propone y si la guía la admite. Resuelve también «Depurar la política que usa una métrica que no escala» y escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué garantizan el mínimo, el máximo y la capacidad deseada; cómo funciona el seguimiento de objetivo y qué métricas predefinidas admite; qué fuentes pueden notificar que una instancia no está sana y qué hace el servicio; y qué significan continue y abandon en un gancho de lanzamiento. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: el equipo añade un segundo gancho de terminación para descargar registros antes de que se elimine la instancia y quiere combinar dos políticas de seguimiento de objetivo con métricas distintas. Decide qué cambia en la plantilla y qué comportamiento de escalado hacia dentro obtienes. Pregunta de cierre: una instancia nueva se pone en servicio antes de estar lista; ¿qué parte del ciclo de vida revisas primero?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-ec2-auto-scaling-que-es",
+          "order": 0,
+          "note": "Fuente de qué es un grupo de Auto Scaling, de la capacidad mínima, deseada y máxima, y de las funciones del servicio."
+        },
+        {
+          "resourceSlug": "aws-ec2-auto-scaling-seguimiento-de-objetivo",
+          "order": 1,
+          "note": "Fuente de las políticas de seguimiento de objetivo: métricas predefinidas, métricas que no sirven, valor objetivo, calentamiento y consideraciones."
+        },
+        {
+          "resourceSlug": "aws-ec2-auto-scaling-comprobaciones-de-estado",
+          "order": 2,
+          "note": "Fuente de las comprobaciones de estado: quién notifica que una instancia no está sana y cómo se sustituye."
+        },
+        {
+          "resourceSlug": "aws-ec2-auto-scaling-ganchos-de-ciclo-de-vida",
+          "order": 3,
+          "note": "Fuente de los ganchos de ciclo de vida: estado de espera, tiempos de espera y resultados continue y abandon."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Mínimo: el grupo nunca baja de ese tamaño. Máximo: nunca lo supera. Capacidad deseada: si la especificas, el grupo tiene ese número de instancias. Las políticas de escalado ajustan el número dentro del mínimo y el máximo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Mínimo, máximo y deseada",
+      "statement": "¿Qué garantiza Amazon EC2 Auto Scaling con el tamaño mínimo, el máximo y la capacidad deseada de un grupo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "grupo de Auto Scaling",
+        "capacidad deseada"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Eliges una métrica y un valor objetivo. Amazon EC2 Auto Scaling crea y gestiona las alarmas de CloudWatch y escala hacia fuera o hacia dentro cuando la métrica se desvía del valor, como un termostato."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Seguimiento de objetivo",
+      "statement": "¿Cómo funciona una política de seguimiento de objetivo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "seguimiento de objetivo",
+        "alarmas de CloudWatch"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "ASGAverageCPUUtilization, ASGAverageCPUUtilizationHighResolution, ASGAverageNetworkIn, ASGAverageNetworkOut y ALBRequestCountPerTarget (esta requiere ResourceLabel para identificar el grupo de destino)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Métricas predefinidas",
+      "statement": "¿Qué métricas predefinidas admite el seguimiento de objetivo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "métricas predefinidas",
+        "ResourceLabel"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La sustituye por una instancia nueva para mantener la capacidad deseada, lanzada con la configuración actual del grupo y de su plantilla de lanzamiento. Las instancias empiezan Healthy y se asumen sanas hasta recibir una notificación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Qué hace con una instancia no sana",
+      "statement": "¿Qué hace Amazon EC2 Auto Scaling cuando determina que una instancia InService no está sana?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "comprobaciones de estado",
+        "sustitución"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Amazon EC2, Elastic Load Balancing, VPC Lattice, Amazon EBS y las comprobaciones de estado personalizadas que definas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Quién notifica el estado",
+      "statement": "¿Qué fuentes pueden notificar a Amazon EC2 Auto Scaling que una instancia no está sana?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "comprobaciones de estado",
+        "comprobación personalizada"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una acción personalizada durante el lanzamiento o antes de la terminación: la instancia pasa a un estado de espera hasta una hora por defecto. El resultado es continue (sigue) o abandon (en un lanzamiento, el servicio puede terminarla y sustituirla)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Gancho de ciclo de vida",
+      "statement": "¿Qué es un gancho de ciclo de vida y cuánto espera la instancia por defecto?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "gancho de ciclo de vida",
+        "abandon",
+        "continue"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Grupo web detrás de un Application Load Balancer: debe escalar según las solicitudes por instancia.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Grupo web que escala por solicitudes por instancia\",\n  Parameters: {\n    ImagenId: { Type: \"String\" },\n    Subredes: { Type: \"CommaDelimitedList\" },\n    EtiquetaGrupoDestino: { Type: \"String\" },\n  },\n  Resources: {\n    PlantillaWeb: {\n      Type: \"AWS::EC2::LaunchTemplate\",\n      Properties: {\n        LaunchTemplateData: { ImageId: { Ref: \"ImagenId\" }, InstanceType: \"t3.micro\" },\n      },\n    },\n    GrupoWeb: {\n      Type: \"AWS::AutoScaling::AutoScalingGroup\",\n      Properties: {\n        MinSize: \"2\",\n        MaxSize: \"6\",\n        DesiredCapacity: \"2\",\n        VPCZoneIdentifier: { Ref: \"Subredes\" },\n        LaunchTemplate: {\n          LaunchTemplateId: { Ref: \"PlantillaWeb\" },\n          Version: { \"Fn::GetAtt\": [\"PlantillaWeb\", \"LatestVersionNumber\"] },\n        },\n      },\n    },\n    PoliticaSolicitudes: {\n      Type: \"AWS::AutoScaling::ScalingPolicy\",\n      Properties: {\n        AutoScalingGroupName: { Ref: \"GrupoWeb\" },\n        PolicyType: \"TargetTrackingScaling\",\n        TargetTrackingConfiguration: {\n          PredefinedMetricSpecification: { PredefinedMetricType: \"RequestCount\" },\n          TargetValue: 500,\n        },\n      },\n    },\n  },\n};\n",
+      "solution": {
+        "code": "// Grupo web detrás de un Application Load Balancer: debe escalar según las solicitudes por instancia.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Grupo web que escala por solicitudes por instancia\",\n  Parameters: {\n    ImagenId: { Type: \"String\" },\n    Subredes: { Type: \"CommaDelimitedList\" },\n    EtiquetaGrupoDestino: { Type: \"String\" },\n  },\n  Resources: {\n    PlantillaWeb: {\n      Type: \"AWS::EC2::LaunchTemplate\",\n      Properties: {\n        LaunchTemplateData: { ImageId: { Ref: \"ImagenId\" }, InstanceType: \"t3.micro\" },\n      },\n    },\n    GrupoWeb: {\n      Type: \"AWS::AutoScaling::AutoScalingGroup\",\n      Properties: {\n        MinSize: \"2\",\n        MaxSize: \"6\",\n        DesiredCapacity: \"2\",\n        VPCZoneIdentifier: { Ref: \"Subredes\" },\n        LaunchTemplate: {\n          LaunchTemplateId: { Ref: \"PlantillaWeb\" },\n          Version: { \"Fn::GetAtt\": [\"PlantillaWeb\", \"LatestVersionNumber\"] },\n        },\n      },\n    },\n    PoliticaSolicitudes: {\n      Type: \"AWS::AutoScaling::ScalingPolicy\",\n      Properties: {\n        AutoScalingGroupName: { Ref: \"GrupoWeb\" },\n        PolicyType: \"TargetTrackingScaling\",\n        TargetTrackingConfiguration: {\n          PredefinedMetricSpecification: {\n            PredefinedMetricType: \"ALBRequestCountPerTarget\",\n            ResourceLabel: { Ref: \"EtiquetaGrupoDestino\" },\n          },\n          TargetValue: 500,\n        },\n      },\n    },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "La plantilla es válida para el arnés, pero la métrica de la política no es una de las predefinidas de seguimiento de objetivo. Compara el valor de PredefinedMetricType con la lista de métricas predefinidas de la guía."
+        },
+        {
+          "level": 2,
+          "text": "El RequestCount del balanceador no cambia con la utilización del grupo, así que no sirve para seguimiento de objetivo. Para escalar por solicitudes por instancia detrás de un Application Load Balancer existe una métrica predefinida específica."
+        },
+        {
+          "level": 3,
+          "text": "Cambia PredefinedMetricType a ALBRequestCountPerTarget y añade ResourceLabel con { Ref: \"EtiquetaGrupoDestino\" }, que identifica el grupo de destino. No cambies la capacidad del grupo ni el valor objetivo."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "la política usa una métrica predefinida de seguimiento de objetivo que escala con el grupo",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const predefinidas = [\"ASGAverageCPUUtilization\", \"ASGAverageCPUUtilizationHighResolution\", \"ASGAverageNetworkIn\", \"ASGAverageNetworkOut\", \"ALBRequestCountPerTarget\"];\nconst metrica = template.Resources.PoliticaSolicitudes.Properties.TargetTrackingConfiguration.PredefinedMetricSpecification.PredefinedMetricType;\nassert.ok(predefinidas.includes(metrica), \"La métrica «\" + metrica + \"» no es una métrica predefinida de seguimiento de objetivo\");\nassert.strictEqual(metrica, \"ALBRequestCountPerTarget\", \"Para escalar por solicitudes por instancia usa ALBRequestCountPerTarget\");"
+          }
+        },
+        {
+          "name": "la métrica por destino identifica el grupo de destino con ResourceLabel",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const especificacion = template.Resources.PoliticaSolicitudes.Properties.TargetTrackingConfiguration.PredefinedMetricSpecification;\nassert.deepStrictEqual(especificacion.ResourceLabel, { Ref: \"EtiquetaGrupoDestino\" });\nassert.ok(Object.keys(template.Parameters).includes(\"EtiquetaGrupoDestino\"), \"Falta el parámetro EtiquetaGrupoDestino\");"
+          }
+        },
+        {
+          "name": "la política sigue siendo de seguimiento de objetivo sobre el grupo web, con el mismo valor objetivo",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const politica = template.Resources.PoliticaSolicitudes;\nassert.strictEqual(politica.Type, \"AWS::AutoScaling::ScalingPolicy\");\nassert.strictEqual(politica.Properties.PolicyType, \"TargetTrackingScaling\");\nassert.deepStrictEqual(politica.Properties.AutoScalingGroupName, { Ref: \"GrupoWeb\" });\nassert.strictEqual(politica.Properties.TargetTrackingConfiguration.TargetValue, 500);"
+          }
+        },
+        {
+          "name": "la capacidad del grupo no se ha tocado y el orden de creación es plantilla, grupo y política",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const propiedades = template.Resources.GrupoWeb.Properties;\nassert.strictEqual(propiedades.MinSize, \"2\");\nassert.strictEqual(propiedades.MaxSize, \"6\");\nassert.strictEqual(propiedades.DesiredCapacity, \"2\");\nconst orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla no tiene un orden de creación\");\nassert.ok(orden.indexOf(\"PlantillaWeb\") < orden.indexOf(\"GrupoWeb\"), \"PlantillaWeb debe crearse antes que GrupoWeb\");\nassert.ok(orden.indexOf(\"GrupoWeb\") < orden.indexOf(\"PoliticaSolicitudes\"), \"GrupoWeb debe crearse antes que PoliticaSolicitudes\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-debug-01",
+      "type": "DEBUG",
+      "title": "Depurar la política que usa una métrica que no escala",
+      "statement": "Un grupo de Auto Scaling (`GrupoWeb`, de 2 a 6 instancias) está detrás de un Application Load Balancer y debe escalar según las solicitudes que recibe cada instancia, con un valor objetivo de 500. La plantilla (`export const template = {...}`) pasa el validador del arnés, pero la política `PoliticaSolicitudes` usa una métrica que no sirve para el seguimiento de objetivo según la guía. Localiza el defecto contrastando el valor de `PredefinedMetricType` con las métricas predefinidas de la guía y corrígelo con el cambio mínimo: sin cambiar la capacidad del grupo, el valor objetivo ni la forma del valor exportado. Explica por qué fallaba y cómo lo comprobaste.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "seguimiento de objetivo",
+        "métricas predefinidas",
+        "ResourceLabel"
+      ],
+      "estimatedMin": 25,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plantilla del grupo web de la tienda: plantilla de lanzamiento, grupo de Auto Scaling y política.\nexport const template = {\n  AWSTemplateFormatVersion: \"2012-10-17\",\n  Description: \"Grupo web con capacidad entre 2 y 6 instancias\",\n  Parameters: {\n    ImagenId: { Type: \"String\" },\n    Subredes: { Type: \"CommaDelimitedList\" },\n  },\n  Resources: {\n    PlantillaWeb: {\n      Type: \"AWS::EC2::LaunchTemplate\",\n      Properties: {\n        LaunchTemplateData: { ImageId: { Ref: \"ImagenId\" }, InstanceType: \"t3.micro\" },\n      },\n    },\n    GrupoWeb: {\n      Type: \"AWS::AutoScaling::AutoScalingGroup\",\n      Properties: {\n        MinSize: \"2\",\n        MaxSize: \"6\",\n        DesiredCapacity: \"8\",\n        VPCZoneIdentifier: { Ref: \"Subredes\" },\n        LaunchTemplate: {\n          LaunchTemplateId: { Ref: \"PlantillaWebb\" },\n          Version: { \"Fn::GetAtt\": [\"PlantillaWeb\", \"LatestVersionNumber\"] },\n        },\n      },\n    },\n  },\n};\n",
+      "solution": {
+        "code": "// Plantilla del grupo web de la tienda: plantilla de lanzamiento, grupo de Auto Scaling y política.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Grupo web con capacidad entre 2 y 6 instancias\",\n  Parameters: {\n    ImagenId: { Type: \"String\" },\n    Subredes: { Type: \"CommaDelimitedList\" },\n  },\n  Resources: {\n    PlantillaWeb: {\n      Type: \"AWS::EC2::LaunchTemplate\",\n      Properties: {\n        LaunchTemplateData: { ImageId: { Ref: \"ImagenId\" }, InstanceType: \"t3.micro\" },\n      },\n    },\n    GrupoWeb: {\n      Type: \"AWS::AutoScaling::AutoScalingGroup\",\n      Properties: {\n        MinSize: \"2\",\n        MaxSize: \"6\",\n        DesiredCapacity: \"3\",\n        VPCZoneIdentifier: { Ref: \"Subredes\" },\n        LaunchTemplate: {\n          LaunchTemplateId: { Ref: \"PlantillaWeb\" },\n          Version: { \"Fn::GetAtt\": [\"PlantillaWeb\", \"LatestVersionNumber\"] },\n        },\n      },\n    },\n    PoliticaCpu: {\n      Type: \"AWS::AutoScaling::ScalingPolicy\",\n      Properties: {\n        AutoScalingGroupName: { Ref: \"GrupoWeb\" },\n        PolicyType: \"TargetTrackingScaling\",\n        TargetTrackingConfiguration: {\n          PredefinedMetricSpecification: { PredefinedMetricType: \"ASGAverageCPUUtilization\" },\n          TargetValue: 50,\n        },\n      },\n    },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.cfn.validateTemplate(template) y lee path y message de cada problema: te dice dónde está el defecto. Mira también la versión de formato y el nombre que se usa en cada Ref."
+        },
+        {
+          "level": 2,
+          "text": "Hay tres defectos en lo que ya existe: la versión de formato no es la única válida, el Ref del grupo apunta a un nombre lógico que no existe y la capacidad deseada (8) supera el máximo (6). Además falta la política de escalado."
+        },
+        {
+          "level": 3,
+          "text": "Pon AWSTemplateFormatVersion en \"2010-09-09\", cambia el Ref a \"PlantillaWeb\" y la capacidad deseada a un valor entre 2 y 6 (por ejemplo \"3\"). Añade el recurso PoliticaCpu de tipo AWS::AutoScaling::ScalingPolicy con AutoScalingGroupName { Ref: \"GrupoWeb\" }, PolicyType \"TargetTrackingScaling\" y TargetTrackingConfiguration con PredefinedMetricType \"ASGAverageCPUUtilization\" y TargetValue 50."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "la plantilla declara una plantilla de lanzamiento y un grupo de Auto Scaling y se puede ordenar",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const tipos = Object.values(template.Resources).map((recurso) => recurso.Type);\nassert.ok(tipos.includes(\"AWS::EC2::LaunchTemplate\"), \"Falta un recurso AWS::EC2::LaunchTemplate\");\nassert.ok(tipos.includes(\"AWS::AutoScaling::AutoScalingGroup\"), \"Falta un recurso AWS::AutoScaling::AutoScalingGroup\");\nassert.ok(aws.cfn.dependencyOrder(template) !== null, \"La plantilla tiene una dependencia circular\");"
+          }
+        },
+        {
+          "name": "el grupo referencia con Ref la plantilla de lanzamiento",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const lanzamiento = template.Resources.GrupoWeb.Properties.LaunchTemplate;\nassert.deepStrictEqual(lanzamiento.LaunchTemplateId, { Ref: \"PlantillaWeb\" });"
+          }
+        },
+        {
+          "name": "la plantilla de lanzamiento se crea antes que el grupo y el grupo antes que la política",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla no tiene un orden de creación\");\nassert.ok(orden.indexOf(\"PlantillaWeb\") < orden.indexOf(\"GrupoWeb\"), \"PlantillaWeb debe crearse antes que GrupoWeb\");\nassert.ok(orden.indexOf(\"GrupoWeb\") < orden.indexOf(\"PoliticaCpu\"), \"GrupoWeb debe crearse antes que PoliticaCpu\");"
+          }
+        },
+        {
+          "name": "la capacidad cumple mínimo 2, máximo 6 y una capacidad deseada entre ambos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const propiedades = template.Resources.GrupoWeb.Properties;\nconst minimo = Number(propiedades.MinSize);\nconst maximo = Number(propiedades.MaxSize);\nconst deseada = Number(propiedades.DesiredCapacity);\nassert.strictEqual(minimo, 2);\nassert.strictEqual(maximo, 6);\nassert.ok(minimo <= deseada && deseada <= maximo, \"La capacidad deseada debe estar entre el mínimo y el máximo\");"
+          }
+        },
+        {
+          "name": "la política sigue la CPU media del grupo con un valor objetivo del 50 %",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const politica = template.Resources.PoliticaCpu;\nassert.strictEqual(politica.Type, \"AWS::AutoScaling::ScalingPolicy\");\nassert.deepStrictEqual(politica.Properties.AutoScalingGroupName, { Ref: \"GrupoWeb\" });\nassert.strictEqual(politica.Properties.PolicyType, \"TargetTrackingScaling\");\nconst configuracion = politica.Properties.TargetTrackingConfiguration;\nassert.strictEqual(configuracion.PredefinedMetricSpecification.PredefinedMetricType, \"ASGAverageCPUUtilization\");\nassert.strictEqual(configuracion.TargetValue, 50);"
+          }
+        },
+        {
+          "name": "el grupo usa las subredes del parámetro y la plantilla conserva la versión de formato y el parámetro de imagen",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(template.Resources.GrupoWeb.Properties.VPCZoneIdentifier, { Ref: \"Subredes\" });\nassert.ok(Object.keys(template.Parameters).includes(\"ImagenId\"), \"Falta el parámetro ImagenId\");\nassert.strictEqual(template.AWSTemplateFormatVersion, \"2010-09-09\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-lab-guiado-01",
+      "type": "LAB",
+      "title": "Plantilla de un grupo de Auto Scaling con política de seguimiento de objetivo",
+      "statement": "Escribe la plantilla `template` del grupo web de la tienda. Versión de formato 2010-09-09 y dos parámetros: ImagenId (String) y Subredes (CommaDelimitedList). Tres recursos: PlantillaWeb (AWS::EC2::LaunchTemplate); GrupoWeb (AWS::AutoScaling::AutoScalingGroup) con tamaño mínimo 2, máximo 6, una capacidad deseada entre ambos, las subredes del parámetro Subredes y una referencia con Ref a PlantillaWeb en LaunchTemplate.LaunchTemplateId; y PoliticaCpu (AWS::AutoScaling::ScalingPolicy) de seguimiento de objetivo sobre GrupoWeb que mantenga la CPU media del grupo en el 50 % con la métrica predefinida ASGAverageCPUUtilization. Criterios: (1) la plantilla es válida con `aws.cfn.validateTemplate`; (2) el orden de `aws.cfn.dependencyOrder` crea la plantilla de lanzamiento antes que el grupo y el grupo antes que la política; (3) la capacidad respeta mínimo, deseada y máximo. El código inicial exporta la plantilla con varios defectos y sin la política: corrígelos y complétala sin cambiar el nombre del valor exportado (`export const template = { … }`). Recuerda: la forma de la plantilla es una convención del arnés y de CloudFormation; los conceptos de Auto Scaling salen de la guía.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "grupo de Auto Scaling",
+        "plantilla de lanzamiento",
+        "seguimiento de objetivo",
+        "capacidad deseada"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html",
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Grupo web detrás de un balanceador: comprobaciones de estado del balanceador y gancho de lanzamiento.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Grupo web con comprobaciones de estado ELB y gancho de lanzamiento\",\n  Parameters: {\n    ImagenId: { Type: \"String\" },\n    Subredes: { Type: \"CommaDelimitedList\" },\n    GrupoDestino: { Type: \"String\" },\n  },\n  Resources: {\n    PlantillaWeb: {\n      Type: \"AWS::EC2::LaunchTemplate\",\n      Properties: {\n        LaunchTemplateData: { ImageId: { Ref: \"ImagenId\" }, InstanceType: \"t3.micro\" },\n      },\n    },\n    GrupoWeb: {\n      Type: \"AWS::AutoScaling::AutoScalingGroup\",\n      DependsOn: \"GanchoLanzamiento\",\n      Properties: {\n        MinSize: \"2\",\n        MaxSize: \"6\",\n        DesiredCapacity: \"3\",\n        VPCZoneIdentifier: { Ref: \"Subredes\" },\n        LaunchTemplate: {\n          LaunchTemplateId: { Ref: \"PlantillaWeb\" },\n          Version: { \"Fn::GetAtt\": [\"PlantillaWeb\", \"LatestVersionNumber\"] },\n        },\n        HealthCheckType: \"EC2\",\n      },\n    },\n    GanchoLanzamiento: {\n      Type: \"AWS::AutoScaling::LifecycleHook\",\n      Properties: {\n        AutoScalingGroupName: { Ref: \"GrupoWeb\" },\n        LifecycleTransition: \"autoscaling:EC2_INSTANCE_TERMINATING\",\n        HeartbeatTimeout: 600,\n        DefaultResult: \"CONTINUE\",\n      },\n    },\n    PoliticaCpu: {\n      Type: \"AWS::AutoScaling::ScalingPolicy\",\n      Properties: {\n        AutoScalingGroupName: { Ref: \"GrupoWeb\" },\n        PolicyType: \"TargetTrackingScaling\",\n        TargetTrackingConfiguration: {\n          PredefinedMetricSpecification: { PredefinedMetricType: \"ASGAverageCPUUtilization\" },\n          TargetValue: 60,\n        },\n      },\n    },\n  },\n};\n",
+      "solution": {
+        "code": "// Grupo web detrás de un balanceador: comprobaciones de estado del balanceador y gancho de lanzamiento.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Grupo web con comprobaciones de estado ELB y gancho de lanzamiento\",\n  Parameters: {\n    ImagenId: { Type: \"String\" },\n    Subredes: { Type: \"CommaDelimitedList\" },\n    GrupoDestino: { Type: \"String\" },\n  },\n  Resources: {\n    PlantillaWeb: {\n      Type: \"AWS::EC2::LaunchTemplate\",\n      Properties: {\n        LaunchTemplateData: { ImageId: { Ref: \"ImagenId\" }, InstanceType: \"t3.micro\" },\n      },\n    },\n    GrupoWeb: {\n      Type: \"AWS::AutoScaling::AutoScalingGroup\",\n      Properties: {\n        MinSize: \"2\",\n        MaxSize: \"6\",\n        DesiredCapacity: \"3\",\n        VPCZoneIdentifier: { Ref: \"Subredes\" },\n        LaunchTemplate: {\n          LaunchTemplateId: { Ref: \"PlantillaWeb\" },\n          Version: { \"Fn::GetAtt\": [\"PlantillaWeb\", \"LatestVersionNumber\"] },\n        },\n        TargetGroupARNs: [{ Ref: \"GrupoDestino\" }],\n        HealthCheckType: \"ELB\",\n        HealthCheckGracePeriod: 300,\n      },\n    },\n    GanchoLanzamiento: {\n      Type: \"AWS::AutoScaling::LifecycleHook\",\n      Properties: {\n        AutoScalingGroupName: { Ref: \"GrupoWeb\" },\n        LifecycleTransition: \"autoscaling:EC2_INSTANCE_LAUNCHING\",\n        HeartbeatTimeout: 600,\n        DefaultResult: \"ABANDON\",\n      },\n    },\n    PoliticaCpu: {\n      Type: \"AWS::AutoScaling::ScalingPolicy\",\n      Properties: {\n        AutoScalingGroupName: { Ref: \"GrupoWeb\" },\n        PolicyType: \"TargetTrackingScaling\",\n        TargetTrackingConfiguration: {\n          PredefinedMetricSpecification: { PredefinedMetricType: \"ASGAverageCPUUtilization\" },\n          TargetValue: 60,\n        },\n      },\n    },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "la plantilla tiene un orden de creación y cuatro recursos",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla tiene una dependencia circular o no declara recursos\");\nassert.strictEqual(orden.length, 4);"
+          }
+        },
+        {
+          "name": "el gancho es de lanzamiento y abandona la instancia si las acciones no terminan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const gancho = template.Resources.GanchoLanzamiento.Properties;\nassert.strictEqual(gancho.LifecycleTransition, \"autoscaling:EC2_INSTANCE_LAUNCHING\");\nassert.strictEqual(String(gancho.DefaultResult).toUpperCase(), \"ABANDON\");"
+          }
+        },
+        {
+          "name": "el grupo usa las comprobaciones de estado del balanceador con un periodo de gracia y su grupo de destino",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const propiedades = template.Resources.GrupoWeb.Properties;\nassert.strictEqual(propiedades.HealthCheckType, \"ELB\");\nassert.ok(Number(propiedades.HealthCheckGracePeriod) > 0, \"Falta un periodo de gracia de la comprobación de estado\");\nassert.deepStrictEqual(propiedades.TargetGroupARNs, [{ Ref: \"GrupoDestino\" }]);"
+          }
+        },
+        {
+          "name": "el gancho referencia el grupo con Ref y se crea después de él; la plantilla de lanzamiento, antes",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(template.Resources.GanchoLanzamiento.Properties.AutoScalingGroupName, { Ref: \"GrupoWeb\" });\nconst orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla no tiene un orden de creación\");\nassert.ok(orden.indexOf(\"PlantillaWeb\") < orden.indexOf(\"GrupoWeb\"), \"PlantillaWeb debe crearse antes que GrupoWeb\");\nassert.ok(orden.indexOf(\"GrupoWeb\") < orden.indexOf(\"GanchoLanzamiento\"), \"GrupoWeb debe crearse antes que GanchoLanzamiento\");"
+          }
+        },
+        {
+          "name": "el gancho espera un tiempo positivo y el grupo no declara una dependencia explícita del gancho",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(Number(template.Resources.GanchoLanzamiento.Properties.HeartbeatTimeout) > 0, \"HeartbeatTimeout debe ser positivo\");\nassert.strictEqual(template.Resources.GrupoWeb.DependsOn, undefined, \"El grupo no debe depender del gancho que lo referencia\");"
+          }
+        },
+        {
+          "name": "la capacidad respeta el mínimo 2, el máximo 6 y una deseada entre ambos, y la política sigue la CPU",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const propiedades = template.Resources.GrupoWeb.Properties;\nconst minimo = Number(propiedades.MinSize);\nconst maximo = Number(propiedades.MaxSize);\nconst deseada = Number(propiedades.DesiredCapacity);\nassert.strictEqual(minimo, 2);\nassert.strictEqual(maximo, 6);\nassert.ok(minimo <= deseada && deseada <= maximo, \"La capacidad deseada debe estar entre el mínimo y el máximo\");\nconst politica = template.Resources.PoliticaCpu.Properties;\nassert.deepStrictEqual(politica.AutoScalingGroupName, { Ref: \"GrupoWeb\" });\nassert.strictEqual(politica.TargetTrackingConfiguration.PredefinedMetricSpecification.PredefinedMetricType, \"ASGAverageCPUUtilization\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-lab-autonomo-01",
+      "type": "LAB",
+      "title": "Grupo con comprobaciones de estado del balanceador y gancho de lanzamiento",
+      "statement": "Corrige la plantilla `template` de un grupo web que recibe tráfico de un balanceador. Parámetros: ImagenId, Subredes y GrupoDestino (el ARN del grupo de destino, de tipo String). Cuatro recursos: PlantillaWeb (plantilla de lanzamiento), GrupoWeb (de 2 a 6 instancias, deseada 3), GanchoLanzamiento (AWS::AutoScaling::LifecycleHook) y PoliticaCpu (seguimiento de objetivo sobre la CPU media). Criterios: (1) la plantilla es válida con `aws.cfn.validateTemplate`, sin dependencias circulares, y `aws.cfn.dependencyOrder` crea la plantilla de lanzamiento, luego el grupo y luego el gancho; (2) el grupo usa las comprobaciones de estado del balanceador (tipo ELB), con un periodo de gracia positivo y el grupo de destino del parámetro; (3) el gancho actúa en el lanzamiento (autoscaling:EC2_INSTANCE_LAUNCHING) y, si las acciones personalizadas no terminan, el resultado por defecto es abandon, de modo que una instancia sin preparar no se ponga en servicio; (4) el gancho referencia al grupo con Ref. El código inicial exporta la plantilla con varios defectos: corrígelos sin cambiar el nombre del valor exportado (`export const template = { … }`) ni la capacidad del grupo.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "comprobaciones de estado",
+        "gancho de ciclo de vida",
+        "abandon",
+        "orden de creación"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html",
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html",
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Mantiene siempre exactamente cuatro instancias, porque las políticas no pueden cambiar la capacidad deseada",
+            "explanation": "Descartada: las políticas de escalado ajustan el número de instancias cuando la demanda sube o baja, dentro del mínimo y el máximo."
+          },
+          {
+            "id": "b",
+            "text": "Mantiene el grupo entre dos y ocho instancias y procura tener cuatro, ajustando dentro de ese rango según la política",
+            "explanation": "Es la correcta: nunca baja del mínimo ni supera el máximo, y asegura la capacidad deseada que se especifica."
+          },
+          {
+            "id": "c",
+            "text": "Puede bajar de dos instancias cuando la demanda disminuye mucho, porque las políticas prevalecen sobre el mínimo",
+            "explanation": "Descartada: el servicio garantiza que el grupo nunca baja del tamaño mínimo especificado."
+          },
+          {
+            "id": "d",
+            "text": "Puede superar las ocho instancias durante un pico de demanda sostenido, siempre que la política lo pida",
+            "explanation": "Descartada: el servicio garantiza que el grupo nunca supera el tamaño máximo especificado."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-3-quiz-01",
+      "title": "Qué garantiza el grupo con mínimo, máximo y capacidad deseada",
+      "statement": "Un grupo de Auto Scaling tiene tamaño mínimo 2, tamaño máximo 8 y capacidad deseada 4, y define una política de escalado. ¿Qué afirmación describe con MAYOR precisión lo que garantiza Amazon EC2 Auto Scaling?",
+      "concepts": [
+        "capacidad deseada",
+        "tamaño mínimo y máximo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear dos alarmas de CloudWatch propias y editarlas cada vez que cambie el patrón de uso",
+            "explanation": "Descartada: es justo el trabajo manual que el equipo quiere evitar; con seguimiento de objetivo el servicio crea y gestiona las alarmas."
+          },
+          {
+            "id": "b",
+            "text": "Cambiar la capacidad deseada a mano cada hora según la CPU que se observe",
+            "explanation": "Descartada: es un ajuste manual y no responde a los cambios de carga entre una revisión y la siguiente."
+          },
+          {
+            "id": "c",
+            "text": "Editar las alarmas que crea el servicio para que disparen al llegar al 50 % de CPU",
+            "explanation": "Descartada: la guía pide no crear, editar ni borrar las alarmas de una política de seguimiento de objetivo."
+          },
+          {
+            "id": "d",
+            "text": "Una política de seguimiento de objetivo con la métrica predefinida de CPU media del grupo y un valor objetivo del 50 %",
+            "explanation": "Es la correcta: el servicio crea y gestiona las alarmas y escala hacia fuera o hacia dentro para acercar la métrica al objetivo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-3-quiz-02",
+      "title": "Mantener la CPU en un valor con el menor esfuerzo operativo",
+      "statement": "Un equipo quiere que la CPU media de un grupo de Auto Scaling se mantenga cerca del 50 % cuando cambia la carga, sin crear ni mantener alarmas por su cuenta. ¿Qué configuración requiere el MENOR esfuerzo operativo?",
+      "concepts": [
+        "seguimiento de objetivo",
+        "alarmas de CloudWatch"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "ALBRequestCountPerTarget, identificando el grupo de destino con el parámetro ResourceLabel",
+            "explanation": "Es la correcta: es la métrica predefinida de solicitudes medias por destino y requiere ResourceLabel."
+          },
+          {
+            "id": "b",
+            "text": "El RequestCount total que recibe el Application Load Balancer, sin dividirlo entre los destinos",
+            "explanation": "Descartada: la guía señala que RequestCount no cambia con la utilización del grupo y no funciona para seguimiento de objetivo."
+          },
+          {
+            "id": "c",
+            "text": "La latencia de las solicitudes del Application Load Balancer",
+            "explanation": "Descartada: la latencia puede subir con la utilización, pero no cambia de forma proporcional y la guía dice que no funciona."
+          },
+          {
+            "id": "d",
+            "text": "El número de mensajes visibles en una cola de Amazon SQS compartida por todo el grupo",
+            "explanation": "Descartada: no cambia de forma proporcional al tamaño del grupo; la guía indica que no funciona sin dividirlo por instancia."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-3-quiz-03",
+      "title": "Métrica para escalar por solicitudes por instancia",
+      "statement": "Un grupo de Auto Scaling está detrás de un Application Load Balancer y el equipo quiere escalar según las solicitudes que recibe cada instancia. ¿Qué métrica es la MÁS adecuada para una política de seguimiento de objetivo?",
+      "concepts": [
+        "métricas predefinidas",
+        "ALBRequestCountPerTarget"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Mantiene la instancia en servicio y baja la capacidad deseada a una unidad menos para ahorrar costes",
+            "explanation": "Descartada: el servicio sustituye la instancia no sana para mantener la capacidad deseada, no la reduce."
+          },
+          {
+            "id": "b",
+            "text": "Reinicia la aplicación en la misma instancia y no lanza ninguna instancia nueva",
+            "explanation": "Descartada: la acción descrita en la guía es sustituir la instancia por una nueva, no repararla en el sitio."
+          },
+          {
+            "id": "c",
+            "text": "La sustituye por una instancia nueva lanzada con la configuración actual del grupo y de su plantilla de lanzamiento",
+            "explanation": "Es la correcta: la sustituta se lanza con los ajustes actuales del grupo y su plantilla de lanzamiento."
+          },
+          {
+            "id": "d",
+            "text": "Espera a que una persona confirme el fallo desde la consola antes de lanzar una sustituta",
+            "explanation": "Descartada: la sustitución es automática cuando el servicio determina que una instancia InService no está sana."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-3-quiz-04",
+      "title": "Qué hace el servicio con una instancia no sana",
+      "statement": "Una comprobación de estado personalizada informa de que una instancia InService de un grupo de Auto Scaling no está sana porque su aplicación ha dejado de responder. ¿Qué opción describe MEJOR lo que hace Amazon EC2 Auto Scaling?",
+      "concepts": [
+        "comprobaciones de estado",
+        "sustitución de instancias"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html",
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un gancho de terminación, que pausa la instancia antes de que el servicio la termine",
+            "explanation": "Descartada: el gancho de terminación actúa antes de terminar la instancia, no mientras arranca."
+          },
+          {
+            "id": "b",
+            "text": "Un gancho de lanzamiento: la instancia espera y el script avisa con complete-lifecycle-action al terminar",
+            "explanation": "Es la correcta: la instancia espera hasta que la acción termina y así se registra en el balanceador ya preparada."
+          },
+          {
+            "id": "c",
+            "text": "Una política de seguimiento de objetivo con un tiempo de calentamiento largo",
+            "explanation": "Descartada: el calentamiento solo retrasa el cómputo de la instancia en las métricas agregadas, no la retiene del tráfico."
+          },
+          {
+            "id": "d",
+            "text": "Un tamaño máximo mayor, para que existan instancias de reserva que absorban el tráfico mientras arrancan",
+            "explanation": "Descartada: cambiar el máximo no retiene a ninguna instancia en estado de espera durante el arranque."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-3-quiz-05",
+      "title": "Retener la instancia hasta que termine el arranque",
+      "statement": "Las instancias nuevas de un grupo tardan unos minutos en instalar su software y no deben recibir tráfico del balanceador hasta que terminen. ¿Qué debe configurar el equipo PRIMERO en el grupo?",
+      "concepts": [
+        "gancho de ciclo de vida",
+        "estado de espera"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Poner la instancia en servicio, porque abandon equivale a continuar la acción",
+            "explanation": "Descartada: continue es el resultado que indica acciones correctas y permite poner la instancia en servicio."
+          },
+          {
+            "id": "b",
+            "text": "Mantener la instancia en espera sin límite hasta que alguien la libere manualmente",
+            "explanation": "Descartada: las instancias esperan un tiempo finito: el tiempo del gancho y un tiempo de espera global."
+          },
+          {
+            "id": "c",
+            "text": "Registrar la instancia en el balanceador y esperar al periodo de gracia",
+            "explanation": "Descartada: con un gancho de lanzamiento la instancia no se registra hasta que el gancho termina con continue."
+          },
+          {
+            "id": "d",
+            "text": "Terminar la instancia y sustituirla, porque abandon indica que las acciones personalizadas no tuvieron éxito",
+            "explanation": "Es la correcta: la guía dice que abandon indica acciones fallidas y que el servicio puede terminar y sustituir la instancia."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-3-quiz-06",
+      "title": "El resultado abandon de un gancho de lanzamiento",
+      "statement": "Una instancia en lanzamiento espera en un gancho de ciclo de vida y sus acciones personalizadas fallan, de modo que el gancho devuelve abandon. ¿Qué puede hacer el servicio ÚNICAMENTE con este resultado?",
+      "concepts": [
+        "gancho de ciclo de vida",
+        "abandon"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Todas las instancias empiezan con estado Healthy y se asumen sanas hasta que el servicio recibe una notificación contraria",
+            "explanation": "Cumple: la guía indica que se asumen sanas mientras no llegue una notificación de que no lo están."
+          },
+          {
+            "id": "b",
+            "text": "Solo Amazon EC2 puede notificar que una instancia no está sana",
+            "explanation": "No cumple: también pueden notificarlo Elastic Load Balancing, VPC Lattice, Amazon EBS y comprobaciones personalizadas."
+          },
+          {
+            "id": "c",
+            "text": "Una comprobación personalizada permite verificar que la aplicación responde y sustituye la instancia si falla",
+            "explanation": "Cumple: si una instancia falla tu comprobación personalizada, se sustituye para mantener la capacidad deseada."
+          },
+          {
+            "id": "d",
+            "text": "Una instancia terminada de forma inesperada, como por una interrupción de Spot, no se repone hasta cambiar la capacidad deseada",
+            "explanation": "No cumple: el servicio lanza una instancia de reemplazo automáticamente para mantener la capacidad deseada."
+          },
+          {
+            "id": "e",
+            "text": "Las comprobaciones se hacen una sola vez, al lanzar la instancia, y no se repiten",
+            "explanation": "No cumple: las comprobaciones de estado continúan de forma periódica mientras la instancia está en el grupo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-3-quiz-07",
+      "title": "Qué es cierto de las comprobaciones de estado",
+      "statement": "Un equipo repasa cómo vigila Amazon EC2 Auto Scaling las instancias de un grupo. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "comprobaciones de estado",
+        "comprobación personalizada"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Se pueden usar varias políticas a la vez siempre que cada una utilice una métrica distinta",
+            "explanation": "Cumple: la guía indica que se pueden combinar siempre que cada política use una métrica diferente."
+          },
+          {
+            "id": "b",
+            "text": "El grupo escala hacia dentro en cuanto una sola de las políticas está lista para hacerlo",
+            "explanation": "No cumple: solo escala hacia dentro si todas las políticas con esa parte habilitada están listas."
+          },
+          {
+            "id": "c",
+            "text": "El grupo escala hacia fuera si cualquiera de las políticas está lista para hacerlo, porque prioriza la disponibilidad",
+            "explanation": "Cumple: basta con que una política esté lista para escalar hacia fuera para que el grupo aumente."
+          },
+          {
+            "id": "d",
+            "text": "El equipo debe editar las alarmas de CloudWatch que crea el servicio para ajustar el comportamiento",
+            "explanation": "No cumple: la guía indica no crear, editar ni borrar las alarmas que el servicio gestiona para estas políticas."
+          },
+          {
+            "id": "e",
+            "text": "El RequestCount del balanceador es una buena métrica porque aumenta con la carga recibida",
+            "explanation": "No cumple: no cambia con la utilización del grupo y no funciona para seguimiento de objetivo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-3-quiz-08",
+      "title": "Qué es cierto del seguimiento de objetivo con varias políticas",
+      "statement": "Un equipo combina varias políticas de seguimiento de objetivo en un mismo grupo de Auto Scaling. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "seguimiento de objetivo",
+        "varias políticas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "slug": "aws-u2-3-3-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: cómo escalaría y vigilaría mi grupo",
+      "statement": "Elige una carga de trabajo que conozcas (por ejemplo, una web con tráfico variable detrás de un balanceador) y escribe un registro breve de decisión sobre cómo configurarías su grupo de Auto Scaling, en 5 a 7 líneas:\n\n1) Decisión: qué mínimo, máximo y capacidad deseada fijarías, y qué política de seguimiento de objetivo usarías (métrica y valor objetivo).\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, escalar con el RequestCount total del balanceador, o editar a mano las alarmas de la política) y la razón por la que la descartaste.\n\n3) Consecuencia: cómo vigilarías el estado de las instancias (comprobaciones de EC2, del balanceador o personalizadas) y qué haría un gancho de ciclo de vida en el lanzamiento o en la terminación, con el resultado que le darías (continue o abandon).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad) y por qué.\n\n5) Evidencia: qué parte de la guía de Auto Scaling usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la métrica, la restricción que decide y lo que haría el servicio con una instancia que falla. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "decisión",
+        "Auto Scaling",
+        "comprobaciones de estado"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html",
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html",
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html",
+        "https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html"
+      ],
+      "order": 18
+    }
+  ]
+}
