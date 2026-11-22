@@ -1,0 +1,1339 @@
+{
+  "code": "AWS-U2.4.4",
+  "lessons": [
+    {
+      "slug": "aws-u2-4-4-bloques-y-archivos-ebs-tipos-de-volumen-snapshots-efs-y-fsx",
+      "title": "Bloques y archivos: EBS (tipos de volumen, snapshots), EFS y FSx",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre Amazon EBS, Amazon EFS y Amazon FSx (Windows File Server y Lustre) según el tipo de acceso, el volumen de operaciones y las copias necesarias, y escoger el tipo de volumen EBS que encaja con la carga. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar arquitecturas de alto rendimiento», en la parte de almacenamiento. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el servicio o el tipo de volumen, el dato del enunciado que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada carga, nombra el servicio o el tipo de volumen y el dato que lo decide. Explica con tus palabras el diagrama «De la carga al servicio de bloques o de archivos». Después responde: si un volumen EBS no tiene ninguna copia configurada, ¿por qué no basta con su durabilidad, y qué tienes que crear para poder restaurarlo en otra zona de disponibilidad de la Región?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La base de datos que se queda corta de IOPS». Una configuración escrita como objeto asigna un volumen gp3 a una base de datos que exige más IOPS de las que ese tipo admite. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la carga y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El volumen que nadie respalda». Una configuración da por hecho que AWS respalda automáticamente un volumen EBS y no define ningún snapshot. Decide qué cambias sin alterar el nombre ni el tipo del volumen. Criterio de paso: las pruebas pasan y justificas por escrito el ajuste con la página de snapshots de EBS."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre EBS, EFS y FSx. Audítalo en «Auditar un informe de almacenamiento de bloques y archivos generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de EBS, EFS y FSx (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué dos familias de volúmenes EBS hay y para qué carga sirve cada una; qué tipo de volumen eliges cuando hacen falta más de 80 000 IOPS; qué guarda un snapshot y dónde; qué diferencia hay entre EFS Regional y EFS One Zone; y qué protocolo usa cada servicio de archivos. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa adquiere una flota de servidores Linux que comparten archivos de contenido, un clúster de cálculo que procesa un conjunto de datos enorme y un servidor de archivos de Windows con Active Directory. Decide servicio, tipo de volumen y copias para cada parte. Pregunta de cierre: un compañero dice «el volumen es io2 Block Express con 99,999 % de durabilidad, no necesitamos snapshots»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-ebs-que-es",
+          "order": 0,
+          "note": "Fuente de qué es EBS: volúmenes, snapshots, familias de volúmenes y durabilidad."
+        },
+        {
+          "resourceSlug": "aws-ebs-tipos-de-volumen",
+          "order": 1,
+          "note": "Fuente de los tipos de volumen: gp3, io2 Block Express, st1 y sc1, con sus cifras."
+        },
+        {
+          "resourceSlug": "aws-ebs-snapshots",
+          "order": 2,
+          "note": "Fuente de los snapshots: incrementales, almacenamiento y responsabilidad de crearlos."
+        },
+        {
+          "resourceSlug": "aws-efs-que-es",
+          "order": 3,
+          "note": "Fuente de EFS: NFS, sistemas Regional y One Zone, modos de rendimiento."
+        },
+        {
+          "resourceSlug": "aws-fsx-windows-que-es",
+          "order": 4,
+          "note": "Fuente de FSx for Windows File Server: SMB, Active Directory, backups y Single-AZ o Multi-AZ."
+        },
+        {
+          "resourceSlug": "aws-fsx-lustre-que-es",
+          "order": 5,
+          "note": "Fuente de FSx for Lustre: HPC, scratch y persistente, integración con S3."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 6,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "En AWS hay dos formas de ofrecer almacenamiento a una instancia: bloques y archivos. Amazon EBS ofrece almacenamiento en bloques para instancias de Amazon EC2: adjuntas un volumen y lo usas como un disco local, por ejemplo para guardar archivos o instalar aplicaciones. Amazon EFS y Amazon FSx ofrecen sistemas de archivos de red que se comparten por protocolo: EFS usa NFS, FSx for Windows File Server usa SMB y FSx for Lustre expone un sistema de archivos POSIX para Linux. En el dominio 3 de SAA-C03, «Diseñar arquitecturas de alto rendimiento», el patrón se repite: el enunciado describe cómo se accede (IOPS, rendimiento, protocolo, sistema operativo, número de zonas) y tú casas el servicio o el tipo de volumen con el caso. Esta unidad prepara la tarea de almacenamiento de ese dominio. Las cifras de IOPS, rendimiento y tamaños que aparecen abajo son datos de las páginas oficiales de EBS leídas el 2026-11-22; antes de usarlas fuera del estudio, vuelve a comprobarlas allí."
+        },
+        {
+          "type": "list",
+          "title": "Los servicios, frente a frente",
+          "items": [
+            "Amazon EBS: volúmenes de bloques que se adjuntan a instancias EC2 y se usan como un disco local. Hay dos familias: SSD (gp3, gp2, io2 Block Express, io1) para cargas transaccionales y HDD (st1, sc1) para cargas de streaming.",
+            "Amazon EFS: almacenamiento de archivos elástico y sin servidor que se comparte por NFSv4.1 y NFSv4.0; crece y se reduce solo hasta petabytes y no admite instancias EC2 basadas en Windows.",
+            "FSx for Windows File Server: servidores de archivos de Windows administrados, con SMB, Active Directory y ACL de Windows; sirve para migrar con lift and shift aplicaciones empresariales de Windows.",
+            "FSx for Lustre: sistema de archivos Lustre de alto rendimiento para aprendizaje automático, HPC, vídeo y modelado financiero; es compatible con POSIX y se integra con Amazon S3."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "EBS: elegir el tipo de volumen",
+          "text": "Los volúmenes SSD están optimizados para cargas transaccionales con muchas lecturas y escrituras pequeñas, donde el atributo dominante es IOPS. Según la página de tipos de volumen, gp3 admite de 1 GiB a 64 TiB, hasta 80 000 IOPS y hasta 2 000 MiB/s, y sus casos de uso son cargas transaccionales, escritorios virtuales, bases de datos medianas de una sola instancia, volúmenes de arranque y entornos de desarrollo y pruebas. io2 Block Express llega a 256 000 IOPS en instancias basadas en Nitro y a 4 000 MiB/s, ofrece una durabilidad de 99,999 % y está pensado para latencia sub-milisegundo sostenida y para cargas que necesitan más de 80 000 IOPS o 2 000 MiB/s. Los volúmenes HDD están optimizados para cargas grandes de streaming, donde domina el rendimiento: st1 (de 125 GiB a 16 TiB, hasta 500 MiB/s) para big data, almacenes de datos y procesamiento de registros, y sc1 (hasta 250 MiB/s) para datos de acceso infrecuente cuando importa el menor costo. Ni st1 ni sc1 pueden ser volúmenes de arranque. Para aprovechar las IOPS aprovisionadas, la página recomienda instancias optimizadas para EBS."
+        },
+        {
+          "type": "paragraph",
+          "title": "EBS: snapshots, la copia que tú tienes que crear",
+          "text": "Un snapshot es una copia puntual de un volumen EBS y es incremental: solo guarda los bloques que cambiaron desde el snapshot más reciente, lo que reduce el tiempo de creación y el costo. AWS no respalda automáticamente los datos de tus volúmenes: crear snapshots con regularidad, o automatizarlos con Amazon Data Lifecycle Manager o AWS Backup, es responsabilidad tuya. Los snapshots se guardan en Amazon S3, en buckets a los que no puedes acceder directamente: no se ven en la consola ni en la API de S3, sino en la consola o la API de EC2. Sus datos se replican automáticamente en todas las zonas de disponibilidad de la Región, de modo que puedes restaurar un volumen en cualquier zona de esa Región; el volumen nuevo empieza como réplica exacta del original. Como son incrementales, eliminar un snapshot puede no reducir el costo, porque los datos que otros snapshots referencian se conservan. La página de qué es EBS añade que los snapshots sirven para migrar datos entre cuentas, Regiones o zonas, y que EBS Snapshots Archive es un nivel de bajo costo para conservar snapshots 90 días o más."
+        },
+        {
+          "type": "paragraph",
+          "title": "EFS: archivos compartidos y elásticos por NFS",
+          "text": "Amazon EFS ofrece almacenamiento de archivos sin servidor y completamente elástico: compartes datos sin aprovisionar ni administrar capacidad, y el sistema crece y se reduce solo a medida que añades y borras archivos, hasta petabytes. Usa NFSv4.1 y NFSv4.0 y es accesible desde EC2, ECS, EKS, Lambda y Fargate. Hay dos tipos de sistema de archivos: Regional (el recomendado), que guarda los datos de forma redundante en varias zonas de disponibilidad de la Región y mantiene la disponibilidad aunque una zona falle, y One Zone, que guarda los datos en una sola zona y, si esa zona se pierde o se daña, los datos pueden perderse. Para la mayoría de las cargas se recomiendan los modos por defecto: rendimiento General Purpose, ideal para aplicaciones sensibles a la latencia como servidores web, gestores de contenido y directorios de usuario, y rendimiento Elastic, que ajusta el caudal a la actividad. Ofrece consistencia fuerte, bloqueo de archivos y permisos POSIX. La guía indica que no se admite con instancias EC2 basadas en Windows."
+        },
+        {
+          "type": "paragraph",
+          "title": "FSx: Windows File Server y Lustre",
+          "text": "FSx for Windows File Server ofrece servidores de archivos de Windows administrados, respaldados por un sistema de archivos nativo de Windows, con el protocolo SMB (versiones 2.0 a 3.1.1), autenticación con Microsoft Active Directory y control de acceso con ACL de Windows. Está pensado para trasladar con lift and shift aplicaciones empresariales de Windows, y también se accede desde versiones actuales de Linux. Hace backups incrementales y consistentes con el sistema de archivos mediante VSS; los backups diarios automáticos vienen activados por defecto. Ofrece dos niveles de disponibilidad: Single-AZ y Multi-AZ, este último con un servidor de reserva en otra zona. Permite almacenamiento SSD o HDD y aprovisionar capacidad, IOPS de SSD y rendimiento de forma independiente. FSx for Lustre es el sistema de archivos Lustre para cargas donde la velocidad importa, como aprendizaje automático, HPC, procesamiento de vídeo y modelado financiero, con latencias sub-milisegundo, hasta varios TBps de rendimiento y hasta millones de IOPS. Es compatible con POSIX para aplicaciones Linux y se enlaza con un bucket de S3, que presenta los objetos como archivos. Los sistemas scratch sirven para almacenamiento temporal y sus datos no se replican ni persisten si falla un servidor; los persistentes replican los datos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro cargas, cuatro decisiones",
+          "text": "Una empresa tiene cuatro cargas. (1) Una base de datos transaccional en una instancia basada en Nitro que exige latencia sub-milisegundo sostenida y 150 000 IOPS en un solo volumen. (2) Una flota de servidores Linux en tres zonas que comparten archivos de contenido por NFS y no quiere administrar capacidad. (3) Un servidor de archivos de Windows con SMB, ACL y Active Directory que se traslada con lift and shift. (4) Un entrenamiento de aprendizaje automático sobre un conjunto de datos de S3 que necesita varios TBps. Paso 1: para (1) el calificador es «150 000 IOPS»; gp3 se queda en 80 000, así que va io2 Block Express, que llega a 256 000 en Nitro. Paso 2: para (2) la clave es «varias zonas» y «sin administrar capacidad», así que va EFS Regional. Paso 3: para (3) la clave es SMB con Active Directory, así que va FSx for Windows File Server y no EFS, que no admite instancias EC2 basadas en Windows. Paso 4: para (4) va FSx for Lustre enlazado al bucket de S3, no un volumen EBS, cuyo máximo es de miles de MiB/s por volumen. Además, los datos críticos del volumen de (1) llevan snapshots automatizados, porque AWS no los respalda por ti. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de almacenamiento como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  cargas: [\n    { nombre: \"base-transaccional\", servicio: \"EBS\", tipo: \"io2\", iopsMinimos: 150000, snapshots: \"dlm\" },\n    { nombre: \"contenido-web\", servicio: \"EFS\", sistema: \"regional\", protocolo: \"NFS\" },\n    { nombre: \"archivos-windows\", servicio: \"FSx-Windows\", protocolo: \"SMB\", directorio: \"active-directory\" },\n    { nombre: \"entrenamiento-ml\", servicio: \"FSx-Lustre\", enlaceS3: true },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la carga al servicio de bloques o de archivos",
+          "code": "flowchart TB\n  R{\"Tipo de acceso y exigencia\"} -->|\"Disco de una instancia EC2\"| E[\"Amazon EBS\"]\n  E -->|\"IOPS: transaccional\"| S[\"SSD: gp3 o io2 Block Express\"]\n  E -->|\"Rendimiento: streaming\"| H[\"HDD: st1 o sc1\"]\n  E -->|\"Copia y restauración\"| P[\"Snapshots incrementales\"]\n  R -->|\"Archivos compartidos por NFS\"| F[\"Amazon EFS: Regional u One Zone\"]\n  R -->|\"Archivos Windows con SMB y AD\"| W[\"FSx for Windows File Server\"]\n  R -->|\"HPC o ML con POSIX y S3\"| L[\"FSx for Lustre\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir el servicio por el nombre y no por el protocolo o la cifra",
+          "text": "El enunciado mezcla señales: «NFS» o «SMB», «Windows» o «Linux», «más de 80 000 IOPS», «streaming», «varias zonas», «temporal». gp3 llega a 80 000 IOPS y no más; los HDD no sirven como volumen de arranque; EFS One Zone no resiste la pérdida de su zona; un sistema Lustre scratch no replica los datos; y un volumen EBS no se respalda solo. Subraya el protocolo, el sistema operativo, la cifra y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: pensar que la durabilidad de un volumen EBS sustituye a los snapshots",
+          "text": "Causa: leer que io2 Block Express ofrece 99,999 % de durabilidad y que los datos se replican dentro de la zona, y concluir que ya hay respaldo. Consecuencia: no existe ninguna copia puntual y, si se pierden o se corrompen los datos, no hay nada desde donde restaurar, ni en otra zona. Solución: crea snapshots con regularidad o automatízalos con Amazon Data Lifecycle Manager o AWS Backup, porque AWS no respalda los volúmenes por ti."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: elegir gp3 para toda base de datos y olvidar sus límites",
+          "text": "Causa: ver «base de datos» y «SSD» y escoger gp3 sin comparar las IOPS que pide el enunciado con el máximo del tipo. Consecuencia: el volumen se queda en 80 000 IOPS y 2 000 MiB/s y la carga no alcanza el rendimiento exigido. Solución: cuando el enunciado pide más de 80 000 IOPS, más de 2 000 MiB/s o latencia sub-milisegundo sostenida, usa io2 Block Express, y reserva gp3 para cargas transaccionales y bases de datos medianas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: usar EFS o EBS donde el enunciado pide un servidor de archivos de Windows",
+          "text": "Causa: ver «sistema de archivos compartido» y escoger EFS sin mirar el protocolo y el sistema operativo. Consecuencia: EFS usa NFS y no admite instancias EC2 basadas en Windows, así que las aplicaciones no pueden montarlo y la migración falla. Solución: para SMB, ACL de Windows y Active Directory usa FSx for Windows File Server, y reserva EFS para archivos compartidos por NFS desde Linux."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Almacenamiento en bloques para instancias EC2: el volumen se adjunta a una instancia y se usa como un disco local. Los volúmenes SSD (gp3, gp2, io2 Block Express, io1) se optimizan para cargas transaccionales donde domina IOPS; los HDD (st1 y sc1) se optimizan para cargas grandes de streaming donde domina el rendimiento."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-4-tarjeta-01",
+      "title": "Tarjeta: EBS y sus dos familias",
+      "statement": "¿Qué es Amazon EBS y qué dos familias de volúmenes ofrece?",
+      "concepts": [
+        "EBS",
+        "SSD",
+        "HDD"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/what-is-ebs.html",
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "gp3: hasta 80 000 IOPS y 2 000 MiB/s, de 1 GiB a 64 TiB, para cargas transaccionales, bases de datos medianas de una instancia y volúmenes de arranque. io2 Block Express: hasta 256 000 IOPS (en instancias Nitro) y 4 000 MiB/s, durabilidad de 99,999 %, para latencia sub-milisegundo sostenida y más de 80 000 IOPS o 2 000 MiB/s. Cifras de la página de tipos de volumen consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-4-tarjeta-02",
+      "title": "Tarjeta: gp3 frente a io2 Block Express",
+      "statement": "¿En qué se diferencian gp3 e io2 Block Express por IOPS, rendimiento y caso de uso?",
+      "concepts": [
+        "gp3",
+        "io2 Block Express",
+        "IOPS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "st1 (Throughput Optimized HDD, hasta 500 MiB/s) sirve para big data, almacenes de datos y procesamiento de registros. sc1 (Cold HDD, hasta 250 MiB/s) sirve para datos de acceso infrecuente y cuando el menor costo es lo importante. Ninguno de los dos puede usarse como volumen de arranque. Datos de la página de tipos de volumen consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-4-tarjeta-03",
+      "title": "Tarjeta: st1 y sc1",
+      "statement": "¿Cuándo se usan los volúmenes HDD st1 y sc1 y qué no pueden ser?",
+      "concepts": [
+        "st1",
+        "sc1",
+        "HDD"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Son copias puntuales e incrementales: guardan solo los bloques que cambiaron desde el snapshot más reciente. AWS no respalda automáticamente los volúmenes: tú los creas o los automatizas con Amazon Data Lifecycle Manager o AWS Backup. Se guardan en S3 en buckets a los que no accedes directamente y se replican en todas las zonas de la Región, así que restauras un volumen en cualquiera de ellas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-4-tarjeta-04",
+      "title": "Tarjeta: snapshots de EBS",
+      "statement": "¿Cómo funcionan los snapshots de EBS y quién los crea?",
+      "concepts": [
+        "snapshot",
+        "incremental",
+        "Data Lifecycle Manager"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Almacenamiento de archivos sin servidor y elástico que se comparte por NFSv4.1 y NFSv4.0, y crece y se reduce solo hasta petabytes. Regional guarda los datos en varias zonas de disponibilidad y sigue disponible aunque una falle; One Zone los guarda en una sola y, si se pierde o se daña, los datos pueden perderse. No se admite con instancias EC2 basadas en Windows."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-4-tarjeta-05",
+      "title": "Tarjeta: Amazon EFS",
+      "statement": "¿Qué ofrece Amazon EFS y en qué se diferencian sus tipos Regional y One Zone?",
+      "concepts": [
+        "EFS",
+        "NFS",
+        "Regional"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Windows File Server: servidores de archivos de Windows administrados, con SMB, Active Directory y ACL, para lift and shift; ofrece Single-AZ y Multi-AZ. Lustre: sistema de archivos POSIX de alto rendimiento para ML, HPC y vídeo, con latencias sub-milisegundo y hasta varios TBps, enlazado con S3; los sistemas scratch no replican los datos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-4-tarjeta-06",
+      "title": "Tarjeta: FSx for Windows y FSx for Lustre",
+      "statement": "¿Qué diferencia a FSx for Windows File Server de FSx for Lustre?",
+      "concepts": [
+        "FSx for Windows",
+        "FSx for Lustre",
+        "SMB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html",
+        "https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Base de datos transaccional que exige más IOPS de las que admite su volumen. Corrige su defecto principal.\nexport const volumen = {\n  carga: \"base-transaccional\",\n  requisitos: { iopsMinimos: 150000, latenciaSubMilisegundo: true, instanciaNitro: true },\n  tipo: \"gp3\",\n};\n",
+      "solution": {
+        "code": "export const volumen = {\n  carga: \"base-transaccional\",\n  requisitos: { iopsMinimos: 150000, latenciaSubMilisegundo: true, instanciaNitro: true },\n  tipo: \"io2\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "La carga exige 150 000 IOPS en un solo volumen y latencia sub-milisegundo. Compara esa cifra con el máximo de IOPS del tipo actual."
+        },
+        {
+          "level": 2,
+          "text": "gp3 llega como máximo a 80 000 IOPS por volumen. io2 Block Express admite hasta 256 000 IOPS en instancias basadas en Nitro y está pensado para latencia sub-milisegundo sostenida."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el tipo a \"io2\". No cambies la carga ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el tipo de volumen alcanza las IOPS exigidas",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(volumen.tipo, \"gp3\", \"gp3 llega como máximo a 80 000 IOPS\");\nassert.strictEqual(volumen.tipo, \"io2\");"
+          }
+        },
+        {
+          "name": "los requisitos de IOPS y de latencia se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(volumen.requisitos.iopsMinimos, 150000);\nassert.strictEqual(volumen.requisitos.latenciaSubMilisegundo, true);"
+          }
+        },
+        {
+          "name": "la carga y la instancia Nitro no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(volumen.carga, \"base-transaccional\");\nassert.strictEqual(volumen.requisitos.instanciaNitro, true);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-4-4-debug-01",
+      "title": "La base de datos que se queda corta de IOPS",
+      "statement": "El objeto `volumen` modela una base de datos transaccional en una instancia basada en Nitro que necesita 150 000 IOPS en un solo volumen EBS y latencia inferior al milisegundo. El diseño actual usa un tipo de volumen cuyo máximo de IOPS está por debajo de esa cifra. Corrige el tipo sin cambiar la carga ni los requisitos, y mantén la forma del valor exportado (`export const volumen = { … }`).",
+      "concepts": [
+        "gp3",
+        "io2 Block Express",
+        "IOPS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Volumen EBS con datos contables que nadie respalda. Corrige su defecto principal.\nexport const respaldo = {\n  volumen: \"datos-contables\",\n  tipo: \"gp3\",\n  confiaEnRespaldoAutomaticoDeAws: true,\n  snapshots: { automaticos: false, herramienta: null, frecuenciaHoras: null },\n};\n",
+      "solution": {
+        "code": "export const respaldo = {\n  volumen: \"datos-contables\",\n  tipo: \"gp3\",\n  confiaEnRespaldoAutomaticoDeAws: false,\n  snapshots: { automaticos: true, herramienta: \"dlm\", frecuenciaHoras: 24 },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "ya no se confía en un respaldo automático de AWS",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(respaldo.confiaEnRespaldoAutomaticoDeAws, false, \"AWS no respalda automáticamente los volúmenes EBS\");"
+          }
+        },
+        {
+          "name": "los snapshots se crean de forma automatizada con una herramienta válida",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(respaldo.snapshots.automaticos, true);\nassert.ok([\"dlm\", \"aws-backup\"].includes(respaldo.snapshots.herramienta), \"usa Data Lifecycle Manager o AWS Backup\");"
+          }
+        },
+        {
+          "name": "la frecuencia es un número positivo de horas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(typeof respaldo.snapshots.frecuenciaHoras, \"number\");\nassert.ok(respaldo.snapshots.frecuenciaHoras > 0);"
+          }
+        },
+        {
+          "name": "el nombre y el tipo del volumen se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(respaldo.volumen, \"datos-contables\");\nassert.strictEqual(respaldo.tipo, \"gp3\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-4-4-debug-02",
+      "title": "El volumen que nadie respalda",
+      "statement": "El objeto `respaldo` modela un volumen EBS de datos contables. La configuración da por hecho que AWS lo respalda automáticamente y no define ningún snapshot, de modo que no hay ninguna copia desde la que restaurar. Corrígela para que los snapshots se creen de forma automatizada, sin cambiar el nombre ni el tipo del volumen, y mantén la forma del valor exportado (`export const respaldo = { … }`).",
+      "concepts": [
+        "snapshot",
+        "Data Lifecycle Manager",
+        "AWS Backup"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de almacenamiento de bloques y archivos (borrador generado por un asistente)\nEscenario: una base de datos en EBS, archivos compartidos con EFS, un servidor Windows y un clúster de cálculo.\n1. Un volumen gp3 admite hasta 80 000 IOPS y hasta 2 000 MiB/s.\n2. AWS crea snapshots automáticos de cada volumen EBS, así que no hace falta configurar nada.\n3. Cada snapshot de EBS es una copia completa del volumen y ocupa su tamaño total.\n4. Amazon EFS admite instancias EC2 basadas en Windows mediante NFS.\n5. En un sistema FSx for Lustre scratch los datos no se replican y no persisten si falla un servidor de archivos.\n6. FSx for Windows File Server usa SMB, Active Directory y tiene los backups diarios automáticos activados por defecto.\n7. Los volúmenes HDD st1 no pueden usarse como volumen de arranque."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Máximo de gp3",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página de tipos de volumen da para gp3 hasta 80 000 IOPS y hasta 2 000 MiB/s."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Snapshots automáticos",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: AWS no respalda automáticamente los volúmenes EBS; crear snapshots, a mano o con Data Lifecycle Manager o AWS Backup, es responsabilidad del usuario."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Tamaño de un snapshot",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: un snapshot es incremental y solo guarda los bloques que cambiaron desde el snapshot más reciente."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "EFS con Windows",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la guía indica que EFS no se admite con instancias EC2 basadas en Windows; para SMB y Windows se usa FSx for Windows File Server."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Scratch de Lustre",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: en los sistemas scratch los datos no se replican y no persisten si falla un servidor; los persistentes sí replican."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "FSx for Windows",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: usa SMB, autentica con Active Directory y los backups diarios automáticos vienen activados por defecto."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "st1 como arranque",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página de tipos de volumen indica que st1 no puede ser volumen de arranque."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-4-4-auditoria-01",
+      "title": "Auditar un informe de almacenamiento de bloques y archivos generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre EBS, EFS y FSx. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "EBS",
+        "snapshots",
+        "EFS",
+        "FSx"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html",
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html",
+        "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html",
+        "https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html",
+        "https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "io2 Block Express, con hasta 256 000 IOPS por volumen",
+            "explanation": "Es la correcta: io2 Block Express admite hasta 256 000 IOPS en instancias basadas en Nitro y está pensado para latencia sub-milisegundo sostenida."
+          },
+          {
+            "id": "b",
+            "text": "gp3, con hasta 80 000 IOPS por volumen",
+            "explanation": "Descartada: gp3 llega como máximo a 80 000 IOPS por volumen, por debajo de los 150 000 que exige el enunciado."
+          },
+          {
+            "id": "c",
+            "text": "st1, un volumen HDD de rendimiento optimizado",
+            "explanation": "Descartada: st1 es un HDD para streaming donde domina el rendimiento y llega a unos 500 IOPS con E/S de 1 MiB."
+          },
+          {
+            "id": "d",
+            "text": "sc1, un volumen HDD de menor costo",
+            "explanation": "Descartada: sc1 es un HDD para datos de acceso infrecuente y llega a unos 250 IOPS con E/S de 1 MiB."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-4-quiz-01",
+      "title": "Base de datos con 150 000 IOPS",
+      "statement": "Una base de datos transaccional en una instancia EC2 basada en Nitro exige latencia inferior al milisegundo sostenida y 150 000 IOPS en un solo volumen. ¿Qué tipo de volumen EBS es el MEJOR ajuste?",
+      "concepts": [
+        "io2 Block Express",
+        "IOPS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "gp2, un SSD de uso general para cargas transaccionales",
+            "explanation": "Descartada: los volúmenes SSD se optimizan para cargas transaccionales donde domina IOPS; el streaming de rendimiento es el caso de los HDD."
+          },
+          {
+            "id": "b",
+            "text": "io1, un SSD de IOPS aprovisionadas",
+            "explanation": "Descartada: io1 se orienta a IOPS sostenidas y a bases de datos intensivas en E/S, no a streaming de rendimiento."
+          },
+          {
+            "id": "c",
+            "text": "st1, un HDD de rendimiento optimizado",
+            "explanation": "Es la correcta: st1 se orienta a big data, almacenes de datos y procesamiento de registros, donde domina el rendimiento."
+          },
+          {
+            "id": "d",
+            "text": "sc1, un HDD para datos poco accedidos",
+            "explanation": "Descartada: sc1 es para datos de acceso infrecuente y el menor costo, no para lecturas frecuentes."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-4-quiz-02",
+      "title": "Registros en streaming y almacén de datos",
+      "statement": "Un equipo procesa registros y alimenta un almacén de datos en EC2 con lecturas secuenciales grandes y frecuentes; el atributo dominante es el rendimiento de streaming y el volumen no será de arranque. ¿Qué tipo de volumen es el MÁS adecuado?",
+      "concepts": [
+        "st1",
+        "HDD"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "EFS One Zone, con datos en una sola zona",
+            "explanation": "Descartada: One Zone guarda los datos en una sola zona y, si se pierde o se daña, los datos pueden perderse."
+          },
+          {
+            "id": "b",
+            "text": "FSx for Lustre con un sistema scratch",
+            "explanation": "Descartada: en un sistema scratch los datos no se replican y no persisten si falla un servidor de archivos."
+          },
+          {
+            "id": "c",
+            "text": "FSx for Windows File Server, accedido por SMB",
+            "explanation": "Descartada: usa SMB y no NFS, y al crearlo se especifican capacidad, IOPS de SSD y rendimiento."
+          },
+          {
+            "id": "d",
+            "text": "EFS Regional, con datos redundantes en varias zonas",
+            "explanation": "Es la correcta: EFS es sin servidor y elástico, usa NFS y el tipo Regional mantiene la disponibilidad aunque una zona no esté disponible."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-4-quiz-03",
+      "title": "Archivos NFS compartidos en varias zonas",
+      "statement": "Servidores Linux en varias zonas de disponibilidad deben compartir los mismos archivos por NFS y seguir disponibles aunque una zona deje de estarlo, sin aprovisionar capacidad. ¿Qué opción requiere la MENOR administración de capacidad?",
+      "concepts": [
+        "EFS",
+        "Regional"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html",
+        "https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html",
+        "https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon EFS, accedido por NFS",
+            "explanation": "Descartada: EFS usa NFSv4 y la guía indica que no se admite con instancias EC2 basadas en Windows."
+          },
+          {
+            "id": "b",
+            "text": "FSx for Windows File Server, con recursos compartidos SMB",
+            "explanation": "Es la correcta: ofrece SMB, autenticación con Active Directory y ACL de Windows, pensados para lift and shift de aplicaciones de Windows."
+          },
+          {
+            "id": "c",
+            "text": "FSx for Lustre, con interfaz POSIX para Linux",
+            "explanation": "Descartada: Lustre es un sistema POSIX para aplicaciones Linux y se accede con el cliente Lustre, no con SMB."
+          },
+          {
+            "id": "d",
+            "text": "Un volumen EBS gp3 adjunto a una instancia EC2",
+            "explanation": "Descartada: es almacenamiento en bloques de una instancia y no un servidor de archivos SMB administrado con Active Directory."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-4-quiz-04",
+      "title": "Servidor de archivos Windows con Active Directory",
+      "statement": "Una empresa traslada con lift and shift un servidor de archivos de Windows que usa SMB, ACL de Windows y Active Directory. ¿Qué opción exige MENOS cambios en las aplicaciones y en los usuarios?",
+      "concepts": [
+        "FSx for Windows",
+        "SMB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html",
+        "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html",
+        "https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html",
+        "https://docs.aws.amazon.com/ebs/latest/userguide/what-is-ebs.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un volumen EBS gp3, con hasta 2 000 MiB/s por volumen",
+            "explanation": "Descartada: 2 000 MiB/s por volumen es el máximo de gp3 y queda lejos de varios TBps."
+          },
+          {
+            "id": "b",
+            "text": "Un volumen EBS st1, con hasta 500 MiB/s por volumen",
+            "explanation": "Descartada: st1 llega como máximo a 500 MiB/s por volumen, muy por debajo de varios TBps."
+          },
+          {
+            "id": "c",
+            "text": "FSx for Lustre, enlazado al bucket de S3",
+            "explanation": "Es la correcta: ofrece latencias sub-milisegundo, hasta varios TBps y se enlaza con S3 presentando sus objetos como archivos."
+          },
+          {
+            "id": "d",
+            "text": "Un volumen EBS sc1, con hasta 250 MiB/s por volumen",
+            "explanation": "Descartada: sc1 llega como máximo a 250 MiB/s por volumen y es para datos de acceso infrecuente."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-4-quiz-05",
+      "title": "Aprendizaje automático con varios TBps",
+      "statement": "Un entrenamiento de aprendizaje automático en Linux lee un conjunto de datos de S3 y necesita latencia sub-milisegundo y hasta varios TBps de rendimiento. ¿Qué opción ofrece el MÁXIMO rendimiento agregado?",
+      "concepts": [
+        "FSx for Lustre",
+        "HPC"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html",
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear snapshots del volumen, a mano o con Data Lifecycle Manager o AWS Backup",
+            "explanation": "Es la correcta: los snapshots son la copia desde la que se restaura, y sus datos se replican en todas las zonas de la Región."
+          },
+          {
+            "id": "b",
+            "text": "Nada, porque AWS respalda automáticamente los datos de los volúmenes EBS",
+            "explanation": "Descartada: AWS no respalda automáticamente los volúmenes; crear los snapshots es responsabilidad del usuario."
+          },
+          {
+            "id": "c",
+            "text": "Crear snapshots y descargarlos del bucket de S3 donde se guardan",
+            "explanation": "Descartada: los snapshots se guardan en buckets a los que no se puede acceder directamente, ni con la consola ni con la API de S3."
+          },
+          {
+            "id": "d",
+            "text": "Pasar el volumen a io2 Block Express, cuya durabilidad sustituye a las copias",
+            "explanation": "Descartada: la durabilidad no es una copia; la guía exige crear snapshots para la resiliencia y la recuperación ante desastres."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-4-quiz-06",
+      "title": "Restaurar un volumen sin copias previas",
+      "statement": "Un equipo guarda datos críticos en un volumen EBS sin ninguna copia configurada y debe poder restaurarlos en cualquier zona de disponibilidad de la Región. ¿Qué es lo MÍNIMO que debe hacer?",
+      "concepts": [
+        "snapshot",
+        "recuperación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html",
+        "https://docs.aws.amazon.com/ebs/latest/userguide/what-is-ebs.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Un snapshot es incremental: guarda solo los bloques que cambiaron desde el snapshot más reciente",
+            "explanation": "Cumple: la página define el snapshot como una copia incremental que no duplica datos."
+          },
+          {
+            "id": "b",
+            "text": "Los snapshots se guardan en un bucket de S3 de tu cuenta que puedes explorar con la API de S3",
+            "explanation": "No cumple: se guardan en buckets que no se pueden acceder directamente ni con la consola ni con la API de S3."
+          },
+          {
+            "id": "c",
+            "text": "Eliminar un snapshot siempre reduce el costo de almacenamiento en la misma cantidad",
+            "explanation": "No cumple: por ser incrementales, eliminar un snapshot puede no reducir el costo si otros referencian sus datos."
+          },
+          {
+            "id": "d",
+            "text": "Los datos de un snapshot se replican automáticamente en todas las zonas de disponibilidad de la Región",
+            "explanation": "Cumple: eso permite restaurar un volumen en cualquier zona de la Región."
+          },
+          {
+            "id": "e",
+            "text": "AWS crea un snapshot diario de cada volumen por defecto",
+            "explanation": "No cumple: AWS no respalda automáticamente los datos de los volúmenes EBS."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-4-quiz-07",
+      "title": "Qué es cierto de los snapshots de EBS",
+      "statement": "Un equipo repasa los snapshots de EBS. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "snapshot",
+        "incremental"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "EFS usa NFSv4.1 y NFSv4.0 y no se admite con instancias EC2 basadas en Windows",
+            "explanation": "Cumple: la guía de EFS indica el protocolo NFS y esa limitación con Windows."
+          },
+          {
+            "id": "b",
+            "text": "FSx for Windows File Server se accede únicamente por NFS desde instancias Linux",
+            "explanation": "No cumple: se accede por SMB (versiones 2.0 a 3.1.1) y desde versiones de Windows y actuales de Linux."
+          },
+          {
+            "id": "c",
+            "text": "En FSx for Lustre, un sistema scratch no replica los datos y estos no persisten si falla un servidor",
+            "explanation": "Cumple: los scratch sirven para datos temporales; los persistentes replican los datos."
+          },
+          {
+            "id": "d",
+            "text": "Un volumen st1 puede usarse como volumen de arranque",
+            "explanation": "No cumple: la página de tipos de volumen indica que st1 no puede ser volumen de arranque."
+          },
+          {
+            "id": "e",
+            "text": "FSx for Windows File Server ofrece sistemas Single-AZ y Multi-AZ, con un servidor de reserva en otra zona",
+            "explanation": "Cumple: Multi-AZ aprovisiona y mantiene un servidor de reserva en una zona distinta de la Región."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-4-quiz-08",
+      "title": "Qué es cierto de EBS, EFS y FSx",
+      "statement": "Un equipo compara los servicios de bloques y de archivos. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "EFS",
+        "FSx"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html",
+        "https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html",
+        "https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html",
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "gp3",
+            "term": "EBS gp3",
+            "definition": "Base de datos mediana de una instancia o volumen de arranque, hasta 80 000 IOPS"
+          },
+          {
+            "id": "io2",
+            "term": "EBS io2 Block Express",
+            "definition": "Latencia sub-milisegundo sostenida y más de 80 000 IOPS"
+          },
+          {
+            "id": "st1",
+            "term": "EBS st1",
+            "definition": "Big data, almacén de datos o registros con lecturas en streaming"
+          },
+          {
+            "id": "sc1",
+            "term": "EBS sc1",
+            "definition": "Datos de acceso infrecuente al menor costo de almacenamiento"
+          },
+          {
+            "id": "snap",
+            "term": "Snapshot de EBS",
+            "definition": "Copia incremental para restaurar un volumen en cualquier zona de la Región"
+          },
+          {
+            "id": "efs",
+            "term": "Amazon EFS Regional",
+            "definition": "Archivos compartidos por NFS desde Linux, en varias zonas y sin administrar capacidad"
+          },
+          {
+            "id": "fsxw",
+            "term": "FSx for Windows File Server",
+            "definition": "Servidor de archivos SMB con Active Directory para lift and shift"
+          },
+          {
+            "id": "fsxl",
+            "term": "FSx for Lustre",
+            "definition": "HPC o aprendizaje automático con POSIX, varios TBps y datos de S3"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio de bloques o de archivos con el caso que resuelve. Si dudas, pregúntate qué protocolo y sistema operativo hay, cuántas IOPS o qué rendimiento se exigen y si hace falta una copia.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Volúmenes SSD y HDD de EBS: gp3, io2 Block Express, st1 y sc1",
+              "Copia y restauración de un volumen: snapshots",
+              "Archivos compartidos por NFS: EFS",
+              "Archivos con SMB o con POSIX de alto rendimiento: FSx for Windows y FSx for Lustre"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-4-4-memoria-01",
+      "title": "Servicio de almacenamiento y caso que resuelve",
+      "statement": "Empareja cada tipo de volumen EBS, snapshot o servicio de archivos con el caso que resuelve.",
+      "concepts": [
+        "EBS",
+        "EFS",
+        "FSx"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html",
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html",
+        "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html",
+        "https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html",
+        "https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-4-4-reflexion-01",
+      "title": "Reflexión: qué servicio o tipo de volumen y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, una base de datos transaccional en EC2, unos archivos que comparte una flota de servidores Linux o un servidor de archivos de Windows) y escribe un registro breve de decisión sobre dónde la almacenarías, en 5 a 7 líneas:\n\n1) Decisión: qué servicio (EBS, EFS, FSx for Windows File Server o FSx for Lustre) y, si es EBS, qué tipo de volumen usarías, y qué dato de la carga lo decide (protocolo, sistema operativo, IOPS o rendimiento, número de zonas).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, gp3 para una carga de más de 80 000 IOPS o EFS para aplicaciones de Windows) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (snapshots automatizados, la capacidad y el rendimiento aprovisionados, el tipo de sistema Regional u One Zone).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento o Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial (tipos de volumen de EBS, snapshots, EFS o FSx) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, el servicio, el tipo de volumen si lo hay y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "EBS",
+        "EFS",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html",
+        "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html",
+        "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html",
+        "https://docs.aws.amazon.com/fsx/latest/WindowsGuide/what-is.html",
+        "https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html"
+      ],
+      "order": 19
+    }
+  ]
+}
