@@ -1,0 +1,1234 @@
+{
+  "code": "AWS-U2.5.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-5-1-rds-multi-az-frente-a-replicas-de-lectura-copias-y-restauracion",
+      "title": "RDS: Multi-AZ frente a réplicas de lectura, copias y restauración",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "En Amazon RDS, «copiar la base de datos» puede significar cuatro cosas distintas, y el examen las mezcla a propósito: un standby de Multi-AZ para sobrevivir a la caída de una zona de disponibilidad, una réplica de lectura para repartir lecturas, una copia de seguridad para volver atrás y una restauración a un momento dado para recuperar un estado anterior. Cada una resuelve un problema distinto y ninguna sustituye a las otras. En el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», y en sus tareas de arquitecturas escalables y tolerantes a fallos, el enunciado describe el requisito (sobrevivir a un fallo de zona, descargar lecturas, deshacer un error humano) y tú eliges el mecanismo que lo cumple. Las cifras de esta lección son datos de las páginas de la guía de RDS leídas el 2026-11-22; antes de usarlas fuera del estudio, vuelve a comprobarlas en la página oficial."
+        },
+        {
+          "type": "list",
+          "title": "RDS: cuatro mecanismos de un vistazo",
+          "items": [
+            "Multi-AZ de instancia: un primario y un standby en otra zona de disponibilidad, con replicación sincrónica; el standby da soporte de conmutación por error y no atiende lecturas.",
+            "Multi-AZ de clúster: un escritor y dos standbys legibles en tres zonas; los standbys dan conmutación por error y además pueden atender lecturas.",
+            "Réplica de lectura: copia de solo lectura que recibe los cambios de forma asíncrona; sirve para escalar lecturas y puede promoverse a instancia independiente.",
+            "Copias automáticas y snapshots: copias dentro de un período de retención que tú especificas y copias manuales que tú gestionas.",
+            "Restauración a un momento dado: crea una instancia nueva a partir de las copias automáticas, sin modificar la de origen."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Multi-AZ: alta disponibilidad, no escalado de lectura",
+          "text": "Una implementación Multi-AZ ejecuta tu instancia en varias zonas de disponibilidad: Amazon aprovisiona y mantiene uno o más standbys en una zona distinta y tu primario se replica a cada uno. La página de Multi-AZ distingue dos formas. En un despliegue Multi-AZ de instancia hay un único standby que da soporte de conmutación por error y no atiende tráfico de lectura; la página de qué es RDS añade que ese standby es una réplica sincrónica en otra zona. En un despliegue Multi-AZ de clúster hay dos standbys que dan soporte de conmutación por error y además pueden atender lecturas: un escritor y dos lectores en tres zonas de la misma Región. Según la página de qué es RDS, las ventajas de Multi-AZ son redundancia de datos y soporte de conmutación por error, eliminar las pausas de E/S y reducir los picos de latencia durante las copias de seguridad, y atender lecturas en los secundarios solo en el despliegue de clúster. En la consola se distinguen así: la instancia tiene una sola fila con Multi-AZ en «Yes»; el clúster tiene una fila de clúster con tres filas de instancia (escritor y lectores) y Multi-AZ en «3 Zones». La regla de examen: Multi-AZ de instancia es alta disponibilidad, no escalado de lectura."
+        },
+        {
+          "type": "paragraph",
+          "title": "Réplicas de lectura: escalar lecturas con replicación asíncrona",
+          "text": "Una réplica de lectura es una copia de solo lectura de una instancia: enrutas hacia ella las consultas de las aplicaciones y reduces la carga del primario, de modo que puedes escalar horizontalmente más allá de la capacidad de una sola instancia en cargas de lectura intensiva. Para crearla, RDS toma un snapshot de la instancia de origen y crea a partir de él una instancia de solo lectura; después usa la replicación asíncrona propia del motor para actualizarla con cada cambio del primario. Los casos de uso de la página son escalar lecturas, servir lecturas mientras el origen no está disponible (con datos posiblemente desactualizados), informes de negocio o almacenes de datos y recuperación ante desastres, porque puedes promover una réplica a instancia independiente si el primario falla. Detalles que el examen explota: las réplicas se crean a mano y RDS no admite autoescalado de réplicas; se facturan como instancias estándar con la tarifa de su clase de instancia; no pagas la transferencia de datos de replicación entre origen y réplica dentro de la misma Región; pueden estar en otra Región; y si eliminas el origen sin eliminar sus réplicas de la misma Región, cada una se promueve a instancia independiente. Crear una réplica a partir de otra solo es posible en RDS for MariaDB, RDS for MySQL y algunas versiones de RDS for PostgreSQL, y la replicación circular no está admitida."
+        },
+        {
+          "type": "paragraph",
+          "title": "Multi-AZ y réplica de lectura a la vez",
+          "text": "Los dos mecanismos se combinan y cada uno hace lo suyo. La página de réplicas describe una instancia con un standby de alta disponibilidad y una réplica de lectura: el primario copia los cambios de forma sincrónica al standby de una zona y de forma asíncrona a la réplica de otra zona; los clientes leen y escriben en el primario, y solo la réplica atiende lecturas, porque, a diferencia de ella, el standby no atiende tráfico de lectura. Así, la réplica puede ir por detrás del primario, mientras que el standby sincrónico existe para la conmutación por error. De aquí sale la pregunta típica: «necesito tolerar la caída de una zona» pide Multi-AZ; «necesito más capacidad de lectura» pide réplicas de lectura o un clúster Multi-AZ con instancias legibles; y «necesito ambas cosas» pide combinarlos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Copias de seguridad: automáticas, manuales y su ciclo de vida",
+          "text": "RDS crea y guarda copias automáticas de tu instancia o clúster Multi-AZ durante la ventana de copia que configuras, en todos los tipos de despliegue. Es un snapshot del volumen de almacenamiento que respalda toda la instancia y no solo bases individuales, y se conserva durante el período de retención que especificas; dentro de ese período puedes recuperar la instancia a cualquier momento. Reglas: la instancia debe estar en estado available (con storage_full no se hace copia) y no se hacen mientras se ejecuta una copia de snapshot en la misma Región para la misma base de datos. También puedes crear copias manuales, los DB snapshots. El primer snapshot contiene todos los datos y los siguientes son incrementales. Puedes copiar snapshots automáticos y manuales y compartir los manuales; si compartes uno, sigues siendo su propietario. El almacenamiento de copias vive en Amazon S3 y se calcula por Región. Al eliminar una instancia: si eliges conservar las copias automáticas, se guardan durante todo el período de retención; si no, se eliminan con la instancia. Los snapshots, finales y manuales, son independientes de las copias automáticas y no se ven afectados; puedes tener hasta 100 snapshots manuales por Región. Los precios de almacenamiento de copias no se copian aquí por ser un dato cambiante."
+        },
+        {
+          "type": "paragraph",
+          "title": "Restauración a un momento dado: una instancia nueva",
+          "text": "Restaurar a un momento dado crea una instancia de base de datos nueva sin modificar la de origen, y puedes elegir cualquier punto dentro del período de retención. RDS sube los registros de transacciones a Amazon S3 cada cinco minutos y el campo LatestRestorableTime indica el último instante restaurable; en la consola, la sección Automated backups muestra el último y el primer instante restaurables. En la consola eliges la instancia en Automated backups, la acción «Restore to point in time», el último instante restaurable o uno personalizado, y un identificador de instancia de destino que debe ser único. Consideraciones de la página: la instancia restaurada recibe por defecto los grupos de parámetros y de opciones predeterminados (puedes indicar otros con la CLI o la API); no puedes reducir el almacenamiento al restaurar y, si lo aumentas, debe ser en al menos un 10 por ciento; tras la restauración los volúmenes siguen cargando bloques desde S3 en segundo plano, a hasta 4 TiB por hora en volúmenes gp3 o io2 Block Express, y durante ese tiempo la instancia funciona, pero su rendimiento puede no ser el máximo. Si la instancia tiene un plan de AWS Backup asociado, ese plan se usa para la recuperación a un momento dado."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres requisitos, tres mecanismos",
+          "text": "Una tienda tiene tres problemas con su base RDS for PostgreSQL. (1) Debe seguir funcionando si cae una zona de disponibilidad y nadie necesita leer del reserva. (2) Los informes de fin de mes saturan la instancia durante horas. (3) Un script borró por error una tabla hace 40 minutos. Paso 1: en (1) el dato es «sobrevivir a la caída de una zona» sin lecturas en el reserva, así que Multi-AZ de instancia, con un standby sincrónico en otra zona. Paso 2: en (2) el dato es «lecturas que saturan el primario», así que una o más réplicas de lectura hacia las que se enruta el informe, aceptando replicación asíncrona y creándolas a mano porque RDS no las autoescala. Paso 3: en (3) el dato es «volver a un instante anterior», así que una restauración a un momento dado, anterior al borrado y dentro del período de retención, que crea una instancia nueva sin tocar la de origen; el standby no sirve, porque replica sincrónicamente y tiene los mismos datos. Resultado: cada decisión salió de un dato del enunciado y no del nombre del mecanismo."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de resiliencia de RDS como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  base: \"tienda-prod\",\n  despliegue: \"multi-az-instancia\",\n  replicasDeLectura: [{ nombre: \"tienda-informes\", replicacion: \"asincrona\" }],\n  copias: { periodoDeRetencion: \"definido-por-el-equipo\", conservarAlEliminar: true },\n  restauracion: { origen: \"tienda-prod\", destino: \"tienda-prod-restaurada\", modo: \"momento-dado\" },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del requisito al mecanismo de RDS",
+          "code": "flowchart TB\n  R{\"Requisito del enunciado\"} -->|\"Sobrevivir a la caída de una zona\"| A[\"Multi-AZ de instancia: standby sincrónico\"]\n  R -->|\"Más capacidad de lectura\"| B[\"Réplicas de lectura: replicación asíncrona\"]\n  R -->|\"Failover y lecturas en el reserva\"| C[\"Multi-AZ de clúster: standbys legibles\"]\n  R -->|\"Volver a un instante anterior\"| D[\"Restauración a un momento dado: instancia nueva\"]\n  D --> E[\"Copias automáticas dentro del período de retención\"]\n  B --> F[\"Promoción a instancia independiente\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: tomar el standby de Multi-AZ por una réplica de lectura",
+          "text": "El enunciado mezcla señales: «alta disponibilidad», «escalar lecturas», «volver a un instante anterior», «recuperación ante desastres». El standby de Multi-AZ de instancia no atiende lecturas y replica de forma sincrónica; la réplica de lectura atiende lecturas y replica de forma asíncrona; ninguno de los dos devuelve un estado anterior, porque ambos reciben los mismos cambios. Subraya el requisito (continuidad, lecturas o retroceso en el tiempo) y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: contar con el standby de Multi-AZ de instancia para repartir lecturas",
+          "text": "Causa: suponer que el segundo nodo de un Multi-AZ sirve consultas. Consecuencia: el primario sigue saturado, porque el standby de un despliegue de instancia no atiende tráfico de lectura. Solución: añade réplicas de lectura, o elige un despliegue Multi-AZ de clúster, cuyos standbys sí pueden atender lecturas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: esperar que una réplica de lectura esté siempre al día y se escale sola",
+          "text": "Causa: dar por hecho que la réplica es sincrónica y que RDS ajusta su número a la demanda. Consecuencia: las lecturas pueden devolver datos desactualizados, porque RDS copia los cambios de forma asíncrona, y los picos de lectura no se absorben, porque RDS no admite el autoescalado de réplicas. Solución: crea las réplicas necesarias con antelación, tolera el retraso de replicación en las lecturas y usa Multi-AZ para la continuidad."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: restaurar «encima» y confiar en copias que se borran con la instancia",
+          "text": "Causa: creer que restaurar a un momento dado sobrescribe la instancia o que las copias automáticas sobreviven a la eliminación. Consecuencia: el destino es una instancia nueva con su propio identificador, y si no conservaste las copias automáticas al eliminar la instancia, se eliminan con ella. Solución: nombra una instancia de destino única, conserva las copias automáticas o crea un snapshot final o manual antes de eliminar, y comprueba que el instante elegido cae dentro del período de retención."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Distinguir Multi-AZ de las réplicas de lectura en RDS y planificar copias y restauración según el requisito. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el mecanismo, el dato del enunciado que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres decisiones del ejemplo: para cada problema, nombra el mecanismo y el dato que lo decide. Explica con tus palabras el diagrama «Del requisito al mecanismo de RDS». Después responde: si el primario está saturado de lecturas, ¿por qué no basta con activar Multi-AZ de instancia, y qué dos opciones sí sirven?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Alta disponibilidad con una réplica de lectura». Una configuración escrita como objeto pide sobrevivir a la caída de una zona, pero solo despliega una réplica de lectura. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la réplica de lectura y su replicación asíncrona."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Un plan de restauración que sobrescribe el origen». Un plan de restauración a un momento dado usa el mismo identificador de origen y reduce el almacenamiento. Decide qué cambias sin tocar el origen ni el instante elegido. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la página de restauración a un momento dado."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre Multi-AZ, réplicas de lectura, copias y restauración. Audítalo en «Auditar un informe de RDS generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de Multi-AZ, réplicas de lectura, copias de seguridad y restauración a un momento dado (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué diferencia hay entre un Multi-AZ de instancia y uno de clúster; cómo replica el standby y cómo la réplica de lectura; qué casos de uso tiene una réplica; qué ocurre con las copias automáticas y los snapshots al eliminar una instancia; y por qué una restauración a un momento dado no modifica el origen. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la tienda añade un portal que necesita seguir leyendo aunque el primario esté en mantenimiento, una auditoría que exige poder volver al estado de ayer a las 14:00 y un requisito de que ninguna caída de zona detenga las escrituras. Decide el mecanismo para cada parte y qué configuración la acompaña. Pregunta de cierre: un compañero dice «con Multi-AZ ya tenemos copias para volver a cualquier momento»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-rds-que-es",
+          "order": 0,
+          "note": "Fuente previa: qué es RDS, qué gestiona por ti y cómo se describe el despliegue Multi-AZ de instancia y de clúster."
+        },
+        {
+          "resourceSlug": "aws-rds-multi-az",
+          "order": 1,
+          "note": "Fuente de Multi-AZ: despliegue de instancia con un standby y despliegue de clúster con dos standbys legibles."
+        },
+        {
+          "resourceSlug": "aws-rds-replicas-de-lectura",
+          "order": 2,
+          "note": "Fuente de las réplicas de lectura: replicación asíncrona, casos de uso, ausencia de autoescalado, combinación con Multi-AZ y promoción."
+        },
+        {
+          "resourceSlug": "aws-rds-copias-de-seguridad",
+          "order": 3,
+          "note": "Fuente de las copias: copias automáticas, período de retención, snapshots manuales y qué ocurre al eliminar la instancia."
+        },
+        {
+          "resourceSlug": "aws-rds-restaurar-a-un-momento-dado",
+          "order": 4,
+          "note": "Fuente de la restauración a un momento dado: instancia nueva, registros cada cinco minutos y restricciones de almacenamiento."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 5,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Según la página de Multi-AZ (leída el 2026-11-22), el despliegue de instancia tiene un standby que da conmutación por error y no atiende lecturas; el de clúster tiene dos standbys que dan conmutación por error y además pueden atender lecturas. En la consola, la instancia es una sola fila con «Yes» y el clúster tiene tres filas de instancia con «3 Zones»."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-1-tarjeta-01",
+      "title": "Tarjeta: Multi-AZ de instancia y de clúster",
+      "statement": "¿En qué se diferencian el Multi-AZ de instancia y el de clúster de RDS?",
+      "concepts": [
+        "Multi-AZ de instancia",
+        "Multi-AZ de clúster"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Según la página de qué es RDS (leída el 2026-11-22), Multi-AZ aprovisiona standbys en otra zona y da redundancia de datos y conmutación por error, elimina pausas de E/S y reduce picos de latencia en las copias. En el despliegue de instancia el standby es sincrónico y no atiende lecturas; solo el clúster las atiende."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-1-tarjeta-02",
+      "title": "Tarjeta: Qué aporta Multi-AZ",
+      "statement": "¿Qué ventajas da una implementación Multi-AZ y cómo replica el standby?",
+      "concepts": [
+        "Multi-AZ",
+        "replicación sincrónica"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Copia de solo lectura de una instancia: reduce la carga del primario y escala las lecturas. RDS la crea desde un snapshot y la actualiza con replicación asíncrona. Conviene para lecturas intensivas, para servir lecturas con el origen no disponible (datos posiblemente desactualizados), para informes y para recuperación ante desastres, porque puede promoverse a instancia independiente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-1-tarjeta-03",
+      "title": "Tarjeta: Réplicas de lectura de RDS",
+      "statement": "¿Qué es una réplica de lectura de RDS y cuándo conviene?",
+      "concepts": [
+        "réplica de lectura",
+        "replicación asíncrona"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Según la página de réplicas (leída el 2026-11-22), se crean a mano y RDS no las autoescala; se facturan como instancias estándar; no se cobra la transferencia de replicación dentro de la misma Región; no hay replicación circular; y si se elimina el origen sin eliminar sus réplicas de la misma Región, cada una se promueve a instancia independiente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-1-tarjeta-04",
+      "title": "Tarjeta: Detalles de las réplicas de lectura",
+      "statement": "¿Qué limitaciones y costos tienen las réplicas de lectura de RDS?",
+      "concepts": [
+        "autoescalado",
+        "promoción"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Las copias automáticas se hacen en la ventana configurada, se guardan durante el período de retención que especificas y exigen que la instancia esté available. Los snapshots manuales se copian y comparten (hasta 100 por Región). Al eliminar la instancia, las copias automáticas se eliminan salvo que elijas conservarlas; los snapshots son independientes. Página consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-1-tarjeta-05",
+      "title": "Tarjeta: Copias automáticas y snapshots",
+      "statement": "¿Qué reglas tienen las copias automáticas y los snapshots manuales de RDS?",
+      "concepts": [
+        "copias automáticas",
+        "snapshots manuales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Crea una instancia nueva sin modificar la de origen, a cualquier instante dentro del período de retención. RDS sube los registros de transacciones a S3 cada cinco minutos y LatestRestorableTime indica el último instante restaurable. No se puede reducir el almacenamiento y, si se aumenta, debe ser al menos un 10 por ciento. Datos de la página consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-1-tarjeta-06",
+      "title": "Tarjeta: Restauración a un momento dado",
+      "statement": "¿Cómo funciona la restauración a un momento dado en RDS?",
+      "concepts": [
+        "restauración a un momento dado",
+        "LatestRestorableTime"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Base de producción que debe sobrevivir a la caída de una zona de disponibilidad. Corrige su defecto principal.\nexport const base = {\n  motor: \"postgresql\",\n  objetivo: \"sobrevivir a la caida de una zona de disponibilidad\",\n  despliegue: \"una-az\",\n  replicasDeLectura: 1,\n  replicacionDeLaReplica: \"asincrona\",\n};\n",
+      "solution": {
+        "code": "export const base = {\n  motor: \"postgresql\",\n  objetivo: \"sobrevivir a la caida de una zona de disponibilidad\",\n  despliegue: \"multi-az-instancia\",\n  replicasDeLectura: 1,\n  replicacionDeLaReplica: \"asincrona\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Una réplica de lectura sirve para escalar lecturas. Piensa qué mecanismo da continuidad ante la caída de una zona."
+        },
+        {
+          "level": 2,
+          "text": "El Multi-AZ de instancia mantiene un standby sincrónico en otra zona de disponibilidad. Cambia el modo de despliegue."
+        },
+        {
+          "level": 3,
+          "text": "Cambia despliegue a \"multi-az-instancia\". No quites la réplica de lectura ni cambies su replicación asíncrona."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el despliegue es Multi-AZ de instancia",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(base.despliegue, \"multi-az-instancia\", \"la caída de una zona pide Multi-AZ\");"
+          }
+        },
+        {
+          "name": "el despliegue ya no es de una sola zona",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.notStrictEqual(base.despliegue, \"una-az\", \"una sola zona no sobrevive a su caída\");"
+          }
+        },
+        {
+          "name": "la réplica de lectura y su replicación se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(base.replicasDeLectura, 1);\nassert.strictEqual(base.replicacionDeLaReplica, \"asincrona\");"
+          }
+        },
+        {
+          "name": "el motor y el objetivo se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(base.motor, \"postgresql\");\nassert.strictEqual(base.objetivo, \"sobrevivir a la caida de una zona de disponibilidad\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-5-1-debug-01",
+      "title": "Alta disponibilidad con una réplica de lectura",
+      "statement": "El objeto `base` modela una base de producción de RDS for PostgreSQL que debe sobrevivir a la caída de una zona de disponibilidad. Su despliegue es de una sola zona y solo cuenta con una réplica de lectura, que escala lecturas pero no es el mecanismo de alta disponibilidad. Corrige el modo de despliegue sin quitar la réplica de lectura ni cambiar su replicación, y mantén la forma del valor exportado (`export const base = { … }`).",
+      "concepts": [
+        "Multi-AZ de instancia",
+        "réplica de lectura"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Restauración a un momento dado de una base que perdió una tabla. Corrige sus defectos principales.\nexport const plan = {\n  origen: \"pedidos-prod\",\n  destino: \"pedidos-prod\",\n  momento: \"2026-11-22T10:15:00Z\",\n  almacenamientoOrigenGiB: 200,\n  almacenamientoDestinoGiB: 100,\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  origen: \"pedidos-prod\",\n  destino: \"pedidos-prod-restaurada\",\n  momento: \"2026-11-22T10:15:00Z\",\n  almacenamientoOrigenGiB: 200,\n  almacenamientoDestinoGiB: 200,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el destino es una instancia nueva distinta del origen",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(plan.destino, plan.origen, \"la restauración crea una instancia nueva con un identificador único\");"
+          }
+        },
+        {
+          "name": "el almacenamiento del destino no se reduce",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(plan.almacenamientoDestinoGiB >= plan.almacenamientoOrigenGiB, \"no se puede reducir el almacenamiento al restaurar\");"
+          }
+        },
+        {
+          "name": "si se aumenta el almacenamiento, es al menos un 10 por ciento",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const o = plan.almacenamientoOrigenGiB;\nconst d = plan.almacenamientoDestinoGiB;\nassert.ok(d === o || d >= o * 1.1, \"un aumento debe ser de al menos un 10 por ciento\");"
+          }
+        },
+        {
+          "name": "el origen y el momento elegido se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.origen, \"pedidos-prod\");\nassert.strictEqual(plan.momento, \"2026-11-22T10:15:00Z\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-5-1-debug-02",
+      "title": "Un plan de restauración que sobrescribe el origen",
+      "statement": "El objeto `plan` modela una restauración a un momento dado de la base `pedidos-prod` tras un borrado accidental. Su destino repite el identificador del origen y el almacenamiento del destino es menor que el del origen. Corrige el plan para que cumpla las restricciones de la restauración sin cambiar el origen ni el instante elegido, y mantén la forma del valor exportado (`export const plan = { … }`). Una restauración a un momento dado no modifica la instancia de origen.",
+      "concepts": [
+        "restauración a un momento dado",
+        "almacenamiento"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de resiliencia de RDS (borrador generado por un asistente)\nEscenario: una base RDS for PostgreSQL con lecturas pesadas, continuidad ante la caída de una zona y recuperación ante borrados.\n1. El Multi-AZ de instancia mantiene un standby sincrónico en otra zona de disponibilidad que no atiende tráfico de lectura.\n2. Las réplicas de lectura reciben los cambios de forma sincrónica, así que nunca van por detrás del primario.\n3. RDS no añade ni elimina réplicas de lectura al cambiar la demanda: hay que crearlas y borrarlas manualmente.\n4. Las copias automáticas permiten restaurar a cualquier momento dentro del período de retención que se especifica.\n5. Restaurar a un momento dado sobrescribe la instancia de origen con los datos del instante elegido.\n6. Los snapshots manuales se eliminan junto con la instancia, igual que las copias automáticas.\n7. En un Multi-AZ de clúster, los standbys dan conmutación por error y además pueden atender lecturas."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Standby de Multi-AZ de instancia",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página de qué es RDS describe un standby sincrónico en otra zona, y la de Multi-AZ indica que el standby de un despliegue de instancia no atiende lecturas."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Replicación de las réplicas de lectura",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: RDS copia los cambios de forma asíncrona a la réplica de lectura, así que puede ir por detrás del primario; la replicación sincrónica es la del standby de Multi-AZ."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Autoescalado de réplicas",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: la página dice que RDS no admite el autoescalado de réplicas y que se crean y eliminan manualmente."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Período de retención de las copias",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página indica que puedes recuperar la instancia a cualquier momento dentro del período de retención que especificas."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Restauración sobre el origen",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: restaurar a un momento dado crea una instancia nueva sin modificar la de origen, con un identificador de destino único."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Snapshots manuales al eliminar la instancia",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: los snapshots manuales no se eliminan con la instancia y son independientes de las copias automáticas, que sí se eliminan salvo que elijas conservarlas."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Standbys del Multi-AZ de clúster",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página de Multi-AZ indica que en un clúster los standbys dan soporte de conmutación por error y también pueden atender tráfico de lectura."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-5-1-auditoria-01",
+      "title": "Auditar un informe de RDS generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre Multi-AZ, réplicas de lectura, copias y restauración de RDS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "Multi-AZ",
+        "réplicas de lectura",
+        "copias y restauración"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una réplica de lectura en otra zona, que recibe los cambios de forma sincrónica",
+            "explanation": "Descartada: RDS copia los cambios a la réplica de lectura de forma asíncrona; la replicación sincrónica es la del standby de Multi-AZ."
+          },
+          {
+            "id": "b",
+            "text": "Copias automáticas más frecuentes, que mantienen un standby activo en otra zona",
+            "explanation": "Descartada: las copias automáticas son snapshots del volumen y no mantienen ningún standby; restaurar crea una instancia nueva."
+          },
+          {
+            "id": "c",
+            "text": "Un despliegue Multi-AZ de instancia, con un standby sincrónico en otra zona",
+            "explanation": "Es la correcta: el standby de un Multi-AZ de instancia da soporte de conmutación por error y es una réplica sincrónica en otra zona."
+          },
+          {
+            "id": "d",
+            "text": "Un despliegue de una sola zona, con un volumen de almacenamiento más grande",
+            "explanation": "Descartada: aumentar el volumen no aprovisiona ningún standby en otra zona de disponibilidad."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-1-quiz-01",
+      "title": "Sobrevivir a la caída de una zona",
+      "statement": "Una base RDS for MySQL de producción debe seguir disponible si cae una zona de disponibilidad, y nadie necesita leer del reserva. ¿Qué configuración encaja MEJOR?",
+      "concepts": [
+        "Multi-AZ de instancia",
+        "alta disponibilidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear réplicas de lectura y enrutar hacia ellas las consultas de los informes",
+            "explanation": "Es la correcta: una réplica de lectura reduce la carga del primario y escala las lecturas más allá de una sola instancia."
+          },
+          {
+            "id": "b",
+            "text": "Activar un Multi-AZ de instancia, cuyo standby atiende las consultas de lectura",
+            "explanation": "Descartada: el standby de un despliegue Multi-AZ de instancia da conmutación por error y no atiende tráfico de lectura."
+          },
+          {
+            "id": "c",
+            "text": "Activar el autoescalado de réplicas de lectura, que RDS ajusta según la demanda",
+            "explanation": "Descartada: RDS no admite el autoescalado de réplicas; se crean y se eliminan manualmente."
+          },
+          {
+            "id": "d",
+            "text": "Aumentar el período de retención, que reparte las consultas entre copias",
+            "explanation": "Descartada: el período de retención solo fija cuánto se conservan las copias automáticas y no enruta consultas."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-1-quiz-02",
+      "title": "Informes que saturan el primario",
+      "statement": "Los informes de lectura intensiva de una base RDS saturan la instancia primaria. ¿Qué cambio da la MAYOR capacidad de lectura?",
+      "concepts": [
+        "réplica de lectura",
+        "escalado de lectura"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un Multi-AZ de instancia, cuyo único standby atiende lecturas y escrituras",
+            "explanation": "Descartada: el standby de un Multi-AZ de instancia no atiende tráfico de lectura y solo da soporte de conmutación por error."
+          },
+          {
+            "id": "b",
+            "text": "Una réplica de lectura, que actúa como standby sincrónico del primario",
+            "explanation": "Descartada: la réplica de lectura recibe los cambios de forma asíncrona; el standby sincrónico es el de Multi-AZ."
+          },
+          {
+            "id": "c",
+            "text": "Un despliegue de una sola zona, con una réplica de lectura en esa zona",
+            "explanation": "Descartada: una sola zona no tiene standbys en otra zona, así que no hay conmutación por error ante su caída."
+          },
+          {
+            "id": "d",
+            "text": "Un Multi-AZ de clúster, con dos standbys que también atienden lecturas",
+            "explanation": "Es la correcta: los standbys de un clúster dan conmutación por error y pueden atender tráfico de lectura."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-1-quiz-03",
+      "title": "Conmutación por error y lecturas en el reserva",
+      "statement": "Una aplicación necesita conmutación por error automática y además leer desde los nodos de reserva. ¿Qué despliegue da el MÁXIMO aprovechamiento de esos nodos?",
+      "concepts": [
+        "Multi-AZ de clúster",
+        "standbys legibles"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Conmutar por error al standby Multi-AZ, que conserva los datos previos al borrado",
+            "explanation": "Descartada: el standby es una réplica sincrónica y ya recibió el borrado, así que tiene los mismos datos que el primario."
+          },
+          {
+            "id": "b",
+            "text": "Restaurar a un momento dado anterior al borrado, creando una instancia nueva",
+            "explanation": "Es la correcta: la restauración crea una instancia nueva sin modificar la de origen, a un instante dentro del período de retención."
+          },
+          {
+            "id": "c",
+            "text": "Promover una réplica de lectura, que mantiene una copia anterior al borrado",
+            "explanation": "Descartada: la réplica recibe los cambios del primario de forma asíncrona, así que también acaba reflejando el borrado."
+          },
+          {
+            "id": "d",
+            "text": "Restaurar a un momento dado sobre la misma instancia, que se sobrescribe",
+            "explanation": "Descartada: restaurar a un momento dado no modifica la instancia de origen; siempre crea una instancia nueva."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-1-quiz-04",
+      "title": "Recuperar un estado anterior a un borrado",
+      "statement": "Un script borró una tabla hace 40 minutos y la base RDS sigue dentro del período de retención de sus copias. ¿Qué acción recupera el estado anterior con el MENOR riesgo para la instancia actual?",
+      "concepts": [
+        "restauración a un momento dado",
+        "retención"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El snapshot manual anterior, que es independiente de las copias automáticas",
+            "explanation": "Es la correcta: los snapshots manuales no se eliminan con la instancia y no se ven afectados por esa eliminación."
+          },
+          {
+            "id": "b",
+            "text": "Las copias automáticas del período de retención, que siempre sobreviven a la instancia",
+            "explanation": "Descartada: si no eliges conservarlas, todas las copias automáticas se eliminan junto con la instancia."
+          },
+          {
+            "id": "c",
+            "text": "La restauración a cualquier momento, que RDS mantiene aunque no queden copias",
+            "explanation": "Descartada: la restauración a un momento dado depende de las copias automáticas, que se eliminaron con la instancia."
+          },
+          {
+            "id": "d",
+            "text": "Un snapshot final, que RDS crea siempre antes de eliminar la instancia",
+            "explanation": "Descartada: el snapshot final es opcional; RDS solo lo crea si eliges que lo haga al eliminar."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-1-quiz-05",
+      "title": "Copias tras eliminar la instancia",
+      "statement": "Un equipo elimina una instancia RDS sin marcar conservar las copias automáticas y sin pedir un snapshot final. Existe un snapshot manual creado la semana anterior. ¿Qué respaldo ÚNICAMENTE sigue disponible?",
+      "concepts": [
+        "copias automáticas",
+        "snapshots manuales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Ambos reciben los cambios de forma asíncrona y los dos atienden lecturas",
+            "explanation": "Descartada: el standby recibe los cambios de forma sincrónica y, en un despliegue de instancia, no atiende lecturas."
+          },
+          {
+            "id": "b",
+            "text": "Ambos reciben los cambios de forma sincrónica y solo el standby atiende lecturas",
+            "explanation": "Descartada: es al revés; solo la réplica atiende lecturas y a ella RDS copia los cambios de forma asíncrona."
+          },
+          {
+            "id": "c",
+            "text": "El standby recibe cambios de forma sincrónica y solo la réplica atiende lecturas",
+            "explanation": "Es la correcta: el primario copia al standby de forma sincrónica y a la réplica de forma asíncrona; el standby no atiende lecturas."
+          },
+          {
+            "id": "d",
+            "text": "La réplica recibe cambios de forma sincrónica y el standby atiende las lecturas",
+            "explanation": "Descartada: la réplica de lectura recibe los cambios de forma asíncrona y el standby de instancia no atiende lecturas."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-1-quiz-06",
+      "title": "Multi-AZ junto con una réplica de lectura",
+      "statement": "Una instancia RDS tiene un standby de Multi-AZ en una zona y una réplica de lectura en otra. ¿Qué descripción es MÁS exacta?",
+      "concepts": [
+        "Multi-AZ",
+        "réplica de lectura",
+        "replicación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "RDS crea y elimina réplicas automáticamente según crece o baja la demanda",
+            "explanation": "No cumple: RDS no admite el autoescalado de réplicas; se crean y se eliminan manualmente."
+          },
+          {
+            "id": "b",
+            "text": "RDS copia a la réplica los cambios del primario de forma asíncrona",
+            "explanation": "Cumple: RDS usa la replicación asíncrona propia del motor para actualizar la réplica con cada cambio del primario."
+          },
+          {
+            "id": "c",
+            "text": "Una réplica no se factura porque comparte la instancia del primario",
+            "explanation": "No cumple: las réplicas se facturan como instancias estándar a la tarifa de la clase de instancia de la réplica."
+          },
+          {
+            "id": "d",
+            "text": "Una réplica puede promoverse a instancia independiente como recuperación ante desastres",
+            "explanation": "Cumple: la página propone promover una réplica a instancia independiente si el primario falla."
+          },
+          {
+            "id": "e",
+            "text": "Cualquier réplica puede ser origen de otra en todos los motores de RDS",
+            "explanation": "No cumple: en RDS for Db2, Oracle y SQL Server no puedes crear una réplica a partir de otra réplica."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-1-quiz-07",
+      "title": "Qué es cierto de las réplicas de lectura",
+      "statement": "Un arquitecto repasa las réplicas de lectura de RDS. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "réplica de lectura",
+        "promoción"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "La restauración crea una instancia nueva sin modificar la instancia de origen",
+            "explanation": "Cumple: la página indica que se restaura creando una instancia nueva y que el origen no se modifica."
+          },
+          {
+            "id": "b",
+            "text": "Al restaurar puedes reducir el almacenamiento asignado respecto al origen",
+            "explanation": "No cumple: no puedes reducir el almacenamiento al restaurar una instancia a un momento dado."
+          },
+          {
+            "id": "c",
+            "text": "RDS sube los registros de transacciones a Amazon S3 cada cinco minutos",
+            "explanation": "Cumple: la página indica esa frecuencia y el campo LatestRestorableTime muestra el último instante restaurable."
+          },
+          {
+            "id": "d",
+            "text": "Puedes restaurar a cualquier momento dentro del período de retención",
+            "explanation": "Cumple: la página indica que puedes restaurar a cualquier instante dentro del período de retención de las copias."
+          },
+          {
+            "id": "e",
+            "text": "Las copias automáticas se hacen aunque la instancia esté en storage_full",
+            "explanation": "No cumple: las copias automáticas no se hacen mientras la instancia está en un estado distinto de available."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-1-quiz-08",
+      "title": "Qué es cierto de las copias y la restauración",
+      "statement": "Un equipo planifica copias automáticas y una restauración a un momento dado en RDS. Selecciona TRES afirmaciones correctas según la guía.",
+      "concepts": [
+        "restauración a un momento dado",
+        "copias automáticas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-5-1-reflexion-01",
+      "title": "Reflexión: qué mecanismo de RDS y por qué",
+      "statement": "Elige una base de datos que conozcas (por ejemplo, la de una tienda con informes pesados, la de un servicio que no admite paradas o la de una aplicación donde un error humano borra datos) y escribe un registro breve de decisión sobre cómo protegerías su continuidad y su recuperación en RDS, en 5 a 7 líneas:\n\n1) Decisión: qué mecanismo usarías (Multi-AZ de instancia, Multi-AZ de clúster, réplicas de lectura, copias o restauración a un momento dado) y qué dato de la carga lo decide (continuidad ante una zona, lecturas, retroceso en el tiempo).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, la réplica de lectura para la continuidad o el standby para volver atrás) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (el período de retención, las réplicas creadas a mano, los snapshots manuales, el retraso de replicación).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad o Optimización de costos) y por qué.\n\n5) Evidencia: qué página oficial (Multi-AZ, réplicas de lectura, copias o restauración a un momento dado) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, el mecanismo y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "RDS",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html"
+      ],
+      "order": 18
+    }
+  ]
+}
