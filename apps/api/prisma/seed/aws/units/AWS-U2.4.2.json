@@ -1,0 +1,1283 @@
+{
+  "code": "AWS-U2.4.2",
+  "lessons": [
+    {
+      "slug": "aws-u2-4-2-s3-seguro-block-public-access-politicas-de-bucket-cifrado-url-prefirmadas-y-object-lock",
+      "title": "S3 seguro: Block Public Access, políticas de bucket, cifrado, URL prefirmadas y Object Lock",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Proteger un bucket de Amazon S3 no es una sola configuración, sino varias capas que se combinan. Por defecto, los buckets, los puntos de acceso y los objetos nuevos no permiten acceso público; sin embargo, alguien puede modificar una política de bucket o los permisos de un objeto para permitirlo. Block Public Access (BPA) son ajustes que sobrescriben esas políticas y permisos para limitar el acceso público. La política de bucket es la política basada en recursos que concede o deniega permisos sobre el bucket y sus objetos. El cifrado protege los datos en reposo: todos los buckets de S3 cifran por defecto los objetos nuevos. Las URL prefirmadas permiten compartir un objeto privado durante un tiempo limitado. Y Object Lock aplica un modelo de escritura única y lectura múltiple (WORM) que ayuda a impedir que un objeto se elimine o se sobrescriba durante un periodo o indefinidamente."
+        },
+        {
+          "type": "list",
+          "title": "Las cinco piezas que esta unidad conecta",
+          "items": [
+            "Block Public Access: cuatro ajustes independientes, aplicables a un punto de acceso, a un bucket o a toda una cuenta, que se imponen sobre políticas y ACL.",
+            "Política de bucket: política JSON con el lenguaje de IAM que solo puede asociar el propietario del bucket y que permite o deniega según quién pide, qué acción, qué recurso y qué condiciones.",
+            "Cifrado en reposo: SSE-S3 por defecto en todo bucket; SSE-KMS, DSSE-KMS o SSE-C si se piden en la solicitud, o el cifrado del lado del cliente si lo gestionas tú.",
+            "URL prefirmada: acceso temporal a un objeto privado que usa las credenciales de quien la genera.",
+            "Object Lock: retención (modo compliance o governance) y legal hold, solo en buckets con S3 Versioning habilitado."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Block Public Access: cuatro ajustes independientes",
+          "text": "S3 ofrece cuatro ajustes que se pueden usar en cualquier combinación. BlockPublicAcls hace que fallen PutBucketAcl y PutObjectAcl cuando la ACL especificada es pública, y que falle PutObject si la solicitud incluye una ACL pública. IgnorePublicAcls hace que S3 ignore todas las ACL públicas de un bucket y de sus objetos. BlockPublicPolicy hace que S3 rechace las llamadas a PutBucketPolicy cuando la política especificada permite acceso público. RestrictPublicBuckets limita el acceso a un bucket con política pública a los principales de servicio de AWS y a los usuarios autorizados de la cuenta propietaria, y bloquea el acceso entre cuentas. Cada ajuste puede aplicarse a un punto de acceso, a un bucket o a una cuenta; si difieren, S3 aplica la combinación más restrictiva. La guía recomienda activar los cuatro en la cuenta y también en cada bucket. Hay que fijarse en un detalle: BPA no modifica las políticas ni las ACL existentes, de modo que quitar un ajuste hace que un bucket con política pública vuelva a ser público. Y no existe BPA por objeto."
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué significa «pública» para una política de bucket",
+          "text": "Al evaluar una política de bucket, S3 empieza asumiendo que es pública y comprueba si puede considerarla no pública. Para serlo, la política debe conceder acceso únicamente a valores fijos (sin comodín ni variable de política de IAM) de un principal de AWS (usuario, rol o principal de servicio) o de ciertas claves de condición: un conjunto de bloques CIDR con aws:SourceIp, aws:SourceArn, aws:SourceVpc, aws:SourceVpce, aws:SourceOwner, aws:SourceAccount, aws:userid (fuera del patrón «AROLEID:*»), s3:DataAccessPointArn o s3:DataAccessPointAccount. Un rango de aws:SourceIp demasiado amplio (más amplio que /8 en IPv4 o que /32 en IPv6, sin contar los rangos privados RFC 1918) se evalúa como público. Una sola sentencia pública hace pública toda la política: con RestrictPublicBuckets activa, S3 bloquea incluso el acceso entre cuentas que otra sentencia delegaba en una cuenta concreta; al quitar la sentencia pública, esa cuenta recupera el acceso. Y si la política no es pública, RestrictPublicBuckets no la afecta y sigue en vigor tal como está escrita."
+        },
+        {
+          "type": "paragraph",
+          "title": "Políticas de bucket: quién las asocia y a qué objetos se aplican",
+          "text": "Una política de bucket es una política basada en recursos. Solo el propietario del bucket puede asociarla, y sus permisos se aplican a los objetos del bucket que pertenecen al propietario; no se aplican a objetos que pertenecen a otras cuentas de AWS. Con S3 Object Ownership, ajuste a nivel de bucket, el valor por defecto es «Bucket owner enforced»: todas las ACL están desactivadas, el propietario del bucket es dueño de todos los objetos y gestiona el acceso exclusivamente con políticas. Las políticas usan el lenguaje de políticas de IAM en JSON y pueden permitir o denegar solicitudes según los elementos que contienen: quién solicita, las acciones de S3, los recursos y aspectos de la solicitud, como la dirección IP desde la que se hace. La guía cita ejemplos como conceder a otras cuentas permiso para subir objetos o garantizar que el propietario tenga control total de lo subido. Una advertencia: una política de bucket no puede impedir las eliminaciones ni las transiciones de una regla de ciclo de vida de S3, aunque deniegue todas las acciones a todos los principales."
+        },
+        {
+          "type": "paragraph",
+          "title": "Cifrado en reposo: lo que S3 hace sin que lo pidas",
+          "text": "La protección de datos cubre los datos en tránsito (SSL/TLS) y los datos en reposo. Todos los buckets de S3 tienen cifrado configurado por defecto, y todos los objetos nuevos se cifran en reposo: el cifrado del lado del servidor con claves administradas por S3 (SSE-S3) es el nivel base de todos los buckets, aplicado a las cargas nuevas desde el 5 de enero de 2023 sin coste adicional ni impacto en el rendimiento. Para usar otro tipo puedes indicarlo en la solicitud PUT (SSE-KMS, DSSE-KMS de doble capa o SSE-C con claves aportadas por el cliente) o cambiar la configuración por defecto del bucket, donde las opciones son SSE-KMS o DSSE-KMS. Cambiar el cifrado por defecto a SSE-KMS no modifica el tipo de cifrado de los objetos que ya existen: para cambiarlo se puede usar S3 Batch Operations con la acción de copiar, que reescribe esos objetos en el mismo bucket como objetos SSE-KMS. Con el cifrado del lado del cliente cifras tú los datos antes de subirlos y gestionas el proceso, las claves y las herramientas. S3 Storage Lens permite ver qué porcentaje de los bytes almacenados está cifrado."
+        },
+        {
+          "type": "paragraph",
+          "title": "URL prefirmadas: compartir un objeto privado durante un tiempo",
+          "text": "Por defecto, todos los objetos de S3 son privados y solo su propietario puede acceder. El propietario puede compartirlos creando una URL prefirmada, que usa credenciales de seguridad para conceder un permiso limitado en el tiempo para descargar el objeto; la URL se puede abrir en un navegador o usar desde un programa. Las credenciales que usa la URL son las del usuario de AWS que la generó. Se puede crear sin escribir código desde la consola de S3, con AWS Explorer o con AWS Toolkit para Visual Studio Code, o por programación con la CLI de AWS y los SDK; con la CLI, el comando es aws s3 presign con el parámetro --expires-in, que expresa la caducidad en segundos. Según la página consultada el 2026-11-22, el tiempo máximo de caducidad es de 12 horas desde la creación si usas la consola y de 7 días si usas la CLI; como son límites que pueden cambiar, compruébalos en la guía vigente. Para las regiones lanzadas después del 20 de marzo de 2019 hay que indicar la región y el endpoint-url en la solicitud."
+        },
+        {
+          "type": "paragraph",
+          "title": "Object Lock: retención, modos y legal hold",
+          "text": "S3 Object Lock usa el modelo WORM para ayudar a impedir que los objetos se eliminen o se sobrescriban durante un tiempo fijo o variable, o de forma indefinida. Ofrece dos formas de gestionar la retención, el periodo de retención y el legal hold, y una versión de objeto puede tener una, otra o ambas. Funciona solo en buckets con S3 Versioning habilitado, y protege únicamente la versión indicada en la solicitud: no impide que se creen versiones nuevas ni que se añadan marcadores de borrado. En el modo compliance, ningún usuario, ni siquiera el usuario raíz de la cuenta, puede sobrescribir ni eliminar la versión protegida; el modo no se puede cambiar y el periodo no se puede acortar. En el modo governance, los usuarios no pueden sobrescribir ni eliminar la versión ni alterar su bloqueo salvo que tengan permisos especiales: hace falta el permiso s3:BypassGovernanceRetention y enviar el encabezado x-amz-bypass-governance-retention:true. El legal hold protege igual que un periodo de retención pero sin fecha de caducidad: dura hasta que se quita, es independiente de la retención y lo coloca o quita cualquier usuario con el permiso s3:PutObjectLegalHold. Una eliminación permanente (con ID de versión) de una versión protegida devuelve 403 Access Denied; una eliminación simple devuelve 200 OK e inserta un marcador de borrado."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: del requisito a la configuración",
+          "text": "Requisito: un bucket de reportes que solo lee el rol «reportes» de la misma cuenta y, además, una oficina con un rango de IP concreto, sin que nadie más pueda leer. Decisión 1: la política concede s3:GetObject a ese rol con su ARN completo (valor fijo) y a una oficina con IpAddress sobre un CIDR estrecho de aws:SourceIp, nunca con un principal con comodín sin condición. Decisión 2: se activan los cuatro ajustes de BPA en el bucket y en la cuenta. Decisión 3: las ACL se mantienen desactivadas con «Bucket owner enforced». En el arnés de laboratorio, `aws.s3access.isPolicyPublic` comprueba si una política es pública, `aws.s3access.effectiveBlockPublicAccess` combina los ajustes de cuenta y de bucket y `aws.s3access.evaluateS3Access` devuelve si una solicitud concreta se permite y si el bucket es público. Ojo: la forma del objeto de entrada (blockPublicAccess con account y bucket, bucketPolicy, request) es una convención del evaluador s3access, no un hecho de la guía de S3; los conceptos sí salen de las páginas oficiales."
+        },
+        {
+          "type": "code",
+          "title": "Un bucket de reportes con política no pública y Block Public Access completo, como valor",
+          "language": "typescript",
+          "code": "// Bucket de reportes: política con un principal fijo y un rango de IP acotado, y Block Public Access completo.\nexport const configuracion = {\n  blockPublicAccess: {\n    account: { BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true },\n    bucket: { BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true },\n  },\n  bucketPolicy: {\n    Version: \"2012-10-17\",\n    Statement: [\n      {\n        // Valor fijo de principal: esta sentencia no hace pública la política.\n        Effect: \"Allow\",\n        Principal: { AWS: \"arn:aws:iam::111122223333:role/reportes\" },\n        Action: \"s3:GetObject\",\n        Resource: \"arn:aws:s3:::amzn-s3-demo-reportes/*\",\n      },\n      {\n        // Principal con comodín, pero limitado por un CIDR estrecho de aws:SourceIp: tampoco es pública.\n        Effect: \"Allow\",\n        Principal: \"*\",\n        Action: \"s3:GetObject\",\n        Resource: \"arn:aws:s3:::amzn-s3-demo-reportes/*\",\n        Condition: { IpAddress: { \"aws:SourceIp\": \"203.0.113.0/24\" } },\n      },\n    ],\n  },\n  objectOwnership: \"BucketOwnerEnforced\",\n};\n\n// Con el arnés: aws.s3access.isPolicyPublic(configuracion.bucketPolicy) debe dar false y\n// aws.s3access.evaluateS3Access({ ...configuracion, request }) devuelve { allowed, isPublic, reasons }."
+        },
+        {
+          "type": "mermaid",
+          "title": "De la solicitud al objeto: las capas que se aplican",
+          "code": "flowchart TD\n  R[\"Solicitud a un bucket\"] --> B[\"Block Public Access: la combinación más restrictiva de cuenta, bucket y punto de acceso\"]\n  B -->|\"una opción prohíbe el acceso\"| X[\"S3 rechaza la solicitud\"]\n  B -->|\"ninguna opción lo prohíbe\"| P[\"Política de bucket: sentencias Allow y Deny con sus condiciones\"]\n  P -->|\"política no pública\"| E[\"Se evalúa tal como está escrita\"]\n  P -->|\"política pública y RestrictPublicBuckets activa\"| Q[\"Solo servicios de AWS y usuarios autorizados de la cuenta propietaria\"]\n  E --> O[\"Objeto: cifrado en reposo y, si hay Object Lock, retención o legal hold\"]\n  Q --> O"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: compartir un objeto privado sin hacerlo público",
+          "text": "Si una pregunta pide dar a una persona externa acceso temporal para descargar un objeto privado, la respuesta es una URL prefirmada, que usa las credenciales de quien la genera, y no abrir el bucket con una política con Principal «*» ni desactivar Block Public Access. Si pide que nadie, ni el usuario raíz, pueda eliminar una versión durante un periodo, piensa en Object Lock en modo compliance, no en governance ni en un legal hold. Y si pide cifrado en reposo sin trabajo adicional, recuerda que SSE-S3 ya se aplica por defecto."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que BlockPublicPolicy arregla una política pública que ya existe",
+          "text": "Causa: activar BlockPublicPolicy esperando que S3 corrija o elimine la política pública que el bucket ya tenía. Consecuencia: BlockPublicPolicy solo rechaza guardar políticas públicas nuevas; no afecta a las existentes, así que la política sigue siendo pública y el bucket sigue accesible. Solución: revisa la política existente y quita o acota la sentencia pública, y activa también RestrictPublicBuckets, que limita el acceso derivado de una política pública a los usuarios de la cuenta propietaria y a los servicios de AWS."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: dejar una sentencia pública junto a la sentencia de una cuenta socia",
+          "text": "Causa: añadir una sentencia con Principal «*» y sin condición a una política que también concede acceso a una cuenta concreta. Consecuencia: la sentencia pública hace pública toda la política; con RestrictPublicBuckets activa, S3 bloquea el acceso entre cuentas y la cuenta socia pierde el acceso aunque su propia sentencia no sea pública. Solución: elimina la sentencia pública o acótala con una condición de valor fijo, y comprueba la política con el arnés antes de aplicarla."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: elegir el modo governance cuando el requisito es que nadie pueda borrar",
+          "text": "Causa: aplicar Object Lock en modo governance, o solo un legal hold, a datos que una norma exige proteger incluso frente al usuario raíz. Consecuencia: quien tenga s3:BypassGovernanceRetention puede saltarse la retención, y cualquier usuario con s3:PutObjectLegalHold puede quitar un legal hold, así que la versión no queda realmente inmutable. Solución: usa el modo compliance con el periodo exigido, tras comprobar que el bucket tiene S3 Versioning habilitado, y reserva governance para cuando algunos usuarios deban poder alterar la retención."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Proteger un bucket de Amazon S3 con Block Public Access, una política de bucket que no sea pública, el cifrado adecuado, URL prefirmadas y Object Lock cuando el requisito lo pida, y comprobar el acceso con el evaluador s3access del arnés. Prepara el examen SAA-C03, dominio 1 (Diseñar arquitecturas seguras). Criterio: las pruebas de los laboratorios pasan y sabes explicar, para cada capa, qué impide y qué no impide."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y sigue el ejemplo resuelto, del requisito a la configuración. Explica con tus palabras, sin mirar el texto, el diagrama «De la solicitud al objeto: las capas que se aplican». Después responde: si un bucket tiene una política con una sentencia para una cuenta socia y otra con Principal «*» sin condición, y RestrictPublicBuckets está activa, ¿puede la cuenta socia leer los objetos y por qué?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Bucket de informes compartido con un socio, sin acceso anónimo»: la configuración inicial tiene una sentencia pública y ajustes de Block Public Access incompletos. Empieza por llamar a aws.s3access.isPolicyPublic y aws.s3access.evaluateS3Access con una solicitud anónima y lee los motivos que devuelve el arnés. Usa las pistas por niveles solo si te atascas. Criterio de paso: la política no es pública, los cuatro ajustes de Block Public Access están activos en el bucket, el socio puede leer y nadie más."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Exportaciones legibles solo desde un punto de enlace de VPC». Decide qué clave de condición y qué operador hacen no pública la política, qué acciones debe conceder y qué ajustes de Block Public Access activas. Criterio de paso: todas las comprobaciones pasan y justificas por escrito cada propiedad que has cambiado."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente que explique cómo impedir que un bucket con una política pública ya guardada siga siendo legible por cualquiera, y audita su respuesta contra la página de Block Public Access (consultada con fecha) antes de aceptarla. Anota qué ajuste propone y si la guía dice que afecta a las políticas existentes. Resuelve también «Depurar el bucket que sigue leyéndose pese a BlockPublicPolicy» y escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: cuáles son los cuatro ajustes de Block Public Access y qué hace cada uno; cuándo considera S3 pública una política de bucket; qué cifrado recibe un objeto nuevo sin pedir nada y cómo se cambia el de los existentes; qué credenciales usa una URL prefirmada; y qué diferencia hay entre los modos compliance y governance y el legal hold. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: el bucket debe, además, conservar facturas sin que nadie pueda borrarlas durante siete años y compartir un informe concreto con un cliente durante dos horas. Decide qué capas añades (versionado, Object Lock, URL prefirmada) y qué cambia en la política y en Block Public Access. Pregunta de cierre: un auditor externo pierde el acceso a un bucket tras añadir una sentencia a la política; ¿qué compruebas primero?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-s3-bloqueo-de-acceso-publico",
+          "order": 0,
+          "note": "Fuente de Block Public Access: los cuatro ajustes, la combinación más restrictiva, el significado de «público» y el ejemplo de política mixta."
+        },
+        {
+          "resourceSlug": "aws-s3-politicas-de-bucket",
+          "order": 1,
+          "note": "Fuente de las políticas de bucket: quién las asocia, a qué objetos se aplican, Object Ownership y la advertencia sobre el ciclo de vida."
+        },
+        {
+          "resourceSlug": "aws-s3-cifrado",
+          "order": 2,
+          "note": "Fuente del cifrado: SSE-S3 por defecto, otras opciones de cifrado del lado del servidor, cifrado del lado del cliente y objetos existentes."
+        },
+        {
+          "resourceSlug": "aws-s3-url-prefirmadas",
+          "order": 3,
+          "note": "Fuente de las URL prefirmadas: credenciales, acceso temporal y formas de generarlas."
+        },
+        {
+          "resourceSlug": "aws-s3-object-lock",
+          "order": 4,
+          "note": "Fuente de Object Lock: retención, modos compliance y governance, legal hold y comportamiento de las eliminaciones."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 5,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "BlockPublicAcls, IgnorePublicAcls, BlockPublicPolicy y RestrictPublicBuckets. Son independientes y se aplican a puntos de acceso, buckets o cuentas; si difieren, S3 aplica la combinación más restrictiva."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-4-2-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Los cuatro ajustes de Block Public Access",
+      "statement": "¿Cuáles son los cuatro ajustes de Block Public Access y cómo se combinan los de cuenta y bucket?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Block Public Access",
+        "combinación más restrictiva"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "S3 la asume pública y solo la da por no pública si concede acceso únicamente a valores fijos (sin comodín ni variable de política) de un principal o de claves como aws:SourceIp con CIDR, aws:SourceVpc o aws:SourceVpce."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-4-2-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Cuándo es pública una política",
+      "statement": "¿Cuándo considera S3 que una política de bucket no es pública?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "política pública",
+        "valor fijo"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Solo el propietario del bucket. Sus permisos se aplican a los objetos del bucket que posee el propietario, no a los que pertenecen a otras cuentas. Por defecto las ACL están desactivadas (Bucket owner enforced)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-4-2-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Quién asocia la política de bucket",
+      "statement": "¿Quién puede asociar una política de bucket y a qué objetos se aplica?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "política de bucket",
+        "Object Ownership"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "SSE-S3, en todo bucket y sin coste adicional. Otras opciones: SSE-KMS, DSSE-KMS y SSE-C en la solicitud PUT, o SSE-KMS y DSSE-KMS como cifrado por defecto del bucket. En el cifrado del lado del cliente, cifras tú."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "slug": "aws-u2-4-2-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Cifrado por defecto",
+      "statement": "¿Qué cifrado en reposo reciben por defecto los objetos nuevos de S3 y qué otras opciones existen?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "SSE-S3",
+        "SSE-KMS"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingEncryption.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una URL que da un permiso limitado en el tiempo para descargar un objeto privado. Usa las credenciales del usuario de AWS que la generó. Según la página consultada el 2026-11-22: máximo 12 horas desde la consola y 7 días con la CLI."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "slug": "aws-u2-4-2-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: URL prefirmada",
+      "statement": "¿Qué es una URL prefirmada y con qué credenciales se concede el acceso?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "URL prefirmada",
+        "acceso temporal"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un modelo WORM con periodo de retención (modo compliance o governance) y legal hold, que puede combinarse en una versión de objeto. Solo funciona en buckets con S3 Versioning habilitado y protege la versión indicada."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "slug": "aws-u2-4-2-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Object Lock",
+      "statement": "¿Qué ofrece S3 Object Lock y qué requisito tiene el bucket?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Object Lock",
+        "WORM"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Bucket de documentos heredado: el equipo activó Block Public Access, pero la prueba anónima sigue leyendo.\nexport const configuracion = {\n  blockPublicAccess: {\n    bucket: {\n      BlockPublicAcls: true,\n      IgnorePublicAcls: true,\n      BlockPublicPolicy: true,\n      RestrictPublicBuckets: false,\n    },\n  },\n  bucketPolicy: {\n    Version: \"2012-10-17\",\n    Statement: [\n      {\n        Effect: \"Allow\",\n        Principal: \"*\",\n        Action: \"s3:GetObject\",\n        Resource: \"arn:aws:s3:::amzn-s3-demo-documentos/*\",\n      },\n    ],\n  },\n  objectOwnership: \"BucketOwnerEnforced\",\n};\n",
+      "solution": {
+        "code": "// Bucket de documentos heredado: el equipo activó Block Public Access, pero la prueba anónima sigue leyendo.\nexport const configuracion = {\n  blockPublicAccess: {\n    bucket: {\n      BlockPublicAcls: true,\n      IgnorePublicAcls: true,\n      BlockPublicPolicy: true,\n      RestrictPublicBuckets: true,\n    },\n  },\n  bucketPolicy: {\n    Version: \"2012-10-17\",\n    Statement: [\n      {\n        Effect: \"Allow\",\n        Principal: \"*\",\n        Action: \"s3:GetObject\",\n        Resource: \"arn:aws:s3:::amzn-s3-demo-documentos/*\",\n      },\n    ],\n  },\n  objectOwnership: \"BucketOwnerEnforced\",\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta aws.s3access.evaluateS3Access con una solicitud anónima y lee los motivos que devuelve el arnés. Fíjate en qué dice sobre la política del bucket y sobre qué ajustes de Block Public Access están activos."
+        },
+        {
+          "level": 2,
+          "text": "BlockPublicPolicy solo rechaza guardar políticas públicas nuevas y no modifica la que ya existe. El ajuste que limita el acceso derivado de una política pública ya guardada es otro de los cuatro."
+        },
+        {
+          "level": 3,
+          "text": "Pon RestrictPublicBuckets en true en blockPublicAccess.bucket. No cambies la política ni los otros tres ajustes ni objectOwnership."
+        }
+      ],
+      "tests": [
+        {
+          "name": "una solicitud anónima ya no puede leer los documentos",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-documentos/manual.pdf\", accountId: \"111122223333\" };\nconst anonimo = { type: \"anonymous\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: anonimo, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, false, \"Una solicitud anónima no debe poder leer el objeto\");"
+          }
+        },
+        {
+          "name": "el arnés ya no considera público el bucket",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-documentos/manual.pdf\", accountId: \"111122223333\" };\nconst anonimo = { type: \"anonymous\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: anonimo, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.isPublic, false, \"El bucket no debe seguir siendo público\");"
+          }
+        },
+        {
+          "name": "los cuatro ajustes de Block Public Access están activos en el bucket",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const efectivo = aws.s3access.effectiveBlockPublicAccess(configuracion.blockPublicAccess);\nassert.deepStrictEqual(efectivo, {\n  BlockPublicAcls: true,\n  IgnorePublicAcls: true,\n  BlockPublicPolicy: true,\n  RestrictPublicBuckets: true,\n});"
+          }
+        },
+        {
+          "name": "la política heredada no se ha modificado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(configuracion.bucketPolicy, {\n  Version: \"2012-10-17\",\n  Statement: [\n    {\n      Effect: \"Allow\",\n      Principal: \"*\",\n      Action: \"s3:GetObject\",\n      Resource: \"arn:aws:s3:::amzn-s3-demo-documentos/*\",\n    },\n  ],\n});\nassert.strictEqual(configuracion.objectOwnership, \"BucketOwnerEnforced\");"
+          }
+        },
+        {
+          "name": "un rol de la cuenta propietaria sigue pudiendo leer los documentos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-documentos/manual.pdf\", accountId: \"111122223333\" };\nconst anonimo = { type: \"anonymous\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: { type: \"iam\", arn: \"arn:aws:iam::111122223333:role/auditoria\", accountId: \"111122223333\" }, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, true, \"La cuenta propietaria debe seguir leyendo\");"
+          }
+        },
+        {
+          "name": "un rol de otra cuenta tampoco puede leer los documentos",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-documentos/manual.pdf\", accountId: \"111122223333\" };\nconst anonimo = { type: \"anonymous\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: { type: \"iam\", arn: \"arn:aws:iam::222222222222:role/externo\", accountId: \"222222222222\" }, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, false, \"El acceso entre cuentas derivado de una política pública debe bloquearse\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-4-2-debug-01",
+      "type": "DEBUG",
+      "title": "Depurar el bucket que sigue leyéndose pese a BlockPublicPolicy",
+      "statement": "El bucket `amzn-s3-demo-documentos` (cuenta 111122223333) tiene una política heredada con `Principal: \"*\"` que concede `s3:GetObject`. El equipo activó tres ajustes de Block Public Access, entre ellos BlockPublicPolicy, y aun así la prueba anónima sigue leyendo los objetos. La política está en revisión y no se puede editar todavía. Localiza el ajuste que falta contrastando lo que hace cada uno de los cuatro con la página de Block Public Access y corrígelo con el cambio mínimo: sin tocar la política, los otros ajustes ni `objectOwnership`, y sin cambiar el nombre del valor exportado (`export const configuracion = {...}`). Explica por qué fallaba y cómo lo comprobaste.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "Block Public Access",
+        "BlockPublicPolicy",
+        "RestrictPublicBuckets"
+      ],
+      "estimatedMin": 25,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Bucket de informes compartido con un socio: Block Public Access, política de bucket y ACL.\nexport const configuracion = {\n  blockPublicAccess: {\n    account: { BlockPublicPolicy: true },\n    bucket: {\n      BlockPublicAcls: true,\n      IgnorePublicAcls: false,\n      BlockPublicPolicy: false,\n      RestrictPublicBuckets: false,\n    },\n  },\n  bucketPolicy: {\n    Version: \"2012-10-17\",\n    Statement: [\n      {\n        Effect: \"Allow\",\n        Principal: { AWS: \"arn:aws:iam::222222222222:role/socio\" },\n        Action: \"s3:GetObject\",\n        Resource: \"arn:aws:s3:::amzn-s3-demo-informes/*\",\n      },\n      {\n        Effect: \"Allow\",\n        Principal: \"*\",\n        Action: \"s3:GetObject\",\n        Resource: \"arn:aws:s3:::amzn-s3-demo-informes/*\",\n      },\n    ],\n  },\n  objectOwnership: \"BucketOwnerEnforced\",\n};\n",
+      "solution": {
+        "code": "// Bucket de informes compartido con un socio: Block Public Access, política de bucket y ACL.\nexport const configuracion = {\n  blockPublicAccess: {\n    account: { BlockPublicPolicy: true },\n    bucket: {\n      BlockPublicAcls: true,\n      IgnorePublicAcls: true,\n      BlockPublicPolicy: true,\n      RestrictPublicBuckets: true,\n    },\n  },\n  bucketPolicy: {\n    Version: \"2012-10-17\",\n    Statement: [\n      {\n        Effect: \"Allow\",\n        Principal: { AWS: \"arn:aws:iam::222222222222:role/socio\" },\n        Action: \"s3:GetObject\",\n        Resource: \"arn:aws:s3:::amzn-s3-demo-informes/*\",\n      },\n    ],\n  },\n  objectOwnership: \"BucketOwnerEnforced\",\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta `aws.s3access.isPolicyPublic(configuracion.bucketPolicy)` y `aws.s3access.evaluateS3Access` con una solicitud anónima, y lee los motivos que devuelve el arnés. Cuenta cuántas sentencias tiene la política y quién es el principal de cada una; mira también qué ajustes de Block Public Access están activos en el bucket."
+        },
+        {
+          "level": 2,
+          "text": "Hay dos tipos de defecto. Una sentencia con principal comodín y sin condición hace pública toda la política, y hay ajustes de Block Public Access sin activar en el bucket (el de cuenta no basta para dejar completo el del bucket). El socio debe conservar su sentencia, que usa un ARN completo."
+        },
+        {
+          "level": 3,
+          "text": "Elimina la sentencia con `Principal: \"*\"` y deja la del rol socio. Pon las cuatro opciones de `blockPublicAccess.bucket` en `true`. No toques la acción, el recurso, el bloque `account` ni `objectOwnership`."
+        }
+      ],
+      "tests": [
+        {
+          "name": "ninguna solicitud anónima puede leer los informes",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const bucket = \"arn:aws:s3:::amzn-s3-demo-informes\";\nconst socio = { type: \"iam\", arn: \"arn:aws:iam::222222222222:role/socio\", accountId: \"222222222222\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst otro = { type: \"iam\", arn: \"arn:aws:iam::333333333333:role/otro\", accountId: \"333333333333\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst objeto = { arn: bucket + \"/2026/q1.csv\", accountId: \"111122223333\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: { type: \"anonymous\" }, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, false, \"Una solicitud anónima no debe poder leer el objeto\");"
+          }
+        },
+        {
+          "name": "la política del bucket no es pública",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(aws.s3access.isPolicyPublic(configuracion.bucketPolicy), false, \"Ninguna sentencia debe conceder acceso sin limitarlo a valores fijos\");"
+          }
+        },
+        {
+          "name": "las cuatro opciones de Block Public Access están activas en el propio bucket",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const efectivo = aws.s3access.effectiveBlockPublicAccess({ bucket: configuracion.blockPublicAccess.bucket });\nassert.deepStrictEqual(efectivo, {\n  BlockPublicAcls: true,\n  IgnorePublicAcls: true,\n  BlockPublicPolicy: true,\n  RestrictPublicBuckets: true,\n});"
+          }
+        },
+        {
+          "name": "el rol del socio puede leer los informes",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const bucket = \"arn:aws:s3:::amzn-s3-demo-informes\";\nconst socio = { type: \"iam\", arn: \"arn:aws:iam::222222222222:role/socio\", accountId: \"222222222222\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst otro = { type: \"iam\", arn: \"arn:aws:iam::333333333333:role/otro\", accountId: \"333333333333\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst objeto = { arn: bucket + \"/2026/q1.csv\", accountId: \"111122223333\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: socio, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, true, \"El rol socio debe poder leer los informes\");\nassert.strictEqual(resultado.isPublic, false);"
+          }
+        },
+        {
+          "name": "un rol de una tercera cuenta no puede leer los informes",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const bucket = \"arn:aws:s3:::amzn-s3-demo-informes\";\nconst socio = { type: \"iam\", arn: \"arn:aws:iam::222222222222:role/socio\", accountId: \"222222222222\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst otro = { type: \"iam\", arn: \"arn:aws:iam::333333333333:role/otro\", accountId: \"333333333333\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst objeto = { arn: bucket + \"/2026/q1.csv\", accountId: \"111122223333\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: otro, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, false, \"Solo el rol socio puede leer\");"
+          }
+        },
+        {
+          "name": "el rol del socio solo puede leer, no escribir",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const bucket = \"arn:aws:s3:::amzn-s3-demo-informes\";\nconst socio = { type: \"iam\", arn: \"arn:aws:iam::222222222222:role/socio\", accountId: \"222222222222\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst otro = { type: \"iam\", arn: \"arn:aws:iam::333333333333:role/otro\", accountId: \"333333333333\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst objeto = { arn: bucket + \"/2026/q1.csv\", accountId: \"111122223333\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: socio, action: \"s3:PutObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, false, \"La política solo concede s3:GetObject\");"
+          }
+        },
+        {
+          "name": "si volviera a añadirse una sentencia pública, RestrictPublicBuckets cortaría el acceso del socio",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const bucket = \"arn:aws:s3:::amzn-s3-demo-informes\";\nconst socio = { type: \"iam\", arn: \"arn:aws:iam::222222222222:role/socio\", accountId: \"222222222222\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst otro = { type: \"iam\", arn: \"arn:aws:iam::333333333333:role/otro\", accountId: \"333333333333\", identityPolicies: [{ Version: \"2012-10-17\", Statement: [{ Effect: \"Allow\", Action: [\"s3:GetObject\", \"s3:PutObject\"], Resource: \"*\" }] }] };\nconst objeto = { arn: bucket + \"/2026/q1.csv\", accountId: \"111122223333\" };\nconst conPublica = { ...configuracion, bucketPolicy: { ...configuracion.bucketPolicy, Statement: [...configuracion.bucketPolicy.Statement, { Effect: \"Allow\", Principal: \"*\", Action: \"s3:GetObject\", Resource: bucket + \"/*\" }] } };\nassert.strictEqual(aws.s3access.isPolicyPublic(conPublica.bucketPolicy), true);\nconst resultado = aws.s3access.evaluateS3Access({ ...conPublica, request: { principal: socio, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, false, \"Con una política pública y RestrictPublicBuckets el acceso entre cuentas se bloquea\");\nassert.strictEqual(resultado.isPublic, false);"
+          }
+        },
+        {
+          "name": "las ACL siguen desactivadas",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(configuracion.objectOwnership, \"BucketOwnerEnforced\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-4-2-lab-guiado-01",
+      "type": "LAB",
+      "title": "Bucket de informes compartido con un socio, sin acceso anónimo",
+      "statement": "El bucket `amzn-s3-demo-informes` pertenece a la cuenta 111122223333. El rol `socio` de la cuenta 222222222222 (`arn:aws:iam::222222222222:role/socio`) debe poder leer sus objetos (`s3:GetObject`); nadie más, ni de otra cuenta ni anónimo, y la política del bucket no puede ser pública. Las cuatro opciones de Block Public Access deben estar activas en el propio bucket y las ACL deben seguir desactivadas (`BucketOwnerEnforced`). El código inicial exporta la configuración con defectos: corrígelos con ayuda del arnés (`aws.s3access.evaluateS3Access`, `aws.s3access.isPolicyPublic` y `aws.s3access.effectiveBlockPublicAccess`) sin cambiar el nombre del valor exportado (`export const configuracion = { … }`). Recuerda: la forma de la entrada del arnés es una convención del evaluador s3access; los conceptos de S3 salen de las páginas oficiales.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "Block Public Access",
+        "política de bucket",
+        "política pública",
+        "acceso entre cuentas"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Bucket de exportaciones: solo debe leerse a través del punto de enlace de VPC de la empresa.\nexport const configuracion = {\n  blockPublicAccess: {\n    bucket: {\n      BlockPublicAcls: true,\n      IgnorePublicAcls: false,\n      BlockPublicPolicy: false,\n      RestrictPublicBuckets: false,\n    },\n  },\n  bucketPolicy: {\n    Version: \"2012-10-17\",\n    Statement: [\n      {\n        Effect: \"Allow\",\n        Principal: \"*\",\n        Action: [\"s3:GetObject\", \"s3:PutObject\"],\n        Resource: \"arn:aws:s3:::amzn-s3-demo-exportaciones/*\",\n        Condition: { StringLike: { \"aws:SourceVpce\": \"vpce-*\" } },\n      },\n    ],\n  },\n  objectOwnership: \"ObjectWriter\",\n};\n",
+      "solution": {
+        "code": "// Bucket de exportaciones: solo debe leerse a través del punto de enlace de VPC de la empresa.\nexport const configuracion = {\n  blockPublicAccess: {\n    bucket: {\n      BlockPublicAcls: true,\n      IgnorePublicAcls: true,\n      BlockPublicPolicy: true,\n      RestrictPublicBuckets: true,\n    },\n  },\n  bucketPolicy: {\n    Version: \"2012-10-17\",\n    Statement: [\n      {\n        Effect: \"Allow\",\n        Principal: \"*\",\n        Action: \"s3:GetObject\",\n        Resource: \"arn:aws:s3:::amzn-s3-demo-exportaciones/*\",\n        Condition: { StringEquals: { \"aws:SourceVpce\": \"vpce-0a1b2c3d4e5f6a7b8\" } },\n      },\n    ],\n  },\n  objectOwnership: \"BucketOwnerEnforced\",\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la política del bucket no es pública",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(aws.s3access.isPolicyPublic(configuracion.bucketPolicy), false, \"La condición debe limitar el acceso a un valor fijo, sin comodines\");"
+          }
+        },
+        {
+          "name": "las cuatro opciones de Block Public Access están activas en el bucket",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const efectivo = aws.s3access.effectiveBlockPublicAccess(configuracion.blockPublicAccess);\nassert.deepStrictEqual(efectivo, {\n  BlockPublicAcls: true,\n  IgnorePublicAcls: true,\n  BlockPublicPolicy: true,\n  RestrictPublicBuckets: true,\n});"
+          }
+        },
+        {
+          "name": "un rol de la cuenta puede leer los objetos desde el punto de enlace de VPC",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-exportaciones/2026/enero.csv\", accountId: \"111122223333\" };\nconst analista = { type: \"iam\", arn: \"arn:aws:iam::111122223333:role/analista\", accountId: \"111122223333\" };\nconst dentro = { \"aws:SourceVpce\": \"vpce-0a1b2c3d4e5f6a7b8\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: analista, action: \"s3:GetObject\", resource: objeto, context: dentro } });\nassert.strictEqual(resultado.allowed, true, \"Desde el punto de enlace de VPC debe poder leer\");\nassert.strictEqual(resultado.isPublic, false);"
+          }
+        },
+        {
+          "name": "sin pasar por el punto de enlace de VPC no se puede leer",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-exportaciones/2026/enero.csv\", accountId: \"111122223333\" };\nconst analista = { type: \"iam\", arn: \"arn:aws:iam::111122223333:role/analista\", accountId: \"111122223333\" };\nconst dentro = { \"aws:SourceVpce\": \"vpce-0a1b2c3d4e5f6a7b8\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: analista, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, false, \"Sin el contexto del punto de enlace no debe permitirse\");"
+          }
+        },
+        {
+          "name": "otro punto de enlace de VPC no puede leer los objetos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-exportaciones/2026/enero.csv\", accountId: \"111122223333\" };\nconst analista = { type: \"iam\", arn: \"arn:aws:iam::111122223333:role/analista\", accountId: \"111122223333\" };\nconst dentro = { \"aws:SourceVpce\": \"vpce-0a1b2c3d4e5f6a7b8\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: analista, action: \"s3:GetObject\", resource: objeto, context: { \"aws:SourceVpce\": \"vpce-0ffffffffffffffff\" } } });\nassert.strictEqual(resultado.allowed, false, \"Solo el punto de enlace de la empresa debe poder leer\");"
+          }
+        },
+        {
+          "name": "desde el punto de enlace solo se puede leer, no escribir",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-exportaciones/2026/enero.csv\", accountId: \"111122223333\" };\nconst analista = { type: \"iam\", arn: \"arn:aws:iam::111122223333:role/analista\", accountId: \"111122223333\" };\nconst dentro = { \"aws:SourceVpce\": \"vpce-0a1b2c3d4e5f6a7b8\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: analista, action: \"s3:PutObject\", resource: objeto, context: dentro } });\nassert.strictEqual(resultado.allowed, false, \"La política solo debe conceder s3:GetObject\");"
+          }
+        },
+        {
+          "name": "una solicitud anónima sin el punto de enlace no puede leer",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const objeto = { arn: \"arn:aws:s3:::amzn-s3-demo-exportaciones/2026/enero.csv\", accountId: \"111122223333\" };\nconst analista = { type: \"iam\", arn: \"arn:aws:iam::111122223333:role/analista\", accountId: \"111122223333\" };\nconst dentro = { \"aws:SourceVpce\": \"vpce-0a1b2c3d4e5f6a7b8\" };\nconst resultado = aws.s3access.evaluateS3Access({ ...configuracion, request: { principal: { type: \"anonymous\" }, action: \"s3:GetObject\", resource: objeto } });\nassert.strictEqual(resultado.allowed, false, \"Una solicitud anónima no debe poder leer\");"
+          }
+        },
+        {
+          "name": "las ACL están desactivadas",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(configuracion.objectOwnership, \"BucketOwnerEnforced\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-4-2-lab-autonomo-01",
+      "type": "LAB",
+      "title": "Exportaciones legibles solo desde un punto de enlace de VPC",
+      "statement": "El bucket `amzn-s3-demo-exportaciones` pertenece a la cuenta 111122223333 y sus objetos solo deben poder leerse (`s3:GetObject`) desde el punto de enlace de VPC `vpce-0a1b2c3d4e5f6a7b8`: la condición se expresa con la clave `aws:SourceVpce`. No debe poder escribirse ni borrarse nada con esa política, ninguna solicitud que no llegue por ese punto de enlace debe obtener acceso, y la política no puede ser pública según la regla de S3 sobre valores fijos. Las cuatro opciones de Block Public Access deben estar activas en el bucket y las ACL desactivadas. Piensa qué operador de condición admite un valor fijo y cuál lo convierte en comodín. El código inicial exporta la configuración con varios defectos: corrígelos sin cambiar el nombre del valor exportado (`export const configuracion = { … }`).",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "política de bucket",
+        "aws:SourceVpce",
+        "valor fijo",
+        "Block Public Access"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "IgnorePublicAcls, que hace que S3 ignore las ACL públicas de un bucket y de sus objetos",
+            "explanation": "Descartada: actúa sobre las ACL públicas, no sobre las llamadas PutBucketPolicy ni sobre el guardado de políticas."
+          },
+          {
+            "id": "b",
+            "text": "BlockPublicAcls, que hace fallar PutBucketAcl y PutObjectAcl cuando la ACL especificada es pública",
+            "explanation": "Descartada: se refiere a las ACL y no a las políticas de bucket, que son otro mecanismo de acceso."
+          },
+          {
+            "id": "c",
+            "text": "BlockPublicPolicy, que rechaza PutBucketPolicy si la política especificada permite acceso público",
+            "explanation": "Es la correcta: rechaza guardar políticas públicas y no afecta a las políticas de bucket ya existentes."
+          },
+          {
+            "id": "d",
+            "text": "RestrictPublicBuckets, que limita el acceso a un bucket con política pública a servicios de AWS y usuarios de la cuenta",
+            "explanation": "Descartada: limita el acceso derivado de una política pública ya guardada, pero no rechaza que se guarde."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-2-quiz-01",
+      "title": "Rechazar políticas públicas nuevas sin tocar las existentes",
+      "statement": "Un equipo quiere que S3 rechace cualquier intento de guardar una política de bucket que permita acceso público, sin modificar las políticas que ya existen. ¿Qué ajuste de Block Public Access cumple MEJOR ese objetivo?",
+      "concepts": [
+        "BlockPublicPolicy",
+        "Block Public Access"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Se bloquea el acceso entre cuentas, porque la tercera sentencia hace pública toda la política",
+            "explanation": "Es la correcta: la sentencia pública convierte toda la política en pública y RestrictPublicBuckets corta el acceso entre cuentas."
+          },
+          {
+            "id": "b",
+            "text": "Se mantiene, porque su sentencia concede acceso a una cuenta concreta y S3 evalúa cada sentencia por separado",
+            "explanation": "Descartada: una sola sentencia pública hace pública la política completa, y RestrictPublicBuckets se aplica a toda ella."
+          },
+          {
+            "id": "c",
+            "text": "Se mantiene, porque RestrictPublicBuckets solo bloquea solicitudes anónimas y no las de otras cuentas",
+            "explanation": "Descartada: RestrictPublicBuckets bloquea también el acceso entre cuentas derivado de una política pública."
+          },
+          {
+            "id": "d",
+            "text": "Se bloquea de forma permanente, aunque la tercera sentencia se elimine después de la política",
+            "explanation": "Descartada: sin la sentencia pública la política deja de ser pública y la cuenta socia recupera el acceso."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-2-quiz-02",
+      "title": "Qué pasa con la cuenta socia si una sentencia hace pública la política",
+      "statement": "Una política de bucket de la cuenta 111122223333 tiene tres sentencias: una concede acceso a CloudTrail, otra a la cuenta socia 222222222222 y la tercera usa Principal «*» sin ninguna condición. RestrictPublicBuckets está activa. ¿Qué describe con MAYOR precisión el acceso de la cuenta socia?",
+      "concepts": [
+        "política pública",
+        "RestrictPublicBuckets",
+        "acceso entre cuentas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Se almacenan sin cifrar hasta que el equipo active el cifrado en el bucket",
+            "explanation": "Descartada: todos los buckets tienen cifrado por defecto y los objetos nuevos se cifran automáticamente en reposo."
+          },
+          {
+            "id": "b",
+            "text": "Se cifran con SSE-KMS, que es la configuración de cifrado por defecto de todo bucket",
+            "explanation": "Descartada: el cifrado por defecto de todo bucket es SSE-S3; SSE-KMS se pide en la solicitud o en la configuración del bucket."
+          },
+          {
+            "id": "c",
+            "text": "S3 rechaza las cargas hasta que la solicitud o el bucket declaren un tipo de cifrado",
+            "explanation": "Descartada: no se rechaza ninguna carga, porque SSE-S3 ya está configurado por defecto en el bucket."
+          },
+          {
+            "id": "d",
+            "text": "Se cifran con claves administradas por S3 (SSE-S3), el cifrado por defecto de cada bucket",
+            "explanation": "Es la correcta: SSE-S3 es el cifrado por defecto de todo bucket y se aplica a los objetos nuevos sin coste adicional."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-2-quiz-03",
+      "title": "Cifrado en reposo de los objetos nuevos de un bucket",
+      "statement": "Un equipo sube objetos a un bucket nuevo sin indicar ningún tipo de cifrado en las solicitudes PUT y sin cambiar la configuración del bucket. ¿Qué afirmación es la MÁS exacta sobre el cifrado en reposo de esos objetos?",
+      "concepts": [
+        "SSE-S3",
+        "cifrado por defecto"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingEncryption.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Nada más: al cambiar la configuración por defecto, S3 recifra con SSE-KMS los objetos existentes",
+            "explanation": "Descartada: cambiar la configuración por defecto no modifica el tipo de cifrado de los objetos que ya existían."
+          },
+          {
+            "id": "b",
+            "text": "Usar S3 Batch Operations con la acción de copiar para reescribir los objetos del bucket como SSE-KMS",
+            "explanation": "Es la correcta: la copia con Batch Operations escribe los objetos existentes de vuelta en el mismo bucket cifrados con SSE-KMS."
+          },
+          {
+            "id": "c",
+            "text": "Borrar el bucket y volver a cargar los datos desde el origen, porque el cifrado de un objeto no puede cambiarse",
+            "explanation": "Descartada: la guía describe cómo recifrar los objetos existentes con Batch Operations sin recrear el bucket."
+          },
+          {
+            "id": "d",
+            "text": "Activar S3 Storage Lens, que reescribe cada objeto con la nueva configuración de cifrado",
+            "explanation": "Descartada: Storage Lens ofrece métricas, como el porcentaje de bytes cifrados, pero no recifra los objetos."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-2-quiz-04",
+      "title": "Recifrar con SSE-KMS los objetos que ya existían",
+      "statement": "Un equipo cambia el cifrado por defecto de un bucket a SSE-KMS. El bucket ya contiene millones de objetos cifrados con SSE-S3 y se exige que todos queden cifrados con SSE-KMS. ¿Qué enfoque requiere el MENOR trabajo manual?",
+      "concepts": [
+        "SSE-KMS",
+        "S3 Batch Operations"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingEncryption.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Los permisos del cliente que abre la URL, porque S3 evalúa a quien hace la solicitud final",
+            "explanation": "Descartada: la URL usa las credenciales del usuario que la generó, no las de quien la abre."
+          },
+          {
+            "id": "b",
+            "text": "Que el objeto tenga una ACL pública, porque las URL prefirmadas solo funcionan con objetos públicos",
+            "explanation": "Descartada: los objetos son privados por defecto y la URL prefirmada sirve justo para compartirlos sin hacerlos públicos."
+          },
+          {
+            "id": "c",
+            "text": "Los permisos del usuario de AWS que generó la URL, porque la URL usa las credenciales de ese usuario",
+            "explanation": "Es la correcta: el acceso se concede con las credenciales de quien generó la URL, así que sus permisos limitan la descarga."
+          },
+          {
+            "id": "d",
+            "text": "Que la URL se haya generado desde la consola, porque las URL creadas con la CLI no dan acceso a objetos privados",
+            "explanation": "Descartada: la CLI de AWS y los SDK generan URL prefirmadas válidas, igual que la consola."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-2-quiz-05",
+      "title": "Qué revisar cuando falla la descarga con una URL prefirmada",
+      "statement": "Un cliente abre una URL prefirmada de un objeto privado y la descarga falla con acceso denegado, aunque la URL no ha caducado. ¿Qué debe revisar el equipo PRIMERO?",
+      "concepts": [
+        "URL prefirmada",
+        "credenciales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Modo governance con el permiso s3:BypassGovernanceRetention concedido a un único administrador",
+            "explanation": "Descartada: en governance, quien tiene ese permiso puede saltarse la retención o eliminar la versión."
+          },
+          {
+            "id": "b",
+            "text": "Un legal hold sobre cada versión, que dura hasta que alguien lo quite",
+            "explanation": "Descartada: cualquier usuario con s3:PutObjectLegalHold puede colocar y quitar un legal hold libremente."
+          },
+          {
+            "id": "c",
+            "text": "Cualquiera de los dos modos de retención, porque ambos bloquean incluso al usuario raíz",
+            "explanation": "Descartada: solo el modo compliance bloquea al usuario raíz; governance admite saltarse la retención con permisos."
+          },
+          {
+            "id": "d",
+            "text": "Modo compliance con un periodo de retención de cinco años para cada versión",
+            "explanation": "Es la correcta: en compliance nadie, ni el usuario raíz, puede sobrescribir ni eliminar la versión, cambiar el modo ni acortar el periodo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-2-quiz-06",
+      "title": "Object Lock cuando ni el usuario raíz puede borrar",
+      "statement": "Una norma exige que ninguna versión de un objeto pueda eliminarse ni acortarse su retención durante cinco años, ni siquiera por el usuario raíz de la cuenta. El bucket tiene S3 Versioning habilitado. ¿Qué configuración de Object Lock ofrece el MÁXIMO nivel de protección que exige la norma?",
+      "concepts": [
+        "Object Lock",
+        "modo compliance"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Object Lock solo funciona en buckets que tienen S3 Versioning habilitado",
+            "explanation": "Cumple: la guía indica que Object Lock funciona únicamente en buckets con el versionado habilitado."
+          },
+          {
+            "id": "b",
+            "text": "Una eliminación permanente de una versión protegida, con su ID de versión, devuelve 200 OK y la elimina",
+            "explanation": "No cumple: una eliminación permanente de una versión protegida devuelve 403 Access Denied."
+          },
+          {
+            "id": "c",
+            "text": "Un legal hold deja de proteger la versión cuando vence su periodo de retención",
+            "explanation": "No cumple: el legal hold no tiene fecha de caducidad y es independiente de la retención hasta que se quita."
+          },
+          {
+            "id": "d",
+            "text": "Una eliminación simple sobre un objeto protegido devuelve 200 OK e inserta un marcador de borrado",
+            "explanation": "Cumple: sin ID de versión, S3 responde 200 OK y añade un marcador de borrado como versión actual."
+          },
+          {
+            "id": "e",
+            "text": "La retención de una versión protege también las versiones nuevas que se creen con el mismo nombre",
+            "explanation": "No cumple: la retención protege solo la versión indicada y no impide crear versiones nuevas."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-2-quiz-07",
+      "title": "Qué es cierto de Object Lock y las eliminaciones",
+      "statement": "Un equipo revisa cómo funciona S3 Object Lock con versiones protegidas. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Object Lock",
+        "marcador de borrado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Block Public Access se puede configurar por objeto para proteger solo algunos objetos de un bucket",
+            "explanation": "No cumple: S3 no admite ajustes de Block Public Access por objeto, solo para organizaciones, cuentas, buckets y puntos de acceso."
+          },
+          {
+            "id": "b",
+            "text": "Si los ajustes de la cuenta y los del bucket difieren, S3 aplica la combinación más restrictiva",
+            "explanation": "Cumple: la guía indica que S3 aplica la combinación más restrictiva de los ajustes de los distintos niveles."
+          },
+          {
+            "id": "c",
+            "text": "Activar BlockPublicPolicy elimina las políticas de bucket públicas que ya existían",
+            "explanation": "No cumple: BlockPublicPolicy no afecta a las políticas existentes; solo rechaza guardar las nuevas públicas."
+          },
+          {
+            "id": "d",
+            "text": "Una política de bucket se aplica a todos los objetos del bucket aunque pertenezcan a otras cuentas",
+            "explanation": "No cumple: sus permisos se aplican a los objetos que pertenecen al propietario del bucket y no a los de otras cuentas."
+          },
+          {
+            "id": "e",
+            "text": "Quitar un ajuste vuelve a dejar público un bucket con política pública, porque la política no se modifica",
+            "explanation": "Cumple: Block Public Access no altera las políticas, así que quitar un ajuste restablece el acceso público."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C2"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-2-quiz-08",
+      "title": "Qué es cierto de Block Public Access y de las políticas",
+      "statement": "Un administrador repasa cómo aplica S3 Block Public Access junto a las políticas de bucket. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Block Public Access",
+        "política de bucket"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C2"
+      ],
+      "slug": "aws-u2-4-2-reflexion-01",
+      "type": "REFLECT",
+      "title": "Reflexión: cómo protegería los datos de mi bucket",
+      "statement": "Elige una carga de trabajo que conozcas (por ejemplo, un bucket con documentos que debe leer una aplicación y compartirse a veces con un tercero) y escribe un registro breve de decisión sobre cómo protegerías sus datos en S3, en 5 a 7 líneas:\n\n1) Decisión: qué ajustes de Block Public Access activarías y en qué niveles, y a quién concedería acceso tu política de bucket (principal y acción).\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, un principal con comodín sin condición, o compartir con un tercero haciendo público el bucket en lugar de una URL prefirmada) y la razón por la que la descartaste.\n\n3) Consecuencia: qué cifrado tendrían los objetos y qué harías con los que ya existen si cambias el tipo, y si necesitarías Object Lock (qué modo y por qué) o bastaría el versionado.\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad) y por qué.\n\n5) Evidencia: qué parte de las páginas oficiales de S3 usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la restricción que decide y lo que haría S3 en el caso límite. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "concepts": [
+        "decisión",
+        "Block Public Access",
+        "cifrado",
+        "Object Lock"
+      ],
+      "estimatedMin": 8,
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingEncryption.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"
+      ],
+      "order": 18
+    }
+  ]
+}
