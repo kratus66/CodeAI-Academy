@@ -1,0 +1,1333 @@
+{
+  "code": "AWS-U2.3.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-3-1-ec2-familias-de-instancia-ami-almacenamiento-de-instancia-y-grupos-de-ubicacion",
+      "title": "EC2: familias de instancia, AMI, almacenamiento de instancia y grupos de ubicación",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cuando lanzas una instancia de EC2 tomas cuatro decisiones que el examen contrasta una y otra vez. El tipo de instancia fija el hardware del host y pertenece a una familia según sus capacidades de cómputo, memoria y almacenamiento. La AMI es la imagen que aporta el software con el que arranca. El almacenamiento de instancia (instance store) es el disco local y temporal del host. Y el grupo de ubicación influye en dónde se colocan las instancias entre sí. En A2 no basta con reconocerlos: ante un escenario subrayas la carga y la restricción (latencia entre nodos, tolerancia a fallos, datos que se pueden perder, otra Región) y eliges la pieza que encaja. Esta unidad prepara el dominio 3 de SAA-C03, «Diseñar soluciones de alto rendimiento», y su tarea de cómputo."
+        },
+        {
+          "type": "list",
+          "title": "Las cuatro decisiones, frente a frente",
+          "items": [
+            "Tipo de instancia: determina el hardware del host; cada tipo ofrece distinta combinación de CPU, memoria, almacenamiento y red, y cada familia agrupa los tipos con capacidades parecidas.",
+            "AMI: imagen con el software para configurar y arrancar la instancia, más un mapeo de dispositivos de bloque; es obligatoria al lanzar y específica de una Región.",
+            "Instance store: almacenamiento de bloques temporal en discos físicamente unidos al host, sin cargo adicional, para búferes, cachés y datos de trabajo.",
+            "Grupo de ubicación: estrategia cluster, partition o spread (y precision time) para influir en la colocación de un grupo de instancias; es opcional y no tiene cargo."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "El tipo de instancia y su familia",
+          "text": "Los nombres de los tipos se basan en la familia, la generación, la familia de procesador, las capacidades y el tamaño, y cada tipo incluye uno o más tamaños para escalar según la carga. La guía lista estas familias: uso general, optimizada para cómputo, optimizada para memoria, optimizada para almacenamiento, computación acelerada y cómputo de alto rendimiento (HPC). Para elegir, la guía recomienda lanzar una instancia y medir con tu propia aplicación de referencia, porque se paga por segundo de instancia y probar varios tipos es barato; además, si tus necesidades cambian puedes cambiar el tipo después. Dos detalles puntuales con respaldo oficial: las instancias con AWS Trainium están pensadas para entrenar modelos de aprendizaje profundo de forma eficiente, las de AWS Inferentia para inferencia con baja latencia, y los procesadores AWS Graviton se diseñaron para el mejor precio-rendimiento. Lectura de escenario (convención de esta unidad, no texto de la guía): cómputo optimizado se lee como carga limitada por CPU, memoria optimizada como conjuntos de datos grandes en RAM, almacenamiento optimizado como E/S local intensiva y computación acelerada como aceleradores de GPU o de IA."
+        },
+        {
+          "type": "paragraph",
+          "title": "La AMI: región, arquitectura y copia",
+          "text": "Una AMI proporciona el software necesario para arrancar la instancia y lleva un mapeo de dispositivos de bloque con los discos que se asocian. Debes indicarla al lanzar y debe ser compatible con el tipo de instancia que elegiste. Puedes usar una AMI de AWS, una pública, una que otra persona compartió contigo o una comprada en AWS Marketplace. Cada AMI es específica de una Región, un sistema operativo, una arquitectura de procesador, un tipo de volumen raíz y un tipo de virtualización. Por eso, para lanzar en otra Región debes copiar la AMI a esa Región y lanzar con la copia; para que otra cuenta lance con la misma configuración, la compartes. Y si cambias a una familia con otra arquitectura de procesador, la AMI debe corresponder a esa arquitectura. Una sola AMI sirve para lanzar muchas instancias idénticas."
+        },
+        {
+          "type": "paragraph",
+          "title": "Instance store: temporal y sin cargo adicional",
+          "text": "El instance store es almacenamiento de bloques temporal que proporcionan discos unidos físicamente al host. La guía lo describe como ideal para información que cambia con frecuencia, como búferes, cachés y datos de trabajo, y también para datos temporales que replicas en una flota de instancias, por ejemplo un conjunto de servidores web con balanceo de carga. No tiene cargo adicional: va incluido en el costo de la instancia. Pero el tamaño y el número de volúmenes dependen del tipo y del tamaño de instancia, y no todos los tipos los ofrecen. Consecuencia de diseño (convención del escenario a partir de la palabra «temporal»): no guardes ahí la única copia de datos que no puedas reconstruir; esos datos van a un almacenamiento duradero fuera del instance store."
+        },
+        {
+          "type": "paragraph",
+          "title": "Grupos de ubicación: cluster, partition y spread",
+          "text": "Un grupo de ubicación te deja influir en la colocación de instancias interdependientes. Cluster agrupa las instancias muy cerca dentro de una zona de disponibilidad y da la baja latencia de red que necesitan los nodos fuertemente acoplados, típicos de la computación de alto rendimiento. Partition reparte las instancias en particiones lógicas, de modo que los grupos de una partición no comparten hardware con los de otras; se usa en cargas grandes, distribuidas y replicadas, como Hadoop, Cassandra y Kafka. Spread coloca de forma estricta un grupo pequeño de instancias en hardware distinto para reducir los fallos correlacionados. También existe precision time, que da acceso a fuentes de tiempo de alta precisión. Los grupos son opcionales: sin ellos, EC2 intenta repartir las instancias por el hardware subyacente para minimizar los fallos correlacionados. Crear un grupo no tiene cargo. Reglas: una instancia solo puede estar en un grupo a la vez, no se pueden fusionar grupos, no se lanzan Dedicated Hosts en ellos y no se lanza en ellos una instancia Spot configurada para detenerse o hibernar al interrumpirse."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres cargas, tres decisiones",
+          "text": "Una empresa tiene tres cargas. (1) Una simulación cuyos nodos intercambian mensajes sin parar y necesitan la menor latencia entre sí. (2) Un clúster de Kafka con réplicas, en el que un fallo de hardware no debe tumbar a todos los brokers. (3) Una flota de servidores web que procesa archivos temporales regenerables y que debe lanzarse también en otra Región con la misma configuración. Paso 1: la carga (1) pide un grupo cluster, que compacta las instancias en una sola zona de disponibilidad. Paso 2: la carga (2) pide un grupo partition, porque las particiones no comparten hardware entre sí. Paso 3: la carga (3) usa instance store para los archivos temporales, sin cargo adicional y sin guardar ahí datos irremplazables, y copia la AMI a la otra Región antes de lanzar. Resultado: cada restricción activó una pieza distinta, y ninguna sustituye a las otras."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de despliegue como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  cargas: [\n    { nombre: \"simulacion\", grupo: { estrategia: \"cluster\", zonas: [\"zona-a\"] } },\n    { nombre: \"kafka\", grupo: { estrategia: \"partition\", zonas: [\"zona-a\", \"zona-b\"] } },\n    {\n      nombre: \"web\",\n      almacenTemporal: \"instance-store\",\n      ami: { origen: \"ami-origen\", region: \"region-a\", copiaEn: [\"region-b\"] },\n    },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la restricción de la carga a la decisión de EC2",
+          "code": "flowchart TB\n  R{\"Restricción de la carga\"} -->|\"Nodos acoplados, menor latencia\"| C[\"Grupo cluster: una zona de disponibilidad\"]\n  R -->|\"Carga grande replicada, fallos acotados\"| P[\"Grupo partition: particiones sin hardware compartido\"]\n  R -->|\"Pocas instancias críticas en hardware distinto\"| S[\"Grupo spread\"]\n  R -->|\"Datos temporales regenerables, sin cargo\"| I[\"Instance store del tipo de instancia\"]\n  R -->|\"Misma configuración en otra Región\"| A[\"Copiar la AMI a esa Región\"]\n  R -->|\"No sabes qué tipo rinde mejor\"| T[\"Medir con tu aplicación y cambiar de tipo\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir qué pieza resuelve qué restricción",
+          "text": "El enunciado mezcla vocabulario de las cuatro piezas. «Menor latencia entre nodos» es un grupo cluster, no una familia ni una AMI. «Datos temporales sin cargo adicional» es instance store, y «misma configuración en otra Región» es copiar la AMI. Un grupo de ubicación no aporta almacenamiento ni capacidad de cómputo, y el instance store no sobrevive como única copia de datos importantes. Subraya la carga, la restricción y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar el instance store como única copia de datos importantes",
+          "text": "Causa: pensar que un disco local del host se comporta como un almacenamiento permanente. Consecuencia: la guía lo define como almacenamiento temporal para búferes, cachés y datos de trabajo, así que guardar ahí la única copia de datos que no puedes reconstruir es un riesgo de pérdida. Solución: reserva el instance store para datos temporales o replicados en la flota y guarda los datos que deban conservarse en un almacenamiento duradero."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: lanzar en otra Región con la AMI de la Región original",
+          "text": "Causa: creer que una AMI sirve en cualquier Región por tener un identificador. Consecuencia: la AMI es específica de una Región, así que no puedes lanzar con ella en otra, y el despliegue falla o se queda sin imagen allí. Solución: copia la AMI a la Región de destino, lanza con la copia y comprueba que su arquitectura de procesador coincide con la del tipo de instancia."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: elegir la estrategia de grupo de ubicación por la palabra «grupo»",
+          "text": "Causa: pensar que cualquier grupo de ubicación mejora a la vez la latencia y la tolerancia a fallos. Consecuencia: un grupo cluster compacta las instancias dentro de una zona de disponibilidad, lo que favorece la latencia pero concentra el riesgo en el mismo hardware cercano; un grupo spread o partition hace lo contrario. Solución: nombra primero la restricción (latencia entre nodos, fallos acotados en una carga replicada, pocas instancias críticas) y elige cluster, partition o spread en consecuencia; recuerda que una instancia solo puede estar en un grupo a la vez."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la familia de instancia, la AMI, el almacenamiento de instancia y el grupo de ubicación de EC2 que encajan con la carga y la restricción de un escenario. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar soluciones de alto rendimiento». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la carga, la restricción y la pieza que la resuelve, y explicas por qué las otras quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres cargas del ejemplo: para cada una, nombra la estrategia de grupo, el almacenamiento y la acción sobre la AMI. Explica con tus palabras el diagrama «De la restricción de la carga a la decisión de EC2». Después responde: si una instancia debe lanzarse en otra Región, ¿qué haces con la AMI y por qué no basta su identificador?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El grupo de ubicación que aleja los nodos de la simulación». Un plan escrito como objeto asigna a una simulación acoplada una estrategia que reparte los nodos. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas los nodos y la carga."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La AMI que no existe en la Región de destino». Un despliegue, escrito como objeto, lanza instancias en una Región con una AMI de otra. Decide qué falta sin cambiar la AMI de origen ni la instancia. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la guía de AMI."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre la elección de instancias para una carga. Audítalo en «Auditar un informe de elección de EC2 generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de tipos de instancia, almacenamiento de instancia, grupos de ubicación y AMI (leídas el 2026-11-15) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué determina el tipo de instancia; de qué es específica una AMI; para qué datos sirve el instance store y qué cargo tiene; qué estrategia de grupo da la menor latencia entre nodos y cuál reparte por particiones; y qué reglas limitan a un grupo de ubicación. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la simulación crece y ahora también entrena un modelo de aprendizaje profundo y sirve resultados desde dos Regiones. Decide qué familia o procesador usarías para el entrenamiento, qué estrategia de grupo mantienes para la simulación y qué haces con la AMI para la segunda Región. Pregunta de cierre: un compañero dice «guardé la única copia de los resultados en el instance store»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-ec2-tipos-de-instancia",
+          "order": 0,
+          "note": "Fuente de los tipos y las familias de instancia, de la recomendación de medir con tu aplicación y de Graviton, Trainium e Inferentia."
+        },
+        {
+          "resourceSlug": "aws-ec2-almacenamiento-de-instancia",
+          "order": 1,
+          "note": "Fuente del instance store: almacenamiento temporal, usos adecuados, variación por tipo y ausencia de cargo adicional."
+        },
+        {
+          "resourceSlug": "aws-ec2-grupos-de-ubicacion",
+          "order": 2,
+          "note": "Fuente de las estrategias cluster, partition y spread, y de las reglas y el costo de los grupos de ubicación."
+        },
+        {
+          "resourceSlug": "aws-ec2-amis",
+          "order": 3,
+          "note": "Fuente de qué es una AMI, de aquello a lo que es específica y de copiarla entre Regiones y compartirla."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar soluciones de alto rendimiento) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Determina el hardware del host que usa la instancia. Cada tipo ofrece una combinación de CPU, memoria, almacenamiento y red, y se agrupa en una familia según esas capacidades. Incluye uno o más tamaños."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-1-tarjeta-01",
+      "title": "Tarjeta: Tipo de instancia y familia",
+      "statement": "¿Qué determina el tipo de instancia y cómo se agrupan los tipos?",
+      "concepts": [
+        "tipo de instancia",
+        "familia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Uso general, optimizada para cómputo, optimizada para memoria, optimizada para almacenamiento, computación acelerada y cómputo de alto rendimiento (HPC). Para decidir, mide con tu propia aplicación: puedes cambiar de tipo después."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-1-tarjeta-02",
+      "title": "Tarjeta: Familias de instancia",
+      "statement": "¿Qué familias de instancia lista la guía de EC2?",
+      "concepts": [
+        "familias",
+        "tipo de instancia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Imagen con el software para configurar y arrancar la instancia, más un mapeo de dispositivos de bloque; es obligatoria al lanzar. Es específica de una Región, un sistema operativo, una arquitectura de procesador, un tipo de volumen raíz y un tipo de virtualización."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-1-tarjeta-03",
+      "title": "Tarjeta: AMI",
+      "statement": "¿Qué es una AMI y a qué es específica?",
+      "concepts": [
+        "AMI",
+        "Región"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Creas una AMI de la instancia. Para otra Región, copias la AMI a esa Región y lanzas con la copia. Para otra cuenta, compartes la AMI. Una misma AMI sirve para lanzar muchas instancias idénticas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-1-tarjeta-04",
+      "title": "Tarjeta: AMI entre Regiones y cuentas",
+      "statement": "¿Cómo se lanzan instancias con la misma configuración en otra Región o en otra cuenta?",
+      "concepts": [
+        "AMI",
+        "copia",
+        "compartir"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Almacenamiento de bloques temporal en discos unidos al host. Sirve para búferes, cachés, datos de trabajo y datos temporales replicados en una flota. Su tamaño depende del tipo de instancia y no todos los tipos lo tienen. No tiene cargo adicional."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-1-tarjeta-05",
+      "title": "Tarjeta: Instance store",
+      "statement": "¿Qué es el instance store y para qué datos sirve?",
+      "concepts": [
+        "instance store",
+        "almacenamiento temporal"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cluster (baja latencia en una zona), partition (particiones sin hardware compartido) y spread (pocas instancias en hardware distinto); también precision time. Son opcionales y crear el grupo no tiene cargo. Una instancia va en un solo grupo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-1-tarjeta-06",
+      "title": "Tarjeta: Grupos de ubicación",
+      "statement": "¿Qué estrategias ofrece un grupo de ubicación y cuánto cuesta?",
+      "concepts": [
+        "grupo de ubicación",
+        "cluster",
+        "partition",
+        "spread"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de una simulación con nodos fuertemente acoplados. Corrige su defecto principal.\nexport const plan = {\n  carga: \"simulacion-acoplada\",\n  grupo: { nombre: \"grupo-simulacion\", estrategia: \"spread\", zonas: [\"zona-a\", \"zona-b\"] },\n  instancias: [\n    { id: \"nodo-1\", familia: \"hpc\" },\n    { id: \"nodo-2\", familia: \"hpc\" },\n    { id: \"nodo-3\", familia: \"hpc\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  carga: \"simulacion-acoplada\",\n  grupo: { nombre: \"grupo-simulacion\", estrategia: \"cluster\", zonas: [\"zona-a\"] },\n  instancias: [\n    { id: \"nodo-1\", familia: \"hpc\" },\n    { id: \"nodo-2\", familia: \"hpc\" },\n    { id: \"nodo-3\", familia: \"hpc\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "La carga necesita la menor latencia de red entre sus nodos. Revisa qué estrategia de grupo de ubicación busca eso y en qué ámbito coloca las instancias."
+        },
+        {
+          "level": 2,
+          "text": "El grupo usa spread, que aleja las instancias en hardware distinto, y abarca dos zonas. Una estrategia que compacta los nodos lo hace dentro de una sola zona de disponibilidad."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la estrategia a cluster y deja solo la zona \"zona-a\" en el grupo. No cambies el nombre del grupo, la carga ni los nodos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la carga acoplada usa la estrategia cluster",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(plan.grupo.estrategia, \"cluster\", \"una carga acoplada necesita la estrategia cluster\");"
+          }
+        },
+        {
+          "name": "el grupo cluster ocupa una sola zona de disponibilidad",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(plan.grupo.zonas.length, 1, \"cluster compacta las instancias en una zona\");"
+          }
+        },
+        {
+          "name": "los nodos y la carga se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.carga, \"simulacion-acoplada\");\nassert.deepStrictEqual(plan.instancias, [\n  { id: \"nodo-1\", familia: \"hpc\" },\n  { id: \"nodo-2\", familia: \"hpc\" },\n  { id: \"nodo-3\", familia: \"hpc\" },\n]);"
+          }
+        },
+        {
+          "name": "el grupo conserva su nombre y la zona original",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.grupo.nombre, \"grupo-simulacion\");\nassert.deepStrictEqual(plan.grupo.zonas, [\"zona-a\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-3-1-debug-01",
+      "title": "El grupo de ubicación que aleja los nodos de la simulación",
+      "statement": "El objeto `plan` modela una simulación cuyos tres nodos intercambian mensajes continuamente y necesitan la menor latencia de red entre sí, y el grupo de ubicación que se les asignó. La latencia entre nodos es peor de lo esperado. Corrige la configuración del grupo sin cambiar el nombre del grupo, la carga ni los nodos, y mantén la forma del valor exportado (`export const plan = { … }`).",
+      "concepts": [
+        "grupo de ubicación",
+        "cluster",
+        "latencia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Despliegue en otra Región con una AMI. Corrige su defecto principal.\nexport const despliegue = {\n  amiOrigen: { id: \"ami-origen\", region: \"region-a\", arquitectura: \"x86\" },\n  copias: [],\n  lanzamiento: {\n    region: \"region-b\",\n    ami: \"ami-origen\",\n    instancia: { familia: \"compute\", arquitectura: \"x86\" },\n  },\n};\n",
+      "solution": {
+        "code": "export const despliegue = {\n  amiOrigen: { id: \"ami-origen\", region: \"region-a\", arquitectura: \"x86\" },\n  copias: [{ id: \"ami-copia-b\", region: \"region-b\", origen: \"ami-origen\", arquitectura: \"x86\" }],\n  lanzamiento: {\n    region: \"region-b\",\n    ami: \"ami-copia-b\",\n    instancia: { familia: \"compute\", arquitectura: \"x86\" },\n  },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la AMI del lanzamiento existe en la Región de destino",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const catalogo = [despliegue.amiOrigen, ...despliegue.copias];\nconst usada = catalogo.find((a) => a.id === despliegue.lanzamiento.ami);\nassert.ok(usada, \"la AMI del lanzamiento debe existir\");\nassert.strictEqual(usada.region, despliegue.lanzamiento.region, \"una AMI es específica de una Región\");"
+          }
+        },
+        {
+          "name": "la AMI es compatible con la arquitectura de la instancia",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const catalogo = [despliegue.amiOrigen, ...despliegue.copias];\nconst usada = catalogo.find((a) => a.id === despliegue.lanzamiento.ami);\nassert.ok(usada, \"la AMI del lanzamiento debe existir\");\nassert.strictEqual(usada.arquitectura, despliegue.lanzamiento.instancia.arquitectura);"
+          }
+        },
+        {
+          "name": "la AMI de origen no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(despliegue.amiOrigen, { id: \"ami-origen\", region: \"region-a\", arquitectura: \"x86\" });"
+          }
+        },
+        {
+          "name": "la copia apunta a su origen y conserva la arquitectura",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(despliegue.copias.length >= 1, \"debe haber al menos una copia\");\nfor (const copia of despliegue.copias) {\n  assert.strictEqual(copia.origen, \"ami-origen\");\n  assert.strictEqual(copia.arquitectura, \"x86\");\n}"
+          }
+        },
+        {
+          "name": "la instancia y la Región de lanzamiento no cambian",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(despliegue.lanzamiento.instancia, { familia: \"compute\", arquitectura: \"x86\" });\nassert.strictEqual(despliegue.lanzamiento.region, \"region-b\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-3-1-debug-02",
+      "title": "La AMI que no existe en la Región de destino",
+      "statement": "El objeto `despliegue` modela una AMI creada en una Región y el lanzamiento de una instancia en otra Región distinta. El lanzamiento no puede encontrar la imagen en la Región de destino. Corrige la configuración sin cambiar la AMI de origen, la instancia ni la Región del lanzamiento, y mantén la forma del valor exportado (`export const despliegue = { … }`).",
+      "concepts": [
+        "AMI",
+        "copia entre Regiones",
+        "arquitectura"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de elección de EC2 (borrador generado por un asistente)\nEscenario: una carga con servidores web, archivos temporales, una simulación acoplada y un despliegue en otra Región.\n1. Las familias de instancia agrupan los tipos según sus capacidades de cómputo, memoria y almacenamiento, y el tipo se puede cambiar más adelante si las necesidades cambian.\n2. El instance store es almacenamiento permanente, adecuado para guardar la única copia de los datos de los clientes.\n3. El instance store no tiene cargo adicional, porque va incluido en el costo de la instancia, y no todos los tipos de instancia ofrecen volúmenes.\n4. Una AMI creada en una Región se puede usar tal cual, con el mismo identificador, para lanzar instancias en cualquier otra Región.\n5. Una instancia solo puede estar en un grupo de ubicación a la vez, y los grupos de ubicación no se pueden fusionar.\n6. Un grupo de ubicación de tipo cluster reparte las instancias entre varias zonas de disponibilidad para reducir los fallos correlacionados.\n7. Los grupos de ubicación son opcionales y crearlos no tiene cargo: sin ellos, EC2 intenta repartir las instancias por el hardware subyacente."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Familias y cambio de tipo",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: cada tipo ofrece una combinación de cómputo, memoria y almacenamiento, se agrupa en una familia y se puede cambiar después si las necesidades cambian."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Permanencia del instance store",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: el instance store es almacenamiento temporal, ideal para búferes, cachés y datos de trabajo; no debe guardar la única copia de datos que no puedas reconstruir."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Cargo y disponibilidad del instance store",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: no hay cargo adicional, porque los volúmenes van incluidos en el costo de la instancia, y no todos los tipos de instancia ofrecen instance store."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "AMI y Regiones",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: una AMI es específica de una Región. Para lanzar en otra Región hay que copiarla a esa Región y lanzar con la copia."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Reglas de los grupos de ubicación",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: una instancia puede estar en un solo grupo de ubicación a la vez y los grupos no se pueden fusionar."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Estrategia cluster",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: cluster agrupa las instancias muy cerca dentro de una zona de disponibilidad para dar baja latencia; no las reparte entre zonas."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Grupos opcionales y sin cargo",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: los grupos de ubicación son opcionales, crearlos no tiene cargo y, sin ellos, EC2 intenta repartir las instancias por el hardware subyacente."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-3-1-auditoria-01",
+      "title": "Auditar un informe de elección de EC2 generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre la elección de familia, almacenamiento, AMI y grupo de ubicación de EC2 para una carga. Audítalo contra las páginas oficiales de tipos de instancia, almacenamiento de instancia, grupos de ubicación y AMI: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "instance store",
+        "AMI",
+        "grupo de ubicación",
+        "familias"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Guardar en el instance store la única copia de los pedidos de los clientes, porque sus datos siempre persisten",
+            "explanation": "Descartada: el instance store es almacenamiento temporal; no debe contener la única copia de datos que no puedas reconstruir."
+          },
+          {
+            "id": "b",
+            "text": "Elegir un tipo de instancia sin instance store y suponer que el almacenamiento temporal viene incluido",
+            "explanation": "Descartada: no todos los tipos de instancia ofrecen instance store, así que hay que elegir un tipo que lo incluya."
+          },
+          {
+            "id": "c",
+            "text": "Usar los volúmenes de instance store del tipo de instancia elegido para los archivos temporales de trabajo",
+            "explanation": "Es la correcta: el instance store es ideal para datos temporales y no tiene cargo adicional, porque va incluido en el costo de la instancia."
+          },
+          {
+            "id": "d",
+            "text": "Crear un grupo de ubicación partition para que cada servidor disponga de su propio disco temporal",
+            "explanation": "Descartada: un grupo de ubicación influye en dónde se colocan las instancias y no aporta almacenamiento a ninguna de ellas."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-1-quiz-01",
+      "title": "Almacenamiento temporal local sin cargo adicional para una flota web",
+      "statement": "Una flota de servidores web procesa archivos de trabajo que se pueden regenerar y necesita almacenamiento local en cada servidor sin cargo adicional por ese almacenamiento. ¿Qué opción cumple MEJOR el requisito?",
+      "concepts": [
+        "instance store",
+        "almacenamiento temporal"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un grupo cluster, que agrupa las instancias muy cerca dentro de una zona de disponibilidad",
+            "explanation": "Es la correcta: cluster da la baja latencia de red que necesitan los nodos fuertemente acoplados, típicos de las cargas de HPC."
+          },
+          {
+            "id": "b",
+            "text": "Un grupo spread, que coloca cada instancia en hardware distinto para reducir los fallos correlacionados",
+            "explanation": "Descartada: spread prioriza reducir fallos correlacionados y no la latencia mínima entre nodos."
+          },
+          {
+            "id": "c",
+            "text": "Un grupo partition, que reparte las instancias en particiones lógicas sin hardware compartido",
+            "explanation": "Descartada: partition aísla grupos de instancias en hardware distinto y sirve a cargas replicadas, no a nodos acoplados."
+          },
+          {
+            "id": "d",
+            "text": "Ningún grupo de ubicación, porque EC2 reparte las instancias por el hardware para minimizar fallos",
+            "explanation": "Descartada: sin grupo, EC2 reparte las instancias por el hardware subyacente, lo contrario de compactarlas para bajar la latencia."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-1-quiz-02",
+      "title": "Menor latencia entre nodos de una simulación acoplada",
+      "statement": "Una simulación de computación de alto rendimiento ejecuta nodos que intercambian mensajes continuamente y necesitan la MENOR latencia de red entre sí. ¿Qué estrategia de grupo de ubicación cumple el requisito?",
+      "concepts": [
+        "cluster",
+        "latencia",
+        "HPC"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cluster, para compactar todas las instancias en la misma zona y mejorar la latencia entre brokers",
+            "explanation": "Descartada: cluster concentra las instancias en hardware cercano, lo contrario de acotar el efecto de un fallo."
+          },
+          {
+            "id": "b",
+            "text": "Spread, que coloca de forma estricta un grupo pequeño de instancias en hardware distinto",
+            "explanation": "Descartada: spread está pensado para un grupo pequeño de instancias, y no para una carga grande, distribuida y replicada."
+          },
+          {
+            "id": "c",
+            "text": "Ningún grupo, porque Kafka no admite ninguna estrategia de ubicación de instancias en EC2",
+            "explanation": "Descartada: la guía cita Kafka como ejemplo típico de las cargas que usan la estrategia partition."
+          },
+          {
+            "id": "d",
+            "text": "Partition, que reparte las instancias en particiones sin hardware compartido entre ellas",
+            "explanation": "Es la correcta: los grupos de instancias de una partición no comparten hardware con los de otras, y se usa en Hadoop, Cassandra y Kafka."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-1-quiz-03",
+      "title": "Clúster distribuido con réplicas y fallos acotados",
+      "statement": "Un equipo despliega un clúster de Kafka grande, con réplicas distribuidas, y quiere que un fallo de hardware afecte como MÁXIMO a un grupo de instancias y no a todas. ¿Qué estrategia de grupo de ubicación encaja MEJOR?",
+      "concepts": [
+        "partition",
+        "tolerancia a fallos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Lanzar con el identificador de la AMI original, porque una AMI es válida en todas las Regiones",
+            "explanation": "Descartada: una AMI es específica de una Región, así que el identificador original no sirve para lanzar en otra."
+          },
+          {
+            "id": "b",
+            "text": "Crear una AMI de la instancia, copiarla a la Región de destino y lanzar con la copia",
+            "explanation": "Es la correcta: se puede copiar una AMI a otra Región y lanzar allí instancias con la misma configuración."
+          },
+          {
+            "id": "c",
+            "text": "Crear un grupo de ubicación cluster en la Región de destino para que contenga la AMI",
+            "explanation": "Descartada: un grupo de ubicación no almacena imágenes; solo influye en la colocación de las instancias."
+          },
+          {
+            "id": "d",
+            "text": "Pasar al instance store el contenido del disco raíz y trasladar esos datos a la otra Región",
+            "explanation": "Descartada: el instance store es temporal y local al host, y no sirve para llevar una configuración a otra Región."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-1-quiz-04",
+      "title": "Lanzar la misma configuración en otra Región",
+      "statement": "Una empresa configuró una instancia en una Región y quiere lanzar instancias con la misma configuración en otra Región. ¿Qué debe hacer PRIMERO?",
+      "concepts": [
+        "AMI",
+        "copia entre Regiones"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias con AWS Trainium, diseñadas para el entrenamiento de aprendizaje profundo de alto rendimiento y costo eficiente",
+            "explanation": "Es la correcta: la guía describe las instancias con Trainium como diseñadas para ese entrenamiento."
+          },
+          {
+            "id": "b",
+            "text": "Instancias con AWS Inferentia, diseñadas para la inferencia de aprendizaje automático con baja latencia",
+            "explanation": "Descartada: Inferentia acelera la inferencia, es decir, el uso del modelo ya entrenado, y no su entrenamiento."
+          },
+          {
+            "id": "c",
+            "text": "Instancias de uso general con un grupo de ubicación spread para repartir los nodos del entrenamiento",
+            "explanation": "Descartada: un grupo spread no aporta aceleradores de aprendizaje profundo, sino que aleja las instancias en hardware distinto."
+          },
+          {
+            "id": "d",
+            "text": "Instancias con instance store para guardar la única copia de los pesos del modelo entrenado",
+            "explanation": "Descartada: el instance store es temporal y no es un acelerador de entrenamiento; arriesga la única copia del modelo."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-1-quiz-05",
+      "title": "Instancias para entrenar un modelo de aprendizaje profundo",
+      "statement": "Un equipo entrena modelos de procesamiento del lenguaje natural y quiere instancias diseñadas para el entrenamiento de aprendizaje profundo con alto rendimiento y costo eficiente. ¿Qué opción cumple MEJOR el requisito?",
+      "concepts": [
+        "Trainium",
+        "aprendizaje profundo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Elegir el tipo de mayor tamaño disponible para no quedarse corto y mantenerlo sin revisarlo",
+            "explanation": "Descartada: la guía recomienda medir con tu propia aplicación; un tipo grande sin medir no acota la inversión."
+          },
+          {
+            "id": "b",
+            "text": "Decidir solo por el nombre de la familia, porque no se puede cambiar de tipo más adelante",
+            "explanation": "Descartada: si las necesidades cambian, se puede cambiar el tipo de instancia después de decidir."
+          },
+          {
+            "id": "c",
+            "text": "Lanzar instancias de varios tipos, medir con la propia aplicación y elegir, pagando por segundo de uso",
+            "explanation": "Es la correcta: la guía recomienda probar con tu aplicación, y como se paga por segundo de instancia, probar varios tipos es barato."
+          },
+          {
+            "id": "d",
+            "text": "Copiar la AMI a otra Región y comparar allí los tipos para repartir el costo de las pruebas",
+            "explanation": "Descartada: copiar la AMI a otra Región no mide el rendimiento de los tipos ni reduce la inversión inicial."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-1-quiz-06",
+      "title": "Elegir el tipo de instancia sin conocer el rendimiento",
+      "statement": "Un equipo no sabe qué tipo de instancia rinde mejor para su aplicación y quiere decidir con la MENOR inversión inicial. ¿Qué enfoque cumple el requisito?",
+      "concepts": [
+        "tipo de instancia",
+        "benchmark"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Una instancia puede estar en varios grupos de ubicación a la vez para combinar estrategias",
+            "explanation": "No cumple: una instancia solo puede estar en un grupo de ubicación a la vez."
+          },
+          {
+            "id": "b",
+            "text": "Un grupo es opcional; sin él, EC2 intenta repartir las instancias por el hardware para minimizar los fallos correlacionados",
+            "explanation": "Cumple: los grupos son opcionales y, sin ellos, EC2 reparte las instancias por el hardware subyacente."
+          },
+          {
+            "id": "c",
+            "text": "Crear un grupo de ubicación tiene un cargo por hora que se suma al costo de las instancias",
+            "explanation": "No cumple: no hay cargo por crear un grupo de ubicación."
+          },
+          {
+            "id": "d",
+            "text": "No se pueden lanzar Dedicated Hosts en un grupo de ubicación ni fusionar dos grupos entre sí",
+            "explanation": "Cumple: la guía lista ambas reglas entre las limitaciones de los grupos de ubicación."
+          },
+          {
+            "id": "e",
+            "text": "La estrategia cluster reparte las instancias entre varias zonas para tolerar la caída de una zona",
+            "explanation": "No cumple: cluster agrupa las instancias cerca dentro de una zona de disponibilidad."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-1-quiz-07",
+      "title": "Qué es cierto de los grupos de ubicación",
+      "statement": "Un equipo evalúa los grupos de ubicación de EC2 para sus cargas. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "grupo de ubicación",
+        "reglas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Una AMI es específica de una Región, un sistema operativo, una arquitectura de procesador, un volumen raíz y una virtualización",
+            "explanation": "Cumple: son las características a las que una AMI es específica."
+          },
+          {
+            "id": "b",
+            "text": "Una misma AMI sirve para cualquier tipo de instancia sin comprobar si es compatible con él",
+            "explanation": "No cumple: la AMI debe ser compatible con el tipo de instancia elegido."
+          },
+          {
+            "id": "c",
+            "text": "El instance store tiene un cargo adicional por almacenamiento, aparte del costo de la instancia",
+            "explanation": "No cumple: no tiene cargo adicional, porque va incluido en el costo de la instancia."
+          },
+          {
+            "id": "d",
+            "text": "Todos los tipos de instancia incluyen volúmenes de instance store con el mismo tamaño y número",
+            "explanation": "No cumple: el tamaño y el número varían por tipo y tamaño, y no todos los tipos los ofrecen."
+          },
+          {
+            "id": "e",
+            "text": "Se puede crear una AMI a partir de una instancia para lanzar otras iguales y compartirla con otras cuentas",
+            "explanation": "Cumple: una AMI creada de una instancia sirve para lanzar otras con igual configuración y se puede compartir."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-1-quiz-08",
+      "title": "Qué es cierto de la AMI y del instance store",
+      "statement": "Un equipo diseña el arranque y el almacenamiento local de una flota de instancias. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "AMI",
+        "instance store"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "cluster",
+            "term": "Grupo cluster",
+            "definition": "Instancias muy juntas en una zona: baja latencia para HPC acoplado"
+          },
+          {
+            "id": "partition",
+            "term": "Grupo partition",
+            "definition": "Particiones sin hardware compartido: Hadoop, Cassandra o Kafka"
+          },
+          {
+            "id": "spread",
+            "term": "Grupo spread",
+            "definition": "Pocas instancias en hardware distinto para reducir fallos correlacionados"
+          },
+          {
+            "id": "instance-store",
+            "term": "Instance store",
+            "definition": "Disco local temporal del host: búferes, cachés y datos de trabajo"
+          },
+          {
+            "id": "ami",
+            "term": "AMI",
+            "definition": "Imagen con el software de arranque; es específica de una Región"
+          },
+          {
+            "id": "trainium",
+            "term": "Instancias con AWS Trainium",
+            "definition": "Entrenamiento de aprendizaje profundo con alto rendimiento y costo eficiente"
+          },
+          {
+            "id": "inferentia",
+            "term": "Instancias con AWS Inferentia",
+            "definition": "Inferencia de aprendizaje automático con alto rendimiento y baja latencia"
+          },
+          {
+            "id": "graviton",
+            "term": "Procesadores AWS Graviton",
+            "definition": "Diseñados para el mejor precio-rendimiento en instancias EC2"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada estrategia, almacenamiento, imagen o procesador de EC2 con la carga o el caso que resuelve. Si dudas, pregúntate si la restricción es latencia, fallos acotados, datos temporales, otra Región o un tipo de cómputo concreto.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Colocación: cluster, partition y spread",
+              "Almacenamiento local temporal: instance store",
+              "Imagen de arranque y Región: AMI",
+              "Cómputo para aprendizaje automático y precio-rendimiento: Trainium, Inferentia y Graviton"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-3-1-memoria-01",
+      "title": "Pieza de EC2 y caso que resuelve",
+      "statement": "Empareja cada estrategia de ubicación, almacenamiento, imagen o procesador de EC2 con el caso que resuelve.",
+      "concepts": [
+        "grupo de ubicación",
+        "instance store",
+        "AMI",
+        "familias"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-3-1-reflexion-01",
+      "title": "Reflexión: qué decisión de EC2 y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, una simulación con nodos acoplados, un clúster replicado o una flota web con archivos temporales que debe lanzarse en otra Región) y escribe un registro breve de decisión sobre cómo la desplegarías en EC2, en 5 a 7 líneas:\n\n1) Decisión: qué familia o tipo de instancia, qué AMI, qué almacenamiento de instancia y qué estrategia de grupo de ubicación usarías, y qué restricción de la carga decide cada una.\n\n2) Alternativa descartada: una opción tentadora pero incorrecta (por ejemplo, una estrategia spread para nodos acoplados, o guardar la única copia de los datos en el instance store) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (copiar la AMI a cada Región, medir el rendimiento con tu aplicación, replicar o guardar fuera los datos importantes) y qué reglas recordar, como que una instancia solo va en un grupo de ubicación.\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento) y por qué.\n\n5) Evidencia: qué página oficial de tipos de instancia, almacenamiento de instancia, grupos de ubicación o AMI usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la pieza y la restricción que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "EC2",
+        "decisión",
+        "grupo de ubicación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html",
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html"
+      ],
+      "order": 19
+    }
+  ]
+}
