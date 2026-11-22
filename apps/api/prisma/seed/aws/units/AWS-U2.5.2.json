@@ -1,0 +1,1222 @@
+{
+  "code": "AWS-U2.5.2",
+  "lessons": [
+    {
+      "slug": "aws-u2-5-2-aurora-almacenamiento-distribuido-global-database-y-serverless-v2",
+      "title": "Aurora: almacenamiento distribuido, Global Database y Serverless v2",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Aurora no es «RDS con otro nombre»: separa las instancias de base de datos del almacenamiento. Los datos viven en un volumen del clúster compartido, con copias en tres zonas de disponibilidad, y las instancias (un escritor y lectores) se conectan a él. Sobre esa idea se montan las tres piezas de esta unidad: el almacenamiento distribuido, que da durabilidad y conmutación rápida dentro de una Región; Global Database, que extiende el clúster a varias Regiones para lecturas cercanas y recuperación ante la caída de una Región; y Aurora serverless, que ajusta la capacidad de las instancias a la demanda. En el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», el enunciado describe el requisito (caída de zona, caída de Región, picos impredecibles) y tú eliges la pieza que lo cumple. Las cifras de esta lección son datos de las páginas de la guía de Aurora leídas el 2026-11-22; antes de usarlas fuera del estudio, vuelve a comprobarlas en la página oficial."
+        },
+        {
+          "type": "list",
+          "title": "Aurora: tres piezas de un vistazo",
+          "items": [
+            "Almacenamiento: un volumen virtual sobre SSD con copias de los datos en tres zonas de una Región; la replicación no depende del número de instancias.",
+            "Global Database: un clúster primario donde se escribe y hasta 10 clústeres secundarios de solo lectura en otras Regiones.",
+            "Switchover y failover: el primero para operaciones planificadas con la base sana, el segundo para recuperarse de una interrupción en la Región primaria.",
+            "Aurora serverless: capacidad medida en ACU, que sube y baja de media en media ACU según la demanda.",
+            "Configuraciones de almacenamiento: I/O-Optimized, sin cargos por E/S, y Standard, con cargo por millón de solicitudes."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Almacenamiento distribuido: un volumen compartido en tres zonas",
+          "text": "Según la página de almacenamiento, los datos de Aurora se guardan en el volumen del clúster: un único volumen virtual sobre unidades SSD que contiene copias de los datos en tres zonas de disponibilidad de una sola Región. Como esas copias ya existen en las otras zonas y siguen atendiendo solicitudes, la base está más disponible durante una conmutación, y la cantidad de replicación es independiente del número de instancias del clúster. El volumen contiene los datos de usuario, los objetos de esquema y metadatos internos, como las tablas del sistema y el registro binario. Aurora usa un almacenamiento local aparte para archivos temporales no persistentes, como los de ordenar grandes conjuntos de datos o crear índices. En el examen suele citarse una cifra concreta de copias; esa cifra no aparece en la página que leímos, que solo habla de copias en tres zonas, así que no la tomes como dato de la guía sin comprobarla."
+        },
+        {
+          "type": "paragraph",
+          "title": "Instancias desacopladas del almacenamiento",
+          "text": "Como el almacenamiento es compartido, los datos son independientes de las instancias. Añadir una instancia es rápido porque Aurora no hace una copia nueva de los datos de las tablas: la instancia se conecta al volumen que ya los contiene. Quitar una instancia no elimina datos; solo se eliminan cuando se borra el clúster entero. El volumen crece solo a medida que aumentan los datos, hasta 256 TiB en ciertas versiones de motor, y libera espacio cuando se eliminan datos, por ejemplo al borrar o truncar una tabla; solo se cobra el espacio usado. La página describe además dos configuraciones: I/O-Optimized, sin cargos por operaciones de lectura y escritura, y Standard, con un cargo por cada millón de solicitudes de E/S. La guía sugiere I/O-Optimized cuando el gasto en E/S alcanza el 25 por ciento o más del gasto total, y de Standard a I/O-Optimized solo se cambia una vez cada 30 días. Los precios concretos no se copian aquí por ser un dato cambiante."
+        },
+        {
+          "type": "paragraph",
+          "title": "Global Database: varias Regiones sobre el mismo diseño",
+          "text": "Una base global tiene una Región primaria, donde se escribe, y hasta 10 Regiones secundarias de solo lectura. Las escrituras van al endpoint de escritor global, que siempre apunta al clúster primario aunque cambie de Región. Tras cada escritura, Aurora replica a las secundarias con infraestructura dedicada, usando el volumen del clúster y no el motor, con una latencia típicamente inferior a un segundo. Cada secundario escala por su cuenta añadiendo lectores y, al ser de solo lectura, admite hasta 16 instancias frente al límite habitual de 15 de un clúster. Sirve para lecturas con latencia local en oficinas lejanas y para recuperarse de interrupciones regionales con menor RTO y menor RPO que la replicación tradicional, según la página. El reenvío de escrituras permite que los secundarios envíen solicitudes de escritura al primario; los secundarios no escriben por sí solos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Switchover frente a failover, y las limitaciones que el examen explota",
+          "text": "La página distingue dos operaciones para cambiar la Región del primario. El switchover (antes llamado conmutación planificada gestionada) es para procedimientos planificados, como la rotación de Regiones: reubica el primario de una base sana en una secundaria sin pérdida de datos. El failover es para recuperar la base tras una interrupción en la Región primaria, con una conmutación entre Regiones. Limitaciones citadas: para las operaciones gestionadas, el primario y el secundario deben tener las mismas versiones mayor y menor del motor; no se admite Aurora Auto Scaling en los clústeres secundarios; no se pueden detener ni arrancar los clústeres de forma individual; y los lectores secundarios se reinician si el escritor primario se reinicia o conmuta. Tampoco se admiten el backtracking ni la integración con Secrets Manager."
+        },
+        {
+          "type": "paragraph",
+          "title": "Aurora serverless: capacidad que sigue a la demanda",
+          "text": "Aurora serverless es una configuración bajo demanda y de autoescalado: supervisa la carga y ajusta la capacidad, que se mide en ACU, y solo pagas los recursos que consume tu clúster. Un clúster aprovisionado sube capacidad añadiendo una instancia entera; serverless añade o quita 0,5, 1, 1,5, 2 o más medias ACU según la carga, normalmente sin pausa y con transacciones abiertas. Puedes fijar un límite superior para el peor caso, de modo que esa capacidad solo se use si hace falta. Encaja en cargas variables o impredecibles, aplicaciones multitenant, aplicaciones nuevas cuyo tamaño se desconoce, cargas mixtas y entornos de desarrollo y pruebas. Se combina con lectores, con clústeres multi-AZ y con bases globales: puedes usar instancias serverless en los secundarios para que la capacidad suba si una región secundaria se promueve. Puedes convertir una instancia de aprovisionada a serverless, o al revés, sin crear un clúster nuevo."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres requisitos, tres piezas",
+          "text": "Una aplicación de reservas tiene tres necesidades. (1) Debe seguir sirviendo datos si cae una zona de disponibilidad. (2) Sus oficinas de otro continente leen con lentitud y, si cae la Región principal, la empresa quiere seguir operando desde otra. (3) El entorno de pruebas casi siempre está inactivo, pero a veces recibe una carga fuerte e imprevista. Paso 1: en (1) el dato es «caída de una zona», y el volumen del clúster ya guarda copias en tres zonas; basta con tener lectores para una conmutación inmediata. Paso 2: en (2) el dato es «otro continente» y «caída de la Región», así que una base global con un secundario allí; ante una interrupción en la primaria, un failover entre Regiones; para una rotación programada, un switchover. Paso 3: en (3) el dato es «carga imprevisible con largos periodos inactivos», así que instancias serverless con un mínimo bajo y un máximo que cubra el pico estimado. Resultado: cada decisión salió de un dato del enunciado y no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de Aurora como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  clusterPrimario: { region: \"region-a\", escritura: true },\n  secundarios: [{ region: \"region-b\", soloLectura: true, lectores: 2 }],\n  recuperacionTrasInterrupcion: \"failover\",\n  rotacionPlanificada: \"switchover\",\n  instancias: { tipo: \"serverless\", minACU: 2, maxACU: 32 },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del requisito a la pieza de Aurora",
+          "code": "flowchart TB\n  R{\"Requisito del enunciado\"} -->|\"Sobrevivir a la caída de una zona\"| A[\"Volumen del clúster: copias en tres zonas\"]\n  R -->|\"Lecturas cercanas en otro continente\"| B[\"Global Database: secundarios de solo lectura\"]\n  R -->|\"Caída de la Región primaria\"| C[\"Failover entre Regiones\"]\n  R -->|\"Rotación de Región planificada\"| D[\"Switchover: sin pérdida de datos\"]\n  R -->|\"Picos impredecibles\"| E[\"Aurora serverless: ACU entre un mínimo y un máximo\"]\n  B --> C\n  B --> D"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir switchover con failover, o los secundarios con réplicas que escriben",
+          "text": "El enunciado mezcla señales: «caída de la Región», «rotación planificada», «lecturas locales», «escrituras en varias Regiones». El switchover es para una base sana y un procedimiento programado; el failover es para una interrupción; los secundarios son de solo lectura y las escrituras van al primario. Subraya el requisito (continuidad, lecturas cercanas, picos) y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que más instancias aumentan las copias de los datos",
+          "text": "Causa: suponer que cada instancia de Aurora lleva su propia copia, como en una réplica clásica. Consecuencia: se añaden lectores esperando mayor durabilidad, o se teme que añadir uno tarde horas, cuando la replicación del volumen no depende del número de instancias. Solución: recuerda que el volumen es compartido y distribuido en tres zonas; añade instancias para capacidad de lectura y conmutación, no para durabilidad."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar un switchover para recuperarse de una interrupción regional",
+          "text": "Causa: dar por hecho que ambas operaciones son equivalentes y que la planificada sirve siempre. Consecuencia: se elige una operación pensada para bases sanas cuando la Región primaria ya no responde, y la recuperación no ocurre. Solución: usa el switchover para rotaciones planificadas y el failover entre Regiones tras una interrupción; comprueba además que primario y secundario tienen las mismas versiones mayor y menor."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: esperar escrituras en los secundarios y autoescalado de sus lectores",
+          "text": "Causa: suponer que una base global es multimaestro y que Aurora Auto Scaling cubre los secundarios. Consecuencia: las aplicaciones fallan al escribir en un secundario y los picos de lectura no se absorben, porque la página indica que no se admite Auto Scaling en ellos. Solución: dirige las escrituras al endpoint de escritor global o usa el reenvío de escrituras, y añade lectores a los secundarios o usa instancias serverless para escalar la lectura."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Explicar el almacenamiento distribuido de Aurora, Global Database y Aurora serverless, y elegir la pieza según el requisito. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la pieza, el dato del enunciado que la decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres decisiones del ejemplo: para cada necesidad, nombra la pieza de Aurora y el dato que la decide. Explica con tus palabras el diagrama «Del requisito a la pieza de Aurora». Después responde: si añades una instancia lectora a un clúster, ¿por qué no se copian los datos, y qué cambia respecto a una réplica de lectura de RDS?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Una base global que escribe en el secundario». Una configuración escrita como objeto envía las escrituras a un clúster secundario y prevé un switchover tras una caída. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas las Regiones."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Un plan de capacidad que no cubre el pico». Un plan usa una instancia aprovisionada y un máximo de ACU por debajo del pico estimado. Decide qué cambias sin tocar el mínimo ni el pico. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la página de Aurora serverless."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre el almacenamiento, Global Database y Aurora serverless. Audítalo en «Auditar un informe de Aurora generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de almacenamiento, Global Database y Aurora serverless (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: dónde guarda Aurora los datos y en cuántas zonas; qué ocurre al añadir o quitar una instancia; cómo está formada una base global y cómo replica; cuándo se usa un switchover y cuándo un failover; y cómo escala Aurora serverless. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa añade una oficina en otro continente que necesita leer con latencia local, una auditoría que exige ensayar cada trimestre el traslado de la Región primaria sin perder datos, y un entorno de desarrollo que debe costar poco cuando está parado. Decide la pieza para cada parte y qué configuración la acompaña. Pregunta de cierre: un compañero dice «con Global Database ya podemos escribir en cualquier Región»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-aurora-que-es",
+          "order": 0,
+          "note": "Fuente previa: qué es Aurora, su volumen de clúster que crece hasta 256 TiB y su relación con RDS."
+        },
+        {
+          "resourceSlug": "aws-aurora-almacenamiento",
+          "order": 1,
+          "note": "Fuente del almacenamiento: volumen del clúster en tres zonas, almacenamiento compartido y configuraciones I/O-Optimized y Standard."
+        },
+        {
+          "resourceSlug": "aws-aurora-global-database",
+          "order": 2,
+          "note": "Fuente de Global Database: primario y secundarios, replicación, switchover, failover y limitaciones."
+        },
+        {
+          "resourceSlug": "aws-aurora-serverless-v2",
+          "order": 3,
+          "note": "Fuente de Aurora serverless: ACU, escalado de media en media ACU, casos de uso y combinación con aprovisionadas."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Según la página de almacenamiento de Aurora (leída el 2026-11-22), los datos viven en el volumen del clúster: un único volumen virtual sobre unidades SSD con copias de los datos en tres zonas de disponibilidad de una sola Región. La cantidad de replicación es independiente del número de instancias del clúster."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-2-tarjeta-01",
+      "title": "Tarjeta: El volumen del clúster de Aurora",
+      "statement": "¿Qué es el volumen del clúster de Aurora y dónde guarda los datos?",
+      "concepts": [
+        "volumen del clúster",
+        "tres zonas de disponibilidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El volumen contiene datos de usuario, objetos de esquema y metadatos internos. Al añadir una instancia, Aurora no copia los datos de las tablas: la instancia se conecta al volumen compartido. Quitar una instancia no elimina datos; solo se eliminan al borrar el clúster entero. Página consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-2-tarjeta-02",
+      "title": "Tarjeta: Almacenamiento compartido y desacoplado",
+      "statement": "¿Qué ocurre con los datos cuando se añade o se quita una instancia de un clúster de Aurora?",
+      "concepts": [
+        "almacenamiento compartido",
+        "instancia de base de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El volumen crece solo y puede llegar a 256 TiB en ciertas versiones de motor; al borrar datos se libera espacio. Hay dos configuraciones: I/O-Optimized, sin cargos por operaciones de lectura y escritura, y Standard, con cargo por millón de solicitudes de E/S. De Standard a I/O-Optimized solo se cambia una vez cada 30 días. Datos de la página del 2026-11-22; los precios no se copian."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-2-tarjeta-03",
+      "title": "Tarjeta: Crecimiento y configuraciones de almacenamiento",
+      "statement": "¿Cómo crece el volumen de Aurora y qué dos configuraciones de almacenamiento existen?",
+      "concepts": [
+        "crecimiento automático",
+        "I/O-Optimized"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Según la página (2026-11-22), tiene un clúster primario donde se escribe, en una Región, y hasta 10 clústeres secundarios de solo lectura en otras Regiones. Replica con infraestructura dedicada, usando el volumen y no el motor, con latencia típicamente inferior a un segundo. Las escrituras van al endpoint de escritor global, que siempre apunta al primario."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-2-tarjeta-04",
+      "title": "Tarjeta: Estructura de una Global Database",
+      "statement": "¿Cómo está formada una base de datos global de Aurora y cómo replica?",
+      "concepts": [
+        "Global Database",
+        "Región secundaria"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Switchover: para procedimientos planificados, como la rotación de Regiones; mueve el clúster primario de una base global sana a una Región secundaria sin pérdida de datos. Failover: para recuperarse tras una interrupción en la Región primaria, con una conmutación entre Regiones. La guía dice que da menor RTO y menor RPO que la replicación tradicional. Página consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-2-tarjeta-05",
+      "title": "Tarjeta: Switchover frente a failover global",
+      "statement": "¿Cuándo se usa el switchover y cuándo el failover en una Global Database?",
+      "concepts": [
+        "switchover",
+        "failover entre Regiones"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Aurora serverless ajusta la capacidad según la demanda y se mide en ACU; puede añadir o quitar de media en media ACU, sin esperar a un punto tranquilo y normalmente sin pausa. Sirve para cargas variables, multitenant, nuevas, de desarrollo y pruebas. Puede ser lector o escritor, convivir con instancias aprovisionadas y usarse en clústeres secundarios globales. Página del 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-2-tarjeta-06",
+      "title": "Tarjeta: Aurora serverless y las ACU",
+      "statement": "¿Cómo escala Aurora serverless y para qué cargas sirve?",
+      "concepts": [
+        "ACU",
+        "escalado granular"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Base global de Aurora que debe recuperarse tras la caída de su Región primaria. Corrige sus defectos principales.\nexport const global = {\n  primaria: \"region-a\",\n  secundarias: [\"region-b\", \"region-c\"],\n  destinoDeEscrituras: \"clusterSecundario\",\n  operacionTrasInterrupcion: \"switchover\",\n};\n",
+      "solution": {
+        "code": "export const global = {\n  primaria: \"region-a\",\n  secundarias: [\"region-b\", \"region-c\"],\n  destinoDeEscrituras: \"clusterPrimario\",\n  operacionTrasInterrupcion: \"failover\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Los clústeres secundarios son de solo lectura. Piensa también qué operación se usa tras una interrupción y cuál es para procedimientos planificados."
+        },
+        {
+          "level": 2,
+          "text": "Las escrituras van al clúster primario (el endpoint de escritor global apunta siempre a él) y tras una interrupción se hace un failover entre Regiones."
+        },
+        {
+          "level": 3,
+          "text": "Cambia destinoDeEscrituras a \"clusterPrimario\" y operacionTrasInterrupcion a \"failover\". No toques las Regiones."
+        }
+      ],
+      "tests": [
+        {
+          "name": "las escrituras van al clúster primario",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(global.destinoDeEscrituras, \"clusterPrimario\", \"solo el primario realiza escrituras\");"
+          }
+        },
+        {
+          "name": "tras una interrupción se hace un failover",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(global.operacionTrasInterrupcion, \"failover\", \"el switchover es para operaciones planificadas\");"
+          }
+        },
+        {
+          "name": "las Regiones se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(global.primaria, \"region-a\");\nassert.deepStrictEqual(global.secundarias, [\"region-b\", \"region-c\"]);"
+          }
+        },
+        {
+          "name": "hay al menos un clúster secundario",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(global.secundarias.length >= 1, \"una base global necesita secundarios\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-5-2-debug-01",
+      "title": "Una base global que escribe en el secundario",
+      "statement": "El objeto `global` modela una base global de Aurora con una Región primaria y dos secundarias. Envía las escrituras a un clúster secundario y prevé un switchover para recuperarse de la caída de la Región primaria. Corrige el destino de las escrituras y la operación de recuperación sin cambiar las Regiones, y mantén la forma del valor exportado (`export const global = { … }`).",
+      "concepts": [
+        "Global Database",
+        "failover entre Regiones"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan para una carga con picos impredecibles. Corrige sus defectos principales.\nexport const plan = {\n  objetivo: \"picos impredecibles sin aprovisionar para el pico\",\n  tipoDeInstancia: \"aprovisionada\",\n  minACU: 2,\n  maxACU: 8,\n  picoEstimadoACU: 32,\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  objetivo: \"picos impredecibles sin aprovisionar para el pico\",\n  tipoDeInstancia: \"serverless\",\n  minACU: 2,\n  maxACU: 32,\n  picoEstimadoACU: 32,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la instancia es serverless",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(plan.tipoDeInstancia, \"serverless\", \"la capacidad debe ajustarse sola a la demanda\");"
+          }
+        },
+        {
+          "name": "el máximo cubre el pico estimado",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(plan.maxACU >= plan.picoEstimadoACU, \"el límite superior debe cubrir el peor caso\");"
+          }
+        },
+        {
+          "name": "el mínimo sigue siendo bajo y no supera al máximo",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(plan.minACU <= plan.maxACU);\nassert.ok(plan.minACU <= 4, \"un mínimo bajo evita pagar capacidad ociosa\");"
+          }
+        },
+        {
+          "name": "el objetivo y el pico se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.objetivo, \"picos impredecibles sin aprovisionar para el pico\");\nassert.strictEqual(plan.picoEstimadoACU, 32);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-5-2-debug-02",
+      "title": "Un plan de capacidad que no cubre el pico",
+      "statement": "El objeto `plan` modela la capacidad de una base Aurora cuya carga tiene picos de actividad impredecibles. Usa una instancia aprovisionada y fija un máximo de capacidad por debajo del pico estimado. Corrige el plan para que la capacidad se ajuste sola a la demanda y el límite superior cubra el peor caso, sin cambiar el objetivo, el pico estimado ni el mínimo, y mantén la forma del valor exportado (`export const plan = { … }`). Aurora serverless se mide en ACU y puede escalar de media en media ACU.",
+      "concepts": [
+        "Aurora serverless",
+        "ACU"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de Aurora (borrador generado por un asistente)\nEscenario: una aplicación global con picos de actividad que debe sobrevivir a la caída de una zona y de una Región.\n1. El volumen del clúster guarda copias de los datos en tres zonas de disponibilidad de una sola Región.\n2. Al añadir una instancia lectora, Aurora copia todas las tablas a su almacenamiento local antes de que sirva consultas.\n3. Un clúster secundario de una base global es de solo lectura y admite hasta 16 instancias, más que el límite habitual de 15.\n4. Los clústeres secundarios de una base global se benefician de Aurora Auto Scaling para sus lectores.\n5. Tras una interrupción en la Región primaria, el mecanismo correcto es un switchover hacia una Región secundaria.\n6. Aurora serverless puede cambiar la capacidad de media en media ACU, sin esperar a un punto tranquilo.\n7. Una instancia aprovisionada de un clúster puede convertirse en serverless sin crear un clúster nuevo."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Volumen del clúster en tres zonas",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página de almacenamiento indica copias de los datos en tres zonas de disponibilidad de una sola Región."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Datos copiados al añadir una instancia",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: al añadir una instancia, Aurora no hace una copia nueva de los datos de las tablas; la instancia se conecta al volumen compartido que ya los contiene."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Secundarias de lectura de Global Database",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: un clúster secundario es de solo lectura y puede tener hasta 16 instancias, frente al límite habitual de 15."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Auto Scaling en clústeres secundarios",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: la página dice que Aurora Global Database no admite Aurora Auto Scaling en los clústeres secundarios."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Switchover tras una interrupción",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: el switchover es para operaciones planificadas con una base sana; tras una interrupción de la Región primaria se usa el failover entre Regiones."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Granularidad de Aurora serverless",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página indica que puede añadir o quitar de media en media ACU, en lugar de duplicar o reducir a la mitad."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Serverless junto a instancias aprovisionadas",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página indica que puedes modificar instancias de aprovisionadas a serverless y al revés sin crear un clúster nuevo."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-5-2-auditoria-01",
+      "title": "Auditar un informe de Aurora generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre el almacenamiento, Global Database y Aurora serverless. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "almacenamiento de Aurora",
+        "Global Database",
+        "Aurora serverless"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El volumen del clúster guarda los datos solo en la zona de la instancia escritora",
+            "explanation": "Descartada: la página indica copias de los datos en tres zonas de disponibilidad, no en la zona del escritor."
+          },
+          {
+            "id": "b",
+            "text": "El volumen del clúster guarda copias de los datos en tres zonas de la Región",
+            "explanation": "Es la correcta: esas copias ya existen en las otras zonas y siguen sirviendo las solicitudes de las instancias durante una conmutación."
+          },
+          {
+            "id": "c",
+            "text": "Cada instancia mantiene su propia copia completa del volumen en su disco local",
+            "explanation": "Descartada: el almacenamiento es compartido; las instancias se conectan a un volumen común y no guardan copias propias de los datos."
+          },
+          {
+            "id": "d",
+            "text": "Aurora replica el volumen a otra Región en cualquier clúster, sin configurar nada",
+            "explanation": "Descartada: la replicación entre Regiones requiere una base global; el volumen de un clúster vive en una sola Región."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-2-quiz-01",
+      "title": "Datos disponibles tras la caída de una zona",
+      "statement": "Los datos de un clúster Aurora deben seguir sirviéndose si cae una zona de disponibilidad. ¿Qué característica del almacenamiento lo explica MEJOR?",
+      "concepts": [
+        "volumen del clúster",
+        "tres zonas de disponibilidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Aurora copia todas las tablas al almacenamiento local de la instancia nueva",
+            "explanation": "Descartada: la página dice que Aurora no hace una copia nueva de los datos de las tablas al añadir una instancia."
+          },
+          {
+            "id": "b",
+            "text": "La replicación del volumen se multiplica por cada instancia que se añade al clúster",
+            "explanation": "Descartada: la cantidad de replicación del volumen es independiente del número de instancias del clúster."
+          },
+          {
+            "id": "c",
+            "text": "Hay que restaurar un snapshot en la instancia nueva antes de que sirva consultas",
+            "explanation": "Descartada: no hace falta ningún snapshot; la instancia usa el volumen compartido y se añade rápido."
+          },
+          {
+            "id": "d",
+            "text": "La instancia se conecta al volumen compartido, que ya contiene todos los datos",
+            "explanation": "Es la correcta: el almacenamiento compartido hace los datos independientes de las instancias, y por eso añadir o quitar una es rápido."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-2-quiz-02",
+      "title": "Añadir una instancia a un clúster Aurora",
+      "statement": "Se añade una instancia lectora a un clúster Aurora con muchos datos. ¿Qué describe MEJOR lo que ocurre con los datos de las tablas?",
+      "concepts": [
+        "almacenamiento compartido",
+        "instancia lectora"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un failover entre Regiones desde el clúster primario hacia un clúster secundario",
+            "explanation": "Es la correcta: la guía indica el failover para recuperar la base global tras una interrupción en la Región primaria."
+          },
+          {
+            "id": "b",
+            "text": "Un switchover, que la guía reserva para mover el primario de una base global sana",
+            "explanation": "Descartada: el switchover es para procedimientos planificados con una base sana, como la rotación de Regiones."
+          },
+          {
+            "id": "c",
+            "text": "Añadir instancias lectoras al clúster secundario hasta llegar a 16",
+            "explanation": "Descartada: más lectores amplían la capacidad de lectura, pero no cambian la Región donde se escribe."
+          },
+          {
+            "id": "d",
+            "text": "Detener y volver a arrancar solo el clúster primario de forma individual",
+            "explanation": "Descartada: en una base global no puedes detener ni arrancar los clústeres de forma individual."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-2-quiz-03",
+      "title": "Recuperar una base global tras una interrupción regional",
+      "statement": "La Región primaria de una base global de Aurora sufre una interrupción que la deja inservible. ¿Qué operación recupera el servicio desde otra Región con el MENOR esfuerzo de reconstrucción?",
+      "concepts": [
+        "failover entre Regiones",
+        "Global Database"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un failover manual, ejecutado como si la Región primaria hubiera dejado de responder",
+            "explanation": "Descartada: el failover es para recuperarse de una interrupción, no para una rotación planificada."
+          },
+          {
+            "id": "b",
+            "text": "El reenvío de escrituras, que mueve el clúster primario a la Región secundaria",
+            "explanation": "Descartada: el reenvío solo permite a los secundarios enviar solicitudes de escritura al primario; no cambia la Región primaria."
+          },
+          {
+            "id": "c",
+            "text": "Un switchover, que reubica el primario en una secundaria sin pérdida de datos",
+            "explanation": "Es la correcta: la guía lo describe para operaciones planificadas, como la rotación de Regiones, sobre una base global sana."
+          },
+          {
+            "id": "d",
+            "text": "Restaurar un snapshot del primario en la Región de destino y repuntar la aplicación",
+            "explanation": "Descartada: no es un mecanismo de la base global; el switchover ya conserva los datos y el endpoint de escritor global."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-2-quiz-04",
+      "title": "Rotación planificada de la Región primaria",
+      "statement": "Un equipo debe rotar la Región primaria de una base global de Aurora sana, sin perder datos, como parte de un procedimiento programado. ¿Qué mecanismo encaja MÁS?",
+      "concepts": [
+        "switchover",
+        "Global Database"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un único clúster en una Región, con 15 instancias lectoras repartidas entre sus zonas",
+            "explanation": "Descartada: todos los lectores quedan en la misma Región, así que las oficinas lejanas siguen leyendo a distancia."
+          },
+          {
+            "id": "b",
+            "text": "Una base global con clústeres secundarios de solo lectura en las Regiones de las oficinas",
+            "explanation": "Es la correcta: la guía describe lecturas globales con latencia local gracias a copias completas en varias ubicaciones geográficas."
+          },
+          {
+            "id": "c",
+            "text": "Un clúster Multi-AZ con standbys situados en cada oficina del mundo",
+            "explanation": "Descartada: las zonas de disponibilidad de un clúster pertenecen a una sola Región, no a las ubicaciones de las oficinas."
+          },
+          {
+            "id": "d",
+            "text": "Escribir en un clúster independiente de cada Región y que Aurora los fusione",
+            "explanation": "Descartada: solo el clúster primario realiza escrituras; los secundarios son de solo lectura y no hay fusión de escrituras."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-2-quiz-05",
+      "title": "Lecturas locales para oficinas en varios continentes",
+      "statement": "Las oficinas de una empresa en varios continentes necesitan leer los mismos datos de Aurora con latencia local. ¿Qué diseño ofrece la MAYOR cercanía de lectura?",
+      "concepts": [
+        "lecturas globales",
+        "clúster secundario"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una instancia aprovisionada dimensionada para el pico máximo, sin ajuste automático",
+            "explanation": "Descartada: obliga a pagar capacidad ociosa casi todo el tiempo y no se ajusta a la demanda."
+          },
+          {
+            "id": "b",
+            "text": "Instancias aprovisionadas que, ante cada pico, duplican siempre su tamaño",
+            "explanation": "Descartada: en un clúster aprovisionado, subir capacidad exige una instancia entera; serverless ajusta en pasos de media ACU."
+          },
+          {
+            "id": "c",
+            "text": "Réplicas de lectura de RDS creadas a mano, que se añaden antes de cada pico",
+            "explanation": "Descartada: no ajustan la capacidad de escritura y exigen prever los picos, que aquí son impredecibles."
+          },
+          {
+            "id": "d",
+            "text": "Instancias Aurora serverless con un mínimo y un máximo de ACU que se ajustan solas",
+            "explanation": "Es la correcta: la capacidad se adapta a la demanda y puedes fijar un límite superior para el peor caso."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-2-quiz-06",
+      "title": "Picos de actividad impredecibles",
+      "statement": "Una aplicación tiene picos de actividad impredecibles y largos periodos inactivos. ¿Qué configuración evita MEJOR aprovisionar para el pico?",
+      "concepts": [
+        "Aurora serverless",
+        "ACU"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "El volumen debe aprovisionarse con un tamaño fijo al crear el clúster",
+            "explanation": "No cumple: el volumen crece automáticamente a medida que aumentan los datos, hasta 256 TiB en ciertas versiones."
+          },
+          {
+            "id": "b",
+            "text": "La cantidad de replicación del volumen no depende del número de instancias",
+            "explanation": "Cumple: la página indica que la replicación es independiente del número de instancias del clúster."
+          },
+          {
+            "id": "c",
+            "text": "Los archivos temporales de ordenación se guardan de forma persistente en el volumen",
+            "explanation": "No cumple: Aurora usa almacenamiento local separado para archivos temporales no persistentes, como los de ordenación."
+          },
+          {
+            "id": "d",
+            "text": "Quitar una instancia del clúster no borra los datos del volumen compartido",
+            "explanation": "Cumple: los datos solo se eliminan cuando se borra el clúster entero, no al quitar una instancia."
+          },
+          {
+            "id": "e",
+            "text": "De Standard a I/O-Optimized se cambia sin límite de frecuencia",
+            "explanation": "No cumple: de Standard a I/O-Optimized solo se puede cambiar una vez cada 30 días."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-2-quiz-07",
+      "title": "Qué es cierto del almacenamiento de Aurora",
+      "statement": "Un arquitecto repasa el almacenamiento de Aurora. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "volumen del clúster",
+        "almacenamiento compartido"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Tiene un clúster primario en una Región y hasta 10 secundarios en otras Regiones",
+            "explanation": "Cumple: la página describe un primario y hasta 10 clústeres secundarios de solo lectura en Regiones distintas."
+          },
+          {
+            "id": "b",
+            "text": "Cualquier clúster secundario acepta escrituras directas sin configuración adicional",
+            "explanation": "No cumple: solo el primario realiza escrituras; los secundarios son de solo lectura, salvo el reenvío de escrituras."
+          },
+          {
+            "id": "c",
+            "text": "Un secundario admite hasta 16 instancias de solo lectura, frente al límite habitual de 15",
+            "explanation": "Cumple: la página lo indica por ser el clúster secundario de solo lectura."
+          },
+          {
+            "id": "d",
+            "text": "Aurora Auto Scaling está admitido en los clústeres secundarios",
+            "explanation": "No cumple: la página indica que Aurora Global Database no admite Aurora Auto Scaling en los clústeres secundarios."
+          },
+          {
+            "id": "e",
+            "text": "La replicación usa infraestructura dedicada y el volumen, no el motor de la base",
+            "explanation": "Cumple: la página indica que Aurora usa el volumen de almacenamiento del clúster para una replicación rápida y de baja carga."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-2-quiz-08",
+      "title": "Qué es cierto de Aurora Global Database",
+      "statement": "Un equipo evalúa una base global de Aurora. Selecciona TRES afirmaciones correctas según la guía.",
+      "concepts": [
+        "Global Database",
+        "clúster secundario"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-5-2-reflexion-01",
+      "title": "Reflexión: qué parte de Aurora y por qué",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una tienda con ventas estacionales, un servicio con usuarios en varios continentes o un entorno de pruebas que casi siempre está parado) y escribe un registro breve de decisión sobre cómo usarías Aurora para ella, en 5 a 7 líneas:\n\n1) Decisión: qué característica elegirías (el volumen del clúster en tres zonas, una base global o Aurora serverless) y qué dato de la carga la decide (caída de zona, lecturas lejanas, caída de Región, picos de actividad).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, una instancia aprovisionada dimensionada para el pico, o un switchover donde hacía falta un failover) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá vigilar tu equipo (el máximo de ACU, la versión del motor igual en primario y secundarios, el retraso de replicación entre Regiones).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad u Optimización de costos) y por qué.\n\n5) Evidencia: qué página oficial (almacenamiento de Aurora, Global Database o Aurora serverless) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la característica y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "Aurora",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html"
+      ],
+      "order": 18
+    }
+  ]
+}
