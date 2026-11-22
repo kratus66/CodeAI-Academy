@@ -1,0 +1,1326 @@
+{
+  "code": "AWS-U2.3.4",
+  "lessons": [
+    {
+      "slug": "aws-u2-3-4-contenedores-ecs-eks-fargate-y-ecr",
+      "title": "Contenedores: ECS, EKS, Fargate y ECR",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Un contenedor empaqueta una aplicación con sus dependencias, y AWS ofrece piezas distintas para guardarlo, orquestarlo y ejecutarlo. Amazon ECR es el registro donde se almacenan las imágenes. Amazon ECS y Amazon EKS son los dos orquestadores administrados: ECS es el servicio de orquestación de contenedores de AWS y EKS es el servicio de Kubernetes administrado. AWS Fargate no es un orquestador, sino una forma de capacidad: el motor de cómputo sin servidores con el que ECS ejecuta contenedores sin gestionar instancias EC2. En A2 no basta con recitar los cuatro nombres: ante un escenario subrayas si se pide Kubernetes, si el equipo quiere gestionar servidores o no y dónde viven las imágenes, y combinas orquestador, capacidad y registro. Esta unidad prepara el dominio 3 de SAA-C03, «Diseñar soluciones de alto rendimiento», y su tarea de cómputo."
+        },
+        {
+          "type": "list",
+          "title": "Las cuatro piezas, frente a frente",
+          "items": [
+            "ECS: servicio totalmente administrado de orquestación de contenedores para desplegar, gestionar y escalar aplicaciones en contenedores; se integra con ECR y con Docker.",
+            "EKS: servicio de Kubernetes totalmente administrado; en EKS estándar, AWS gestiona el plano de control de Kubernetes, y es conforme con Kubernetes certificado.",
+            "Fargate: motor de cómputo sin servidores y de pago por uso para ejecutar contenedores con ECS sin gestionar servidores ni clústeres de instancias EC2.",
+            "ECR: servicio administrado de registro de imágenes de contenedor, con repositorios privados y permisos basados en recursos con IAM."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "ECS: capa de capacidad, controlador y aprovisionamiento",
+          "text": "ECS tiene tres capas: la capacidad (la infraestructura donde corren los contenedores), el controlador (el scheduler que despliega y gestiona las aplicaciones) y el aprovisionamiento (la consola, la AWS CLI, los SDK y el CDK). La guía describe varias opciones de capacidad: instancias EC2 que tú eliges y cuya capacidad gestionas, Fargate sin servidores, ECS Managed Instances (instancias EC2 cuya infraestructura gestiona AWS), y ECS Anywhere para registrar servidores o máquinas virtuales locales en el clúster. Una definición de tarea es el plano de la aplicación; una tarea es una aplicación que hace su trabajo y se detiene, como un trabajo por lotes; un servicio es una aplicación de larga duración sin estado. Service Auto Scaling aumenta o reduce el número deseado de tareas del servicio, y Cluster Auto Scaling gestiona el escalado de las instancias EC2 registradas en el clúster."
+        },
+        {
+          "type": "paragraph",
+          "title": "EKS: Kubernetes administrado",
+          "text": "EKS entrega un servicio de Kubernetes totalmente administrado, en la nube de AWS y en tus propios centros de datos (con EKS Anywhere y EKS Hybrid Nodes). En EKS estándar, AWS gestiona el plano de control de Kubernetes cuando creas el clúster; con EKS Auto Mode, EKS extiende su gestión a los nodos y aprovisiona infraestructura, selecciona instancias y aplica parches. Para el cómputo admite toda la gama de tipos de instancia de Amazon EC2, con innovaciones como Nitro y Graviton. Es conforme con Kubernetes certificado, así que puedes desplegar aplicaciones compatibles con Kubernetes sin refactorizarlas y usar las herramientas de la comunidad. El control de acceso combina IAM con las funciones de Kubernetes. Eliges EKS cuando el escenario exige Kubernetes; si no lo exige, ECS es la opción nativa de AWS."
+        },
+        {
+          "type": "paragraph",
+          "title": "Fargate: ejecutar contenedores sin servidores que gestionar",
+          "text": "Con Fargate no aprovisionas, configuras ni escalas clústeres de máquinas virtuales, y desaparece la necesidad de elegir tipos de servidor, decidir cuándo escalar o ajustar el empaquetado del clúster. Empaquetas la aplicación en contenedores, indicas la CPU y la memoria, defines la red y las políticas de IAM, y la lanzas. Cada tarea de Fargate tiene su propio límite de aislamiento y no comparte kernel, CPU, memoria ni interfaz de red elástica con otra tarea. Fargate Spot ejecuta tareas tolerantes a interrupciones con un descuento sobre el precio de Fargate: usa capacidad sobrante y, si AWS la necesita, interrumpe las tareas con un aviso de dos minutos. Un servicio de ECS en Fargate puede usar un ALB, un NLB o un GWLB; el grupo de destino debe ser de tipo ip y no instance, porque las tareas con modo de red awsvpc tienen una interfaz de red elástica y no una instancia EC2."
+        },
+        {
+          "type": "paragraph",
+          "title": "ECR: dónde viven las imágenes",
+          "text": "ECR es un registro administrado, seguro, escalable y fiable. Admite repositorios privados con permisos basados en recursos mediante IAM, de modo que usuarios o instancias EC2 concretos accedan a tus repositorios, y también repositorios públicos. Con tu CLI preferida haces push, pull y gestión de imágenes Docker, imágenes de la Open Container Initiative (OCI) y artefactos compatibles con OCI. Entre sus funciones: las políticas de ciclo de vida limpian imágenes sin usar; el escaneo de imágenes detecta vulnerabilidades y puede configurarse al hacer push; la replicación entre Regiones y entre cuentas deja las imágenes donde las necesitas; y las reglas de pull through cache almacenan en caché repositorios de un registro origen. La guía indica que ECR es una extensión de ECS y de EKS."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres equipos, tres decisiones",
+          "text": "Un equipo de pedidos tiene una API sin estado y no quiere gestionar servidores; otro equipo ya opera aplicaciones sobre Kubernetes y quiere llevarlas a AWS sin refactorizarlas; un tercero quiere guardar y escanear sus imágenes con permisos de IAM. Paso 1: el primer equipo pide un servicio de ECS con capacidad Fargate, indicando CPU y memoria, y un ALB con grupo de destino de tipo ip. Paso 2: el segundo equipo pide EKS, porque es conforme con Kubernetes certificado y admite aplicaciones compatibles con Kubernetes sin refactorizar. Paso 3: el tercero pide un repositorio privado en ECR con escaneo al hacer push y permisos de IAM. Resultado: el orquestador lo decidió la exigencia de Kubernetes, la capacidad lo decidió el deseo de no gestionar servidores y el registro fue ECR para ambos orquestadores."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de contenedores como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  servicios: [\n    { nombre: \"api-pedidos\", orquestador: \"ecs\", capacidad: \"fargate\", cpu: 512, memoria: 1024, grupoDestino: \"ip\" },\n    { nombre: \"plataforma-k8s\", orquestador: \"eks\", capacidad: \"ec2\" },\n  ],\n  registro: { servicio: \"ecr\", visibilidad: \"private\", escanearAlSubir: true },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del requisito al orquestador, la capacidad y el registro",
+          "code": "flowchart TB\n  R{\"Requisito del escenario\"} -->|\"Se exige Kubernetes\"| E[\"EKS: Kubernetes administrado\"]\n  R -->|\"Orquestación nativa de AWS\"| S[\"ECS: tareas y servicios\"]\n  S -->|\"Sin gestionar servidores\"| F[\"Capacidad Fargate\"]\n  S -->|\"Elegir y gestionar las instancias\"| C[\"Capacidad EC2\"]\n  S -->|\"Servidores locales\"| A[\"ECS Anywhere\"]\n  R -->|\"Guardar y escanear imágenes\"| G[\"ECR: registro privado con IAM\"]\n  E --> G\n  S --> G"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir el orquestador con la capacidad y con el registro",
+          "text": "El enunciado mezcla vocabulario de los cuatro servicios. «Kubernetes» es EKS, «tareas y servicios» es ECS, «sin gestionar servidores» es Fargate y «guardar imágenes» es ECR. Fargate no sustituye a ECS ni a EKS: es la capacidad sobre la que corren, y ECR solo guarda imágenes, no ejecuta contenedores. Subraya la exigencia, la capacidad y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: pedir Fargate como si fuera un orquestador",
+          "text": "Causa: ver «sin servidores» y pensar que Fargate despliega y gestiona las aplicaciones por sí mismo. Consecuencia: Fargate es el motor de cómputo con el que ECS ejecuta contenedores, así que sin ECS no hay scheduler ni definición de tarea que lo use, y el diseño queda incompleto. Solución: elige primero el orquestador (ECS o EKS) y después la capacidad, y marca la compatibilidad FARGATE en la definición de tarea."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: registrar el grupo de destino de Fargate como instance",
+          "text": "Causa: dar por hecho que un grupo de destino siempre apunta a instancias EC2. Consecuencia: las tareas de Fargate con modo de red awsvpc tienen una interfaz de red elástica y no una instancia EC2, así que el balanceador no encuentra destinos válidos. Solución: crea el grupo de destino de tipo ip para el servicio de ECS en Fargate, con un ALB, un NLB o un GWLB según el tráfico."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: dejar las imágenes sin controles en el registro",
+          "text": "Causa: tratar ECR como un simple almacén de archivos y no configurar sus funciones. Consecuencia: se acumulan imágenes sin usar, no se detectan vulnerabilidades al subir y el acceso no se limita a quien debe tenerlo. Solución: crea un repositorio privado con permisos de IAM, activa el escaneo al hacer push y define una política de ciclo de vida que limpie las imágenes sin usar."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre ECS y EKS, con capacidad EC2 o Fargate, y publicar las imágenes en ECR para desplegar contenedores. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar soluciones de alto rendimiento». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el orquestador, la capacidad y el registro y por qué los demás quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres decisiones del ejemplo: para cada equipo, nombra el servicio y la exigencia que lo decide. Explica con tus palabras el diagrama «Del requisito al orquestador, la capacidad y el registro». Después responde: si el equipo no quiere gestionar servidores, ¿qué capacidad eliges y por qué el grupo de destino del balanceador debe ser de tipo ip?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El servicio que obliga a gestionar instancias EC2». Un plan escrito como objeto asigna a un servicio sin estado capacidad EC2 y un grupo de destino de tipo instance. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas el nombre, el orquestador, la CPU y la memoria."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El repositorio de imágenes sin controles». Una configuración de registro, escrita como objeto, deja las imágenes sin escaneo, sin limpieza y sin permisos de IAM. Decide qué cambia sin tocar la carga ni los consumidores. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la guía de ECR."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre ECS, EKS, Fargate y ECR. Audítalo en «Auditar un informe de contenedores generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de ECS, EKS, Fargate y ECR (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué hace cada uno de los cuatro servicios; qué capacidades ofrece ECS; qué diferencia una tarea de un servicio; qué tipo de grupo de destino exige un servicio de ECS en Fargate; y qué funciones ofrece ECR. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la exigencia y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa crece, un equipo nuevo exige Kubernetes, otro lote nocturno tolera interrupciones y todas las imágenes deben escanearse al subirlas. Decide qué orquestador, qué capacidad y qué configuración de ECR usas para cada parte. Pregunta de cierre: un compañero dice «pongamos Fargate para orquestar los contenedores»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-ecs-que-es",
+          "order": 0,
+          "note": "Fuente de ECS: capas, opciones de capacidad, tareas, servicios y escalado."
+        },
+        {
+          "resourceSlug": "aws-eks-que-es",
+          "order": 1,
+          "note": "Fuente de EKS: Kubernetes administrado, EKS estándar y Auto Mode, y conformidad con Kubernetes."
+        },
+        {
+          "resourceSlug": "aws-fargate-que-es",
+          "order": 2,
+          "note": "Fuente de Fargate: cómputo sin servidores, aislamiento por tarea, Fargate Spot y balanceadores."
+        },
+        {
+          "resourceSlug": "aws-ecr-que-es",
+          "order": 3,
+          "note": "Fuente de ECR: repositorios privados con IAM, imágenes Docker y OCI y sus funciones."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar soluciones de alto rendimiento) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio totalmente administrado de orquestación de contenedores que ayuda a desplegar, gestionar y escalar aplicaciones en contenedores. Tiene tres capas: capacidad (donde corren los contenedores), controlador (el scheduler que gestiona las aplicaciones) y aprovisionamiento (consola, CLI, SDK y CDK)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-4-tarjeta-01",
+      "title": "Tarjeta: Qué es ECS",
+      "statement": "¿Qué es Amazon ECS y qué tres capas tiene?",
+      "concepts": [
+        "ECS",
+        "capas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio de Kubernetes totalmente administrado, conforme con Kubernetes certificado, que permite desplegar aplicaciones compatibles con Kubernetes sin refactorizar. En EKS estándar AWS gestiona el plano de control; con EKS Auto Mode gestiona también los nodos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-4-tarjeta-02",
+      "title": "Tarjeta: Qué es EKS",
+      "statement": "¿Qué es Amazon EKS y qué gestiona AWS en EKS estándar?",
+      "concepts": [
+        "EKS",
+        "plano de control"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Motor de cómputo sin servidores y de pago por uso para ejecutar contenedores con ECS sin gestionar servidores ni clústeres de instancias EC2. Indicas la CPU y la memoria, la red y las políticas de IAM, y cada tarea tiene su propio límite de aislamiento."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-4-tarjeta-03",
+      "title": "Tarjeta: Qué es Fargate",
+      "statement": "¿Qué es AWS Fargate y qué te evita hacer?",
+      "concepts": [
+        "Fargate",
+        "sin servidores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio administrado de registro de imágenes de contenedor, seguro, escalable y fiable. Almacena imágenes Docker, imágenes OCI y artefactos compatibles con OCI, con repositorios privados y permisos basados en recursos mediante IAM, y también admite repositorios públicos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-4-tarjeta-04",
+      "title": "Tarjeta: Qué es ECR",
+      "statement": "¿Qué es Amazon ECR y qué almacena?",
+      "concepts": [
+        "ECR",
+        "imágenes"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Instancias EC2 (tú eliges el tipo y el número y gestionas la capacidad), Fargate (sin servidores), ECS Managed Instances (instancias EC2 con la infraestructura gestionada por AWS) y ECS Anywhere (servidores o máquinas virtuales locales registrados en el clúster)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-4-tarjeta-05",
+      "title": "Tarjeta: Capacidad de ECS",
+      "statement": "¿Qué opciones de capacidad ofrece ECS?",
+      "concepts": [
+        "capacidad",
+        "EC2",
+        "Fargate"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Admite ALB, NLB y GWLB. El grupo de destino debe ser de tipo ip y no instance, porque las tareas con modo de red awsvpc tienen una interfaz de red elástica y no una instancia EC2."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-4-tarjeta-06",
+      "title": "Tarjeta: Fargate y balanceadores",
+      "statement": "¿Qué balanceadores admite un servicio de ECS en Fargate y qué tipo de grupo de destino exige?",
+      "concepts": [
+        "Fargate",
+        "grupo de destino",
+        "ip"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Servicio sin estado cuyo equipo no quiere gestionar servidores. Corrige su defecto principal.\nexport const servicio = {\n  nombre: \"api-pedidos\",\n  orquestador: \"ecs\",\n  capacidad: { tipo: \"ec2\", instancias: 3 },\n  cpu: 512,\n  memoria: 1024,\n  balanceador: { tipo: \"application\", grupoDestino: { tipoDestino: \"instance\" } },\n};\n",
+      "solution": {
+        "code": "export const servicio = {\n  nombre: \"api-pedidos\",\n  orquestador: \"ecs\",\n  capacidad: { tipo: \"fargate\" },\n  cpu: 512,\n  memoria: 1024,\n  balanceador: { tipo: \"application\", grupoDestino: { tipoDestino: \"ip\" } },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El equipo no quiere gestionar servidores ni decidir cuántas instancias hay. Piensa qué capacidad de ECS evita ese trabajo y qué tipo de destino usan sus tareas."
+        },
+        {
+          "level": 2,
+          "text": "La capacidad actual es EC2 con un número fijo de instancias, que gestiona el equipo, y el grupo de destino es de tipo instance. Fargate usa tareas con interfaz de red elástica, y su grupo de destino debe ser de tipo ip."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la capacidad a { tipo: \"fargate\" } sin la propiedad instancias y el tipoDestino a \"ip\". No cambies el nombre, el orquestador, la CPU ni la memoria."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el servicio usa capacidad Fargate sin instancias que gestionar",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(servicio.capacidad.tipo, \"fargate\", \"sin gestionar servidores la capacidad es Fargate\");\nassert.strictEqual(servicio.capacidad.instancias, undefined, \"con Fargate no se fija un número de instancias\");"
+          }
+        },
+        {
+          "name": "el grupo de destino del balanceador es de tipo ip",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(servicio.balanceador.grupoDestino.tipoDestino, \"ip\");"
+          }
+        },
+        {
+          "name": "el nombre, el orquestador y los recursos se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(servicio.nombre, \"api-pedidos\");\nassert.strictEqual(servicio.orquestador, \"ecs\");\nassert.strictEqual(servicio.cpu, 512);\nassert.strictEqual(servicio.memoria, 1024);"
+          }
+        },
+        {
+          "name": "el balanceador sigue siendo de aplicación",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(servicio.balanceador.tipo, \"application\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-3-4-debug-01",
+      "title": "El servicio que obliga a gestionar instancias EC2",
+      "statement": "El objeto `servicio` modela una API sin estado que se ejecuta en ECS con un balanceador de aplicación. Su equipo no quiere aprovisionar ni escalar instancias EC2, pero el diseño actual los obliga a gestionarlas. Corrige la capacidad y el grupo de destino sin cambiar el nombre, el orquestador, la CPU ni la memoria, y mantén la forma del valor exportado (`export const servicio = { … }`).",
+      "concepts": [
+        "Fargate",
+        "grupo de destino",
+        "capacidad EC2"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Registro de las imágenes de una carga que consumen tareas de ECS. Corrige su defecto principal.\nexport const registro = {\n  carga: \"imagenes-de-pedidos\",\n  repositorio: { servicio: \"ecr\", visibilidad: \"public\", escanearAlSubir: false, cicloDeVida: null, permisos: { modelo: \"ninguno\" } },\n  consumidores: [\"tarea-ecs-pedidos\"],\n};\n",
+      "solution": {
+        "code": "export const registro = {\n  carga: \"imagenes-de-pedidos\",\n  repositorio: { servicio: \"ecr\", visibilidad: \"private\", escanearAlSubir: true, cicloDeVida: { regla: \"limpiar-imagenes-sin-usar\" }, permisos: { modelo: \"iam\" } },\n  consumidores: [\"tarea-ecs-pedidos\"],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el repositorio es privado y sus permisos se gestionan con IAM",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(registro.repositorio.visibilidad, \"private\");\nassert.strictEqual(registro.repositorio.permisos.modelo, \"iam\", \"ECR usa permisos basados en recursos con IAM\");"
+          }
+        },
+        {
+          "name": "cada imagen subida se escanea en busca de vulnerabilidades",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(registro.repositorio.escanearAlSubir, true);"
+          }
+        },
+        {
+          "name": "una política de ciclo de vida limpia las imágenes sin usar",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(registro.repositorio.cicloDeVida && typeof registro.repositorio.cicloDeVida.regla === \"string\", \"falta una regla de ciclo de vida\");"
+          }
+        },
+        {
+          "name": "la carga, el servicio y los consumidores no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(registro.carga, \"imagenes-de-pedidos\");\nassert.strictEqual(registro.repositorio.servicio, \"ecr\");\nassert.deepStrictEqual(registro.consumidores, [\"tarea-ecs-pedidos\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-3-4-debug-02",
+      "title": "El repositorio de imágenes sin controles",
+      "statement": "El objeto `registro` modela el repositorio de ECR donde se guardan las imágenes que consume una tarea de ECS. Hoy es público, no escanea las imágenes al subirlas, no limpia las imágenes sin usar y no restringe el acceso con IAM. Corrige la configuración sin cambiar la carga, el servicio ni los consumidores, y mantén la forma del valor exportado (`export const registro = { … }`).",
+      "concepts": [
+        "ECR",
+        "escaneo al subir",
+        "ciclo de vida"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de contenedores en AWS (borrador generado por un asistente)\nEscenario: una API sin estado en ECS, una plataforma de Kubernetes y un registro de imágenes.\n1. ECS es un servicio totalmente administrado de orquestación de contenedores y se integra con Amazon ECR y con Docker.\n2. Con Fargate debes elegir el tipo y el número de instancias EC2 del clúster y gestionar su capacidad.\n3. EKS es conforme con Kubernetes certificado, así que las aplicaciones compatibles con Kubernetes se despliegan sin refactorizar.\n4. En ECR cada repositorio puede configurarse para escanear cada imagen nueva al hacer push.\n5. ECR solo admite imágenes Docker y no admite imágenes OCI ni artefactos compatibles con OCI.\n6. En EKS estándar el equipo gestiona el plano de control de Kubernetes y AWS solo gestiona los nodos.\n7. Cada tarea de Fargate tiene su propio límite de aislamiento y no comparte kernel, CPU, memoria ni interfaz de red elástica con otra tarea."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "ECS administrado",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: ECS es un servicio totalmente administrado de orquestación de contenedores integrado con ECR y con Docker."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Fargate y las instancias",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: con Fargate no eliges tipos de servidor ni gestionas clústeres de instancias EC2; esa gestión es de la capacidad EC2."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Conformidad de EKS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: EKS es conforme con Kubernetes certificado y admite aplicaciones compatibles sin refactorizar."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Escaneo al hacer push",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: cada repositorio puede configurarse para escanear al hacer push y así cada imagen nueva se analiza."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Formatos de ECR",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: ECR admite imágenes Docker, imágenes OCI y artefactos compatibles con OCI."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Plano de control de EKS",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: en EKS estándar AWS gestiona el plano de control de Kubernetes; con Auto Mode gestiona además los nodos."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Aislamiento de Fargate",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: cada tarea tiene su propio límite de aislamiento y no comparte kernel, CPU, memoria ni interfaz de red elástica."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-3-4-auditoria-01",
+      "title": "Auditar un informe de contenedores generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre ECS, EKS, Fargate y ECR. Audítalo contra las páginas oficiales de cada servicio: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "ECS",
+        "EKS",
+        "Fargate",
+        "ECR"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias EC2 cuyo tipo y número elige y gestiona el propio equipo",
+            "explanation": "Descartada: con EC2 el equipo elige el tipo y el número de instancias y gestiona la capacidad, justo lo que se quiere evitar."
+          },
+          {
+            "id": "b",
+            "text": "ECS Anywhere, con servidores locales registrados en el clúster",
+            "explanation": "Descartada: ECS Anywhere registra servidores o máquinas virtuales locales y no elimina la gestión de la infraestructura."
+          },
+          {
+            "id": "c",
+            "text": "AWS Fargate, el motor de cómputo sin servidores para contenedores",
+            "explanation": "Es la correcta: Fargate elimina aprovisionar, configurar y escalar clústeres de máquinas virtuales."
+          },
+          {
+            "id": "d",
+            "text": "Amazon ECR, que almacena las imágenes de contenedor del equipo",
+            "explanation": "Descartada: ECR es un registro de imágenes y no una capacidad donde se ejecuten los contenedores."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-4-quiz-01",
+      "title": "Contenedores sin gestionar servidores",
+      "statement": "Un equipo despliega una API en contenedores con ECS y no quiere aprovisionar ni escalar clústeres de instancias EC2. ¿Qué capacidad le conviene MÁS?",
+      "concepts": [
+        "Fargate",
+        "capacidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon EKS, el servicio de Kubernetes administrado y conforme",
+            "explanation": "Es la correcta: EKS es conforme con Kubernetes certificado y permite desplegar aplicaciones compatibles sin refactorizar."
+          },
+          {
+            "id": "b",
+            "text": "Amazon ECS, con su propio scheduler y sus definiciones de tarea",
+            "explanation": "Descartada: ECS orquesta con su scheduler y con tareas y servicios, y la guía no lo presenta como Kubernetes."
+          },
+          {
+            "id": "c",
+            "text": "Amazon ECR, el registro donde se guardan las imágenes",
+            "explanation": "Descartada: ECR almacena imágenes y no orquesta ni ejecuta aplicaciones."
+          },
+          {
+            "id": "d",
+            "text": "AWS Fargate, que sustituye al orquestador de contenedores",
+            "explanation": "Descartada: Fargate es el motor de cómputo con ECS y no un orquestador de Kubernetes."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-4-quiz-02",
+      "title": "Llevar aplicaciones de Kubernetes a AWS",
+      "statement": "Un equipo opera aplicaciones sobre Kubernetes y quiere desplegarlas en AWS sin refactorizarlas ni dejar las herramientas de la comunidad. ¿Qué servicio encaja MEJOR?",
+      "concepts": [
+        "EKS",
+        "Kubernetes"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon ECS, que despliega y escala las tareas",
+            "explanation": "Descartada: ECS orquesta tareas y servicios y no es el registro donde se guardan las imágenes."
+          },
+          {
+            "id": "b",
+            "text": "Amazon EKS, que gestiona el plano de control",
+            "explanation": "Descartada: EKS es el servicio de Kubernetes administrado y no almacena imágenes."
+          },
+          {
+            "id": "c",
+            "text": "AWS Fargate, que ejecuta cada tarea aislada",
+            "explanation": "Descartada: Fargate es capacidad sin servidores y no un registro de imágenes."
+          },
+          {
+            "id": "d",
+            "text": "Amazon ECR, el registro administrado de imágenes de contenedor",
+            "explanation": "Es la correcta: admite imágenes Docker y OCI, repositorios privados con IAM y escaneo de imágenes."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-4-quiz-03",
+      "title": "Un registro para imágenes de contenedor",
+      "statement": "Un equipo necesita almacenar imágenes Docker y OCI en un repositorio privado, con permisos de IAM y escaneo de vulnerabilidades. ¿Qué servicio se dedica ÚNICAMENTE a almacenar y gestionar esas imágenes?",
+      "concepts": [
+        "ECR",
+        "imágenes"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una tarea independiente, que hace su trabajo y se detiene",
+            "explanation": "Descartada: la tarea describe una aplicación como un trabajo por lotes que hace su trabajo y se detiene."
+          },
+          {
+            "id": "b",
+            "text": "Un servicio de ECS con Service Auto Scaling",
+            "explanation": "Es la correcta: el servicio es la aplicación de larga duración sin estado, y Service Auto Scaling ajusta el número deseado de tareas."
+          },
+          {
+            "id": "c",
+            "text": "Una definición de tarea, que es el plano de la aplicación",
+            "explanation": "Descartada: la definición de tarea es el plano de la aplicación, pero por sí sola no mantiene tareas en ejecución."
+          },
+          {
+            "id": "d",
+            "text": "Un clúster, que es la infraestructura de la aplicación",
+            "explanation": "Descartada: el clúster es la infraestructura donde corre la aplicación y no escala el número de tareas."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-4-quiz-04",
+      "title": "Aplicación de larga duración en ECS",
+      "statement": "Una aplicación sin estado debe ejecutarse de forma continua y ajustarse automáticamente al número deseado de tareas. ¿Qué elemento de ECS lo cumple con el MÍNIMO de piezas adicionales?",
+      "concepts": [
+        "servicio",
+        "tarea",
+        "Service Auto Scaling"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "instance, porque las tareas se ejecutan en instancias EC2 del equipo",
+            "explanation": "Descartada: las tareas de Fargate con modo de red awsvpc tienen una interfaz de red elástica y no una instancia EC2."
+          },
+          {
+            "id": "b",
+            "text": "lambda, porque cada tarea se invoca como una función",
+            "explanation": "Descartada: las tareas de Fargate son contenedores, no funciones, y la guía exige el tipo ip."
+          },
+          {
+            "id": "c",
+            "text": "alb, para que el balanceador apunte a otro balanceador",
+            "explanation": "Descartada: no es lo que describe la guía de Fargate, que exige un grupo de destino de tipo ip."
+          },
+          {
+            "id": "d",
+            "text": "ip, porque cada tarea tiene su propia interfaz de red elástica",
+            "explanation": "Es la correcta: la guía indica elegir ip y no instance para los servicios de ECS en Fargate."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-4-quiz-05",
+      "title": "Grupo de destino de un servicio en Fargate",
+      "statement": "Un servicio de ECS en Fargate se publica detrás de un Application Load Balancer. Al crear el grupo de destino, ¿qué tipo de destino debe elegir PRIMERO?",
+      "concepts": [
+        "Fargate",
+        "grupo de destino",
+        "ip"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Fargate estándar, que cuesta lo mismo que Fargate Spot",
+            "explanation": "Descartada: Fargate Spot se ofrece con descuento sobre el precio de Fargate, así que no cuestan lo mismo."
+          },
+          {
+            "id": "b",
+            "text": "ECS Anywhere, que ofrece una tarifa con descuento",
+            "explanation": "Descartada: ECS Anywhere registra servidores locales y la guía no le atribuye ningún descuento."
+          },
+          {
+            "id": "c",
+            "text": "Fargate Spot, que usa capacidad sobrante con aviso de dos minutos",
+            "explanation": "Es la correcta: ejecuta tareas tolerantes a interrupciones con descuento y las interrumpe con un aviso de dos minutos."
+          },
+          {
+            "id": "d",
+            "text": "Una política de ciclo de vida de ECR sobre las imágenes",
+            "explanation": "Descartada: la política de ciclo de vida limpia imágenes sin usar y no cambia el costo de ejecutar las tareas."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-4-quiz-06",
+      "title": "Procesamiento tolerante a interrupciones",
+      "statement": "Un procesamiento por lotes en Fargate tolera interrupciones y se busca el MENOR costo. ¿Qué opción de capacidad encaja?",
+      "concepts": [
+        "Fargate Spot",
+        "capacidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "ECR ejecuta los contenedores y escala las tareas del clúster",
+            "explanation": "No cumple: ECR almacena las imágenes; los contenedores los ejecuta la capacidad de ECS o de EKS."
+          },
+          {
+            "id": "b",
+            "text": "ECR admite repositorios privados con permisos basados en recursos mediante IAM",
+            "explanation": "Cumple: es la descripción oficial de los repositorios privados de ECR."
+          },
+          {
+            "id": "c",
+            "text": "EKS solo se puede usar en la nube de AWS y nunca en centros de datos propios",
+            "explanation": "No cumple: EKS Anywhere y EKS Hybrid Nodes cubren centros de datos propios."
+          },
+          {
+            "id": "d",
+            "text": "ECR solo permite repositorios públicos abiertos a todo Internet",
+            "explanation": "No cumple: ECR admite repositorios privados, y también públicos."
+          },
+          {
+            "id": "e",
+            "text": "En EKS estándar AWS gestiona el plano de control de Kubernetes del clúster",
+            "explanation": "Cumple: AWS gestiona el plano de control al crear el clúster."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-4-quiz-07",
+      "title": "Qué es cierto de ECR y de EKS",
+      "statement": "Un equipo repasa las propiedades de ECR y de EKS. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "ECR",
+        "EKS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Las tareas de Fargate comparten el kernel y la interfaz de red con otras tareas",
+            "explanation": "No cumple: cada tarea tiene su propio límite de aislamiento y no comparte kernel, CPU, memoria ni interfaz de red."
+          },
+          {
+            "id": "b",
+            "text": "Con la capacidad EC2 de ECS, AWS decide el número de instancias por el equipo",
+            "explanation": "No cumple: con EC2 el equipo elige el tipo y el número de instancias y gestiona la capacidad."
+          },
+          {
+            "id": "c",
+            "text": "ECS puede usar capacidad EC2, Fargate, Managed Instances o ECS Anywhere",
+            "explanation": "Cumple: son las opciones de capacidad que describe la guía de ECS."
+          },
+          {
+            "id": "d",
+            "text": "Fargate exige elegir el tipo de servidor de cada tarea antes de lanzarla",
+            "explanation": "No cumple: con Fargate indicas la CPU y la memoria y desaparece la elección de tipos de servidor."
+          },
+          {
+            "id": "e",
+            "text": "Cada tarea de Fargate tiene su propio límite de aislamiento y su interfaz de red",
+            "explanation": "Cumple: no comparte kernel, CPU, memoria ni interfaz de red elástica con otra tarea."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-4-quiz-08",
+      "title": "Qué es cierto de Fargate y de la capacidad de ECS",
+      "statement": "Un arquitecto repasa Fargate y las opciones de capacidad de ECS. Selecciona las DOS opciones que describen correctamente esos servicios.",
+      "concepts": [
+        "Fargate",
+        "capacidad",
+        "aislamiento"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "ecs",
+            "term": "ECS",
+            "definition": "Orquestación de contenedores nativa de AWS con tareas y servicios"
+          },
+          {
+            "id": "eks",
+            "term": "EKS",
+            "definition": "Kubernetes administrado y conforme, sin refactorizar"
+          },
+          {
+            "id": "fargate",
+            "term": "Fargate",
+            "definition": "Cómputo sin servidores para ejecutar contenedores"
+          },
+          {
+            "id": "ecr",
+            "term": "ECR",
+            "definition": "Registro administrado de imágenes Docker y OCI"
+          },
+          {
+            "id": "ec2",
+            "term": "Capacidad EC2 en ECS",
+            "definition": "El equipo elige el tipo y el número de instancias"
+          },
+          {
+            "id": "spot",
+            "term": "Fargate Spot",
+            "definition": "Tareas tolerantes a interrupciones, con aviso de dos minutos"
+          },
+          {
+            "id": "anywhere",
+            "term": "ECS Anywhere",
+            "definition": "Servidores o máquinas virtuales locales en el clúster"
+          },
+          {
+            "id": "servicio",
+            "term": "Servicio de ECS",
+            "definition": "Aplicación de larga duración sin estado"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio de contenedores o tipo de capacidad con el caso que resuelve. Si dudas, pregúntate si se exige Kubernetes, si el equipo quiere gestionar servidores o si solo hay que guardar imágenes.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Orquestador: ECS o EKS",
+              "Capacidad: EC2, Fargate, Fargate Spot y ECS Anywhere",
+              "Registro de imágenes: ECR",
+              "Elemento de ECS para una aplicación de larga duración: el servicio"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-3-4-memoria-01",
+      "title": "Servicio de contenedores y caso que resuelve",
+      "statement": "Empareja cada servicio de contenedores o tipo de capacidad con el caso que resuelve.",
+      "concepts": [
+        "ECS",
+        "EKS",
+        "Fargate",
+        "ECR"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-3-4-reflexion-01",
+      "title": "Reflexión: qué contenedores y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, una API sin estado, una plataforma que ya usa Kubernetes o un procesamiento por lotes tolerante a interrupciones) y escribe un registro breve de decisión sobre cómo la ejecutarías en contenedores, en 5 a 7 líneas:\n\n1) Decisión: qué orquestador (ECS o EKS), qué capacidad (EC2 o Fargate) y qué configuración de ECR usarías, y qué exigencia de la carga decide cada una (Kubernetes, no gestionar servidores, imágenes con control).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, capacidad EC2 cuando nadie quiere gestionar instancias, o usar Fargate como si fuera un orquestador) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (definiciones de tarea, CPU y memoria, grupos de destino de tipo ip, políticas de ciclo de vida y escaneo en ECR, o las instancias si eliges EC2).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento o Excelencia operativa) y por qué.\n\n5) Evidencia: qué página oficial (ECS, EKS, Fargate o ECR) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, el orquestador, la capacidad y la exigencia que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "ECS",
+        "EKS",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html",
+        "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html",
+        "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html",
+        "https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html"
+      ],
+      "order": 19
+    }
+  ]
+}
