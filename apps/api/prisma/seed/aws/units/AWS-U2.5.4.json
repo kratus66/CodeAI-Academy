@@ -1,0 +1,1315 @@
+{
+  "code": "AWS-U2.5.4",
+  "lessons": [
+    {
+      "slug": "aws-u2-5-4-cache-con-elasticache-valkey-redis-oss-memcached-y-estrategias-de-cache",
+      "title": "Caché con ElastiCache (Valkey, Redis OSS, Memcached) y estrategias de caché",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-elasticache-que-es",
+          "order": 0,
+          "note": "Fuente previa de ElastiCache: qué es, caché serverless frente a clúster basado en nodos y motores."
+        },
+        {
+          "resourceSlug": "aws-elasticache-motores",
+          "order": 1,
+          "note": "Fuente de la comparación de motores: Memcached frente a Valkey o Redis OSS y su tabla de capacidades."
+        },
+        {
+          "resourceSlug": "aws-elasticache-estrategias-de-cache",
+          "order": 2,
+          "note": "Fuente de las estrategias: carga diferida, escritura directa y TTL, con sus ventajas y desventajas."
+        },
+        {
+          "resourceSlug": "aws-elasticache-mejores-practicas",
+          "order": 3,
+          "note": "Fuente de las mejores prácticas de ElastiCache, agrupadas por motor y por tema."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon ElastiCache es un servicio web que facilita configurar, administrar y escalar un almacén de datos o una caché distribuidos en memoria en la nube. Funciona con los motores Valkey, Memcached y Redis OSS, y se puede operar en dos formatos: una caché serverless o un clúster basado en nodos. Una caché se coloca entre la aplicación y su almacén de datos (la base de datos): la aplicación pregunta primero a la caché y solo va a la base de datos cuando hace falta. En el dominio 3 de SAA-C03, «Diseñar arquitecturas de alto rendimiento», en la parte de bases de datos, el enunciado describe cómo se lee y se escribe el dato, qué estructuras necesita y qué pasa si un nodo falla, y tú tomas dos decisiones: qué motor y qué estrategia de caché. Las versiones y los datos de motores que aparecen abajo son de las páginas oficiales de ElastiCache leídas el 2026-11-22; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Motores y estrategias, frente a frente",
+          "items": [
+            "Memcached: el modelo más simple; sirve para cachear objetos, para nodos grandes con varios núcleos o hilos y para escalar añadiendo y quitando nodos. Según la tabla comparativa, no ofrece replicación para alta disponibilidad ni conmutación automática por error.",
+            "Valkey o Redis OSS: tipos de datos complejos (cadenas, conjuntos, conjuntos ordenados, listas, hashes, mapas de bits, hyperloglog), replicación para alta disponibilidad, Pub/Sub y copia de seguridad con restauración en clústeres basados en nodos. La conmutación automática por error es opcional con el modo clúster desactivado y obligatoria con el modo clúster activado.",
+            "Carga diferida (lazy loading): la caché se llena solo cuando la aplicación pide un dato que no está o ha expirado; solo se cachea lo solicitado, pero cada fallo cuesta tres viajes y los datos pueden quedar obsoletos.",
+            "Escritura directa (write-through): la caché se añade o actualiza cada vez que se escribe en la base de datos; los datos nunca están obsoletos, pero cada escritura hace dos viajes y hay datos que faltan en un nodo nuevo y datos que nadie lee.",
+            "TTL (time to live): número de segundos hasta que una clave expira; al leer una clave expirada se trata como no encontrada, se consulta la base de datos y se actualiza la caché. Acota lo obsoleto, pero no lo garantiza."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Dos formatos: serverless y basado en nodos",
+          "text": "ElastiCache Serverless crea una caché de alta disponibilidad sin que tengas que aprovisionar instancias ni configurar nodos o clústeres: la página indica que ElastiCache vigila la memoria, el cómputo y el ancho de banda que usa la aplicación y escala para atenderlos, y se ocupa de aprovisionar el hardware, la monitorización, el reemplazo de nodos y los parches de software. Con un clúster basado en nodos obtienes más control: eliges el tipo de nodo, el número de nodos y su colocación entre zonas de disponibilidad, y puedes operar con disponibilidad en una sola zona o en varias. También puedes ejecutar Valkey, Memcached o Redis OSS con el modo clúster para escalar horizontalmente, o sin él para escalar solo en vertical. La contrapartida es que, en un clúster basado en nodos, tú eres responsable de elegir bien el tipo y el número de nodos para que la caché tenga la capacidad que la aplicación necesita. Una vez creada una caché o un clúster, puedes subir a una versión más reciente del motor, pero no volver a una anterior."
+        },
+        {
+          "type": "paragraph",
+          "title": "Elegir motor: Memcached frente a Valkey o Redis OSS",
+          "text": "La página de comparación advierte de que, en la superficie, los motores se parecen (todos son almacenes en memoria de clave y valor), pero en la práctica hay diferencias importantes. Elige Memcached si necesitas el modelo más simple posible, nodos grandes con varios núcleos o hilos, la posibilidad de escalar hacia fuera y hacia dentro añadiendo y quitando nodos, y cachear objetos. En la tabla, Memcached figura con datos simples (cadenas y objetos), multihilo, sin replicación, sin conmutación automática por error, sin Pub/Sub y sin conjuntos ordenados. Elige Valkey o Redis OSS cuando necesites estructuras más ricas (la tabla enumera, por ejemplo, conjuntos ordenados, listas y hashes), replicación para alta disponibilidad, Pub/Sub, copia de seguridad y restauración, o los extras de las versiones recientes de Valkey (por ejemplo, la tabla indica la durabilidad con un registro transaccional Multi-AZ desde Valkey 9.0 en clústeres basados en nodos, y la página de qué es ElastiCache la describe para clústeres de Valkey). Con el modo clúster desactivado no hay partición de datos; con el modo clúster activado sí la hay, junto con el reparticionado en línea."
+        },
+        {
+          "type": "paragraph",
+          "title": "Carga diferida: la caché se llena bajo demanda",
+          "text": "Con la carga diferida, cada vez que la aplicación pide un dato lo pide primero a la caché. Si el dato está y no ha expirado hay un acierto (cache hit) y la caché lo devuelve. Si no está o ha expirado hay un fallo (cache miss): la caché devuelve nulo, la aplicación pide el dato a la base de datos, lo recibe y lo escribe en la caché, de modo que la próxima vez se recupera más rápido. Ventajas según la página: solo se cachean los datos solicitados, lo que evita llenar la caché con datos que nadie pide, y los fallos de nodo no son fatales, porque si un nodo se reemplaza por uno nuevo y vacío la aplicación sigue funcionando con más latencia y cada fallo vuelve a llenar la caché. Desventajas: la penalización por fallo (tres viajes: pedir a la caché, consultar la base y escribir en la caché) y los datos obsoletos, porque nadie actualiza la caché cuando el dato cambia en la base de datos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Escritura directa y TTL: frescura frente a ruido",
+          "text": "La escritura directa añade o actualiza el dato en la caché cada vez que se escribe en la base de datos. Ventaja: los datos de la caché nunca están obsoletos, porque se actualizan en cada escritura; el coste es que cada escritura hace dos viajes (a la caché y a la base), una latencia que, según la página, los usuarios toleran mejor al actualizar que al leer. Desventajas: si arrancas un nodo nuevo, por un fallo o por escalar hacia fuera, faltan datos hasta que se añadan o actualicen en la base de datos, y se produce movimiento innecesario en la caché porque la mayoría de los datos nunca se lee. La página resume el contraste así: la carga diferida admite datos obsoletos pero no falla con nodos vacíos; la escritura directa mantiene los datos frescos pero puede fallar con nodos vacíos y llenar la caché de datos superfluos. Al añadir un TTL a cada escritura se obtienen las ventajas de ambas y se evita en gran parte llenar la caché de datos extra. El TTL es un entero en segundos; Valkey y Redis OSS admiten segundos o milisegundos, y Memcached lo especifica en segundos. El TTL no garantiza que un valor no esté obsoleto: solo evita que lo esté demasiado tiempo. Un detalle de la página de estrategias: no conviene usar la misma estrategia para un top-10 de un juego y para noticias de tendencia."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Un catálogo que se lee de una base de datos relacional: casi ningún registro se consulta dos veces y, si se reemplaza un nodo de la caché por uno vacío, la aplicación debe seguir funcionando. (2) Un perfil de cliente que, tras cada actualización, debe leerse de la caché con el valor actual. (3) Un equipo que ya usa escritura directa y quiere que un nodo nuevo no rompa la aplicación ni la caché se llene de datos que no se leen. (4) Un ranking que necesita conjuntos ordenados y réplicas con conmutación automática por error. Paso 1: para (1) la clave es «solo datos solicitados» y «nodo vacío no fatal», así que va la carga diferida y no la escritura directa. Paso 2: para (2) la clave es «valor actual tras cada actualización», así que va la escritura directa, porque la carga diferida no actualiza la caché cuando cambia la base. Paso 3: para (3) se combina la escritura directa con la carga diferida y se añade un TTL a cada escritura. Paso 4: para (4) va Valkey o Redis OSS y no Memcached, que figura sin conjuntos ordenados, sin replicación y sin conmutación automática por error. Resultado: cada decisión salió de un dato del enunciado, no del nombre del motor."
+        },
+        {
+          "type": "code",
+          "title": "Una política de caché como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const politica = {\n  casos: [\n    { nombre: \"catalogo\", estrategia: \"carga-diferida\", ttlSegundos: 300 },\n    { nombre: \"perfil-cliente\", estrategia: \"escritura-directa\", ttlSegundos: 300, conCargaDiferida: true },\n    { nombre: \"ranking\", motor: \"valkey\", estructura: \"conjunto-ordenado\", replicas: true },\n    { nombre: \"objetos-simples\", motor: \"memcached\", nodosMultihilo: true },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la necesidad al motor y a la estrategia",
+          "code": "flowchart TB\n  N{\"Qué necesita la caché\"} -->|\"Objetos simples, nodos multihilo\"| M[\"Memcached\"]\n  N -->|\"Estructuras, réplicas, conmutación por error\"| V[\"Valkey o Redis OSS\"]\n  N -->|\"Sin administrar nodos\"| S[\"Caché serverless\"]\n  N -->|\"Control de tipo y número de nodos\"| C[\"Clúster basado en nodos\"]\n  V --> E{\"Cómo se llena la caché\"}\n  M --> E\n  E -->|\"Solo lo que se pide\"| L[\"Carga diferida\"]\n  E -->|\"Cada escritura actualiza la caché\"| W[\"Escritura directa\"]\n  L --> T[\"TTL en cada escritura: acota lo obsoleto\"]\n  W --> T"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir el motor o la estrategia por el nombre y no por el dato del enunciado",
+          "text": "El enunciado mezcla señales: «objetos simples» o «conjuntos ordenados», «nodos multihilo» o «réplicas», «sin administrar nodos», «datos siempre actuales», «nodo reemplazado vacío», «TTL». Memcached no replica ni conmuta por error según la tabla; el TTL acota lo obsoleto pero no lo evita; la carga diferida deja datos obsoletos y la escritura directa deja datos faltantes en un nodo nuevo; y en un clúster basado en nodos eres tú quien elige tipo y número de nodos. Subraya la estructura de datos, el requisito de frescura y el comportamiento ante fallos antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar solo escritura directa y dar por hecho que un nodo nuevo ya tiene los datos",
+          "text": "Causa: leer que en la escritura directa los datos de la caché nunca están obsoletos y concluir que la caché siempre está completa. Consecuencia: si se reemplaza un nodo o se escala hacia fuera, el nodo nuevo empieza vacío y los datos faltan hasta que se añadan o se actualicen en la base de datos, de modo que la aplicación puede fallar. Solución: combina la escritura directa con la carga diferida y añade un TTL a cada escritura, que es lo que propone la página para reunir las ventajas de ambas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: creer que un TTL garantiza datos actuales",
+          "text": "Causa: ver que la clave expira y que la lectura siguiente consulta la base de datos, y concluir que el valor siempre está al día. Consecuencia: entre la escritura y la expiración la caché puede devolver un valor obsoleto, y si la aplicación exige el dato actual tras cada actualización, el diseño no lo cumple. Solución: usa la escritura directa para los datos que no pueden estar obsoletos y el TTL solo para acotar cuánto tiempo puede estarlo un valor y para limpiar lo que nadie lee."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: elegir Memcached por simple y multihilo y esperar replicación",
+          "text": "Causa: ver «caché rápida y simple» y escoger Memcached sin comprobar qué estructuras y qué tolerancia a fallos pide el enunciado. Consecuencia: según la tabla de comparación, Memcached no ofrece replicación ni conmutación automática por error ni conjuntos ordenados, así que un ranking o una caché con réplicas no se puede construir sobre él. Solución: usa Valkey o Redis OSS cuando haya estructuras como conjuntos ordenados, replicación o conmutación por error, y reserva Memcached para objetos simples, nodos multihilo y escalado añadiendo o quitando nodos."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir el motor de ElastiCache (Valkey, Redis OSS o Memcached) y la estrategia de caché (carga diferida, escritura directa y TTL) que encajan con el patrón de lectura y escritura, la frescura exigida y el comportamiento ante el fallo de un nodo, y distinguir una caché serverless de un clúster basado en nodos. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar arquitecturas de alto rendimiento», en la parte de bases de datos. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el motor y la estrategia, el dato del enunciado que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra el motor o la estrategia y el dato que lo decide. Explica con tus palabras el diagrama «De la necesidad al motor y a la estrategia». Después responde: si usas escritura directa y reemplazas un nodo por otro vacío, ¿qué pasa con los datos, y qué dos mecanismos añades para resolverlo?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La caché que se llena de datos que nadie lee». Una configuración escrita como objeto usa escritura directa para un catálogo cuyos registros casi nunca se leen y que debe sobrevivir a un nodo vacío. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la carga y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El ranking en un motor sin conjuntos ordenados». Un diseño elige un motor que no cubre los requisitos de un ranking. Decide qué cambias sin alterar el nombre del dato ni sus requisitos. Criterio de paso: las pruebas pasan y justificas por escrito el ajuste con la página de comparación de motores de ElastiCache."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre ElastiCache. Audítalo en «Auditar un informe de caché con ElastiCache generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de ElastiCache (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: cuándo eliges Memcached y cuándo Valkey o Redis OSS; qué ventaja y qué desventaja tiene la carga diferida; qué ventaja y qué desventaja tiene la escritura directa; qué hace un TTL y qué no garantiza; y en qué se diferencia una caché serverless de un clúster basado en nodos. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una tienda quiere cachear su catálogo, los perfiles de cliente y un ranking de ventas, sin administrar nodos si es posible. Decide formato, motor y estrategia para cada parte. Pregunta de cierre: un compañero dice «con un TTL de 5 minutos los datos de la caché siempre están actualizados»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio web para configurar, administrar y escalar una caché distribuida en memoria, con Valkey, Memcached o Redis OSS. Caché serverless: sin aprovisionar instancias ni configurar nodos; ElastiCache escala según la memoria, el cómputo y el ancho de banda usados. Clúster basado en nodos: eliges tipo y número de nodos y su colocación entre zonas, y eres responsable de acertar con la capacidad."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-4-tarjeta-01",
+      "title": "Tarjeta: qué es ElastiCache y sus dos formatos",
+      "statement": "¿Qué es Amazon ElastiCache y en qué dos formatos se puede operar?",
+      "concepts": [
+        "ElastiCache",
+        "serverless",
+        "clúster basado en nodos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Memcached si necesitas el modelo más simple posible, nodos grandes con varios núcleos o hilos, escalar hacia fuera y hacia dentro añadiendo y quitando nodos, y cachear objetos. La tabla de comparación (página leída el 2026-11-22) lo marca como multihilo y con datos simples, y sin replicación para alta disponibilidad, sin conmutación automática por error, sin Pub/Sub y sin conjuntos ordenados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-4-tarjeta-02",
+      "title": "Tarjeta: cuándo elegir Memcached",
+      "statement": "¿Cuándo eliges Memcached como motor de ElastiCache y qué capacidades no tiene según la tabla comparativa?",
+      "concepts": [
+        "Memcached",
+        "multihilo",
+        "objetos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Tipos de datos complejos (conjuntos, conjuntos ordenados, listas, hashes...), replicación para alta disponibilidad, Pub/Sub y copia de seguridad con restauración. La conmutación automática por error es opcional con el modo clúster desactivado y obligatoria con el activado; la partición de datos y el reparticionado en línea requieren el modo clúster activado. Tabla leída el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-4-tarjeta-03",
+      "title": "Tarjeta: cuándo elegir Valkey o Redis OSS",
+      "statement": "¿Qué ofrecen Valkey y Redis OSS que Memcached no, según la tabla comparativa?",
+      "concepts": [
+        "Valkey",
+        "Redis OSS",
+        "conjuntos ordenados"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La aplicación pide el dato primero a la caché; si no está o ha expirado (fallo), lo pide a la base de datos y lo escribe en la caché. Ventajas: solo se cachea lo solicitado y un nodo nuevo y vacío no es fatal (más latencia hasta que se llena). Desventajas: la penalización por fallo (tres viajes) y los datos obsoletos, porque la caché no se actualiza cuando el dato cambia en la base de datos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-4-tarjeta-04",
+      "title": "Tarjeta: carga diferida",
+      "statement": "¿Cómo funciona la carga diferida y qué ventajas y desventajas tiene?",
+      "concepts": [
+        "carga diferida",
+        "fallo de caché",
+        "datos obsoletos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Añade o actualiza el dato en la caché cada vez que se escribe en la base de datos. Ventaja: la caché nunca está obsoleta. Coste: dos viajes por escritura. Desventajas: en un nodo nuevo faltan datos hasta que se añadan o actualicen en la base, y se llena la caché de datos que nunca se leen. Se mitiga combinándola con carga diferida y con un TTL."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-4-tarjeta-05",
+      "title": "Tarjeta: escritura directa",
+      "statement": "¿Cómo funciona la escritura directa y qué ventajas y desventajas tiene?",
+      "concepts": [
+        "escritura directa",
+        "datos faltantes",
+        "movimiento de la caché"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Entero con los segundos hasta que una clave expira; leer una clave expirada equivale a no encontrarla: se consulta la base de datos y se actualiza la caché. Valkey y Redis OSS admiten segundos o milisegundos; Memcached, segundos. Añadido a cada escritura reúne las ventajas de ambas estrategias, pero no garantiza que un valor no esté obsoleto: solo evita que lo esté demasiado tiempo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-4-tarjeta-06",
+      "title": "Tarjeta: TTL y combinación de estrategias",
+      "statement": "¿Qué es el TTL, qué unidad usa cada motor y qué no garantiza?",
+      "concepts": [
+        "TTL",
+        "expiración",
+        "segundos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Caché de un catálogo casi sin relecturas que debe sobrevivir a un nodo vacío. Corrige su defecto principal.\nexport const cache = {\n  carga: \"catalogo\",\n  requisitos: { soloDatosSolicitados: true, toleraNodoVacio: true },\n  estrategia: \"escritura-directa\",\n};\n",
+      "solution": {
+        "code": "export const cache = {\n  carga: \"catalogo\",\n  requisitos: { soloDatosSolicitados: true, toleraNodoVacio: true },\n  estrategia: \"carga-diferida\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El catálogo exige cachear solo lo que se pide y que un nodo nuevo y vacío no rompa la aplicación. Compara esas dos exigencias con lo que hace la estrategia actual."
+        },
+        {
+          "level": 2,
+          "text": "La escritura directa puede fallar con nodos vacíos y llena la caché de datos que nadie lee. La carga diferida cachea solo los datos solicitados y no falla con un nodo vacío."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la estrategia a \"carga-diferida\". No cambies la carga ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la estrategia ya no es la escritura directa",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(cache.estrategia, \"escritura-directa\", \"la escritura directa llena la caché de datos que nadie lee y falla con nodos vacíos\");\nassert.strictEqual(cache.estrategia, \"carga-diferida\");"
+          }
+        },
+        {
+          "name": "los requisitos del catálogo se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(cache.requisitos.soloDatosSolicitados, true);\nassert.strictEqual(cache.requisitos.toleraNodoVacio, true);"
+          }
+        },
+        {
+          "name": "la carga no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(cache.carga, \"catalogo\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-5-4-debug-01",
+      "title": "La caché que se llena de datos que nadie lee",
+      "statement": "El objeto `cache` modela la caché de un catálogo en el que casi ningún registro se lee dos veces y en el que, si se reemplaza un nodo por otro vacío, la aplicación debe seguir funcionando. El diseño actual usa una estrategia que actualiza la caché en cada escritura de la base de datos. Corrige la estrategia sin cambiar la carga ni los requisitos, y mantén la forma del valor exportado (`export const cache = { … }`).",
+      "concepts": [
+        "carga diferida",
+        "escritura directa"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Ranking que necesita conjuntos ordenados y réplicas con conmutación automática por error. Corrige su defecto principal.\nexport const ranking = {\n  dato: \"ranking-top-10\",\n  requisitos: { conjuntosOrdenados: true, replicacion: true, conmutacionAutomatica: true },\n  motor: \"memcached\",\n};\n",
+      "solution": {
+        "code": "export const ranking = {\n  dato: \"ranking-top-10\",\n  requisitos: { conjuntosOrdenados: true, replicacion: true, conmutacionAutomatica: true },\n  motor: \"valkey\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el motor ya no es Memcached",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.notStrictEqual(ranking.motor, \"memcached\", \"Memcached no ofrece conjuntos ordenados ni replicación\");"
+          }
+        },
+        {
+          "name": "el motor cubre los requisitos del ranking",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok([\"valkey\", \"redis-oss\"].includes(ranking.motor), \"usa Valkey o Redis OSS\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(ranking.requisitos.conjuntosOrdenados, true);\nassert.strictEqual(ranking.requisitos.replicacion, true);\nassert.strictEqual(ranking.requisitos.conmutacionAutomatica, true);"
+          }
+        },
+        {
+          "name": "el nombre del dato se conserva",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(ranking.dato, \"ranking-top-10\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-5-4-debug-02",
+      "title": "El ranking en un motor sin conjuntos ordenados",
+      "statement": "El objeto `ranking` modela un top 10 que necesita conjuntos ordenados y réplicas con conmutación automática por error. El diseño elige un motor de ElastiCache que, según la tabla comparativa, no ofrece ninguna de las dos cosas. Corrige el motor sin cambiar el dato ni los requisitos, y mantén la forma del valor exportado (`export const ranking = { … }`).",
+      "concepts": [
+        "Memcached",
+        "Valkey",
+        "conjuntos ordenados"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de caché con ElastiCache (borrador generado por un asistente)\nEscenario: un catálogo, un perfil de cliente, un ranking y una caché sin administrar nodos.\n1. Con la carga diferida, si el dato no está en la caché o ha expirado, la aplicación lo pide a la base de datos y lo escribe en la caché.\n2. La escritura directa deja la caché obsoleta porque solo la actualiza cuando hay un fallo de caché.\n3. Un TTL garantiza que un valor de la caché nunca esté obsoleto.\n4. Con TTL, Valkey y Redis OSS admiten segundos o milisegundos y Memcached lo especifica en segundos.\n5. Memcached ofrece replicación y conmutación automática por error entre nodos.\n6. Tras crear un clúster se puede subir a una versión más reciente del motor, pero no volver a una anterior.\n7. En una caché serverless hay que elegir el tipo y el número de nodos al crearla."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Carga diferida",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: ante un fallo de caché la aplicación pide el dato a la base de datos y lo escribe en la caché."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Escritura directa",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la escritura directa actualiza la caché en cada escritura de la base de datos, así que sus datos nunca están obsoletos; lo que puede dejar datos obsoletos es la carga diferida."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Garantía del TTL",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: el TTL no garantiza que un valor no esté obsoleto; solo evita que lo esté demasiado tiempo."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Unidad del TTL",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: Valkey y Redis OSS pueden especificar segundos o milisegundos, y Memcached lo especifica en segundos."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Replicación de Memcached",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la tabla comparativa marca a Memcached sin replicación para alta disponibilidad y sin conmutación automática por error; eso lo ofrecen Valkey y Redis OSS."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Versiones del motor",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: tras crear la caché o el clúster se puede subir a una versión más reciente, pero no bajar a una anterior."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Caché serverless",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: la caché serverless elimina la necesidad de aprovisionar instancias o configurar nodos; elegir tipo y número de nodos es propio de un clúster basado en nodos."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-5-4-auditoria-01",
+      "title": "Auditar un informe de caché con ElastiCache generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre ElastiCache. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "carga diferida",
+        "TTL",
+        "Memcached",
+        "serverless"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Escritura directa, que actualiza la caché en cada escritura de la base de datos",
+            "explanation": "Descartada: la escritura directa guarda datos que casi nunca se leen y, en un nodo nuevo, faltan datos hasta que se añadan o actualicen en la base de datos."
+          },
+          {
+            "id": "b",
+            "text": "Escritura directa con un TTL, que acota el tiempo de cada valor",
+            "explanation": "Descartada: el TTL reduce el espacio desperdiciado, pero un nodo nuevo sigue sin los datos hasta que se escriban de nuevo en la base de datos."
+          },
+          {
+            "id": "c",
+            "text": "Carga diferida, que escribe el dato en la caché cuando falla una lectura",
+            "explanation": "Es la correcta: solo se cachean los datos solicitados y un nodo nuevo y vacío no es fatal, porque cada fallo vuelve a llenar la caché."
+          },
+          {
+            "id": "d",
+            "text": "Un TTL como única estrategia, sin cargar datos desde la base de datos",
+            "explanation": "Descartada: el TTL solo indica cuándo expira una clave; por sí solo no coloca ningún dato en la caché."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-4-quiz-01",
+      "title": "Catálogo con nodo reemplazado por uno vacío",
+      "statement": "Una aplicación lee un catálogo de una base de datos relacional. Casi ningún registro se consulta más de una vez y, si un nodo de la caché se reemplaza por otro vacío, la aplicación debe seguir funcionando aunque sea con más latencia. ¿Qué estrategia de caché es el MEJOR ajuste?",
+      "concepts": [
+        "carga diferida",
+        "nodo vacío"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Escritura directa, que actualiza la caché al escribir en la base de datos",
+            "explanation": "Es la correcta: al actualizar la caché en cada escritura, sus datos nunca están obsoletos."
+          },
+          {
+            "id": "b",
+            "text": "Carga diferida, que escribe en la caché solo cuando falla una lectura",
+            "explanation": "Descartada: la carga diferida no actualiza la caché cuando el dato cambia en la base de datos, así que puede devolver valores obsoletos."
+          },
+          {
+            "id": "c",
+            "text": "Carga diferida con un TTL de 300 segundos en cada escritura",
+            "explanation": "Descartada: el TTL no garantiza que un valor no esté obsoleto; hasta que expira, la caché puede devolver el valor anterior."
+          },
+          {
+            "id": "d",
+            "text": "Un TTL corto aplicado a cualquier estrategia, sin actualizar la caché al escribir",
+            "explanation": "Descartada: un TTL solo evita que el valor esté obsoleto demasiado tiempo; no asegura el valor actual tras cada actualización."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-4-quiz-02",
+      "title": "Perfil de cliente siempre actual",
+      "statement": "Una aplicación guarda el perfil de cada cliente en una base de datos y en una caché de ElastiCache. Tras cada actualización, la lectura siguiente desde la caché debe devolver el valor actual. ¿Qué estrategia presenta el MENOR riesgo de datos obsoletos?",
+      "concepts": [
+        "escritura directa",
+        "datos obsoletos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Memcached, que ofrece replicación para alta disponibilidad entre sus nodos",
+            "explanation": "Descartada: la tabla comparativa marca a Memcached sin replicación para alta disponibilidad."
+          },
+          {
+            "id": "b",
+            "text": "Memcached, que ofrece conjuntos ordenados para construir el ranking",
+            "explanation": "Descartada: la tabla comparativa marca a Memcached sin conjuntos ordenados."
+          },
+          {
+            "id": "c",
+            "text": "Memcached, con conmutación automática por error entre nodos",
+            "explanation": "Descartada: la tabla comparativa marca a Memcached sin conmutación automática por error."
+          },
+          {
+            "id": "d",
+            "text": "Valkey o Redis OSS, con conjuntos ordenados y replicación entre nodos",
+            "explanation": "Es la correcta: ambos admiten conjuntos ordenados y replicación para alta disponibilidad, con conmutación automática por error."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-4-quiz-03",
+      "title": "Ranking con conjuntos ordenados y réplicas",
+      "statement": "Un juego necesita un top 10 que use conjuntos ordenados, con réplicas para alta disponibilidad y conmutación automática por error. ¿Qué motor de ElastiCache encaja MÁS con esos requisitos?",
+      "concepts": [
+        "Valkey",
+        "Redis OSS",
+        "conjuntos ordenados"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Garantiza que ningún valor de la caché esté obsoleto",
+            "explanation": "Descartada: la página indica que el TTL no garantiza que un valor no esté obsoleto."
+          },
+          {
+            "id": "b",
+            "text": "Al expirar la clave, la lectura siguiente consulta la base y actualiza la caché",
+            "explanation": "Es la correcta: una clave expirada se trata como no encontrada, así que se consulta la base de datos y se actualiza la caché."
+          },
+          {
+            "id": "c",
+            "text": "Evita cualquier consulta a la base de datos para esa clave",
+            "explanation": "Descartada: cuando la clave expira, la aplicación consulta la base de datos para volver a llenarla."
+          },
+          {
+            "id": "d",
+            "text": "Se expresa en milisegundos en todos los motores de ElastiCache",
+            "explanation": "Descartada: Memcached especifica el TTL en segundos; solo Valkey y Redis OSS admiten milisegundos."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-4-quiz-04",
+      "title": "El efecto de añadir un TTL",
+      "statement": "Un equipo usa escritura directa y añade un TTL de 300 segundos a cada escritura. ¿Qué afirmación describe MEJOR el efecto del TTL?",
+      "concepts": [
+        "TTL",
+        "expiración"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un clúster basado en nodos, donde eliges el tipo de nodo y su número",
+            "explanation": "Descartada: en un clúster basado en nodos eliges tipo y número de nodos y eres responsable de acertar con la capacidad."
+          },
+          {
+            "id": "b",
+            "text": "Un clúster basado en nodos con modo clúster, que escala sin que elijas el número de nodos",
+            "explanation": "Descartada: el modo clúster permite escalar horizontalmente, pero en un clúster basado en nodos sigues eligiendo tipo y número de nodos."
+          },
+          {
+            "id": "c",
+            "text": "Una caché serverless, que ElastiCache dimensiona según el uso",
+            "explanation": "Es la correcta: elimina aprovisionar instancias y configurar nodos o clústeres, y escala según la memoria, el cómputo y el ancho de banda usados."
+          },
+          {
+            "id": "d",
+            "text": "Un clúster basado en nodos en varias zonas, con tipo de nodo elegido por ElastiCache",
+            "explanation": "Descartada: en un clúster basado en nodos eres tú quien elige el tipo de nodo, el número y su colocación entre zonas."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-4-quiz-05",
+      "title": "Caché sin administrar nodos",
+      "statement": "Un equipo quiere una caché de ElastiCache sin aprovisionar instancias ni configurar nodos, y que el servicio ajuste la capacidad según la memoria, el cómputo y el ancho de banda que usa la aplicación. ¿Qué formato exige MENOS trabajo de administración?",
+      "concepts": [
+        "serverless",
+        "clúster basado en nodos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo escritura directa, que ya tolera sin problemas los nodos vacíos",
+            "explanation": "Descartada: la escritura directa puede fallar con nodos vacíos y llenar la caché de datos superfluos."
+          },
+          {
+            "id": "b",
+            "text": "Escritura directa con carga diferida y un TTL en cada escritura",
+            "explanation": "Es la correcta: la página propone combinarlas y añadir un TTL para reunir las ventajas de ambas y evitar datos superfluos."
+          },
+          {
+            "id": "c",
+            "text": "Solo carga diferida, que mantiene los datos siempre actuales",
+            "explanation": "Descartada: la carga diferida no actualiza la caché cuando el dato cambia en la base de datos, así que admite datos obsoletos."
+          },
+          {
+            "id": "d",
+            "text": "Solo un TTL, que garantiza que ningún valor esté obsoleto",
+            "explanation": "Descartada: el TTL no garantiza que un valor no esté obsoleto y no llena la caché por sí solo."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-4-quiz-06",
+      "title": "Frescura y nodos vacíos a la vez",
+      "statement": "Un equipo quiere datos frescos en la caché, que un nodo vacío no rompa la aplicación y que la caché no se llene de datos que nadie lee. ¿Qué combinación es la MEJOR?",
+      "concepts": [
+        "escritura directa",
+        "carga diferida",
+        "TTL"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Valkey y Redis OSS admiten replicación para alta disponibilidad",
+            "explanation": "Cumple: la tabla comparativa lo marca en ambos para sus modos de clúster."
+          },
+          {
+            "id": "b",
+            "text": "Memcached ofrece conmutación automática por error entre nodos",
+            "explanation": "No cumple: la tabla comparativa marca a Memcached sin conmutación automática por error."
+          },
+          {
+            "id": "c",
+            "text": "Memcached es multihilo, a diferencia de Valkey y Redis OSS en la tabla",
+            "explanation": "Cumple: la tabla marca Memcached como multihilo y los otros dos como no."
+          },
+          {
+            "id": "d",
+            "text": "Memcached ofrece conjuntos ordenados para construir rankings",
+            "explanation": "No cumple: la tabla marca a Memcached sin conjuntos ordenados."
+          },
+          {
+            "id": "e",
+            "text": "Tras crear una caché se puede pasar a una versión anterior del motor",
+            "explanation": "No cumple: se puede subir a una versión más reciente, pero no bajar a una anterior."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-4-quiz-07",
+      "title": "Qué es cierto de los motores de ElastiCache",
+      "statement": "Un equipo compara los motores de ElastiCache. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Memcached",
+        "Valkey",
+        "Redis OSS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "b",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "En la carga diferida, cada fallo cuesta tres viajes: pedir a la caché, consultar la base y escribir en la caché",
+            "explanation": "Cumple: es la penalización por fallo que describe la página."
+          },
+          {
+            "id": "b",
+            "text": "En la carga diferida, la caché no se actualiza cuando el dato cambia en la base de datos y puede quedar obsoleta",
+            "explanation": "Cumple: es su desventaja de datos obsoletos, que se atenúa con escritura directa o TTL."
+          },
+          {
+            "id": "c",
+            "text": "En la escritura directa, cada escritura hace dos viajes: uno a la caché y otro a la base de datos",
+            "explanation": "Cumple: es la penalización por escritura que describe la página."
+          },
+          {
+            "id": "d",
+            "text": "En la escritura directa, los datos de la caché pueden quedar obsoletos tras cada escritura",
+            "explanation": "No cumple: la escritura directa actualiza la caché en cada escritura, así que sus datos nunca están obsoletos."
+          },
+          {
+            "id": "e",
+            "text": "En la carga diferida, la caché se llena con todos los datos de la base de datos",
+            "explanation": "No cumple: la carga diferida solo cachea los datos solicitados."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-4-quiz-08",
+      "title": "Carga diferida y escritura directa",
+      "statement": "Un equipo repasa las dos estrategias de la página de caché de ElastiCache. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "carga diferida",
+        "escritura directa"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "lazy",
+            "term": "Carga diferida",
+            "definition": "Solo se cachea lo que se pide y un nodo nuevo y vacío no rompe la aplicación"
+          },
+          {
+            "id": "wt",
+            "term": "Escritura directa",
+            "definition": "La caché nunca está obsoleta, a costa de dos viajes en cada escritura"
+          },
+          {
+            "id": "ttl",
+            "term": "TTL",
+            "definition": "Acota cuánto tiempo puede quedar obsoleto un valor y limpia datos que nadie lee"
+          },
+          {
+            "id": "combo",
+            "term": "Escritura directa con carga diferida y TTL",
+            "definition": "Datos frescos sin que un nodo vacío rompa la aplicación ni se llene de datos superfluos"
+          },
+          {
+            "id": "mem",
+            "term": "Memcached",
+            "definition": "Caché simple de objetos con nodos grandes multihilo y nodos que se añaden o se quitan"
+          },
+          {
+            "id": "valkey",
+            "term": "Valkey o Redis OSS",
+            "definition": "Replicación, conmutación por error y conjuntos ordenados para un ranking"
+          },
+          {
+            "id": "serverless",
+            "term": "Caché serverless",
+            "definition": "Caché sin aprovisionar nodos, con la capacidad ajustada por ElastiCache"
+          },
+          {
+            "id": "nodos",
+            "term": "Clúster basado en nodos",
+            "definition": "Control fino: tú eliges el tipo y el número de nodos y su colocación entre zonas"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada estrategia, motor o formato de ElastiCache con el caso que resuelve. Si dudas, pregúntate qué estructura de datos hace falta, qué frescura se exige y qué pasa si un nodo se reemplaza por otro vacío.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Estrategias de caché: carga diferida, escritura directa y TTL",
+              "Cómo reunir frescura y tolerancia a nodos vacíos",
+              "Motores: Memcached frente a Valkey o Redis OSS",
+              "Formatos: caché serverless frente a clúster basado en nodos"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-5-4-memoria-01",
+      "title": "Estrategia o motor de caché y caso que resuelve",
+      "statement": "Empareja cada estrategia de caché, motor o formato de ElastiCache con el caso que resuelve.",
+      "concepts": [
+        "ElastiCache",
+        "estrategias de caché",
+        "motores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-5-4-reflexion-01",
+      "title": "Reflexión: qué motor y qué estrategia de caché y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, un catálogo que se lee mucho, un perfil que debe estar siempre actualizado o un ranking) y escribe un registro breve de decisión sobre cómo la cachearías, en 5 a 7 líneas:\n\n1) Decisión: qué formato (serverless o clúster basado en nodos), qué motor (Valkey, Redis OSS o Memcached) y qué estrategia (carga diferida, escritura directa o una combinación con TTL), y qué dato de la carga lo decide (estructura de datos, frescura exigida, comportamiento ante un nodo vacío).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, Memcached para una carga que necesita conjuntos ordenados o solo escritura directa para una carga que debe tolerar nodos vacíos) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (el valor del TTL, la capacidad y el número de nodos si es un clúster basado en nodos, el modo clúster).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento o Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial (comparación de motores, estrategias de caché o qué es ElastiCache) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, el motor, la estrategia y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "ElastiCache",
+        "estrategias de caché",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/BestPractices.html"
+      ],
+      "order": 19
+    }
+  ]
+}
