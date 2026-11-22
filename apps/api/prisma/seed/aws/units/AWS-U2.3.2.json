@@ -1,0 +1,1336 @@
+{
+  "code": "AWS-U2.3.2",
+  "lessons": [
+    {
+      "slug": "aws-u2-3-2-elastic-load-balancing-alb-nlb-y-gwlb",
+      "title": "Elastic Load Balancing: ALB, NLB y GWLB",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Elastic Load Balancing distribuye automáticamente el tráfico entrante entre varios destinos, como instancias EC2, contenedores y direcciones IP, en una o más zonas de disponibilidad. Vigila la salud de los destinos, enruta solo a los sanos y escala su capacidad según cambia el tráfico. Ofrece tres tipos de generación actual: el Application Load Balancer (ALB), el Network Load Balancer (NLB) y el Gateway Load Balancer (GWLB), además del Classic, de la generación anterior. En A2 no basta con recitar los tres: ante un escenario subrayas el tipo de tráfico y la capacidad que se exige (leer la ruta de la URL, una IP fija, insertar firewalls) y eliges el balanceador que encaja. Esta unidad prepara el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», y sus tareas de arquitecturas escalables y tolerantes a fallos."
+        },
+        {
+          "type": "list",
+          "title": "Los tres balanceadores, frente a frente",
+          "items": [
+            "ALB: funciona en la capa de aplicación (la 7); sus listeners evalúan reglas por prioridad y envían cada petición a un grupo de destino según la ruta, el host, los encabezados o los parámetros.",
+            "NLB: funciona en la capa 4; maneja millones de solicitudes por segundo, admite TCP, UDP, TLS y QUIC, y ofrece direcciones IP estáticas.",
+            "GWLB: funciona en la capa 3 (la de red); despliega y escala appliances virtuales como firewalls, y los comunica con GENEVE en el puerto 6081.",
+            "Classic: generación anterior; la guía recomienda migrar a uno de los tres anteriores."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Las piezas comunes: listener, regla y grupo de destino",
+          "text": "Un balanceador es el punto único de contacto de los clientes. Un listener comprueba las solicitudes de conexión con el protocolo y el puerto que configuras. En el ALB, las reglas del listener determinan cómo se enruta cada petición: cada regla tiene una prioridad, una o más condiciones y una o más acciones, y debes definir una regla por defecto. En el NLB, el listener reenvía al grupo de destino. Cada grupo de destino enruta a uno o más destinos registrados con el protocolo y el puerto indicados; un destino se puede registrar en varios grupos, y los health checks se configuran por grupo de destino. Si habilitas Auto Scaling junto al balanceador, las instancias que lanza se registran solas en el grupo de destino y las que termina se retiran."
+        },
+        {
+          "type": "paragraph",
+          "title": "ALB: decidir por el contenido de la petición",
+          "text": "Como el ALB funciona en la capa 7, puede mirar el contenido. La guía enumera condiciones de ruta (la URL), de host (el encabezado HTTP, para varios dominios con un solo balanceador), de encabezados, métodos, parámetros de consulta y dirección IP de origen. También permite redirigir peticiones de una URL a otra, devolver una respuesta HTTP personalizada, registrar destinos por dirección IP (incluso fuera de la VPC) y funciones Lambda, autenticar a los usuarios con identidades corporativas o sociales antes de enrutar, y registrar un destino en varios grupos con puertos distintos. El algoritmo de enrutamiento del grupo es por defecto round robin; la alternativa es least outstanding requests. Con AWS WAF puedes permitir o bloquear peticiones con una web ACL."
+        },
+        {
+          "type": "paragraph",
+          "title": "NLB: conexiones, protocolos y dirección fija",
+          "text": "El NLB funciona en la capa 4 y puede manejar millones de solicitudes por segundo. Sus grupos de destino admiten TCP, UDP, TCP_UDP, TLS, QUIC y TCP_QUIC, y también puede registrar un ALB como destino. Para TCP y UDP elige el destino con un algoritmo de hash de flujo, y cada conexión TCP va a un único destino durante su vida. Elastic Load Balancing crea una interfaz de red por zona habilitada y cada nodo obtiene una IP estática; en un balanceador con acceso a Internet puedes asociar una Elastic IP por subred. Por defecto, cada nodo reparte solo entre los destinos de su zona; con el balanceo entre zonas habilitado reparte entre los de todas las zonas habilitadas. Para tolerar fallos, habilita varias zonas y deja al menos un destino por zona en cada grupo."
+        },
+        {
+          "type": "paragraph",
+          "title": "GWLB: appliances de red como una sola entrada y salida",
+          "text": "El GWLB permite desplegar, escalar y gestionar appliances virtuales, como firewalls, sistemas de detección y prevención de intrusiones y de inspección profunda de paquetes. Combina un gateway de red transparente (una única entrada y salida para todo el tráfico) con el reparto de tráfico. Funciona en la capa 3, escucha todos los paquetes IP en todos los puertos y reenvía al grupo de destino de la regla del listener; mantiene la afinidad de flujo con 5-tuple (por defecto), 3-tuple o 2-tuple. Intercambia el tráfico con los appliances mediante GENEVE en el puerto 6081. Los endpoints del GWLB, que son endpoints de VPC, llevan el tráfico entre VPC; el endpoint y los servidores de aplicación van en subredes distintas para poder fijar el endpoint como siguiente salto en la tabla de rutas. Tú eliges y cualificas el software del proveedor del appliance."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres cargas, tres balanceadores",
+          "text": "Una empresa tiene tres cargas. (1) Un sitio web con un servicio en /api y otro en /imagenes, que debe repartir por la ruta de la URL. (2) Un servicio de juego con tráfico UDP, picos volátiles y una dirección IP fija por subred. (3) Todo el tráfico entre VPC debe pasar por firewalls virtuales de un tercero, que escalen con la demanda. Paso 1: la carga (1) se decide por el contenido de la petición, así que pide un ALB con una regla de ruta por servicio. Paso 2: la carga (2) pide capa 4, UDP e IP estática, así que pide un NLB con una Elastic IP por subred. Paso 3: la carga (3) pide un gateway transparente para appliances, así que pide un GWLB con endpoints en subredes distintas de las aplicaciones. Resultado: la característica del tráfico decidió cada balanceador, y ninguno sustituye a los otros."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de balanceadores como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  cargas: [\n    { nombre: \"sitio\", balanceador: \"application\", reglas: [\"/api/*\", \"/imagenes/*\"] },\n    { nombre: \"juego\", balanceador: \"network\", protocolo: \"UDP\", ipEstatica: true },\n    { nombre: \"inspeccion\", balanceador: \"gateway\", protocolo: \"GENEVE\", puerto: 6081 },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del tipo de tráfico al balanceador",
+          "code": "flowchart TB\n  R{\"Tipo de tráfico y exigencia\"} -->|\"Decidir por ruta, host o encabezados HTTP\"| A[\"ALB: capa 7, reglas de listener\"]\n  R -->|\"TCP, UDP o TLS; IP estática; millones de solicitudes por segundo\"| N[\"NLB: capa 4\"]\n  R -->|\"Firewalls y otros appliances virtuales en línea\"| G[\"GWLB: capa 3, GENEVE en el puerto 6081\"]\n  R -->|\"Todavía usas el Classic\"| C[\"Migrar a ALB, NLB o GWLB\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir el balanceador por el nombre y no por el tráfico",
+          "text": "El enunciado mezcla vocabulario de los tres. «Leer la ruta de la URL» o «redirigir» es un ALB, «UDP» o «IP estática» es un NLB, y «firewalls virtuales en línea» es un GWLB. Ninguno sustituye a los otros, y el Classic es la generación anterior. Subraya el tipo de tráfico, la capacidad exigida y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar un NLB para enrutar por la ruta de la URL",
+          "text": "Causa: pensar que cualquier balanceador de carga puede leer el contenido de una petición HTTP. Consecuencia: el NLB funciona en la capa 4 y reparte conexiones por flujo, así que no distingue /api de /imagenes y todo el tráfico se reparte sin criterio de aplicación. Solución: usa un ALB con una regla de listener y una condición de ruta por servicio, y deja el NLB para TCP, UDP, TLS o IP estática."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir el GWLB con un balanceador de aplicaciones",
+          "text": "Causa: ver «balanceador» y pensar solo en repartir peticiones a servidores web. Consecuencia: un ALB o un NLB no actúan como gateway transparente para appliances, y los firewalls no quedan en el camino del tráfico. Solución: usa un GWLB para desplegar y escalar los appliances, regístralos en su grupo de destino con GENEVE en el puerto 6081 y crea los endpoints en subredes distintas de los servidores."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: olvidar el ámbito de reparto de un NLB entre zonas",
+          "text": "Causa: suponer que cada nodo del NLB reparte siempre entre los destinos de todas las zonas. Consecuencia: por defecto cada nodo solo usa los destinos de su zona, y una zona con pocos destinos queda saturada. Solución: habilita el balanceo entre zonas si quieres repartir entre todas, y deja al menos un destino por cada zona habilitada para que un fallo no quite la zona."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre ALB, NLB y GWLB según el tipo de tráfico y la capacidad que exige el escenario. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el tipo de tráfico, el balanceador y por qué los otros quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres cargas del ejemplo: para cada una, nombra el balanceador y la característica del tráfico que lo decide. Explica con tus palabras el diagrama «Del tipo de tráfico al balanceador». Después responde: si una petición debe ir a un servicio u otro según la ruta de la URL, ¿qué balanceador usas y por qué no sirve un NLB?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El balanceador que no distingue las rutas del sitio». Un plan escrito como objeto asigna a un sitio con dos servicios un balanceador de la capa 4. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la carga, el nombre y los grupos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Los firewalls virtuales detrás del tipo de balanceador equivocado». Un despliegue, escrito como objeto, intenta pasar el tráfico por dos firewalls con otro tipo de balanceador. Decide qué cambia sin tocar la carga, los appliances ni los servidores. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la guía del GWLB."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre la elección de balanceador para tres cargas. Audítalo en «Auditar un informe de elección de balanceador generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de Elastic Load Balancing, del ALB, del NLB y del GWLB (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: en qué capa funciona cada balanceador; qué condiciones evalúan las reglas de un ALB; qué protocolos y qué dirección fija ofrece un NLB; para qué sirve un GWLB y con qué protocolo y puerto habla con los appliances; y qué hace un grupo de destino. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el tipo de tráfico y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: el sitio crece, un nuevo servicio de mensajería usa UDP con IP fija y todo el tráfico entre VPC debe inspeccionarse con firewalls. Decide qué balanceador usas para cada parte, qué reglas defines en el ALB y qué subredes reservas para los endpoints del GWLB. Pregunta de cierre: un compañero dice «pusimos un NLB y leerá la ruta de la URL»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-elb-que-es",
+          "order": 0,
+          "note": "Fuente de qué es Elastic Load Balancing, sus tipos de balanceador, los health checks y los servicios relacionados."
+        },
+        {
+          "resourceSlug": "aws-alb-que-es",
+          "order": 1,
+          "note": "Fuente del ALB: capa 7, listeners, reglas, grupos de destino y beneficios frente al Classic."
+        },
+        {
+          "resourceSlug": "aws-nlb-que-es",
+          "order": 2,
+          "note": "Fuente del NLB: capa 4, IP estática, protocolos de los grupos de destino y balanceo entre zonas."
+        },
+        {
+          "resourceSlug": "aws-gwlb-que-es",
+          "order": 3,
+          "note": "Fuente del GWLB: appliances virtuales, capa 3, GENEVE en el puerto 6081 y endpoints."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Distribuye automáticamente el tráfico entrante entre varios destinos (instancias EC2, contenedores, direcciones IP) en una o más zonas de disponibilidad. Vigila la salud de los destinos, enruta solo a los sanos y escala su capacidad según el tráfico."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-2-tarjeta-01",
+      "title": "Tarjeta: Qué hace ELB",
+      "statement": "¿Qué hace Elastic Load Balancing con el tráfico entrante?",
+      "concepts": [
+        "Elastic Load Balancing",
+        "destinos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Application Load Balancer, Network Load Balancer, Gateway Load Balancer y Classic Load Balancer. Los tres primeros son los de generación actual; el Classic es la generación anterior y se recomienda migrar de él."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-2-tarjeta-02",
+      "title": "Tarjeta: Tipos de balanceador",
+      "statement": "¿Qué tipos de balanceador admite Elastic Load Balancing?",
+      "concepts": [
+        "ALB",
+        "NLB",
+        "GWLB",
+        "Classic"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Funciona en la capa de aplicación (la séptima). Un listener evalúa sus reglas por prioridad (cada una con condiciones y acciones, más una regla por defecto) y envía la petición a un grupo de destino según la ruta, el host, los encabezados, los métodos, los parámetros de consulta o la IP de origen."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-2-tarjeta-03",
+      "title": "Tarjeta: ALB",
+      "statement": "¿En qué capa funciona el ALB y cómo decide a dónde enviar una petición?",
+      "concepts": [
+        "ALB",
+        "capa 7",
+        "reglas de listener"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Funciona en la capa 4, maneja millones de solicitudes por segundo y ofrece direcciones IP estáticas, con una Elastic IP por subred en un balanceador con acceso a Internet. Sus grupos de destino admiten TCP, UDP, TCP_UDP, TLS, QUIC y TCP_QUIC."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-2-tarjeta-04",
+      "title": "Tarjeta: NLB",
+      "statement": "¿Qué distingue al NLB?",
+      "concepts": [
+        "NLB",
+        "capa 4",
+        "IP estática"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Sirve para desplegar, escalar y gestionar appliances virtuales (firewalls, sistemas de detección y prevención de intrusiones, inspección profunda de paquetes). Opera en la capa 3, escucha todos los paquetes IP en todos los puertos y se comunica con los appliances con GENEVE en el puerto 6081."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-2-tarjeta-05",
+      "title": "Tarjeta: GWLB",
+      "statement": "¿Para qué sirve el GWLB y cómo intercambia el tráfico?",
+      "concepts": [
+        "GWLB",
+        "appliances",
+        "GENEVE"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El listener comprueba las solicitudes de conexión de los clientes con el protocolo y el puerto configurados. El grupo de destino enruta a los destinos registrados con el protocolo y el puerto indicados, y los health checks se configuran por grupo de destino."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-2-tarjeta-06",
+      "title": "Tarjeta: Listener y grupo de destino",
+      "statement": "¿Qué papel cumplen el listener y el grupo de destino?",
+      "concepts": [
+        "listener",
+        "grupo de destino",
+        "health checks"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de un sitio web con dos servicios detrás de un balanceador. Corrige su defecto principal.\nexport const plan = {\n  carga: \"sitio-por-rutas\",\n  balanceador: { nombre: \"lb-web\", tipo: \"network\", capa: 4, reglas: [] },\n  gruposDestino: [\"api\", \"imagenes\"],\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  carga: \"sitio-por-rutas\",\n  balanceador: {\n    nombre: \"lb-web\",\n    tipo: \"application\",\n    capa: 7,\n    reglas: [\n      { condicion: { ruta: \"/api/*\" }, destino: \"api\" },\n      { condicion: { ruta: \"/imagenes/*\" }, destino: \"imagenes\" },\n    ],\n  },\n  gruposDestino: [\"api\", \"imagenes\"],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "La carga necesita enviar cada ruta de la URL a un servicio distinto. Piensa en qué capa se lee la ruta y qué tipo de balanceador trabaja ahí."
+        },
+        {
+          "level": 2,
+          "text": "El balanceador actual funciona en la capa 4, que reparte conexiones sin leer la URL, y no tiene reglas. Un balanceador de la capa 7 evalúa reglas de listener con condiciones de ruta."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el tipo a \"application\", la capa a 7 y añade una regla por cada grupo de destino con una condición de ruta (\"/api/*\" hacia \"api\" y \"/imagenes/*\" hacia \"imagenes\"). No cambies la carga, el nombre ni los grupos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "una carga por rutas usa el balanceador de aplicación",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(plan.balanceador.tipo, \"application\", \"enrutar por ruta de la URL es trabajo de un ALB\");\nassert.strictEqual(plan.balanceador.capa, 7);"
+          }
+        },
+        {
+          "name": "cada grupo de destino tiene una regla con condición de ruta",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "for (const grupo of plan.gruposDestino) {\n  const regla = plan.balanceador.reglas.find((r) => r.destino === grupo);\n  assert.ok(regla, \"falta la regla del grupo \" + grupo);\n  assert.ok(regla.condicion && typeof regla.condicion.ruta === \"string\", \"la regla de \" + grupo + \" debe tener una condición de ruta\");\n}"
+          }
+        },
+        {
+          "name": "la carga, el nombre y los grupos se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.carga, \"sitio-por-rutas\");\nassert.strictEqual(plan.balanceador.nombre, \"lb-web\");\nassert.deepStrictEqual(plan.gruposDestino, [\"api\", \"imagenes\"]);"
+          }
+        },
+        {
+          "name": "las dos rutas son distintas",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const rutas = plan.balanceador.reglas.map((r) => r.condicion.ruta);\nassert.strictEqual(new Set(rutas).size, rutas.length, \"cada regla debe tener su propia ruta\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-3-2-debug-01",
+      "title": "El balanceador que no distingue las rutas del sitio",
+      "statement": "El objeto `plan` modela un sitio con dos servicios (`api` e `imagenes`) que deben recibir las peticiones según la ruta de la URL, y el balanceador que se les asignó. Todas las peticiones llegan al mismo servicio. Corrige la configuración del balanceador sin cambiar la carga, el nombre ni los grupos de destino, y mantén la forma del valor exportado (`export const plan = { … }`).",
+      "concepts": [
+        "ALB",
+        "reglas de listener",
+        "capa 7"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Despliegue para inspeccionar todo el tráfico con firewalls virtuales. Corrige su defecto principal.\nexport const despliegue = {\n  carga: \"inspeccion-de-trafico\",\n  appliances: [\"firewall-1\", \"firewall-2\"],\n  balanceador: { tipo: \"application\", escucha: \"http-80\" },\n  endpoint: { subred: \"subred-app\" },\n  servidores: { subred: \"subred-app\" },\n};\n",
+      "solution": {
+        "code": "export const despliegue = {\n  carga: \"inspeccion-de-trafico\",\n  appliances: [\"firewall-1\", \"firewall-2\"],\n  balanceador: { tipo: \"gateway\", escucha: \"todos-los-paquetes-ip\", protocolo: \"GENEVE\", puerto: 6081 },\n  endpoint: { subred: \"subred-endpoint\" },\n  servidores: { subred: \"subred-app\" },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "los appliances de red van detrás de un Gateway Load Balancer",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(despliegue.balanceador.tipo, \"gateway\", \"los appliances virtuales se balancean con un GWLB\");"
+          }
+        },
+        {
+          "name": "el GWLB habla GENEVE en el puerto 6081 con los appliances",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(despliegue.balanceador.protocolo, \"GENEVE\");\nassert.strictEqual(despliegue.balanceador.puerto, 6081);"
+          }
+        },
+        {
+          "name": "el endpoint y los servidores están en subredes distintas",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.notStrictEqual(despliegue.endpoint.subred, despliegue.servidores.subred, \"el endpoint del GWLB debe ir en otra subred que los servidores\");"
+          }
+        },
+        {
+          "name": "la carga, los appliances y los servidores no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(despliegue.carga, \"inspeccion-de-trafico\");\nassert.deepStrictEqual(despliegue.appliances, [\"firewall-1\", \"firewall-2\"]);\nassert.deepStrictEqual(despliegue.servidores, { subred: \"subred-app\" });"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-3-2-debug-02",
+      "title": "Los firewalls virtuales detrás del tipo de balanceador equivocado",
+      "statement": "El objeto `despliegue` modela una carga que debe pasar todo su tráfico por dos firewalls virtuales antes de llegar a los servidores de aplicación. El diseño actual no consigue insertar los firewalls en el camino del tráfico. Corrige la configuración sin cambiar la carga, los appliances ni los servidores, y mantén la forma del valor exportado (`export const despliegue = { … }`).",
+      "concepts": [
+        "GWLB",
+        "GENEVE",
+        "endpoint del GWLB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de elección de Elastic Load Balancing (borrador generado por un asistente)\nEscenario: un sitio web por rutas, un servicio TCP con IP fija y una cadena de firewalls virtuales.\n1. Un ALB funciona en la capa 7: evalúa las reglas de sus listeners por prioridad y puede enrutar según la ruta, el host o los encabezados HTTP.\n2. Un NLB funciona en la capa 7 y es el balanceador adecuado para enrutar por la ruta de la URL.\n3. Un NLB admite direcciones IP estáticas, con una Elastic IP por subred en un balanceador con acceso a Internet.\n4. El Classic Load Balancer es la generación actual y AWS recomienda usarlo en las cargas nuevas.\n5. Un GWLB permite desplegar y escalar appliances virtuales, y intercambia tráfico con ellos mediante GENEVE en el puerto 6081.\n6. Un ALB solo puede enviar tráfico a instancias EC2; no admite funciones Lambda ni direcciones IP como destino.\n7. Los balanceadores vigilan la salud de sus destinos y enrutan solo a los sanos; en el ALB los health checks se definen por grupo de destino."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Capa y reglas del ALB",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el ALB funciona en la capa de aplicación y sus listeners evalúan reglas por prioridad con condiciones de ruta, host y encabezados."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Capa del NLB",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: el NLB funciona en la capa 4 y no enruta por la ruta de la URL; esa decisión corresponde al ALB, de la capa 7."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "IP estática del NLB",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: el NLB crea una interfaz de red por zona habilitada con IP estática y admite una Elastic IP por subred si es de cara a Internet."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Classic Load Balancer",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: el Classic es la generación anterior y la guía recomienda migrar a un balanceador de generación actual."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "GWLB y GENEVE",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el GWLB despliega y escala appliances virtuales y se comunica con ellos mediante el protocolo GENEVE en el puerto 6081."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Destinos del ALB",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: el ALB admite registrar destinos por dirección IP y funciones Lambda, además de instancias EC2."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Health checks",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: los balanceadores solo enrutan a destinos sanos y los health checks se configuran por grupo de destino."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-3-2-auditoria-01",
+      "title": "Auditar un informe de elección de balanceador generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre la elección entre ALB, NLB y GWLB para tres cargas. Audítalo contra las páginas oficiales de Elastic Load Balancing: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "ALB",
+        "NLB",
+        "GWLB",
+        "Classic"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un Network Load Balancer, que reparte las conexiones por flujo en la capa 4",
+            "explanation": "Descartada: el NLB funciona en la capa 4 y no evalúa la ruta de la URL; las condiciones de ruta son una capacidad del ALB."
+          },
+          {
+            "id": "b",
+            "text": "Un Gateway Load Balancer, que reenvía todos los paquetes IP a sus appliances",
+            "explanation": "Descartada: el GWLB se usa para appliances de red en la capa 3 y no enruta por contenido de aplicación."
+          },
+          {
+            "id": "c",
+            "text": "Un Application Load Balancer con una regla de listener por cada ruta",
+            "explanation": "Es la correcta: el ALB funciona en la capa 7 y sus reglas con condiciones de ruta envían cada petición a su grupo de destino."
+          },
+          {
+            "id": "d",
+            "text": "Un Classic Load Balancer, que ofrece condiciones de ruta igual que el ALB",
+            "explanation": "Descartada: las condiciones de ruta figuran entre los beneficios de migrar del Classic al ALB, así que el Classic no las ofrece."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-2-quiz-01",
+      "title": "Enrutar un sitio por la ruta de la URL",
+      "statement": "Un sitio web debe enviar las peticiones que empiezan por /api a un servicio y las de /imagenes a otro, usando un único balanceador que lea la ruta de la URL. ¿Qué tipo de balanceador cumple MEJOR el requisito?",
+      "concepts": [
+        "ALB",
+        "condiciones de ruta"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un Network Load Balancer, con una Elastic IP asociada a cada subred",
+            "explanation": "Es la correcta: el NLB funciona en la capa 4, admite UDP, maneja millones de solicitudes por segundo y ofrece IP estática."
+          },
+          {
+            "id": "b",
+            "text": "Un Application Load Balancer, que decide por el contenido de cada petición HTTP",
+            "explanation": "Descartada: el ALB trabaja en la capa 7 con reglas de contenido, mientras que UDP y la IP estática por subred se describen para el NLB."
+          },
+          {
+            "id": "c",
+            "text": "Un Gateway Load Balancer, que balancea los appliances de inspección de red",
+            "explanation": "Descartada: el GWLB sirve para escalar appliances virtuales y no es el balanceador de una aplicación de cara a los clientes."
+          },
+          {
+            "id": "d",
+            "text": "Un Classic Load Balancer, por ser el tipo que se recomienda en cargas nuevas",
+            "explanation": "Descartada: el Classic es la generación anterior y la guía recomienda migrar a un balanceador de generación actual."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-2-quiz-02",
+      "title": "Tráfico UDP con IP estática y picos volátiles",
+      "statement": "Un servicio de juego recibe tráfico UDP con picos volátiles de millones de solicitudes por segundo y necesita una dirección IP estática por subred. Se busca la MAYOR capacidad para absorber esos picos. ¿Qué balanceador encaja?",
+      "concepts": [
+        "NLB",
+        "UDP",
+        "IP estática"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un Application Load Balancer con reglas de listener por ruta hacia cada firewall",
+            "explanation": "Descartada: el ALB enruta por contenido en la capa 7; no es el gateway transparente de la capa 3 para appliances."
+          },
+          {
+            "id": "b",
+            "text": "Un Network Load Balancer con una Elastic IP por subred delante de cada firewall",
+            "explanation": "Descartada: el NLB aporta IP estática y baja latencia en la capa 4, pero no está pensado para gestionar appliances virtuales."
+          },
+          {
+            "id": "c",
+            "text": "Un Classic Load Balancer que registre cada firewall como una instancia",
+            "explanation": "Descartada: el Classic es la generación anterior y no ofrece el gateway transparente que se describe para el GWLB."
+          },
+          {
+            "id": "d",
+            "text": "Un Gateway Load Balancer, con los firewalls registrados en un grupo de destino",
+            "explanation": "Es la correcta: el GWLB combina un gateway de red transparente con el reparto de tráfico y escala los appliances con la demanda."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-2-quiz-03",
+      "title": "Insertar firewalls virtuales en el camino del tráfico",
+      "statement": "Una empresa debe pasar el tráfico de sus aplicaciones por firewalls virtuales de un tercero, desplegados y escalados como una única entrada y salida transparente. ¿Qué tipo de balanceador está diseñado MÁS directamente para ese fin?",
+      "concepts": [
+        "GWLB",
+        "appliances virtuales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Deshabilitar todas las zonas de disponibilidad menos una, para que no existan diferencias",
+            "explanation": "Descartada: reduce la tolerancia a fallos y no reparte entre zonas; la guía aconseja habilitar varias zonas."
+          },
+          {
+            "id": "b",
+            "text": "Habilitar el balanceo de carga entre zonas, para que cada nodo use los destinos de todas las zonas",
+            "explanation": "Es la correcta: con cross-zone, cada nodo distribuye entre los destinos registrados de todas las zonas habilitadas."
+          },
+          {
+            "id": "c",
+            "text": "Asociar una segunda Elastic IP a cada subred, porque las IP determinan el reparto",
+            "explanation": "Descartada: la Elastic IP fija la dirección de cada nodo y no cambia el ámbito de reparto entre zonas."
+          },
+          {
+            "id": "d",
+            "text": "Registrar los mismos destinos en un Gateway Load Balancer delante del NLB",
+            "explanation": "Descartada: el GWLB sirve para appliances de red y no modifica cómo cada nodo del NLB reparte entre zonas."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-2-quiz-04",
+      "title": "Repartir un NLB entre todas las zonas habilitadas",
+      "statement": "Un equipo comprueba que cada nodo de su Network Load Balancer envía tráfico solo a los destinos de su propia zona de disponibilidad y quiere que reparta entre los destinos de todas las zonas habilitadas. ¿Qué debe hacer PRIMERO?",
+      "concepts": [
+        "NLB",
+        "balanceo entre zonas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un Network Load Balancer con un listener TCP y un grupo de destino por servicio",
+            "explanation": "Descartada: el NLB funciona en la capa 4 y no aplica acciones HTTP de redirección ni de respuesta fija."
+          },
+          {
+            "id": "b",
+            "text": "Un Gateway Load Balancer con un appliance que reescriba las URL de cada petición",
+            "explanation": "Descartada: el GWLB reenvía paquetes IP a appliances de red en la capa 3 y no gestiona redirecciones HTTP por sí mismo."
+          },
+          {
+            "id": "c",
+            "text": "Un Classic Load Balancer que devuelva respuestas HTTP personalizadas desde un listener",
+            "explanation": "Descartada: la redirección y las respuestas personalizadas figuran como beneficios de migrar del Classic al ALB."
+          },
+          {
+            "id": "d",
+            "text": "Un Application Load Balancer con reglas de listener de redirección y de respuesta fija",
+            "explanation": "Es la correcta: el ALB admite redirigir peticiones de una URL a otra y devolver una respuesta HTTP personalizada."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-2-quiz-05",
+      "title": "Redirigir y responder directamente desde el balanceador",
+      "statement": "Un equipo necesita que el propio balanceador redirija las peticiones de una URL a otra y devuelva una respuesta HTTP personalizada, con el MENOR número de componentes adicionales. ¿Qué opción cumple el requisito?",
+      "concepts": [
+        "ALB",
+        "acciones de listener"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El ALB en la capa 4, el NLB en la capa 7 y el GWLB en la capa 3",
+            "explanation": "Descartada: invierte las capas del ALB y del NLB; el ALB es de la capa 7 y el NLB de la capa 4."
+          },
+          {
+            "id": "b",
+            "text": "El ALB en la capa 3, el NLB en la capa 4 y el GWLB en la capa 7",
+            "explanation": "Descartada: sitúa al ALB y al GWLB en capas que no son las suyas; el ALB es de la capa 7 y el GWLB de la capa 3."
+          },
+          {
+            "id": "c",
+            "text": "El ALB en la capa 7, el NLB en la capa 4 y el GWLB en la capa 3",
+            "explanation": "Es la correcta: aplicación para el ALB, cuarta capa para el NLB y capa de red para el GWLB."
+          },
+          {
+            "id": "d",
+            "text": "El ALB en la capa 7, el NLB en la capa 3 y el GWLB en la capa 4",
+            "explanation": "Descartada: intercambia las capas del NLB y del GWLB; el NLB es de la capa 4 y el GWLB de la capa 3."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-2-quiz-06",
+      "title": "Capa del modelo OSI de cada balanceador",
+      "statement": "Un equipo documenta en qué capa del modelo OSI funciona cada tipo de balanceador de Elastic Load Balancing. ¿Qué emparejamiento es el MÁS exacto?",
+      "concepts": [
+        "capas OSI",
+        "ALB",
+        "NLB",
+        "GWLB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "El NLB funciona en la capa 7 y evalúa condiciones de ruta y de host en sus listeners",
+            "explanation": "No cumple: el NLB funciona en la capa 4; las condiciones de ruta y de host son del ALB."
+          },
+          {
+            "id": "b",
+            "text": "El ALB evalúa las reglas de sus listeners por prioridad y enruta según el contenido de la petición",
+            "explanation": "Cumple: cada regla tiene prioridad, condiciones y acciones, y se evalúan por prioridad."
+          },
+          {
+            "id": "c",
+            "text": "El NLB admite direcciones IP estáticas y una Elastic IP por subred si es de cara a Internet",
+            "explanation": "Cumple: cada nodo obtiene una IP estática y puede asociarse una Elastic IP por subred."
+          },
+          {
+            "id": "d",
+            "text": "El ALB solo admite instancias EC2 como destinos y no admite funciones Lambda ni direcciones IP",
+            "explanation": "No cumple: el ALB admite registrar funciones Lambda y direcciones IP como destinos."
+          },
+          {
+            "id": "e",
+            "text": "Los grupos de destino de un NLB solo admiten el protocolo TCP",
+            "explanation": "No cumple: admiten TCP, UDP, TCP_UDP, TLS, QUIC y TCP_QUIC."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-2-quiz-07",
+      "title": "Qué es cierto del ALB y del NLB",
+      "statement": "Un equipo compara el ALB y el NLB para varias cargas. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "ALB",
+        "NLB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "El GWLB combina un gateway de red transparente con el reparto de tráfico y escala los appliances virtuales",
+            "explanation": "Cumple: es la descripción oficial del GWLB para firewalls, detección de intrusiones e inspección de paquetes."
+          },
+          {
+            "id": "b",
+            "text": "El GWLB intercambia el tráfico con sus appliances mediante HTTP en el puerto 80",
+            "explanation": "No cumple: usa el protocolo GENEVE en el puerto 6081."
+          },
+          {
+            "id": "c",
+            "text": "El endpoint del GWLB debe crearse en la misma subred que los servidores de aplicación",
+            "explanation": "No cumple: el endpoint y los servidores se crean en subredes distintas para usar el endpoint como siguiente salto."
+          },
+          {
+            "id": "d",
+            "text": "El Classic Load Balancer es la generación actual que se recomienda para las cargas nuevas",
+            "explanation": "No cumple: es la generación anterior y se recomienda migrar a una actual."
+          },
+          {
+            "id": "e",
+            "text": "Un balanceador vigila la salud de sus destinos y enruta el tráfico solo a los que están sanos",
+            "explanation": "Cumple: es una función básica de Elastic Load Balancing, con health checks."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-3-2-quiz-08",
+      "title": "Qué es cierto del GWLB y de los balanceadores en general",
+      "statement": "Un arquitecto repasa el GWLB y las propiedades comunes de Elastic Load Balancing. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "GWLB",
+        "health checks",
+        "Classic"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "alb",
+            "term": "ALB",
+            "definition": "Capa 7: reglas por ruta, host y encabezados"
+          },
+          {
+            "id": "nlb",
+            "term": "NLB",
+            "definition": "Capa 4: TCP, UDP, TLS y QUIC, con IP estática"
+          },
+          {
+            "id": "gwlb",
+            "term": "GWLB",
+            "definition": "Capa 3: firewalls y otros appliances virtuales"
+          },
+          {
+            "id": "classic",
+            "term": "Classic Load Balancer",
+            "definition": "Generación anterior: se recomienda migrar"
+          },
+          {
+            "id": "listener",
+            "term": "Listener",
+            "definition": "Comprueba las conexiones con un protocolo y un puerto"
+          },
+          {
+            "id": "grupo-destino",
+            "term": "Grupo de destino",
+            "definition": "Agrupa destinos registrados y sus health checks"
+          },
+          {
+            "id": "geneve",
+            "term": "GENEVE en el puerto 6081",
+            "definition": "Protocolo entre el GWLB y sus appliances"
+          },
+          {
+            "id": "elastic-ip",
+            "term": "Una Elastic IP por subred",
+            "definition": "IP estática de un NLB con acceso a Internet"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada balanceador, componente o protocolo de Elastic Load Balancing con el caso que resuelve. Si dudas, pregúntate qué capa del modelo OSI usa el tráfico y si hay que enrutar por contenido, ofrecer IP estática o escalar appliances.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Tipo de balanceador: ALB, NLB, GWLB y Classic",
+              "Piezas de configuración: listener y grupo de destino",
+              "Protocolo con los appliances: GENEVE",
+              "Dirección fija de un NLB: la Elastic IP por subred"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-3-2-memoria-01",
+      "title": "Balanceador y caso que resuelve",
+      "statement": "Empareja cada balanceador, componente o protocolo de Elastic Load Balancing con el caso que resuelve.",
+      "concepts": [
+        "ALB",
+        "NLB",
+        "GWLB",
+        "listener"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-3-2-reflexion-01",
+      "title": "Reflexión: qué balanceador y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, un sitio web con varios servicios por ruta, un servicio TCP o UDP con una dirección IP fija, o una cadena de firewalls virtuales) y escribe un registro breve de decisión sobre qué balanceador de Elastic Load Balancing usarías, en 5 a 7 líneas:\n\n1) Decisión: qué tipo de balanceador (ALB, NLB o GWLB) elegirías y qué característica del tráfico lo decide (la capa, la ruta de la URL, el protocolo, la IP estática o los appliances).\n\n2) Alternativa descartada: otro tipo de balanceador que parecía válido (por ejemplo, un NLB para enrutar por ruta de la URL, o un ALB para insertar firewalls virtuales) y la razón por la que lo descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (reglas de listener, grupos de destino con sus health checks, zonas habilitadas y balanceo entre zonas, subredes del endpoint del GWLB).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial de Elastic Load Balancing (ALB, NLB o GWLB) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, el balanceador y la característica del tráfico que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "Elastic Load Balancing",
+        "decisión",
+        "ALB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html",
+        "https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html"
+      ],
+      "order": 19
+    }
+  ]
+}
