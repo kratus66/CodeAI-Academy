@@ -1,0 +1,1434 @@
+{
+  "code": "AWS-U2.5.3",
+  "lessons": [
+    {
+      "slug": "aws-u2-5-3-dynamodb-claves-modos-de-capacidad-indices-dax-streams-y-tablas-globales",
+      "title": "DynamoDB: claves, modos de capacidad, índices, DAX, streams y tablas globales",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon DynamoDB es una base de datos NoSQL sin servidor, totalmente administrada y distribuida, con rendimiento de milisegundos de un solo dígito a cualquier escala. No admite JOIN y la guía recomienda desnormalizar el modelo para reducir los viajes a la base de datos. Por eso el diseño empieza por los patrones de acceso: primero decides qué consultas hará la aplicación y después qué claves e índices las resuelven. Esta unidad conecta seis piezas: la clave primaria, los modos de capacidad, los índices secundarios, DAX como caché en memoria, DynamoDB Streams para capturar cambios y las tablas globales para replicar entre Regiones. En el laboratorio de la unidad diseñarás claves e índices para que cada patrón se resuelva con una consulta por clave y nunca con un recorrido completo de la tabla."
+        },
+        {
+          "type": "list",
+          "title": "Las seis piezas que esta unidad conecta",
+          "items": [
+            "Clave primaria: simple (solo clave de partición) o compuesta (clave de partición y clave de ordenación); identifica cada elemento y decide dónde se almacena.",
+            "Modo de capacidad: bajo demanda (sin planificar capacidad, pago por solicitud) o aprovisionado (indicas lecturas y escrituras por segundo).",
+            "Índices secundarios: claves alternativas para consultar; el global (GSI) puede tener otra clave de partición y el local (LSI) comparte la de la tabla.",
+            "DAX: caché en memoria compatible con la API de DynamoDB para lecturas eventualmente consistentes en microsegundos.",
+            "DynamoDB Streams: registro ordenado de los cambios de los elementos, que se conserva hasta 24 horas.",
+            "Tablas globales: replicación multirregión y multiactiva gestionada, en la que cualquier réplica atiende lecturas y escrituras."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Clave primaria: simple o compuesta",
+          "text": "Al crear una tabla debes indicar su clave primaria, que identifica de forma única cada elemento. La clave simple consta de un solo atributo, la clave de partición: DynamoDB usa su valor como entrada de una función hash interna cuya salida decide en qué partición (almacenamiento físico interno) se guarda el elemento, y dos elementos no pueden compartir ese valor. La clave compuesta añade una clave de ordenación: varios elementos pueden tener el mismo valor de clave de partición, siempre que difieran en la de ordenación, y se almacenan juntos y ordenados por ella. Con una clave compuesta, dar solo la clave de partición recupera todos los elementos de ese valor, y dar además un rango de la clave de ordenación recupera un subconjunto. Los atributos de la clave primaria deben ser escalares y solo pueden ser de tipo cadena, número o binario. Fuera de la clave, la tabla no tiene esquema: cada elemento puede tener sus propios atributos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Modos de capacidad: bajo demanda o aprovisionado",
+          "text": "El modo de capacidad determina cómo se gestiona la capacidad de la tabla y cómo se cobran las lecturas y escrituras. El modo bajo demanda es una opción sin servidor: creas la tabla sin planificar capacidad, sin monitorizar el uso y sin configurar políticas de escalado, y se cobra por solicitud. La página lo describe como el modo por defecto y recomendado para la mayoría de las cargas. En el modo aprovisionado indicas las lecturas y escrituras por segundo que necesita la aplicación y se te cobra la capacidad por hora que has aprovisionado, no la que consumes; sirve para gobernar el gasto y obtener un coste predecible, y la página lo aconseja para cargas estables con crecimiento predecible y capacidad que puedes prever con fiabilidad. Ojo: la página de modos de capacidad no describe el autoescalado de la capacidad aprovisionada (la introducción solo cita AWS Auto Scaling entre las integraciones), así que consulta su documentación propia antes de afirmar cómo funciona."
+        },
+        {
+          "type": "paragraph",
+          "title": "Índices secundarios: GSI y LSI",
+          "text": "Un índice secundario es una estructura de datos con un subconjunto de atributos de la tabla y una clave alternativa que permite consultar por atributos distintos de la clave primaria. Cada índice pertenece a una sola tabla base y DynamoDB lo mantiene automáticamente. El índice secundario global (GSI) tiene una clave de partición y, opcionalmente, una de ordenación que pueden ser distintas de las de la tabla; sus consultas abarcan todos los datos de la tabla, se guarda en su propio espacio de particiones, escala por separado, solo admite consistencia eventual, tiene su propia capacidad y puede crearse o borrarse con la tabla ya existente. El índice secundario local (LSI) comparte la clave de partición de la tabla y cambia la de ordenación, que debe ser un atributo que no sea clave de la tabla; exige una clave compuesta, solo se crea junto con la tabla (no se puede añadir ni borrar después), permite elegir consistencia fuerte y limita a 10 GB el tamaño total de los elementos indexados por cada valor de clave de partición. Según la página consultada el 2026-11-22, la cuota por defecto es de 20 GSI y 5 LSI por tabla; son cuotas, así que verifícalas en la guía vigente."
+        },
+        {
+          "type": "paragraph",
+          "title": "Proyecciones: qué atributos devuelve un índice",
+          "text": "Al crear un índice indicas qué atributos se copian, o proyectan, desde la tabla base. Como mínimo se proyectan los atributos clave de la tabla, y los de la clave del índice también están siempre en él; el resto se elige por atributo. Esto decide qué puedes pedir al consultar. En una consulta o recorrido de un GSI solo puedes solicitar los atributos proyectados: DynamoDB no obtiene ningún atributo de la tabla. En un LSI sí puedes pedir atributos no proyectados, y DynamoDB los obtiene de la tabla automáticamente. El arnés de laboratorio modela tres proyecciones, KEYS_ONLY, INCLUDE (con una lista de atributos) y ALL, y señala como problema cualquier atributo requerido que quede fuera; esa forma de describirlas es una convención del evaluador dynamodb, no un texto de la guía. Un patrón que ninguna clave de la tabla ni de sus índices puede resolver con una consulta solo se resolvería con un recorrido completo, y el arnés lo marca como problema."
+        },
+        {
+          "type": "paragraph",
+          "title": "DAX: caché en memoria delante de la tabla",
+          "text": "DynamoDB Accelerator (DAX) es un servicio de caché compatible con DynamoDB que ofrece rendimiento en memoria para lecturas eventualmente consistentes. Reduce los tiempos de respuesta de milisegundos de un solo dígito a microsegundos, es compatible con la API de DynamoDB (requiere cambios funcionales mínimos en una aplicación existente) y, en cargas con muchas lecturas o con picos, puede reducir la capacidad de lectura que habría que sobredimensionar. La página lo recomienda para lecturas que exigen la mayor rapidez, para pocos elementos leídos mucho más que los demás (el ejemplo es una clave caliente durante una venta de un día), para cargas de lectura intensiva sensibles al coste y para lecturas repetidas sobre un conjunto grande. Y lo desaconseja cuando se necesitan lecturas fuertemente consistentes, cuando no hacen falta microsegundos ni descargar lecturas repetidas, en cargas con muchas escrituras y en aplicaciones sin muchas lecturas repetidas: según la página consultada el 2026-11-22, DAX rinde mejor con tasas de acierto de caché superiores al 90 %. Funciona solo en la plataforma EC2-VPC y admite cifrado en reposo y en tránsito."
+        },
+        {
+          "type": "paragraph",
+          "title": "DynamoDB Streams: capturar los cambios",
+          "text": "DynamoDB Streams captura una secuencia ordenada en el tiempo de las modificaciones a nivel de elemento de una tabla y la guarda en un registro durante un máximo de 24 horas, casi en tiempo real. Cada vez que una aplicación crea, actualiza o borra un elemento se escribe un registro de flujo; cada registro aparece una sola vez y, para cada elemento, en el mismo orden que sus modificaciones. Al activarlo eliges qué información se escribe: solo los atributos clave (KEYS_ONLY), el elemento después del cambio (NEW_IMAGE), el elemento antes del cambio (OLD_IMAGE) o ambos (NEW_AND_OLD_IMAGES). Ese tipo de vista no se puede editar con el flujo ya creado: hay que desactivarlo y crear otro. Activarlo no afecta al rendimiento de la tabla porque funciona de forma asíncrona. Los flujos se leen desde un endpoint propio, distinto del de las tablas. Un uso típico es un desencadenador de AWS Lambda que se ejecuta con cada registro nuevo; la página cita también la replicación de datos, las vistas materializadas y el análisis."
+        },
+        {
+          "type": "paragraph",
+          "title": "Tablas globales: varias Regiones, todas escriben",
+          "text": "Las tablas globales de DynamoDB son una función totalmente administrada, multirregión y multiactiva: replican automáticamente los datos de la tabla entre Regiones de AWS y, opcionalmente, entre cuentas, sin que construyas ni mantengas tu propia replicación. Cualquier réplica puede atender lecturas y escrituras, y usan las API de DynamoDB existentes, por lo que no hacen falta cambios en la aplicación. Sirven para continuidad del negocio y alta disponibilidad: si el procesamiento se interrumpe en una Región se puede desviar el tráfico a otra con un objetivo de punto de recuperación (RPO) bajo o nulo. Al crearlas eliges el modo de consistencia: consistencia eventual multirregión (MREC), que es el valor por defecto, o consistencia fuerte multirregión (MRSC). Una tabla global no puede mezclar réplicas con modos distintos y el modo no se puede cambiar después de crearla. Hay dos modelos de cuenta, la misma cuenta o varias cuentas, y la configuración con MRSC solo admite el de la misma cuenta."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de los patrones de acceso a las claves",
+          "text": "Requisito: una tienda necesita (1) los pedidos de un cliente, (2) un pedido concreto de un cliente, (3) los pedidos de un cliente en un rango, (4) los pedidos de todos los clientes en un estado, ordenados por fecha, y (5) los pedidos que contienen un producto. Decisión 1: la clave primaria compuesta, con clienteId de partición y pedidoId de ordenación, resuelve (1), (2) y (3) sin ningún índice, porque dar solo la partición devuelve todos los elementos del cliente y un rango de la ordenación devuelve un subconjunto. Decisión 2: (4) y (5) usan otra clave de partición, así que cada uno necesita un índice secundario global, con estado y productoId como claves de partición y fechaPedido como clave de ordenación. Decisión 3: si (4) debe mostrar el total, el GSI debe proyectar el atributo total, porque un GSI no lee atributos de la tabla. En el arnés, aws.dynamodb.validateTable comprueba el modelo de la tabla y aws.dynamodb.planAccessPatterns devuelve, para cada patrón, la operación (GetItem o Query), el índice y los problemas. Ojo: la forma del modelo (partitionKey, sortKey, gsis, lsis, proyecciones) y de los patrones (keyCondition con attribute y operator) es una convención del evaluador dynamodb; los conceptos salen de las páginas oficiales."
+        },
+        {
+          "type": "code",
+          "title": "Una tabla de pedidos y sus índices, como valor",
+          "language": "typescript",
+          "code": "// Tabla de pedidos: clave compuesta y dos índices globales, uno por patrón que no cabe en la clave primaria.\nexport const tabla = {\n  partitionKey: \"clienteId\",\n  sortKey: \"pedidoId\",\n  gsis: [\n    // Pedidos por estado, ordenados por fecha; proyecta total porque un GSI no lee atributos de la tabla.\n    { name: \"EstadoFechaIndex\", partitionKey: \"estado\", sortKey: \"fechaPedido\", projection: { type: \"INCLUDE\", attributes: [\"total\"] } },\n    // Pedidos por producto; con solo las claves basta.\n    { name: \"ProductoFechaIndex\", partitionKey: \"productoId\", sortKey: \"fechaPedido\", projection: { type: \"KEYS_ONLY\" } },\n  ],\n};\n\n// Con el arnés: aws.dynamodb.validateTable(tabla) debe dar [] y\n// aws.dynamodb.planAccessPatterns(tabla, patrones) devuelve, por patrón, { operation, index, problems }.\n// Un patrón sin clave ni índice que lo resuelva devuelve operation: null y un problema (solo se resolvería con un recorrido completo)."
+        },
+        {
+          "type": "mermaid",
+          "title": "Del patrón de acceso a la clave o al índice",
+          "code": "flowchart TD\n  P[\"Patrón de acceso\"] --> K{\"¿Lo resuelve la clave primaria de la tabla?\"}\n  K -->|\"sí\"| T[\"Consulta sobre la tabla: partición en igualdad, y rango opcional de la ordenación\"]\n  K -->|\"no\"| I{\"¿Misma clave de partición y otra de ordenación, y la tabla aún no existe?\"}\n  I -->|\"sí\"| L[\"LSI: se crea con la tabla; admite consistencia fuerte\"]\n  I -->|\"no\"| G[\"GSI: otra clave de partición; se puede añadir después; consistencia eventual\"]\n  L --> R[\"Proyección: ¿están en el índice todos los atributos que pide el patrón?\"]\n  G --> R\n  R -->|\"un GSI no los lee de la tabla\"| X[\"Proyectarlos en el índice\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir la pieza equivocada para el problema",
+          "text": "Si una pregunta pide lecturas en microsegundos sobre elementos muy leídos con consistencia eventual, la respuesta es DAX, no un índice ni una tabla global. Si pide reaccionar a cada cambio de un elemento, piensa en DynamoDB Streams con una función Lambda. Si pide que cualquier Región acepte escrituras con replicación gestionada, son las tablas globales. Y si el tráfico es impredecible y no quieres planificar capacidad, el modo bajo demanda: el aprovisionado exige indicar lecturas y escrituras por segundo y se cobra lo aprovisionado, no lo consumido."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: resolver un patrón nuevo con un recorrido completo de la tabla",
+          "text": "Causa: el patrón consulta por un atributo que no es clave (por ejemplo, el estado del pedido) y no hay ningún índice que lo tenga como clave. Consecuencia: ninguna clave de la tabla admite la condición, el patrón solo se resolvería con un recorrido completo y el arnés devuelve operación nula y un problema. Solución: diseña el índice a partir del patrón, con el atributo consultado como clave de partición del GSI (o como clave de ordenación de un LSI si la partición es la de la tabla), y vuelve a ejecutar planAccessPatterns."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: esperar que un GSI lea de la tabla los atributos que no proyecta",
+          "text": "Causa: crear un GSI con proyección de solo claves y consultarlo pidiendo otros atributos, como el total del pedido. Consecuencia: en un GSI solo puedes solicitar los atributos proyectados, DynamoDB no obtiene ninguno de la tabla, y el arnés señala los atributos que faltan. Solución: proyecta en el índice exactamente los atributos que el patrón necesita (INCLUDE) o cambia el patrón; en un LSI los no proyectados se leerían de la tabla, pero conviene proyectarlos igualmente."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: querer añadir un LSI a una tabla que ya existe",
+          "text": "Causa: asumir que un índice local se añade igual que uno global cuando aparece un patrón nuevo con la misma clave de partición. Consecuencia: un LSI solo se crea al crear la tabla y no se puede añadir ni borrar después, de modo que habría que recrear la tabla. Solución: si la tabla ya existe, crea un GSI; si la estás diseñando y necesitas consistencia fuerte con otra clave de ordenación, decide el LSI antes de crearla."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Diseñar una tabla de DynamoDB cuyas claves y cuyos índices resuelvan cada patrón de acceso con una consulta por clave, elegir el modo de capacidad y decidir cuándo añadir DAX, DynamoDB Streams o tablas globales, comprobando el diseño con el evaluador dynamodb del arnés. Prepara el examen SAA-C03, dominio 3 (Diseñar arquitecturas de alto rendimiento). Criterio: las pruebas de los laboratorios pasan y sabes explicar, para cada patrón de acceso, qué clave o índice lo resuelve y por qué."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y sigue el ejemplo resuelto, de los patrones de acceso a las claves. Explica con tus palabras, sin mirar el texto, el diagrama «Del patrón de acceso a la clave o al índice». Después responde: si una tabla ya existe y aparece un patrón nuevo que consulta por un atributo que no es clave, ¿qué añades y por qué no puede ser un índice local?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Tabla de pedidos con cinco patrones de acceso»: la tabla inicial tiene un índice que no proyecta un atributo que el patrón necesita y falta el índice de uno de los patrones. Empieza por llamar a aws.dynamodb.validateTable y aws.dynamodb.planAccessPatterns y lee los problemas que devuelve el arnés. Usa las pistas por niveles solo si te atascas. Criterio de paso: la tabla es válida, ningún patrón cae en un recorrido completo y no queda ningún problema de proyección."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Tickets de soporte: claves, índice local e índices globales». Decide qué patrón se resuelve con la clave primaria, cuál con un índice local y cuáles con índices globales, y qué atributos proyecta cada índice. Criterio de paso: todas las comprobaciones pasan y justificas por escrito cada índice que has añadido o corregido."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente que explique por qué una consulta a un índice secundario global no devuelve un atributo que sí existe en la tabla, y audita su respuesta contra la página de índices secundarios (consultada con fecha) antes de aceptarla. Anota qué dice la guía sobre los atributos proyectados en un GSI y en un LSI. Resuelve también «Depurar el ranking que no muestra el apodo» y escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué diferencia hay entre una clave primaria simple y una compuesta; qué obtienes al dar solo la clave de partición y qué al añadir un rango de la de ordenación; cuándo conviene cada modo de capacidad; qué diferencias hay entre un GSI y un LSI; y para qué sirven DAX, DynamoDB Streams y las tablas globales. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la tienda abre una segunda Región y necesita que los clientes de cada Región lean y escriban localmente, además de mostrar la ficha de un producto muy visitado en microsegundos. Decide qué piezas añades (tablas globales, DAX) y qué consecuencias tienen para las lecturas fuertemente consistentes. Pregunta de cierre: un patrón nuevo pide los pedidos de un cliente ordenados por importe, con la tabla ya creada; ¿qué compruebas primero y qué índice usas?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-dynamodb-que-es",
+          "order": 0,
+          "note": "Fuente previa de DynamoDB: qué es, sin servidor, sin JOIN y modo bajo demanda."
+        },
+        {
+          "resourceSlug": "aws-dynamodb-claves",
+          "order": 1,
+          "note": "Fuente de la clave primaria: simple y compuesta, tipos permitidos y cuotas de índices."
+        },
+        {
+          "resourceSlug": "aws-dynamodb-modos-de-capacidad",
+          "order": 2,
+          "note": "Fuente de los modos de capacidad: bajo demanda y aprovisionado, y cuándo conviene cada uno."
+        },
+        {
+          "resourceSlug": "aws-dynamodb-indices",
+          "order": 3,
+          "note": "Fuente de los índices secundarios: GSI frente a LSI, proyecciones y cuotas."
+        },
+        {
+          "resourceSlug": "aws-dynamodb-dax",
+          "order": 4,
+          "note": "Fuente de DAX: casos de uso, casos no recomendados y notas de uso."
+        },
+        {
+          "resourceSlug": "aws-dynamodb-streams",
+          "order": 5,
+          "note": "Fuente de DynamoDB Streams: registros, tipos de vista, retención de 24 horas y lectura."
+        },
+        {
+          "resourceSlug": "aws-dynamodb-tablas-globales",
+          "order": 6,
+          "note": "Fuente de las tablas globales: multiactivas, modos de consistencia y modelos de cuenta."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 7,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Simple: solo clave de partición, y no hay dos elementos con el mismo valor. Compuesta: clave de partición y de ordenación; varios elementos comparten partición si difieren en la ordenación. Dar solo la partición recupera todos sus elementos; añadir un rango de la ordenación recupera un subconjunto. Los atributos de clave son cadena, número o binario."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-tarjeta-01",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Clave primaria simple y compuesta",
+      "statement": "¿Qué dos tipos de clave primaria admite DynamoDB y qué obtienes al consultar con cada parte?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "clave de partición",
+        "clave de ordenación"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Bajo demanda: sin servidor, sin planificar capacidad y con pago por solicitud; es el modo por defecto y recomendado para la mayoría de las cargas. Aprovisionado: indicas lecturas y escrituras por segundo y se cobra la capacidad por hora aprovisionada, no la consumida; para cargas estables con crecimiento predecible y capacidad que se puede prever."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-tarjeta-02",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Modos de capacidad",
+      "statement": "¿Cuándo conviene el modo bajo demanda y cuándo el aprovisionado?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "bajo demanda",
+        "aprovisionado"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/capacity-mode.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "GSI: otra clave de partición, abarca toda la tabla, capacidad propia, solo consistencia eventual y se puede añadir o borrar después. LSI: misma partición y otra ordenación, se crea solo con la tabla, admite consistencia fuerte y limita a 10 GB los elementos por valor de partición. Cuotas por defecto a 2026-11-22: 20 GSI y 5 LSI."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-tarjeta-03",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: GSI frente a LSI",
+      "statement": "¿En qué se diferencian un índice secundario global y uno local?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "GSI",
+        "LSI"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Siempre las claves de la tabla y las del índice, más los atributos que proyectes. En un GSI solo puedes pedir los proyectados: DynamoDB no lee nada de la tabla. En un LSI puedes pedir los no proyectados y DynamoDB los obtiene de la tabla. Los atributos del patrón de acceso deben estar proyectados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-tarjeta-04",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Proyecciones de un índice",
+      "statement": "¿Qué atributos contiene un índice secundario y qué pasa con los no proyectados?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "proyección",
+        "GSI"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Caché en memoria compatible con la API de DynamoDB: baja las lecturas eventualmente consistentes de milisegundos a microsegundos y puede reducir la capacidad de lectura que hay que sobredimensionar. No conviene con lecturas fuertemente consistentes, con muchas escrituras ni con pocas lecturas repetidas; rinde mejor con aciertos de caché superiores al 90 % (según la página, 2026-11-22)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-tarjeta-05",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: DAX",
+      "statement": "¿Qué es DAX y cuándo no conviene usarlo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "DAX",
+        "caché"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una secuencia ordenada de las modificaciones a nivel de elemento (crear, actualizar, borrar), casi en tiempo real y con un registro que se conserva hasta 24 horas. Cada registro aparece una vez y en el orden de las modificaciones de cada elemento. El tipo de vista (solo claves, imagen nueva, anterior o ambas) no se edita en un flujo ya creado."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-tarjeta-06",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: DynamoDB Streams",
+      "statement": "¿Qué captura DynamoDB Streams y durante cuánto tiempo?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Streams",
+        "registro de cambios"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Replicación gestionada multirregión y multiactiva, opcionalmente entre cuentas: cualquier réplica atiende lecturas y escrituras con las API existentes. El modo de consistencia es MREC (por defecto) o MRSC; no se mezclan réplicas de modos distintos y el modo no cambia tras la creación. MRSC solo admite la misma cuenta."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-tarjeta-07",
+      "type": "FLASHCARD",
+      "title": "Tarjeta: Tablas globales",
+      "statement": "¿Qué ofrecen las tablas globales de DynamoDB y qué no se puede cambiar tras crearlas?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "tablas globales",
+        "MREC",
+        "MRSC"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Ranking de un juego: jugadores por puntuación dentro de cada juego.\nexport const tabla = {\n  partitionKey: \"jugadorId\",\n  sortKey: \"juego\",\n  gsis: [\n    {\n      name: \"JuegoPuntosIndex\",\n      partitionKey: \"juego\",\n      sortKey: \"puntos\",\n      projection: { type: \"KEYS_ONLY\" },\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Ranking de un juego: jugadores por puntuación dentro de cada juego.\nexport const tabla = {\n  partitionKey: \"jugadorId\",\n  sortKey: \"juego\",\n  gsis: [\n    {\n      name: \"JuegoPuntosIndex\",\n      partitionKey: \"juego\",\n      sortKey: \"puntos\",\n      projection: { type: \"INCLUDE\", attributes: [\"apodo\"] },\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta aws.dynamodb.planAccessPatterns con el patrón «mejoresDeUnJuego» (juego en igualdad y puntos con >=, pidiendo apodo y puntos) y lee los problemas que devuelve el arnés. Fíjate en qué dice sobre los atributos proyectados."
+        },
+        {
+          "level": 2,
+          "text": "En un índice secundario global solo puedes pedir los atributos proyectados: DynamoDB no obtiene ninguno de la tabla. El índice conserva siempre las claves de la tabla y las suyas, pero apodo no es una clave."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la proyección del índice JuegoPuntosIndex a INCLUDE con attributes: [\"apodo\"]. No cambies las claves de la tabla ni las del índice, y no uses ALL."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la tabla es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.dynamodb.validateTable(tabla), []);"
+          }
+        },
+        {
+          "name": "el ranking se resuelve con una consulta al índice y sin problemas",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"perfilDeJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"juego\", operator: \"=\" }], requiredAttributes: [\"apodo\"] },\n  { name: \"mejoresDeUnJuego\", keyCondition: [{ attribute: \"juego\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"apodo\", \"puntos\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[1].operation, \"Query\");\nassert.strictEqual(planes[1].index, \"JuegoPuntosIndex\");\nassert.deepStrictEqual(planes[1].problems, [], \"El índice debe proyectar los atributos que pide el patrón\");"
+          }
+        },
+        {
+          "name": "el perfil de un jugador sigue resolviéndose con una lectura directa en la tabla",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"perfilDeJugador\", keyCondition: [{ attribute: \"jugadorId\", operator: \"=\" }, { attribute: \"juego\", operator: \"=\" }], requiredAttributes: [\"apodo\"] },\n  { name: \"mejoresDeUnJuego\", keyCondition: [{ attribute: \"juego\", operator: \"=\" }, { attribute: \"puntos\", operator: \">=\" }], requiredAttributes: [\"apodo\", \"puntos\"] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[0].operation, \"GetItem\");\nassert.strictEqual(planes[0].index, null);\nassert.deepStrictEqual(planes[0].problems, []);"
+          }
+        },
+        {
+          "name": "el índice proyecta solo el atributo necesario, no todos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const indice = tabla.gsis.find((g) => g.name === \"JuegoPuntosIndex\");\nassert.ok(indice, \"El índice JuegoPuntosIndex debe seguir existiendo\");\nassert.strictEqual(indice.projection.type, \"INCLUDE\");\nassert.deepStrictEqual(indice.projection.attributes, [\"apodo\"]);"
+          }
+        },
+        {
+          "name": "las claves de la tabla y del índice no han cambiado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const indice = tabla.gsis.find((g) => g.name === \"JuegoPuntosIndex\");\nassert.strictEqual(tabla.partitionKey, \"jugadorId\");\nassert.strictEqual(tabla.sortKey, \"juego\");\nassert.strictEqual(indice.partitionKey, \"juego\");\nassert.strictEqual(indice.sortKey, \"puntos\");\nassert.strictEqual(tabla.gsis.length, 1);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-debug-01",
+      "type": "DEBUG",
+      "title": "Depurar el ranking que no muestra el apodo",
+      "statement": "Un juego guarda una puntuación por jugador y juego en una tabla de DynamoDB (`export const tabla = {...}`, con el modelo del evaluador dynamodb del arnés). El ranking de un juego consulta el índice `JuegoPuntosIndex` (juego en igualdad y puntos con `>=`) y debe mostrar el `apodo` y los `puntos`, pero el arnés indica que el ranking no puede devolver el apodo. El equipo asumía que DynamoDB lo leería de la tabla base. Localiza el defecto contrastando lo que devuelve un índice secundario global con la página de índices secundarios y corrígelo con el cambio mínimo: sin cambiar las claves, sin añadir índices, sin proyectar todos los atributos y sin cambiar el nombre del valor exportado. Explica por qué fallaba y cómo lo comprobaste. Recuerda: la forma del modelo es una convención del evaluador dynamodb; los conceptos salen de las páginas oficiales.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "GSI",
+        "proyección",
+        "atributos proyectados"
+      ],
+      "estimatedMin": 25,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tabla de pedidos de una tienda: clave compuesta y un índice global por estado.\nexport const tabla = {\n  partitionKey: \"clienteId\",\n  sortKey: \"pedidoId\",\n  gsis: [\n    {\n      name: \"EstadoFechaIndex\",\n      partitionKey: \"estado\",\n      sortKey: \"fechaPedido\",\n      projection: { type: \"KEYS_ONLY\" },\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Tabla de pedidos de una tienda: clave compuesta y un índice global por estado.\nexport const tabla = {\n  partitionKey: \"clienteId\",\n  sortKey: \"pedidoId\",\n  gsis: [\n    {\n      name: \"EstadoFechaIndex\",\n      partitionKey: \"estado\",\n      sortKey: \"fechaPedido\",\n      projection: { type: \"INCLUDE\", attributes: [\"total\"] },\n    },\n    {\n      name: \"ProductoFechaIndex\",\n      partitionKey: \"productoId\",\n      sortKey: \"fechaPedido\",\n      projection: { type: \"KEYS_ONLY\" },\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta aws.dynamodb.validateTable(tabla) y aws.dynamodb.planAccessPatterns(tabla, patrones) con los cinco patrones del enunciado y lee los problemas de cada plan. Fíjate en qué patrón devuelve operación nula y en cuál señala atributos sin proyectar."
+        },
+        {
+          "level": 2,
+          "text": "Hay dos defectos. El patrón por producto usa un atributo que no es clave de la tabla ni de ningún índice, así que solo se resolvería con un recorrido completo. Y el patrón por estado pide el total, que el índice por estado no proyecta (un GSI no lee atributos de la tabla)."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la proyección de EstadoFechaIndex a INCLUDE con attributes: [\"total\"] y añade un segundo GSI con productoId de partición, fechaPedido de ordenación y proyección KEYS_ONLY. No cambies las claves de la tabla ni uses ALL."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la tabla es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.dynamodb.validateTable(tabla), []);"
+          }
+        },
+        {
+          "name": "ningún patrón de acceso se queda sin resolver con una consulta por clave",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"pedidosDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"pedidoConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDeUnClienteEnUnRango\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"between\" }] },\n  { name: \"pedidosPorEstado\", keyCondition: [{ attribute: \"estado\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }], requiredAttributes: [\"total\"] },\n  { name: \"pedidosPorProducto\", keyCondition: [{ attribute: \"productoId\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nplanes.forEach((plan, i) => {\n  assert.notStrictEqual(plan.operation, null, \"El patrón «\" + patrones[i].name + \"» solo se resolvería con un recorrido completo: \" + plan.problems.join(\" \"));\n});"
+          }
+        },
+        {
+          "name": "todos los atributos que piden los patrones están en la clave o en la proyección",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"pedidosDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"pedidoConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDeUnClienteEnUnRango\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"between\" }] },\n  { name: \"pedidosPorEstado\", keyCondition: [{ attribute: \"estado\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }], requiredAttributes: [\"total\"] },\n  { name: \"pedidosPorProducto\", keyCondition: [{ attribute: \"productoId\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nplanes.forEach((plan, i) => {\n  assert.deepStrictEqual(plan.problems, [], \"Problemas en «\" + patrones[i].name + \"»\");\n});"
+          }
+        },
+        {
+          "name": "un pedido concreto se lee con la clave completa y los pedidos del cliente con una consulta sobre la tabla",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"pedidosDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"pedidoConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDeUnClienteEnUnRango\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"between\" }] },\n  { name: \"pedidosPorEstado\", keyCondition: [{ attribute: \"estado\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }], requiredAttributes: [\"total\"] },\n  { name: \"pedidosPorProducto\", keyCondition: [{ attribute: \"productoId\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[1].operation, \"GetItem\");\nassert.strictEqual(planes[1].index, null);\nassert.strictEqual(planes[0].operation, \"Query\");\nassert.strictEqual(planes[0].index, null);\nassert.strictEqual(planes[2].operation, \"Query\");\nassert.strictEqual(planes[2].index, null);"
+          }
+        },
+        {
+          "name": "los pedidos por estado usan un índice global con estado como clave de partición",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"pedidosDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"pedidoConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDeUnClienteEnUnRango\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"between\" }] },\n  { name: \"pedidosPorEstado\", keyCondition: [{ attribute: \"estado\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }], requiredAttributes: [\"total\"] },\n  { name: \"pedidosPorProducto\", keyCondition: [{ attribute: \"productoId\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[3].operation, \"Query\");\nconst indice = tabla.gsis.find((g) => g.name === planes[3].index);\nassert.ok(indice, \"El patrón por estado debe usar un índice global\");\nassert.strictEqual(indice.partitionKey, \"estado\");"
+          }
+        },
+        {
+          "name": "los pedidos por producto usan un índice global con productoId como clave de partición",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"pedidosDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"pedidoConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDeUnClienteEnUnRango\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"between\" }] },\n  { name: \"pedidosPorEstado\", keyCondition: [{ attribute: \"estado\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }], requiredAttributes: [\"total\"] },\n  { name: \"pedidosPorProducto\", keyCondition: [{ attribute: \"productoId\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[4].operation, \"Query\");\nconst indice = tabla.gsis.find((g) => g.name === planes[4].index);\nassert.ok(indice, \"El patrón por producto debe usar un índice global\");\nassert.strictEqual(indice.partitionKey, \"productoId\");"
+          }
+        },
+        {
+          "name": "ningún índice proyecta todos los atributos y todos los índices los usa algún patrón",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"pedidosDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"pedidoConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"=\" }] },\n  { name: \"pedidosDeUnClienteEnUnRango\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"pedidoId\", operator: \"between\" }] },\n  { name: \"pedidosPorEstado\", keyCondition: [{ attribute: \"estado\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }], requiredAttributes: [\"total\"] },\n  { name: \"pedidosPorProducto\", keyCondition: [{ attribute: \"productoId\", operator: \"=\" }, { attribute: \"fechaPedido\", operator: \">=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\ntabla.gsis.forEach((g) => {\n  assert.notStrictEqual(g.projection.type, \"ALL\", \"No proyectes todos los atributos: solo los que pide el patrón\");\n  assert.ok(planes.some((p) => p.index === g.name), \"El índice \" + g.name + \" no lo usa ningún patrón\");\n});"
+          }
+        },
+        {
+          "name": "la clave primaria de la tabla no ha cambiado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(tabla.partitionKey, \"clienteId\");\nassert.strictEqual(tabla.sortKey, \"pedidoId\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-lab-guiado-01",
+      "type": "LAB",
+      "title": "Tabla de pedidos con cinco patrones de acceso",
+      "statement": "Una tienda guarda sus pedidos en una tabla de DynamoDB con clave primaria `clienteId` (partición) y `pedidoId` (ordenación; empieza por la fecha, de modo que ordena cronológicamente). Debe resolver cinco patrones, todos con consultas por clave y ninguno con un recorrido completo: (1) los pedidos de un cliente, (2) un pedido concreto de un cliente, (3) los pedidos de un cliente en un rango de `pedidoId` (`between`), (4) los pedidos de todos los clientes en un `estado` desde una `fechaPedido` (`>=`), que debe devolver el atributo `total`, y (5) los pedidos que contienen un `productoId` desde una `fechaPedido` (`>=`). El código inicial exporta la tabla con defectos: corrígela con ayuda del arnés (`aws.dynamodb.validateTable` y `aws.dynamodb.planAccessPatterns`) sin cambiar la clave primaria, sin proyectar todos los atributos y sin cambiar el nombre del valor exportado (`export const tabla = { … }`). Recuerda: la forma del modelo de tabla y de los patrones (partitionKey, sortKey, gsis, lsis, projection; keyCondition con attribute y operator) es una convención del evaluador dynamodb; los conceptos de DynamoDB salen de las páginas oficiales.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "clave compuesta",
+        "GSI",
+        "proyección",
+        "patrón de acceso"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tabla de tickets de soporte: clave compuesta, un índice local y un índice global.\nexport const tabla = {\n  partitionKey: \"clienteId\",\n  sortKey: \"ticketId\",\n  lsis: [\n    {\n      name: \"PrioridadIndex\",\n      sortKey: \"ticketId\",\n      projection: { type: \"KEYS_ONLY\" },\n    },\n  ],\n  gsis: [\n    {\n      name: \"EquipoCreadoIndex\",\n      partitionKey: \"equipo\",\n      sortKey: \"creado\",\n      projection: { type: \"KEYS_ONLY\" },\n    },\n  ],\n};\n",
+      "solution": {
+        "code": "// Tabla de tickets de soporte: clave compuesta, un índice local y un índice global.\nexport const tabla = {\n  partitionKey: \"clienteId\",\n  sortKey: \"ticketId\",\n  lsis: [\n    {\n      name: \"PrioridadIndex\",\n      sortKey: \"prioridad\",\n      projection: { type: \"INCLUDE\", attributes: [\"asunto\"] },\n    },\n  ],\n  gsis: [\n    {\n      name: \"EquipoCreadoIndex\",\n      partitionKey: \"equipo\",\n      sortKey: \"creado\",\n      projection: { type: \"INCLUDE\", attributes: [\"estado\"] },\n    },\n    {\n      name: \"AgenteIndex\",\n      partitionKey: \"agenteId\",\n      projection: { type: \"KEYS_ONLY\" },\n    },\n  ],\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la tabla es válida según el validador",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.dynamodb.validateTable(tabla), []);"
+          }
+        },
+        {
+          "name": "ningún patrón de acceso se queda sin resolver con una consulta por clave",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"ticketsDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"ticketConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"ticketId\", operator: \"=\" }] },\n  { name: \"ticketsDeUnClientePorPrioridad\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"prioridad\", operator: \">=\" }], requiredAttributes: [\"asunto\"] },\n  { name: \"ticketsDeUnEquipoRecientes\", keyCondition: [{ attribute: \"equipo\", operator: \"=\" }, { attribute: \"creado\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n  { name: \"ticketsDeUnAgente\", keyCondition: [{ attribute: \"agenteId\", operator: \"=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nplanes.forEach((plan, i) => {\n  assert.notStrictEqual(plan.operation, null, \"El patrón «\" + patrones[i].name + \"» solo se resolvería con un recorrido completo: \" + plan.problems.join(\" \"));\n});"
+          }
+        },
+        {
+          "name": "todos los atributos que piden los patrones están en la clave o en la proyección",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"ticketsDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"ticketConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"ticketId\", operator: \"=\" }] },\n  { name: \"ticketsDeUnClientePorPrioridad\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"prioridad\", operator: \">=\" }], requiredAttributes: [\"asunto\"] },\n  { name: \"ticketsDeUnEquipoRecientes\", keyCondition: [{ attribute: \"equipo\", operator: \"=\" }, { attribute: \"creado\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n  { name: \"ticketsDeUnAgente\", keyCondition: [{ attribute: \"agenteId\", operator: \"=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nplanes.forEach((plan, i) => {\n  assert.deepStrictEqual(plan.problems, [], \"Problemas en «\" + patrones[i].name + \"»\");\n});"
+          }
+        },
+        {
+          "name": "un ticket concreto se lee con la clave completa y los de un cliente con una consulta sobre la tabla",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"ticketsDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"ticketConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"ticketId\", operator: \"=\" }] },\n  { name: \"ticketsDeUnClientePorPrioridad\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"prioridad\", operator: \">=\" }], requiredAttributes: [\"asunto\"] },\n  { name: \"ticketsDeUnEquipoRecientes\", keyCondition: [{ attribute: \"equipo\", operator: \"=\" }, { attribute: \"creado\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n  { name: \"ticketsDeUnAgente\", keyCondition: [{ attribute: \"agenteId\", operator: \"=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[1].operation, \"GetItem\");\nassert.strictEqual(planes[1].index, null);\nassert.strictEqual(planes[0].operation, \"Query\");\nassert.strictEqual(planes[0].index, null);"
+          }
+        },
+        {
+          "name": "los tickets de un cliente por prioridad se resuelven con un índice local con prioridad como ordenación",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"ticketsDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"ticketConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"ticketId\", operator: \"=\" }] },\n  { name: \"ticketsDeUnClientePorPrioridad\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"prioridad\", operator: \">=\" }], requiredAttributes: [\"asunto\"] },\n  { name: \"ticketsDeUnEquipoRecientes\", keyCondition: [{ attribute: \"equipo\", operator: \"=\" }, { attribute: \"creado\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n  { name: \"ticketsDeUnAgente\", keyCondition: [{ attribute: \"agenteId\", operator: \"=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[2].operation, \"Query\");\nconst local = (tabla.lsis ?? []).find((l) => l.name === planes[2].index);\nassert.ok(local, \"El patrón por prioridad debe usar un índice local\");\nassert.strictEqual(local.sortKey, \"prioridad\");"
+          }
+        },
+        {
+          "name": "los tickets de un equipo usan un índice global con equipo como clave de partición",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"ticketsDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"ticketConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"ticketId\", operator: \"=\" }] },\n  { name: \"ticketsDeUnClientePorPrioridad\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"prioridad\", operator: \">=\" }], requiredAttributes: [\"asunto\"] },\n  { name: \"ticketsDeUnEquipoRecientes\", keyCondition: [{ attribute: \"equipo\", operator: \"=\" }, { attribute: \"creado\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n  { name: \"ticketsDeUnAgente\", keyCondition: [{ attribute: \"agenteId\", operator: \"=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[3].operation, \"Query\");\nconst indice = (tabla.gsis ?? []).find((g) => g.name === planes[3].index);\nassert.ok(indice, \"El patrón por equipo debe usar un índice global\");\nassert.strictEqual(indice.partitionKey, \"equipo\");\nassert.strictEqual(indice.sortKey, \"creado\");"
+          }
+        },
+        {
+          "name": "los tickets de un agente usan un índice global con agenteId como clave de partición",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"ticketsDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"ticketConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"ticketId\", operator: \"=\" }] },\n  { name: \"ticketsDeUnClientePorPrioridad\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"prioridad\", operator: \">=\" }], requiredAttributes: [\"asunto\"] },\n  { name: \"ticketsDeUnEquipoRecientes\", keyCondition: [{ attribute: \"equipo\", operator: \"=\" }, { attribute: \"creado\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n  { name: \"ticketsDeUnAgente\", keyCondition: [{ attribute: \"agenteId\", operator: \"=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\nassert.strictEqual(planes[4].operation, \"Query\");\nconst indice = (tabla.gsis ?? []).find((g) => g.name === planes[4].index);\nassert.ok(indice, \"El patrón por agente debe usar un índice global\");\nassert.strictEqual(indice.partitionKey, \"agenteId\");"
+          }
+        },
+        {
+          "name": "ningún índice proyecta todos los atributos y todos los índices los usa algún patrón",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const patrones = [\n  { name: \"ticketsDeUnCliente\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }] },\n  { name: \"ticketConcreto\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"ticketId\", operator: \"=\" }] },\n  { name: \"ticketsDeUnClientePorPrioridad\", keyCondition: [{ attribute: \"clienteId\", operator: \"=\" }, { attribute: \"prioridad\", operator: \">=\" }], requiredAttributes: [\"asunto\"] },\n  { name: \"ticketsDeUnEquipoRecientes\", keyCondition: [{ attribute: \"equipo\", operator: \"=\" }, { attribute: \"creado\", operator: \">=\" }], requiredAttributes: [\"estado\"] },\n  { name: \"ticketsDeUnAgente\", keyCondition: [{ attribute: \"agenteId\", operator: \"=\" }] },\n];\nconst planes = aws.dynamodb.planAccessPatterns(tabla, patrones);\n[...(tabla.lsis ?? []), ...(tabla.gsis ?? [])].forEach((ix) => {\n  assert.notStrictEqual(ix.projection.type, \"ALL\", \"No proyectes todos los atributos: solo los que pide el patrón\");\n  assert.ok(planes.some((p) => p.index === ix.name), \"El índice \" + ix.name + \" no lo usa ningún patrón\");\n});"
+          }
+        },
+        {
+          "name": "la clave primaria de la tabla no ha cambiado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(tabla.partitionKey, \"clienteId\");\nassert.strictEqual(tabla.sortKey, \"ticketId\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "slug": "aws-u2-5-3-lab-autonomo-01",
+      "type": "LAB",
+      "title": "Tickets de soporte: claves, índice local e índices globales",
+      "statement": "Un servicio de soporte guarda tickets en una tabla de DynamoDB con clave primaria `clienteId` (partición) y `ticketId` (ordenación). Debe resolver cinco patrones con consultas por clave y ninguno con un recorrido completo: (1) los tickets de un cliente, (2) un ticket concreto de un cliente, (3) los tickets de un cliente desde una `prioridad` (`>=`), que debe devolver el `asunto`, (4) los tickets de un `equipo` desde una fecha `creado` (`>=`), que debe devolver el `estado`, y (5) los tickets de un `agenteId`. Aprovecha que la tabla aún no está creada: el patrón (3) debe resolverse con un índice local y los patrones (4) y (5) con índices globales; el patrón (5) no necesita clave de ordenación. Ningún índice debe proyectar todos los atributos ni quedar sin usar. La clave primaria no puede cambiar. Piensa qué exige la guía a la clave de ordenación de un índice local. El código inicial exporta la tabla con varios defectos: corrígelos sin cambiar el nombre del valor exportado (`export const tabla = { … }`). Recuerda: la forma del modelo de tabla y de los patrones es una convención del evaluador dynamodb; los conceptos de DynamoDB salen de las páginas oficiales.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "LSI",
+        "GSI",
+        "proyección",
+        "patrón de acceso"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una clave simple con solo el artista como clave de partición",
+            "explanation": "Descartada: con clave simple no hay dos elementos con el mismo valor de partición, así que no puede guardar varias canciones por artista."
+          },
+          {
+            "id": "b",
+            "text": "Una clave compuesta con el artista como partición y el título como ordenación",
+            "explanation": "Es la correcta: dar solo el artista recupera todas sus canciones y añadir un rango del título recupera un subconjunto."
+          },
+          {
+            "id": "c",
+            "text": "Una clave de ordenación sola, sin clave de partición",
+            "explanation": "Descartada: la clave primaria siempre incluye una clave de partición; la de ordenación solo existe junto a ella."
+          },
+          {
+            "id": "d",
+            "text": "Una clave simple cuyo atributo es una lista de títulos del artista",
+            "explanation": "Descartada: los atributos de la clave primaria deben ser escalares (cadena, número o binario), nunca una lista."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-3-quiz-01",
+      "title": "Clave para todos los elementos de un grupo y un subconjunto por rango",
+      "statement": "Una aplicación de música debe recuperar todas las canciones de un artista y, además, solo un subconjunto de ellas según un rango del título. ¿Qué clave primaria cumple MEJOR ambos requisitos?",
+      "concepts": [
+        "clave compuesta",
+        "clave de ordenación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Aprovisionado, fijando las lecturas y escrituras por segundo que cree necesitar",
+            "explanation": "Descartada: el modo aprovisionado obliga a indicar la capacidad y a prever el tráfico, que es justo lo que se quiere evitar."
+          },
+          {
+            "id": "b",
+            "text": "Aprovisionado, porque solo cobra la parte de la capacidad que se consume",
+            "explanation": "Descartada: el modo aprovisionado cobra la capacidad por hora que se ha aprovisionado, no la que se consume."
+          },
+          {
+            "id": "c",
+            "text": "Bajo demanda, después de indicar el máximo de solicitudes por segundo esperado",
+            "explanation": "Descartada: en el modo bajo demanda no se indica cuánto rendimiento se espera de lecturas y escrituras."
+          },
+          {
+            "id": "d",
+            "text": "Bajo demanda: crear la tabla sin planificar capacidad y pagar por solicitud",
+            "explanation": "Es la correcta: es serverless, sin planificación ni políticas de escalado, y es el modo por defecto recomendado."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-3-quiz-02",
+      "title": "Modo de capacidad sin planificar capacidad",
+      "statement": "Un equipo lanza una tabla nueva con tráfico imprevisible y quiere la MENOR carga de planificación y monitorización de la capacidad. ¿Qué configuración elige?",
+      "concepts": [
+        "bajo demanda",
+        "aprovisionado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/capacity-mode.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Modo aprovisionado, indicando las lecturas y escrituras por segundo previstas",
+            "explanation": "Es la correcta: la página lo aconseja para cargas estables y previsibles, y permite gobernar el gasto con un coste predecible."
+          },
+          {
+            "id": "b",
+            "text": "Modo bajo demanda, porque es el único que permite fijar un tope de solicitudes",
+            "explanation": "Descartada: es el modo aprovisionado el que sirve para mantenerse en un ritmo de solicitudes definido y obtener coste predecible."
+          },
+          {
+            "id": "c",
+            "text": "Modo bajo demanda, porque cobra capacidad por hora aunque no haya tráfico",
+            "explanation": "Descartada: el modo bajo demanda cobra por solicitud y escala hasta cero, de modo que sin tráfico no se paga rendimiento."
+          },
+          {
+            "id": "d",
+            "text": "Modo aprovisionado, porque solo factura el consumo real de la capacidad reservada",
+            "explanation": "Descartada: se factura la capacidad aprovisionada por hora, la consuma o no la aplicación."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-3-quiz-03",
+      "title": "Modo de capacidad para una carga estable y previsible",
+      "statement": "Una carga de DynamoDB es estable, crece de forma predecible y el equipo puede prever con fiabilidad su capacidad; quiere además un coste predecible. ¿Qué opción es la MÁS adecuada?",
+      "concepts": [
+        "aprovisionado",
+        "coste predecible"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/capacity-mode.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un índice global con clienteId de partición, porque admite consistencia fuerte",
+            "explanation": "Descartada: las consultas sobre un índice global solo admiten consistencia eventual."
+          },
+          {
+            "id": "b",
+            "text": "Un índice local que se añade cuando la tabla ya esté en producción",
+            "explanation": "Descartada: un índice local solo se crea junto con la tabla y no se puede añadir después."
+          },
+          {
+            "id": "c",
+            "text": "Un índice local con la misma clave de partición, creado con la tabla y con prioridad de ordenación",
+            "explanation": "Es la correcta: comparte la partición de la tabla, cambia la ordenación y permite elegir consistencia fuerte."
+          },
+          {
+            "id": "d",
+            "text": "Un índice global, porque consume capacidad de lectura de la tabla base",
+            "explanation": "Descartada: un índice global tiene su propia capacidad y sus consultas consumen la del índice, no la de la tabla."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-3-quiz-04",
+      "title": "Índice local o global según los requisitos de consistencia",
+      "statement": "Una tabla aún no creada tiene clave de partición clienteId. Debe poder consultar por clienteId ordenando por prioridad, con lecturas fuertemente consistentes. ¿Qué opción describe con MAYOR precisión la solución?",
+      "concepts": [
+        "LSI",
+        "consistencia fuerte"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear un índice local con estado como clave de partición",
+            "explanation": "Descartada: un índice local comparte la partición de la tabla y solo puede crearse junto con ella."
+          },
+          {
+            "id": "b",
+            "text": "Crear un índice global con estado como clave de partición",
+            "explanation": "Es la correcta: un GSI admite otra clave de partición y se puede crear con la tabla ya existente."
+          },
+          {
+            "id": "c",
+            "text": "Usar un índice secundario, que solo se puede leer con un recorrido completo",
+            "explanation": "Descartada: un índice secundario se lee con Query igual que una tabla, además de poder recorrerse."
+          },
+          {
+            "id": "d",
+            "text": "Crear un índice global y esperar que lea de la tabla los atributos no proyectados",
+            "explanation": "Descartada: en un índice global solo se pueden pedir los atributos proyectados; DynamoDB no lee ninguno de la tabla."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-3-quiz-05",
+      "title": "Nuevo patrón de acceso sobre una tabla que ya existe",
+      "statement": "Una tabla en producción debe resolver ahora «pedidos por estado» sin recorrer la tabla entera, con el MÍNIMO de cambios. ¿Qué opción cumple el requisito?",
+      "concepts": [
+        "GSI",
+        "patrón de acceso"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Activar DynamoDB Streams para que las lecturas se sirvan desde el flujo",
+            "explanation": "Descartada: Streams captura las modificaciones de los elementos; no acelera ni sirve lecturas de la tabla."
+          },
+          {
+            "id": "b",
+            "text": "Sobredimensionar la capacidad de lectura aprovisionada de la tabla",
+            "explanation": "Descartada: es la opción costosa que DAX evita; además no lleva las lecturas a microsegundos."
+          },
+          {
+            "id": "c",
+            "text": "Añadir un índice local, que guarda en memoria los elementos más leídos",
+            "explanation": "Descartada: un índice secundario es una clave alternativa con un subconjunto de atributos, no una caché en memoria."
+          },
+          {
+            "id": "d",
+            "text": "Colocar DAX delante de la tabla, compatible con la API de DynamoDB",
+            "explanation": "Es la correcta: DAX reduce a microsegundos las lecturas eventualmente consistentes y absorbe lecturas repetidas de claves calientes."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-3-quiz-06",
+      "title": "Acelerar lecturas repetidas de un elemento muy solicitado",
+      "statement": "Durante una oferta de un día, un único elemento recibe lecturas repetidas y la aplicación necesita respuestas en microsegundos con consistencia eventual. ¿Qué solución cumple MEJOR el requisito?",
+      "concepts": [
+        "DAX",
+        "clave caliente"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Los registros se leen desde el mismo endpoint que las tablas",
+            "explanation": "No cumple: AWS mantiene endpoints distintos para DynamoDB y para DynamoDB Streams en cada Región."
+          },
+          {
+            "id": "b",
+            "text": "Los registros se conservan hasta 24 horas",
+            "explanation": "Cumple: el registro de modificaciones se guarda un máximo de 24 horas y después se elimina."
+          },
+          {
+            "id": "c",
+            "text": "Activarlo reduce el rendimiento de la tabla porque opera de forma síncrona",
+            "explanation": "No cumple: opera de forma asíncrona y no tiene impacto en el rendimiento de la tabla."
+          },
+          {
+            "id": "d",
+            "text": "El tipo de vista se puede editar con el flujo ya creado",
+            "explanation": "No cumple: no se puede editar; hay que desactivar el flujo y crear uno nuevo."
+          },
+          {
+            "id": "e",
+            "text": "Puede capturar el elemento antes y después de la modificación",
+            "explanation": "Cumple: con NEW_AND_OLD_IMAGES se escriben la imagen anterior y la posterior."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-3-quiz-07",
+      "title": "Qué es cierto de DynamoDB Streams",
+      "statement": "Un equipo repasa DynamoDB Streams. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Streams",
+        "tipo de vista"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Cualquier réplica puede atender lecturas y escrituras",
+            "explanation": "Cumple: son multiactivas, y cada réplica sirve tanto lecturas como escrituras."
+          },
+          {
+            "id": "b",
+            "text": "Una misma tabla puede mezclar réplicas MREC y MRSC",
+            "explanation": "No cumple: una tabla global no puede contener réplicas con modos de consistencia distintos."
+          },
+          {
+            "id": "c",
+            "text": "Si no se indica modo de consistencia, se usa MREC",
+            "explanation": "Cumple: el valor por defecto es la consistencia eventual multirregión (MREC)."
+          },
+          {
+            "id": "d",
+            "text": "El modo de consistencia no se puede cambiar tras la creación",
+            "explanation": "Cumple: se elige al crear la tabla global y no se modifica después."
+          },
+          {
+            "id": "e",
+            "text": "El modo MRSC admite réplicas repartidas en varias cuentas",
+            "explanation": "No cumple: las tablas globales con MRSC solo admiten la configuración de la misma cuenta."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-3-quiz-08",
+      "title": "Qué es cierto de las tablas globales",
+      "statement": "Un equipo diseña una tabla global de DynamoDB. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "tablas globales",
+        "MREC",
+        "MRSC"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "todos",
+            "term": "Todos los elementos de un cliente",
+            "definition": "Clave de partición del cliente en igualdad, sobre la tabla y sin índice"
+          },
+          {
+            "id": "uno",
+            "term": "Un elemento concreto de un cliente",
+            "definition": "Clave primaria completa en igualdad, partición y ordenación"
+          },
+          {
+            "id": "rango",
+            "term": "Elementos de un cliente en un rango",
+            "definition": "Partición en igualdad y un rango sobre la clave de ordenación"
+          },
+          {
+            "id": "lsi",
+            "term": "Mismos elementos con otra ordenación y consistencia fuerte",
+            "definition": "LSI: misma partición, otra ordenación, creado junto con la tabla"
+          },
+          {
+            "id": "gsi",
+            "term": "Elementos de todos los clientes por un atributo",
+            "definition": "GSI con ese atributo como clave de partición"
+          },
+          {
+            "id": "nuevo",
+            "term": "Patrón nuevo en una tabla que ya existe",
+            "definition": "Un GSI, que sí se puede añadir después; un LSI no"
+          },
+          {
+            "id": "proy",
+            "term": "Atributos extra al consultar un índice global",
+            "definition": "Proyectarlos en el índice, porque un GSI no los lee de la tabla"
+          },
+          {
+            "id": "dax",
+            "term": "Lecturas repetidas en microsegundos",
+            "definition": "DAX delante de la tabla, solo con lecturas eventualmente consistentes"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada patrón de acceso con la clave o el índice que lo resuelve. Si dudas, pregúntate qué parte de la clave primaria aporta el patrón, si el atributo consultado es una clave y si la tabla ya existe.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Patrones que resuelve la clave primaria: partición, clave completa y rango de ordenación",
+              "Patrones con otra clave: LSI (misma partición) o GSI (otra partición)",
+              "Qué se puede añadir a una tabla existente y qué no",
+              "Qué atributos devuelve un índice y cuándo hace falta DAX"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-5-3-memoria-01",
+      "title": "Patrón de acceso y clave o índice que lo resuelve",
+      "statement": "Empareja cada patrón de acceso con la clave o el índice que lo resuelve.",
+      "concepts": [
+        "clave de partición",
+        "GSI",
+        "LSI",
+        "DAX"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html"
+      ],
+      "order": 19
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-5-3-reflexion-01",
+      "title": "Reflexión: de los patrones de acceso al diseño de la tabla",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una tienda, un sistema de tickets o un ranking de juego) y escribe un registro breve de decisión sobre cómo diseñarías su tabla de DynamoDB, en 5 a 7 líneas:\n\n1) Decisión: qué clave primaria usarías (simple o compuesta) y qué patrones de acceso resuelve; qué dato de la aplicación decide la clave de partición.\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, un índice local en lugar de uno global, o el modo aprovisionado en lugar del bajo demanda) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (los índices y sus proyecciones, la capacidad si es aprovisionada, la caché de DAX o el procesamiento del flujo si los usas).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento o Optimización de costes) y por qué.\n\n5) Evidencia: qué página oficial (claves, modos de capacidad, índices secundarios, DAX, Streams o tablas globales) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el patrón de acceso, la clave o el índice y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "patrón de acceso",
+        "clave de partición",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/capacity-mode.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html"
+      ],
+      "order": 20
+    }
+  ]
+}
