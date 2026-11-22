@@ -1,0 +1,1333 @@
+{
+  "code": "AWS-U2.4.5",
+  "lessons": [
+    {
+      "slug": "aws-u2-4-5-transferencia-e-hibrido-datasync-storage-gateway-snow-family-y-transfer-family",
+      "title": "Transferencia e híbrido: DataSync, Storage Gateway, Snow Family y Transfer Family",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Seleccionar entre AWS DataSync, Amazon S3 File Gateway, AWS Snowball Edge y AWS Transfer Family según el protocolo, el sentido de la transferencia y la conectividad, y justificar la elección con el dato del enunciado. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar arquitecturas de alto rendimiento», en la parte de ingesta y transferencia de datos. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el servicio, el dato que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada situación, nombra el servicio y el dato que lo decide. Explica con tus palabras el diagrama «De la situación al servicio de transferencia». Después responde: si tu empresa es cliente nueva y debe mover datos por la red a Amazon EFS, ¿por qué la documentación de Snowball Edge te lleva a DataSync, y qué ventajas de seguridad menciona la página de DataSync?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Los socios que suben archivos por SFTP». Una configuración escrita como objeto asigna DataSync a una carga en la que los socios usan clientes SFTP que no pueden cambiar. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas el caso y el destino."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La migración que pide un dispositivo que ya no se ofrece». Una configuración elige Snowball Edge para una empresa que es cliente nueva y puede transferir por la red. Decide qué cambias sin alterar el origen, el destino ni el modo de transferencia. Criterio de paso: las pruebas pasan y justificas por escrito el ajuste con las páginas de DataSync y de Snowball Edge."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre DataSync, Storage Gateway, Snow Family y Transfer Family. Audítalo en «Auditar un informe de transferencia e híbrido generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de los cuatro servicios (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué orígenes locales y qué destinos de AWS admite DataSync; con qué protocolos y en qué entornos se despliega S3 File Gateway; qué dos configuraciones de Snowball Edge cita su página y qué advierte sobre clientes nuevos; y qué protocolos ofrece Transfer Family y hacia qué almacenamiento. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa adquiere un competidor y debe (a) copiar por la red un servidor SMB local a Amazon S3, (b) dejar que los proveedores del competidor sigan enviando archivos por FTPS sin cambiar sus clientes y (c) mantener que unas aplicaciones locales sigan escribiendo por NFS con caché local sobre S3. Decide servicio y dato decisivo para cada parte. Pregunta de cierre: un compañero dice «pidamos dispositivos Snowball Edge para todo»; ¿qué le respondes a la luz de la página de Snowball Edge?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-datasync-que-es",
+          "order": 0,
+          "note": "Fuente de DataSync: orígenes y destinos, casos de uso y ventajas."
+        },
+        {
+          "resourceSlug": "aws-storage-gateway-que-es",
+          "order": 1,
+          "note": "Fuente de Amazon S3 File Gateway: NFS, SMB, caché local y entornos de despliegue."
+        },
+        {
+          "resourceSlug": "aws-snow-family",
+          "order": 2,
+          "note": "Fuente de Snowball Edge: configuraciones, transporte físico, clúster y aviso de disponibilidad."
+        },
+        {
+          "resourceSlug": "aws-transfer-family-que-es",
+          "order": 3,
+          "note": "Fuente de Transfer Family: protocolos, destinos S3 y EFS, y casos de uso."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Mover datos hacia, desde y entre entornos es un problema de elegir la herramienta según cómo se transfieren y quién las inicia. AWS DataSync mueve archivos u objetos por la red entre almacenamientos de forma automatizada. Amazon S3 File Gateway deja que aplicaciones locales sigan usando NFS o SMB contra objetos de S3. AWS Snowball Edge transporta datos en un dispositivo físico, sin usar internet, y además procesa datos en el borde. AWS Transfer Family da a clientes externos un punto de transferencia administrado por SFTP, AS2, FTPS, FTP o navegador. En el dominio 3 de SAA-C03, «Diseñar arquitecturas de alto rendimiento», el enunciado da el protocolo, la conectividad y las restricciones del cliente, y tú casas el servicio con el caso. Las cifras que aparecen abajo son datos de las páginas oficiales de cada servicio leídas el 2026-11-22; antes de usarlas fuera del estudio, vuelve a comprobarlas allí. La página de Storage Gateway que usa el curso describe Amazon S3 File Gateway, que es el tipo que cubre esta unidad; otros tipos de gateway quedan fuera de las fuentes."
+        },
+        {
+          "type": "list",
+          "title": "Los servicios, frente a frente",
+          "items": [
+            "AWS DataSync: servicio seguro, fiable y de alta velocidad para transferir archivos u objetos a, desde y entre servicios de almacenamiento de AWS; sus casos de uso son migrar, archivar datos fríos, replicar y transferir datos para procesarlos en la nube.",
+            "Amazon S3 File Gateway: interfaz de archivos hacia S3 con NFS (3 o 4.1) y SMB (2 y 3), desplegada como VM o dispositivo de hardware en tu entorno, con caché local de baja latencia.",
+            "AWS Snowball Edge: dispositivo con almacenamiento y cómputo que se envía por un transportista regional, con cifrado obligatorio; ya no está disponible para clientes nuevos.",
+            "AWS Transfer Family: transferencia de archivos totalmente administrada por SFTP, AS2, FTPS, FTP y navegador hacia y desde S3 y EFS, sin servidores que operar."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "DataSync: transferir por la red entre almacenamientos",
+          "text": "AWS DataSync transfiere datos de archivos u objetos a, desde y entre servicios de almacenamiento de AWS. En el entorno local trabaja con NFS, SMB, HDFS y almacenamiento de objetos; en AWS, con Amazon S3, Amazon EFS, FSx for Windows File Server, FSx for Lustre, FSx for OpenZFS y FSx for NetApp ONTAP; y también lista almacenamiento de otras nubes, como Google Cloud Storage o Microsoft Azure Blob Storage. Sus casos de uso son migrar datos activos por la red, archivar datos fríos en clases como S3 Glacier Flexible Retrieval o S3 Glacier Deep Archive, replicar datos y transferir datos para procesarlos en la nube. Como ventajas, automatiza la gestión de los procesos y la infraestructura de transferencia, ofrece seguridad de extremo a extremo con cifrado y validación de integridad, usa roles de IAM y admite endpoints de VPC para no atravesar internet público, y emplea un protocolo de red propio con una arquitectura paralela y multihilo para acelerar las transferencias."
+        },
+        {
+          "type": "paragraph",
+          "title": "S3 File Gateway: S3 como un montaje local",
+          "text": "Amazon S3 File Gateway combina un servicio y un dispositivo de software virtual. Con él guardas y recuperas objetos de S3 con protocolos de archivos estándar: NFS versión 3 o 4.1 y SMB versiones 2 y 3. Lo despliegas en tu entorno local como una VM en VMware ESXi, Microsoft Hyper-V, Linux KVM o Nutanix AHV, o como un dispositivo de hardware que pides a un distribuidor; también puede ir como VM en VMware Cloud on AWS o como AMI en EC2. La página lo resume como un montaje de sistema de archivos sobre Amazon S3: los objetos se ven como archivos o puntos de montaje, se pueden gestionar con políticas de ciclo de vida, replicación entre Regiones y versionado, y la caché local transparente da acceso de baja latencia. Además gestiona la transferencia hacia y desde AWS, evita la congestión de red y administra el ancho de banda. Se integra con IAM, AWS KMS, CloudWatch y CloudTrail."
+        },
+        {
+          "type": "paragraph",
+          "title": "Snow Family: el dispositivo que viaja",
+          "text": "La fuente de esta unidad para Snow Family es la página de AWS Snowball Edge, y solo se afirma lo que ella dice. Snowball Edge es un dispositivo con almacenamiento y capacidad de cómputo que procesa datos localmente, ejecuta cargas en el borde y transfiere datos hacia o desde AWS Cloud. El transporte se hace enviando el dispositivo por un transportista regional, sin usar internet; los dispositivos son robustos y llevan una etiqueta de envío en una pantalla E Ink. La página cita dos configuraciones, Storage Optimized 210 TB y Compute Optimized, y no da más cifras de capacidad de esas configuraciones. Tiene adaptadores de red de hasta 100 Gbit/s, el cifrado es obligatorio en reposo y en el transporte físico, y puedes importar o exportar datos entre tu entorno y Amazon S3. Para cómputo local ofrece endpoints compatibles con Amazon S3 y Amazon EC2, tipos de instancia sbe1, sbe-c y sbe-g, y Amazon EKS Anywhere. Se pueden agrupar en clúster de 3 a 16 dispositivos. Para migrar datos admite NFSv3, NFSv4, NFSv4.1 y Amazon S3 sobre HTTP o HTTPS. Aviso clave: la página dice que Snowball Edge ya no está disponible para clientes nuevos, a quienes remite a AWS DataSync para transferencias en línea, a AWS Data Transfer Terminal para transferencias físicas seguras o a soluciones de socios de AWS; para cómputo en el borde, remite a AWS Outposts."
+        },
+        {
+          "type": "paragraph",
+          "title": "Transfer Family: archivos de clientes y socios sin servidores propios",
+          "text": "AWS Transfer Family transfiere archivos hacia y desde servicios de almacenamiento de AWS con soporte totalmente administrado de SFTP, AS2, FTPS, FTP y transferencias desde el navegador. Sus destinos son Amazon S3 y los sistemas de archivos de Amazon EFS. Permite migrar flujos de trabajo de transferencia manteniendo las configuraciones del lado del cliente para la autenticación, el acceso y los firewalls, de modo que nada cambia para clientes, socios y equipos internos, y sin ejecutar infraestructura de protocolo. Admite hasta 3 zonas de disponibilidad y se respalda en una flota con escalado automático. Para las conexiones de datos de FTP y FTPS, el rango de puertos del canal de datos es 8192–8200. Sus casos de uso con S3 incluyen cargas de terceros a un lago de datos, distribución de datos por suscripción y transferencias internas; con AS2, flujos de cadena de suministro, pagos y transacciones entre empresas; y las aplicaciones web dan a usuarios de negocio acceso simplificado a datos de S3. Incluye además flujos de trabajo administrados para procesar los archivos recibidos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro situaciones, cuatro decisiones",
+          "text": "Una empresa que es cliente nueva tiene cuatro situaciones. (1) Migrar por la red un NFS local a Amazon EFS con cifrado y validación de integridad, y sin internet público. (2) Un centro de datos cuyas aplicaciones escriben por SMB y deben guardar objetos en S3 con caché local. (3) Socios externos que suben archivos por SFTP a S3 y no pueden cambiar sus clientes. (4) Un sitio remoto que quiere enviar datos en un dispositivo físico. Paso 1: para (1) la clave es «por la red» y el destino EFS, así que va DataSync con un endpoint de VPC. Paso 2: para (2) la clave es SMB con caché local sobre S3, así que va S3 File Gateway en el centro de datos. Paso 3: para (3) la clave es SFTP sin cambiar clientes ni operar servidores, así que va Transfer Family. Paso 4: para (4) el transporte físico apunta a Snowball Edge, pero la página advierte que ya no está disponible para clientes nuevos; como la empresa es cliente nueva, se vuelve a DataSync para transferir en línea o se consultan las alternativas que cita la página. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de transferencia como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  situaciones: [\n    { nombre: \"migrar-nfs\", servicio: \"datasync\", origen: \"nfs-local\", destino: \"efs\", endpointVpc: true },\n    { nombre: \"apps-smb\", servicio: \"s3-file-gateway\", protocolo: \"SMB\", cacheLocal: true },\n    { nombre: \"socios-sftp\", servicio: \"transfer-family\", protocolo: \"SFTP\", destino: \"s3\" },\n    { nombre: \"sitio-remoto\", servicio: \"datasync\", nota: \"Snowball Edge ya no admite clientes nuevos\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la situación al servicio de transferencia",
+          "code": "flowchart TB\n  R{\"Situación de transferencia\"} -->|\"Por la red entre almacenamientos\"| D[\"AWS DataSync\"]\n  R -->|\"Aplicaciones locales con NFS o SMB sobre S3\"| G[\"Amazon S3 File Gateway\"]\n  R -->|\"Dispositivo físico y cómputo en el borde\"| S[\"Snowball Edge: sin clientes nuevos\"]\n  S -->|\"Cliente nuevo\"| D\n  R -->|\"Clientes externos con SFTP, FTPS, FTP, AS2 o navegador\"| T[\"AWS Transfer Family\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir el servicio por el nombre y no por el protocolo o la conectividad",
+          "text": "El enunciado mezcla señales: «por la red» o «sin internet», «NFS o SMB» o «SFTP», «clientes que no pueden cambiar», «cliente nuevo», «caché local». DataSync mueve datos entre almacenamientos, pero no es un servidor SFTP para socios; S3 File Gateway ofrece NFS y SMB, no SFTP; Transfer Family ofrece SFTP, AS2, FTPS, FTP y navegador, no NFS ni SMB; y Snowball Edge es transporte físico que ya no está disponible para clientes nuevos. Subraya el protocolo, quién inicia la transferencia y la conectividad antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: elegir Snowball Edge para toda migración sin mirar su disponibilidad",
+          "text": "Causa: asociar «mover muchos datos» con un dispositivo físico y no leer el aviso de la página. Consecuencia: la empresa que es cliente nueva diseña sobre un servicio que ya no puede contratar y el plan de migración se bloquea. Solución: si la transferencia puede hacerse por la red, usa DataSync; la página de Snowball Edge remite a DataSync para transferencias en línea y a Data Transfer Terminal o a socios de AWS para transferencias físicas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar DataSync donde los clientes necesitan un punto de transferencia por SFTP",
+          "text": "Causa: ver «transferir archivos a S3» y escoger DataSync sin mirar el protocolo que usan los socios. Consecuencia: los socios no tienen un servidor SFTP al que conectarse y habría que cambiar sus clientes y operar servidores propios. Solución: usa Transfer Family, que ofrece SFTP, AS2, FTPS, FTP o navegador administrados hacia S3 o EFS y mantiene las configuraciones del lado del cliente."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: confundir un montaje NFS o SMB sobre S3 con una transferencia programada",
+          "text": "Causa: pensar que cualquier servicio que lleve archivos a S3 es equivalente. Consecuencia: las aplicaciones locales no tienen un punto de montaje con caché local y deben reescribirse para usar la API de S3, o se pierde el acceso de baja latencia. Solución: si las aplicaciones locales deben seguir usando NFS o SMB, despliega S3 File Gateway; reserva DataSync para mover o replicar datos entre almacenamientos."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio seguro, fiable y de alta velocidad para transferir datos de archivos u objetos a, desde y entre servicios de almacenamiento de AWS. Casos de uso: migrar datos activos por la red, archivar datos fríos en S3 Glacier Flexible Retrieval o Deep Archive, replicar datos y transferirlos para procesarlos en la nube. Incluye cifrado y validación de integridad."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-5-tarjeta-01",
+      "title": "Tarjeta: AWS DataSync",
+      "statement": "¿Qué es AWS DataSync y qué casos de uso principales tiene?",
+      "concepts": [
+        "DataSync",
+        "migración",
+        "archivo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "En el entorno local: NFS, SMB, Hadoop Distributed File Systems (HDFS) y almacenamiento de objetos. En AWS: Amazon S3, Amazon EFS, FSx for Windows File Server, FSx for Lustre, FSx for OpenZFS y FSx for NetApp ONTAP. También lista almacenamiento de otras nubes, como Google Cloud Storage o Microsoft Azure Blob Storage. Lista de la página consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-5-tarjeta-02",
+      "title": "Tarjeta: orígenes y destinos de DataSync",
+      "statement": "¿Con qué sistemas de almacenamiento trabaja AWS DataSync, en el entorno local y en AWS?",
+      "concepts": [
+        "DataSync",
+        "NFS",
+        "SMB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ofrece una interfaz de archivos hacia Amazon S3: guardas y recuperas objetos de S3 con NFS (versión 3 o 4.1) y SMB (versiones 2 y 3), y el contenido se ve como archivos o puntos de montaje. Se despliega en tu entorno como una VM (VMware ESXi, Hyper-V, Linux KVM o Nutanix AHV) o como dispositivo de hardware, y también como AMI en EC2. Da acceso de baja latencia con caché local."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-5-tarjeta-03",
+      "title": "Tarjeta: S3 File Gateway",
+      "statement": "¿Qué hace Amazon S3 File Gateway y dónde se despliega?",
+      "concepts": [
+        "Storage Gateway",
+        "S3 File Gateway",
+        "NFS",
+        "SMB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Dispositivo con almacenamiento y cómputo que procesa datos localmente y los transfiere desde o hacia AWS; se envía por un transportista regional, con cifrado obligatorio y sin internet. Configuraciones: Storage Optimized 210 TB y Compute Optimized. La página advierte que ya no está disponible para clientes nuevos y remite a DataSync (consultada el 2026-11-22)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-5-tarjeta-04",
+      "title": "Tarjeta: Snowball Edge",
+      "statement": "¿Qué es AWS Snowball Edge y qué advierte su documentación sobre su disponibilidad?",
+      "concepts": [
+        "Snow Family",
+        "Snowball Edge"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Transferencia de archivos totalmente administrada por SFTP, AS2, FTPS, FTP y desde el navegador, hacia y desde Amazon S3 y sistemas de archivos de Amazon EFS. No necesitas ejecutar servidores ni modificar tus aplicaciones, y conservas las configuraciones de autenticación, acceso y firewall del lado del cliente. Admite hasta 3 zonas de disponibilidad."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-5-tarjeta-05",
+      "title": "Tarjeta: AWS Transfer Family",
+      "statement": "¿Qué protocolos admite AWS Transfer Family y hacia qué almacenamiento transfiere?",
+      "concepts": [
+        "Transfer Family",
+        "SFTP",
+        "AS2"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "DataSync: mover datos por la red entre almacenamientos. S3 File Gateway: aplicaciones locales que siguen usando NFS o SMB contra S3 con caché local. Snowball Edge: transporte físico sin internet y cómputo en el borde, sin clientes nuevos. Transfer Family: clientes externos con SFTP, FTPS, FTP, AS2 o navegador hacia S3 o EFS sin servidores propios."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-5-tarjeta-06",
+      "title": "Tarjeta: elegir entre los cuatro servicios",
+      "statement": "¿Qué dato del enunciado decide entre DataSync, Storage Gateway, Snow Family y Transfer Family?",
+      "concepts": [
+        "DataSync",
+        "Transfer Family",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Los socios suben archivos por SFTP a un bucket de S3 y no pueden cambiar sus clientes. Corrige su defecto principal.\nexport const ingesta = {\n  caso: \"socios-suben-archivos-por-sftp-a-s3\",\n  destino: \"s3\",\n  servicio: \"datasync\",\n  clientesCambian: true,\n  servidoresPropios: true,\n};\n",
+      "solution": {
+        "code": "export const ingesta = {\n  caso: \"socios-suben-archivos-por-sftp-a-s3\",\n  destino: \"s3\",\n  servicio: \"transfer-family\",\n  clientesCambian: false,\n  servidoresPropios: false,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Los socios usan clientes SFTP existentes y no pueden cambiarlos. Pregúntate qué servicio ofrece SFTP administrado sobre S3."
+        },
+        {
+          "level": 2,
+          "text": "AWS Transfer Family ofrece SFTP, AS2, FTPS, FTP y navegador hacia S3 y EFS, sin servidores propios y manteniendo las configuraciones del cliente."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el servicio a \"transfer-family\" y pon clientesCambian y servidoresPropios en false. No cambies el caso ni el destino."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el servicio es el que expone SFTP administrado",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(ingesta.servicio, \"datasync\", \"DataSync es una herramienta de transferencia, no un servidor SFTP para socios\");\nassert.strictEqual(ingesta.servicio, \"transfer-family\");"
+          }
+        },
+        {
+          "name": "los clientes no cambian y no hay servidores propios",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(ingesta.clientesCambian, false);\nassert.strictEqual(ingesta.servidoresPropios, false);"
+          }
+        },
+        {
+          "name": "el caso y el destino no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(ingesta.caso, \"socios-suben-archivos-por-sftp-a-s3\");\nassert.strictEqual(ingesta.destino, \"s3\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-4-5-debug-01",
+      "title": "Los socios que suben archivos por SFTP",
+      "statement": "El objeto `ingesta` modela una carga en la que varios socios suben archivos por SFTP a un bucket de S3 y no pueden cambiar sus clientes. El diseño actual elige un servicio pensado para otra cosa y obliga a cambiar clientes y a operar servidores. Corrige el servicio sin cambiar el caso ni el destino, y mantén la forma del valor exportado (`export const ingesta = { … }`).",
+      "concepts": [
+        "Transfer Family",
+        "SFTP",
+        "S3"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Migración por la red de un NFS local a EFS por una empresa que es cliente nuevo. Corrige su defecto principal.\nexport const migracion = {\n  origen: \"nfs-local\",\n  destino: \"efs\",\n  servicio: \"snowball-edge\",\n  porLaRed: true,\n  clienteNuevo: true,\n  validaIntegridad: false,\n  usaEndpointVpc: false,\n};\n",
+      "solution": {
+        "code": "export const migracion = {\n  origen: \"nfs-local\",\n  destino: \"efs\",\n  servicio: \"datasync\",\n  porLaRed: true,\n  clienteNuevo: true,\n  validaIntegridad: true,\n  usaEndpointVpc: true,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el servicio transfiere por la red y admite clientes nuevos",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(migracion.servicio, \"snowball-edge\", \"Snowball Edge ya no está disponible para clientes nuevos\");\nassert.strictEqual(migracion.servicio, \"datasync\");"
+          }
+        },
+        {
+          "name": "se valida la integridad y se evita internet público con un endpoint de VPC",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(migracion.validaIntegridad, true);\nassert.strictEqual(migracion.usaEndpointVpc, true);"
+          }
+        },
+        {
+          "name": "el origen, el destino y el modo no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(migracion.origen, \"nfs-local\");\nassert.strictEqual(migracion.destino, \"efs\");\nassert.strictEqual(migracion.porLaRed, true);\nassert.strictEqual(migracion.clienteNuevo, true);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-4-5-debug-02",
+      "title": "La migración que pide un dispositivo que ya no se ofrece",
+      "statement": "El objeto `migracion` modela el traslado por la red de un sistema NFS local a Amazon EFS por parte de una empresa que es cliente nuevo. El diseño elige un dispositivo físico que, según su documentación, ya no está disponible para clientes nuevos, y no valida la integridad ni evita internet público. Corrígelo sin cambiar el origen, el destino ni el modo de transferencia, y mantén la forma del valor exportado (`export const migracion = { … }`).",
+      "concepts": [
+        "DataSync",
+        "Snowball Edge",
+        "VPC endpoint"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de transferencia e híbrido (borrador generado por un asistente)\nEscenario: migrar un NFS local, exponer S3 a aplicaciones locales, recibir archivos de socios y mover datos sin internet.\n1. AWS DataSync transfiere archivos u objetos a, desde y entre servicios de almacenamiento de AWS, y funciona con NFS, SMB y HDFS locales.\n2. AWS Transfer Family solo admite SFTP; para FTP, FTPS o AS2 hay que usar otro servicio.\n3. En Snowball Edge el cifrado es obligatorio, tanto en reposo como durante el transporte físico.\n4. Snowball Edge está disponible para todos los clientes nuevos y AWS lo recomienda para transferencias en línea.\n5. Amazon S3 File Gateway presenta objetos de S3 como archivos por NFS o SMB y ofrece caché local de baja latencia.\n6. AWS DataSync solo puede copiar datos hacia Amazon S3; no admite Amazon EFS ni Amazon FSx como destino.\n7. AWS Transfer Family transfiere archivos hacia y desde Amazon S3 y sistemas de archivos de Amazon EFS."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Alcance de DataSync",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página define DataSync como servicio de transferencia a, desde y entre servicios de almacenamiento de AWS y lista NFS, SMB y HDFS como sistemas locales."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Protocolos de Transfer Family",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Transfer Family ofrece SFTP, AS2, FTPS, FTP y transferencias desde el navegador, todo en el mismo servicio."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Cifrado en Snowball Edge",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: la página indica que el cifrado es obligatorio y protege los datos en reposo y durante el transporte físico."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Disponibilidad de Snowball Edge",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la página advierte que Snowball Edge ya no está disponible para clientes nuevos y remite a DataSync para transferencias en línea."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "S3 File Gateway",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: expone objetos de S3 como archivos o puntos de montaje por NFS y SMB y da acceso de baja latencia con caché local."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Destinos de DataSync",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: DataSync también transfiere a Amazon EFS y a varios sistemas de Amazon FSx, además de S3."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Almacenamiento de Transfer Family",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página indica que transfiere datos hacia y desde Amazon S3 y sistemas de archivos de Amazon EFS."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-4-5-auditoria-01",
+      "title": "Auditar un informe de transferencia e híbrido generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre DataSync, Storage Gateway, Snow Family y Transfer Family. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "DataSync",
+        "Transfer Family",
+        "Snowball Edge",
+        "S3 File Gateway"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Transfer Family, con un servidor SFTP",
+            "explanation": "Descartada: Transfer Family atiende a clientes que usan SFTP, AS2, FTPS, FTP o navegador; no es la herramienta que la página presenta para migrar un NFS local."
+          },
+          {
+            "id": "b",
+            "text": "AWS DataSync, con un endpoint de VPC",
+            "explanation": "Es la correcta: transfiere archivos a, desde y entre servicios de AWS, trabaja con NFS local y EFS, cifra, valida la integridad y admite endpoints de VPC."
+          },
+          {
+            "id": "c",
+            "text": "Amazon S3 File Gateway, desplegado como VM local",
+            "explanation": "Descartada: ofrece una interfaz de archivos hacia S3 y no tiene EFS como destino."
+          },
+          {
+            "id": "d",
+            "text": "Un dispositivo Snowball Edge enviado por mensajería",
+            "explanation": "Descartada: es transporte físico y su documentación advierte que ya no está disponible para clientes nuevos."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-5-quiz-01",
+      "title": "Migrar un NFS local a EFS por la red",
+      "statement": "Una empresa debe migrar por la red los datos activos de un servidor NFS local a Amazon EFS, con cifrado, validación de integridad y la opción de no usar internet público. ¿Qué servicio es el MEJOR ajuste?",
+      "concepts": [
+        "DataSync",
+        "migración"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Transfer Family, con un servidor SFTP",
+            "explanation": "Descartada: sus protocolos son SFTP, AS2, FTPS, FTP y navegador, sin NFS ni SMB, así que las aplicaciones tendrían que cambiar."
+          },
+          {
+            "id": "b",
+            "text": "Un dispositivo Snowball Edge enviado a la oficina",
+            "explanation": "Descartada: es un dispositivo de transporte y de cómputo local; su documentación advierte que ya no está disponible para clientes nuevos."
+          },
+          {
+            "id": "c",
+            "text": "Amazon S3 File Gateway, con puntos de montaje NFS y SMB",
+            "explanation": "Es la correcta: presenta los objetos de S3 como archivos por NFS (3 o 4.1) y SMB (2 y 3) y ofrece caché local transparente."
+          },
+          {
+            "id": "d",
+            "text": "Una tarea de DataSync programada cada noche",
+            "explanation": "Descartada: DataSync es un servicio de transferencia entre almacenamientos, no un punto de montaje al que escriban las aplicaciones con caché local."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-5-quiz-02",
+      "title": "Aplicaciones locales con NFS contra S3",
+      "statement": "Las aplicaciones de un centro de datos escriben archivos por NFS y SMB y deben seguir haciéndolo, pero los datos deben quedar como objetos en Amazon S3 y con acceso de baja latencia por caché local. ¿Qué opción exige MENOS cambios en las aplicaciones?",
+      "concepts": [
+        "S3 File Gateway",
+        "NFS",
+        "SMB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Transfer Family, con un servidor SFTP administrado",
+            "explanation": "Es la correcta: ofrece SFTP totalmente administrado hacia S3 sin servidores propios y conserva las configuraciones de los clientes."
+          },
+          {
+            "id": "b",
+            "text": "Amazon S3 File Gateway en una VM local",
+            "explanation": "Descartada: se despliega como VM o hardware y expone S3 por NFS y SMB, no por SFTP."
+          },
+          {
+            "id": "c",
+            "text": "Un clúster de dispositivos Snowball Edge",
+            "explanation": "Descartada: es transporte físico y almacenamiento local en clúster, no un punto de subida por SFTP, y ya no admite clientes nuevos."
+          },
+          {
+            "id": "d",
+            "text": "AWS DataSync con orígenes HDFS",
+            "explanation": "Descartada: sus orígenes locales son NFS, SMB, HDFS y almacenamiento de objetos; no es un servidor SFTP para clientes de socios."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-5-quiz-03",
+      "title": "Socios que suben archivos por SFTP",
+      "statement": "Varios socios externos suben archivos por SFTP a un bucket de S3 y no pueden cambiar la configuración de sus clientes; la empresa no quiere administrar servidores. ¿Qué servicio requiere la MENOR administración?",
+      "concepts": [
+        "Transfer Family",
+        "SFTP"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS DataSync, con una tarea por la red",
+            "explanation": "Descartada: transfiere datos por la red, no en un dispositivo físico."
+          },
+          {
+            "id": "b",
+            "text": "AWS Transfer Family, con endpoint FTPS",
+            "explanation": "Descartada: transfiere por protocolos como SFTP, FTPS, FTP y AS2 hacia S3 o EFS, sin dispositivo ni cómputo local."
+          },
+          {
+            "id": "c",
+            "text": "Amazon S3 File Gateway, como dispositivo de hardware",
+            "explanation": "Descartada: es una interfaz de archivos hacia S3 con caché local, no un dispositivo que se envía con los datos ni un entorno para ejecutar instancias EC2."
+          },
+          {
+            "id": "d",
+            "text": "AWS Snowball Edge, con cómputo y almacenamiento a bordo",
+            "explanation": "Es la correcta: se envía por un transportista, cifra los datos, procesa localmente y expone un endpoint compatible con EC2; ya no está disponible para clientes nuevos."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-5-quiz-04",
+      "title": "Transporte físico con cómputo en el sitio",
+      "statement": "Un sitio remoto debe enviar a Amazon S3 sus datos sin usar internet, transportándolos cifrados en un dispositivo, y ejecutar además instancias EC2 en el propio sitio. ¿Qué servicio describe MEJOR esa documentación?",
+      "concepts": [
+        "Snowball Edge",
+        "Snow Family"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS DataSync con una tarea manual por usuario",
+            "explanation": "Descartada: DataSync automatiza transferencias entre almacenamientos y no ofrece una interfaz de navegador para usuarios."
+          },
+          {
+            "id": "b",
+            "text": "Amazon S3 File Gateway con una VM por usuario",
+            "explanation": "Descartada: expone S3 por NFS y SMB a aplicaciones y equipos, no por una interfaz web administrada."
+          },
+          {
+            "id": "c",
+            "text": "Una aplicación web de AWS Transfer Family",
+            "explanation": "Es la correcta: la página la presenta para dar acceso simplificado a datos de S3 a usuarios de negocio, con gestión centralizada del acceso del personal."
+          },
+          {
+            "id": "d",
+            "text": "Un dispositivo Snowball Edge en cada oficina",
+            "explanation": "Descartada: es un dispositivo físico que se envía y se conecta a la red local, y ya no está disponible para clientes nuevos."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-5-quiz-05",
+      "title": "Usuarios de negocio con acceso desde el navegador",
+      "statement": "Usuarios de negocio sin conocimientos técnicos deben acceder a datos de Amazon S3 desde un navegador, con gestión centralizada del acceso y sin instalar clientes. ¿Qué opción es la MÁS adecuada?",
+      "concepts": [
+        "Transfer Family",
+        "web apps"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html",
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Snowball Edge, con un dispositivo enviado a la oficina",
+            "explanation": "Descartada: su documentación advierte que ya no está disponible para clientes nuevos y remite a DataSync para transferencias en línea."
+          },
+          {
+            "id": "b",
+            "text": "AWS DataSync, con un destino de clase Glacier",
+            "explanation": "Es la correcta: la página lista archivar datos fríos en S3 Glacier Flexible Retrieval o S3 Glacier Deep Archive como uno de sus casos de uso."
+          },
+          {
+            "id": "c",
+            "text": "Amazon S3 File Gateway, como puerta de entrada local",
+            "explanation": "Descartada: su función es presentar objetos de S3 como archivos por NFS y SMB con caché local, no archivar datos fríos en una clase de Glacier."
+          },
+          {
+            "id": "d",
+            "text": "AWS Transfer Family, con acceso desde el navegador",
+            "explanation": "Descartada: ofrece protocolos de transferencia de archivos hacia S3 o EFS, pero su página no lo presenta como herramienta de archivo de datos fríos."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-5-quiz-06",
+      "title": "Archivar datos fríos en Glacier Deep Archive",
+      "statement": "Una empresa que es cliente nuevo quiere mover por la red datos fríos de un almacenamiento local a S3 Glacier Deep Archive para liberar capacidad y apagar sistemas heredados. ¿Qué servicio exige el MÍNIMO de infraestructura propia?",
+      "concepts": [
+        "DataSync",
+        "archivo",
+        "Glacier"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Trabaja con NFS, SMB, HDFS y almacenamiento de objetos como orígenes locales",
+            "explanation": "Cumple: la página lista esos cuatro tipos de sistemas locales."
+          },
+          {
+            "id": "b",
+            "text": "Solo puede escribir en Amazon S3 y no en Amazon EFS ni en Amazon FSx",
+            "explanation": "No cumple: la página lista también EFS y varios sistemas de FSx entre los servicios de AWS."
+          },
+          {
+            "id": "c",
+            "text": "Obliga a que el tráfico viaje por internet público",
+            "explanation": "No cumple: admite endpoints de VPC para transferir sin atravesar internet público."
+          },
+          {
+            "id": "d",
+            "text": "Ofrece seguridad de extremo a extremo con cifrado y validación de integridad",
+            "explanation": "Cumple: la página la describe como seguridad de extremo a extremo para que los datos lleguen intactos."
+          },
+          {
+            "id": "e",
+            "text": "No puede leer ni escribir en almacenamiento de otras nubes",
+            "explanation": "No cumple: la página lista servicios de otras nubes, como Google Cloud Storage y Microsoft Azure Blob Storage."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-5-quiz-07",
+      "title": "Qué es cierto de AWS DataSync",
+      "statement": "Un equipo repasa AWS DataSync. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "DataSync"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "b",
+          "d",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Transfer Family exige que los clientes cambien su configuración y que se ejecuten servidores propios",
+            "explanation": "No cumple: permite mantener las configuraciones del cliente y no requiere ejecutar infraestructura de protocolo."
+          },
+          {
+            "id": "b",
+            "text": "Transfer Family admite SFTP, AS2, FTPS, FTP y transferencias desde el navegador",
+            "explanation": "Cumple: esos son los protocolos y modos que lista su página."
+          },
+          {
+            "id": "c",
+            "text": "El cifrado de Snowball Edge es opcional y se activa al crear el trabajo",
+            "explanation": "No cumple: la página indica que el cifrado es obligatorio."
+          },
+          {
+            "id": "d",
+            "text": "S3 File Gateway expone objetos de S3 como archivos por NFS (3 o 4.1) y SMB (2 y 3)",
+            "explanation": "Cumple: la página describe esos protocolos para guardar y recuperar archivos."
+          },
+          {
+            "id": "e",
+            "text": "Los dispositivos Snowball Edge pueden formar un clúster de 3 a 16 dispositivos",
+            "explanation": "Cumple: la página habla de clústeres de 3 a 16 dispositivos para almacenamiento y cómputo local."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-5-quiz-08",
+      "title": "Qué es cierto de Transfer Family, S3 File Gateway y Snowball Edge",
+      "statement": "Un equipo compara servicios de transferencia e híbridos. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "Transfer Family",
+        "S3 File Gateway",
+        "Snowball Edge"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "dsmig",
+            "term": "AWS DataSync (migrar)",
+            "definition": "Mover por la red datos activos entre almacenamientos, con cifrado y validación de integridad"
+          },
+          {
+            "id": "dsarc",
+            "term": "AWS DataSync (archivar)",
+            "definition": "Enviar datos fríos locales a S3 Glacier Flexible Retrieval o Deep Archive"
+          },
+          {
+            "id": "gw",
+            "term": "Amazon S3 File Gateway",
+            "definition": "Montaje NFS o SMB local sobre objetos de S3, con caché local de baja latencia"
+          },
+          {
+            "id": "snow",
+            "term": "AWS Snowball Edge",
+            "definition": "Dispositivo enviado por transportista, sin internet, con cómputo a bordo; sin clientes nuevos"
+          },
+          {
+            "id": "snowcl",
+            "term": "Clúster de Snowball Edge",
+            "definition": "De 3 a 16 dispositivos para almacenamiento y cómputo local con mayor durabilidad"
+          },
+          {
+            "id": "tfsftp",
+            "term": "Transfer Family con SFTP",
+            "definition": "Socios que suben archivos a S3 o EFS sin cambiar clientes ni operar servidores"
+          },
+          {
+            "id": "tfas2",
+            "term": "Transfer Family con AS2",
+            "definition": "Transacciones entre empresas, cadena de suministro y pagos con seguridad en el protocolo"
+          },
+          {
+            "id": "tfweb",
+            "term": "Aplicación web de Transfer Family",
+            "definition": "Acceso desde el navegador de usuarios de negocio a datos de S3"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio de transferencia o de nube híbrida con el caso que resuelve. Si dudas, pregúntate quién inicia la transferencia, con qué protocolo, si hay internet y si ya se es cliente.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Transferencias por la red entre almacenamientos: DataSync",
+              "Acceso local por NFS o SMB a objetos de S3: S3 File Gateway",
+              "Transporte físico y cómputo en el borde: Snowball Edge",
+              "Archivos de socios y usuarios por SFTP, AS2 o navegador: Transfer Family"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-4-5-memoria-01",
+      "title": "Servicio de transferencia y caso que resuelve",
+      "statement": "Empareja cada servicio de transferencia o de nube híbrida con el caso que resuelve.",
+      "concepts": [
+        "DataSync",
+        "S3 File Gateway",
+        "Snowball Edge",
+        "Transfer Family"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-4-5-reflexion-01",
+      "title": "Reflexión: qué servicio de transferencia y por qué",
+      "statement": "Elige una situación que conozcas (por ejemplo, migrar un servidor de archivos local, dejar que unos socios suban archivos por SFTP o mantener aplicaciones locales que usan NFS contra la nube) y escribe un registro breve de decisión sobre cómo moverías o expondrías esos datos, en 5 a 7 líneas:\n\n1) Decisión: qué servicio (DataSync, S3 File Gateway, Snowball Edge o Transfer Family) elegirías y qué dato de la situación lo decide (protocolo, quién inicia la transferencia, conectividad, si hay clientes que no pueden cambiar).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, Snowball Edge para una empresa que es cliente nueva o DataSync para socios que solo hablan SFTP) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (tareas de DataSync, la VM o el dispositivo de la puerta de enlace, usuarios y direccionamiento de los servidores de Transfer Family).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento o Excelencia operativa) y por qué.\n\n5) Evidencia: qué página oficial (DataSync, S3 File Gateway, Snowball Edge o Transfer Family) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la situación, el servicio y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "DataSync",
+        "Transfer Family",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/datasync/latest/userguide/what-is-datasync.html",
+        "https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html",
+        "https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html",
+        "https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html"
+      ],
+      "order": 19
+    }
+  ]
+}
