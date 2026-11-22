@@ -1,0 +1,1333 @@
+{
+  "code": "AWS-U2.5.5",
+  "lessons": [
+    {
+      "slug": "aws-u2-5-5-elegir-la-base-de-datos-de-proposito-especifico",
+      "title": "Elegir la base de datos de propósito específico",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "AWS ofrece más de quince opciones de base de datos, cada una pensada para un modelo de datos distinto: relacional, clave-valor, documental, en memoria, grafo, series temporales y columnar ancha (la guía añade también vectorial). Elegir bien no es memorizar un catálogo, sino leer qué forma tienen los datos y cómo se accede a ellos. En el dominio 3 de SAA-C03, «Diseñar arquitecturas de alto rendimiento», en la parte de bases de datos, el enunciado describe un caso (un carrito, una red de amistades, la telemetría de unos sensores) y tú nombras la base que encaja y por qué las demás no. La fuente principal de esta unidad es la guía de decisión «Choosing an AWS database service», que indica como última actualización el 2 de junio de 2026 y que se leyó el 2026-11-22; la página de producto de bases de datos de AWS solo se usa aquí para nombrar las categorías y los servicios, no para afirmaciones técnicas. Antes de apoyarte en estos datos fuera del estudio, vuelve a comprobarlos en las páginas oficiales."
+        },
+        {
+          "type": "list",
+          "title": "El mapa: modelo de datos, servicio y señal del enunciado",
+          "items": [
+            "Relacional: Amazon Aurora y Amazon RDS. La guía los asocia con datos estructurados en tablas, filas y columnas y con consultas complejas mediante joins; RDS ofrece seis motores (PostgreSQL, MySQL, MariaDB, SQL Server, Oracle y Db2).",
+            "Clave-valor: Amazon DynamoDB. La guía lo propone para cargas como almacenes de sesión o carritos de compra, y lo describe como serverless, NoSQL, totalmente administrado y con rendimiento de un solo dígito de milisegundos a cualquier escala.",
+            "Documental: Amazon DocumentDB (con compatibilidad con MongoDB). Para documentos tipo JSON con consultas ricas sobre los campos y datos semiestructurados con atributos de varios niveles.",
+            "En memoria: Amazon ElastiCache y Amazon MemoryDB. ElastiCache es una capa de caché para acelerar lecturas, efímera; MemoryDB es una base en memoria duradera, con persistencia completa.",
+            "Grafo: Amazon Neptune. Para modelar redes complejas de objetos (redes sociales, detección de fraude, motores de recomendación) y recorrer relaciones con latencia mínima.",
+            "Columnar ancha: Amazon Keyspaces (para Apache Cassandra). Para migrar cargas de Cassandra locales o para aplicaciones con muchas lecturas y escrituras y latencia de un solo dígito de milisegundos.",
+            "Series temporales: Amazon Timestream. Para grandes volúmenes de datos con marca de tiempo, como el internet de las cosas (IoT), las métricas de aplicaciones y el seguimiento de activos."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué cubre la guía y qué deja fuera",
+          "text": "La guía aclara que se centra en bases de datos adecuadas para aplicaciones de procesamiento de transacciones en línea (OLTP). Si lo que necesitas es almacenar y analizar cantidades masivas de datos con rapidez, lo típico de una aplicación analítica (OLAP), la guía apunta a Amazon Redshift, un servicio de almacén de datos totalmente administrado. Dentro de las bases OLTP distingue dos grandes categorías: las relacionales, con nueve motores entre Aurora y RDS (Aurora PostgreSQL, Aurora MySQL y Aurora DSQL; y en RDS PostgreSQL, MySQL, MariaDB, SQL Server, Oracle y Db2), y las no relacionales, diseñadas para modelos de datos concretos. Es la primera pregunta que conviene hacerse ante un enunciado: ¿es un caso transaccional con estructura en tablas o un acceso especializado?"
+        },
+        {
+          "type": "paragraph",
+          "title": "Relacional: Aurora, RDS y sus variantes",
+          "text": "Según la guía, Aurora se usa al migrar o modernizar una carga relacional local, o cuando las consultas son poco predecibles; admite motores compatibles con MySQL y PostgreSQL y la guía le atribuye hasta cinco veces el rendimiento de MySQL estándar (cifra de la guía, leída el 2026-11-22). Amazon RDS se elige cuando se quiere una base relacional totalmente administrada con elección de motor, con copias de seguridad automáticas, parches de software y despliegues Multi-AZ para alta disponibilidad. La página de qué es RDS añade que AWS la recomienda como opción por defecto para la mayoría de los despliegues relacionales. Dos variantes aparecen en la guía: Aurora DSQL, una base SQL distribuida y serverless con replicación multirregión activo-activo y consistencia fuerte, y Aurora PostgreSQL Limitless Database, que reparte los datos por sharding cuando la carga relacional necesita más escritura o almacenamiento del que admite una sola instancia de Aurora."
+        },
+        {
+          "type": "paragraph",
+          "title": "No relacional: clave-valor, documento, grafo, columnar y series temporales",
+          "text": "DynamoDB sirve cuando el acceso es por clave y el volumen de peticiones es enorme: la guía menciona almacenes de sesión y carritos de compra, y la página de qué es DynamoDB aclara que no admite el operador JOIN, de modo que se recomienda desnormalizar el modelo; además admite los modelos clave-valor y documento. DocumentDB encaja cuando los datos son documentos JSON con consultas ricas por campos. Neptune encaja cuando lo importante son las relaciones entre los datos y recorrerlas. Keyspaces encaja con Cassandra. Timestream encaja con datos que cambian con el tiempo y consultas sobre intervalos. Un patrón útil: la palabra del enunciado que delata el modelo (sesión, documento, relación, marca de tiempo) suele pesar más que el nombre del producto que te suene."
+        },
+        {
+          "type": "paragraph",
+          "title": "En memoria: ElastiCache frente a MemoryDB",
+          "text": "Las dos son bases en memoria y por eso se confunden. Según la tabla de la guía, ElastiCache se usa como capa de caché para mejorar el rendimiento de lectura (con los motores Valkey, Memcached y Redis OSS, en formato serverless o basado en nodos) y está optimizada como caché efímera de datos de acceso frecuente. MemoryDB se usa cuando hace falta persistencia completa de los datos con lecturas de latencia inferior al milisegundo, y la guía la propone como base primaria de alto rendimiento para microservicios, con durabilidad Multi-AZ. Cuando la guía habla de rendimiento, indica que si una carga necesita lecturas con tiempos de respuesta de microsegundos en lugar de milisegundos de un solo dígito, conviene considerar una caché en memoria como ElastiCache junto a la base, o una base en memoria totalmente duradera como MemoryDB. La señal del enunciado es la palabra «caché» frente a la expresión «base primaria con persistencia»."
+        },
+        {
+          "type": "paragraph",
+          "title": "Criterios y combinación de bases",
+          "text": "La guía resume los criterios de decisión: la estrategia de migración (rehospedar en EC2, replataformar a una base administrada como RDS, o refactorizar hacia Aurora o una base NoSQL de propósito específico), las características de los datos (modelo, forma de acceso, necesidad de tiempo real, tamaño de registro), las consideraciones operativas (autoadministrada o totalmente administrada, serverless o aprovisionada) y la resiliencia, el rendimiento y la seguridad. También recuerda que, por lo general, los requisitos de una aplicación se cubren con una combinación de bases, aprovechando las fortalezas de cada tipo. Su ejemplo de comercio electrónico usa DocumentDB para catálogos de productos y perfiles de usuario, DynamoDB para la latencia baja y predecible cuando los usuarios navegan el catálogo y Aurora para el inventario y el procesamiento de pedidos, donde hacen falta un modelo relacional y transacciones."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro bases",
+          "text": "Una empresa de reparto tiene cuatro necesidades. (1) El carrito de compra y las sesiones de millones de usuarios simultáneos, con latencia de un solo dígito de milisegundos y sin servidores que administrar. (2) Las relaciones entre clientes, comercios y repartidores para detectar patrones de fraude recorriendo conexiones. (3) La telemetría de los vehículos: lecturas con marca de tiempo cada segundo, con consultas de tendencias. (4) Los pedidos y la facturación, con transacciones y consultas con joins. Paso 1: para (1) la clave es «sesiones y carritos» y «serverless», y la guía los asocia con DynamoDB. Paso 2: para (2) la clave es «recorrer relaciones», y la guía lo asocia con Neptune y su detección de fraude. Paso 3: para (3) la clave es «marca de tiempo y tendencias», y va Timestream. Paso 4: para (4) la clave es «transacciones y joins» sobre tablas, y va un servicio relacional, Aurora o RDS. Resultado: cuatro bases distintas, y cada elección salió de una palabra del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Un diseño que asigna cada caso a su base (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const diseno = {\n  carritoYSesiones: \"dynamodb\",\n  redDeFraude: \"neptune\",\n  telemetriaVehiculos: \"timestream\",\n  pedidosYFacturacion: \"aurora\",\n  catalogoDeProductos: \"documentdb\",\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la señal del enunciado a la base",
+          "code": "flowchart TB\n  Q{\"Qué señala el enunciado\"} -->|\"Tablas, joins, transacciones\"| R[\"Relacional: Aurora o RDS\"]\n  Q -->|\"Sesiones, carritos, acceso por clave\"| K[\"Clave-valor: DynamoDB\"]\n  Q -->|\"Documentos JSON con consultas por campos\"| D[\"Documental: DocumentDB\"]\n  Q -->|\"Relaciones y recorridos\"| G[\"Grafo: Neptune\"]\n  Q -->|\"Marca de tiempo y tendencias\"| T[\"Series temporales: Timestream\"]\n  Q -->|\"Migrar Cassandra\"| W[\"Columnar ancha: Keyspaces\"]\n  Q -->|\"Microsegundos\"| M{\"Caché o base primaria\"}\n  M -->|\"Caché efímera\"| E[\"ElastiCache\"]\n  M -->|\"Persistencia completa\"| B[\"MemoryDB\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir la base por el servicio que suena y no por el modelo de datos del enunciado",
+          "text": "El enunciado mezcla señales parecidas: «en memoria» puede ser ElastiCache o MemoryDB según haya o no persistencia; «NoSQL» puede ser DynamoDB, DocumentDB o Keyspaces según el acceso; «rápido» no decide nada por sí solo. Subraya el modelo (tablas, claves, documentos, relaciones, marcas de tiempo), la forma de acceso y el requisito de persistencia antes de mirar las opciones. Y recuerda que un caso analítico masivo no es de esta guía: apunta a Redshift."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar ElastiCache como base primaria porque «es una base en memoria»",
+          "text": "Causa: ver que ElastiCache y MemoryDB son ambas en memoria y tratarlas como intercambiables. Consecuencia: según la tabla de la guía, ElastiCache está optimizada como caché efímera de datos de acceso frecuente, así que una carga que exige persistencia completa como base primaria queda mal servida. Solución: usa ElastiCache como capa de caché delante de otra base y elige MemoryDB cuando la base en memoria deba ser duradera y actuar como base primaria."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: llevar un caso de relaciones o de series temporales a una base relacional por costumbre",
+          "text": "Causa: dar por hecho que toda base se resuelve con tablas y joins porque es lo conocido. Consecuencia: la guía asigna a Neptune el recorrido de relaciones con latencia mínima y a Timestream los datos con marca de tiempo y las consultas de tendencias, de modo que forzar esos casos en tablas pierde la ventaja del servicio pensado para ellos. Solución: identifica primero el modelo de datos del enunciado y solo recurre a Aurora o RDS cuando el caso sea transaccional y estructurado en tablas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: buscar una única base para toda la aplicación",
+          "text": "Causa: creer que una arquitectura limpia exige una sola base de datos. Consecuencia: la guía señala que, por lo general, los requisitos se cubren con una mezcla de las mejores bases para cada parte, de modo que forzar un único motor obliga a aceptar sus límites en las partes para las que no se pensó. Solución: reparte por caso (por ejemplo, documentos para el catálogo, clave-valor para la navegación y relacional para pedidos) y justifica cada elección con el modelo de datos y el acceso."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir, a partir de un caso descrito en un enunciado, la base de datos de propósito específico de AWS que mejor encaja (relacional con Aurora o RDS, clave-valor con DynamoDB, documental con DocumentDB, en memoria con ElastiCache o MemoryDB, grafo con Neptune, columnar ancha con Keyspaces o series temporales con Timestream) y nombrar la señal del enunciado que lo decide. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar arquitecturas de alto rendimiento», en la parte de bases de datos. Criterio: las pruebas de los ejercicios pasan y, ante un caso nuevo, nombras la base, la palabra del enunciado que la decide y por qué las otras quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo de la empresa de reparto: para cada caso, nombra la base y la señal que la decide. Explica con tus palabras el diagrama «De la señal del enunciado a la base». Después responde: si una base en memoria debe ser la base primaria y conservar los datos, ¿eliges ElastiCache o MemoryDB, y qué dice la guía de cada una?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El carrito de compra en una base de grafos». Un diseño asigna a Neptune el carrito y las sesiones de una tienda. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la carga y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Una asignación de bases con un caso mal repartido». Un diseño reparte cinco casos entre bases y uno de ellos está mal asignado. Encuentra cuál y corrígelo sin tocar los demás. Criterio de paso: las pruebas pasan y justificas por escrito el cambio con la guía de decisión de bases de datos de AWS."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre bases de datos de AWS. Audítalo en «Auditar un informe de elección de base de datos generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con la guía de decisión y con las páginas de RDS y DynamoDB (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué base asocia la guía a cada modelo de datos (relacional, clave-valor, documental, en memoria, grafo, columnar ancha y series temporales); en qué se diferencian ElastiCache y MemoryDB; qué categoría de carga deja fuera la guía y qué servicio apunta; y por qué suele combinarse más de una base. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la palabra del enunciado que decide cada una. Criterio de paso: tres de cuatro respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una aplicación de viajes necesita guardar reservas con transacciones, mostrar un historial de sensores de vehículos y recomendar destinos según las relaciones entre usuarios. Decide qué base usarías para cada parte y qué señal lo decide. Pregunta de cierre: un compañero dice «con DynamoDB basta para todo, porque es la más rápida»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-bases-de-datos-eleccion",
+          "order": 0,
+          "note": "Fuente principal: la guía de decisión de bases de datos de AWS, con la tabla de modelos de datos, casos de uso y optimizaciones, el alcance OLTP y la combinación de bases."
+        },
+        {
+          "resourceSlug": "aws-bases-de-datos-proposito-especifico",
+          "order": 1,
+          "note": "Página de producto: se usa solo para nombrar las categorías (relacional, clave-valor, en memoria, documental, grafo, columnar ancha y series temporales) y sus servicios."
+        },
+        {
+          "resourceSlug": "aws-rds-que-es",
+          "order": 2,
+          "note": "Fuente previa de RDS: qué es, qué administra por ti y su recomendación como opción por defecto para despliegues relacionales."
+        },
+        {
+          "resourceSlug": "aws-dynamodb-que-es",
+          "order": 3,
+          "note": "Fuente previa de DynamoDB: base NoSQL serverless de clave-valor y documento, rendimiento de un solo dígito de milisegundos y ausencia de JOIN."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Relacional: Aurora y RDS. Clave-valor: DynamoDB. Documental: DocumentDB. En memoria: ElastiCache y MemoryDB. Grafo: Neptune. Columnar ancha: Keyspaces. Series temporales: Timestream. Según la guía de decisión (leída el 2026-11-22); los nombres de las categorías coinciden con la página de producto de AWS."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-5-tarjeta-01",
+      "title": "Tarjeta: el mapa de modelos de datos y servicios",
+      "statement": "¿Qué modelo de datos asocia AWS a cada una de sus bases de propósito específico?",
+      "concepts": [
+        "modelos de datos",
+        "bases de propósito específico"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://aws.amazon.com/products/databases/"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para datos estructurados en tablas, filas y columnas con consultas complejas mediante joins. Aurora (compatible con MySQL y PostgreSQL) se usa para migrar o modernizar cargas relacionales locales o con consultas poco predecibles. RDS es la opción totalmente administrada con seis motores (PostgreSQL, MySQL, MariaDB, SQL Server, Oracle y Db2), copias automáticas, parches y Multi-AZ."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-5-tarjeta-02",
+      "title": "Tarjeta: relacional, Aurora y RDS",
+      "statement": "¿Cuándo señala la guía una base relacional y qué diferencia a Aurora de RDS?",
+      "concepts": [
+        "relacional",
+        "Aurora",
+        "RDS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para cargas clave-valor como almacenes de sesión o carritos de compra, con enormes volúmenes de peticiones. Es serverless, NoSQL y totalmente administrada, con rendimiento de un solo dígito de milisegundos a cualquier escala. No admite el operador JOIN: se recomienda desnormalizar el modelo (página de qué es DynamoDB, leída el 2026-11-22)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-5-tarjeta-03",
+      "title": "Tarjeta: DynamoDB",
+      "statement": "¿Para qué cargas propone la guía DynamoDB y qué no admite?",
+      "concepts": [
+        "DynamoDB",
+        "clave-valor",
+        "JOIN"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ambas son en memoria. ElastiCache es una capa de caché para mejorar la lectura, optimizada como caché efímera de datos de acceso frecuente. MemoryDB se usa cuando hace falta persistencia completa con lecturas de latencia inferior al milisegundo: es una base en memoria duradera, con durabilidad Multi-AZ, apta como base primaria de microservicios."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-5-tarjeta-04",
+      "title": "Tarjeta: ElastiCache frente a MemoryDB",
+      "statement": "¿En qué se diferencian ElastiCache y MemoryDB según la guía de decisión?",
+      "concepts": [
+        "ElastiCache",
+        "MemoryDB",
+        "persistencia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "DocumentDB (con compatibilidad con MongoDB), modelo documental: documentos tipo JSON con consultas ricas por los campos y datos semiestructurados con atributos de varios niveles. Keyspaces (para Apache Cassandra), modelo columnar ancho: migrar cargas de Cassandra locales o aplicaciones de muchas lecturas y escrituras con latencia de un solo dígito de milisegundos y escalado lineal."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-5-tarjeta-05",
+      "title": "Tarjeta: DocumentDB y Keyspaces",
+      "statement": "¿Qué casos asigna la guía a DocumentDB y a Keyspaces?",
+      "concepts": [
+        "DocumentDB",
+        "Keyspaces",
+        "columnar ancha"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://aws.amazon.com/products/databases/"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Neptune (grafo): modelar redes complejas de objetos como redes sociales, detección de fraude y motores de recomendación, recorriendo relaciones con latencia mínima. Timestream (series temporales): grandes volúmenes de datos con marca de tiempo, como IoT, métricas de aplicaciones y seguimiento de activos. La guía se centra en bases OLTP; para analítica masiva (OLAP) apunta a Amazon Redshift."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-5-5-tarjeta-06",
+      "title": "Tarjeta: Neptune, Timestream y lo que queda fuera",
+      "statement": "¿Qué casos asigna la guía a Neptune y a Timestream, y qué servicio apunta para analítica masiva?",
+      "concepts": [
+        "Neptune",
+        "Timestream",
+        "Redshift"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Carrito y sesiones de una tienda con millones de usuarios simultáneos. Corrige su defecto principal.\nexport const carrito = {\n  carga: \"carrito-y-sesiones\",\n  requisitos: { accesoPorClave: true, sinServidores: true, milisegundosDeUnDigito: true },\n  base: \"neptune\",\n};\n",
+      "solution": {
+        "code": "export const carrito = {\n  carga: \"carrito-y-sesiones\",\n  requisitos: { accesoPorClave: true, sinServidores: true, milisegundosDeUnDigito: true },\n  base: \"dynamodb\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El carrito y las sesiones se leen y se escriben por clave y deben escalar sin servidores. Compara eso con lo que la guía dice que hace Neptune."
+        },
+        {
+          "level": 2,
+          "text": "La guía asocia Neptune con grafos (redes de relaciones) y asocia los almacenes de sesión y los carritos de compra con una base clave-valor serverless."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la base a \"dynamodb\". No cambies la carga ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la base ya no es Neptune",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.notStrictEqual(carrito.base, \"neptune\", \"Neptune es una base de grafos para recorrer relaciones\");"
+          }
+        },
+        {
+          "name": "la base es DynamoDB",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(carrito.base, \"dynamodb\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(carrito.requisitos.accesoPorClave, true);\nassert.strictEqual(carrito.requisitos.sinServidores, true);\nassert.strictEqual(carrito.requisitos.milisegundosDeUnDigito, true);"
+          }
+        },
+        {
+          "name": "la carga no cambia",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(carrito.carga, \"carrito-y-sesiones\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-5-5-debug-01",
+      "title": "El carrito de compra en una base de grafos",
+      "statement": "El objeto `carrito` modela las sesiones y el carrito de una tienda con millones de usuarios simultáneos, accesos por clave, sin servidores que administrar y con latencia de un solo dígito de milisegundos. El diseño asigna una base de AWS pensada para otro modelo de datos. Corrige la base sin cambiar la carga ni los requisitos, y mantén la forma del valor exportado (`export const carrito = { … }`).",
+      "concepts": [
+        "DynamoDB",
+        "Neptune",
+        "clave-valor"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cinco casos de una plataforma y la base asignada a cada uno. Uno de ellos está mal asignado: corrígelo.\nexport const diseno = {\n  catalogo: \"documentdb\",\n  sesiones: \"dynamodb\",\n  pedidos: \"aurora\",\n  telemetria: \"timestream\",\n  redDeAmistades: \"keyspaces\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  catalogo: \"documentdb\",\n  sesiones: \"dynamodb\",\n  pedidos: \"aurora\",\n  telemetria: \"timestream\",\n  redDeAmistades: \"neptune\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la red de amistades ya no está en Keyspaces",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.redDeAmistades, \"keyspaces\", \"Keyspaces es para cargas de Cassandra, no para recorrer relaciones\");"
+          }
+        },
+        {
+          "name": "la red de amistades usa una base de grafos",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(diseno.redDeAmistades, \"neptune\");"
+          }
+        },
+        {
+          "name": "los demás casos no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.catalogo, \"documentdb\");\nassert.strictEqual(diseno.sesiones, \"dynamodb\");\nassert.strictEqual(diseno.pedidos, \"aurora\");\nassert.strictEqual(diseno.telemetria, \"timestream\");"
+          }
+        },
+        {
+          "name": "se conservan los cinco casos",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(Object.keys(diseno).sort(), [\"catalogo\", \"pedidos\", \"redDeAmistades\", \"sesiones\", \"telemetria\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-5-5-debug-02",
+      "title": "Una asignación de bases con un caso mal repartido",
+      "statement": "El objeto `diseno` asigna una base de datos de AWS a cada uno de cinco casos de una plataforma: el catálogo de productos como documentos, las sesiones, los pedidos con transacciones, la telemetría con marca de tiempo y una red de amistades en la que hay que recorrer relaciones. Uno de los cinco casos usa una base pensada para otro modelo de datos. Corrígelo sin tocar los demás, y mantén la forma del valor exportado (`export const diseno = { … }`).",
+      "concepts": [
+        "Neptune",
+        "Keyspaces",
+        "modelo de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de elección de base de datos en AWS (borrador generado por un asistente)\nEscenario: una tienda en línea con sesiones, catálogo, pedidos, telemetría y analítica de ventas.\n1. La guía de decisión se centra en bases de datos para aplicaciones OLTP y las divide en dos categorías: relacionales y no relacionales.\n2. Amazon ElastiCache es la base en memoria duradera que conviene como base primaria con persistencia completa.\n3. DynamoDB no admite el operador JOIN, así que se recomienda desnormalizar el modelo de datos.\n4. Amazon Keyspaces es la base indicada para documentos JSON con consultas ricas por campos.\n5. Para analítica masiva sobre las ventas (OLAP), la guía recomienda Amazon DynamoDB.\n6. Amazon RDS ofrece seis motores: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle y Db2.\n7. Una aplicación debe usar una sola base de datos; mezclar tipos de base es un antipatrón."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Alcance de la guía",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la guía se centra en bases adecuadas para aplicaciones OLTP y distingue dos categorías, la relacional y la no relacional."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "ElastiCache como base primaria",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la guía describe ElastiCache como caché efímera de datos de acceso frecuente; la base en memoria duradera, con persistencia completa, es MemoryDB."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "DynamoDB y JOIN",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: la página de qué es DynamoDB indica que no admite el operador JOIN y recomienda desnormalizar el modelo."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Keyspaces y documentos",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Keyspaces es la base columnar ancha para cargas de Cassandra; los documentos JSON con consultas por campos se asignan a DocumentDB."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Analítica masiva",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la guía se centra en OLTP y, para analítica masiva (OLAP), apunta a Amazon Redshift, no a DynamoDB."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Motores de RDS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la guía indica que RDS ofrece seis motores, PostgreSQL, MySQL, MariaDB, SQL Server, Oracle y Db2."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Una sola base",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: la guía señala que, por lo general, los requisitos se cubren con una mezcla de las bases que mejor encajan en cada parte."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-5-5-auditoria-01",
+      "title": "Auditar un informe de elección de base de datos generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre la elección de bases de datos en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "OLTP",
+        "MemoryDB",
+        "Redshift",
+        "combinación de bases"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Timestream, pensada para datos con marca de tiempo",
+            "explanation": "Descartada: la guía asigna Timestream a series temporales (IoT, métricas, seguimiento de activos), no a sesiones ni carritos."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Neptune, pensada para recorrer redes de relaciones",
+            "explanation": "Descartada: la guía asigna Neptune a grafos (redes sociales, fraude, recomendaciones), no a un acceso por clave."
+          },
+          {
+            "id": "c",
+            "text": "Amazon DynamoDB, base clave-valor serverless",
+            "explanation": "Es la correcta: la guía propone DynamoDB para almacenes de sesión y carritos de compra, y la describe como serverless con rendimiento de un solo dígito de milisegundos."
+          },
+          {
+            "id": "d",
+            "text": "Amazon RDS, pensada para datos relacionales con joins",
+            "explanation": "Descartada: la guía asocia RDS con datos estructurados en tablas y consultas con joins, y los carritos y sesiones los asocia con una base clave-valor."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-5-quiz-01",
+      "title": "Carrito y sesiones sin servidores",
+      "statement": "Una tienda guarda el carrito y las sesiones de millones de usuarios simultáneos, con acceso por clave, latencia de un solo dígito de milisegundos y sin servidores que administrar. ¿Qué base de datos encaja MEJOR?",
+      "concepts": [
+        "DynamoDB",
+        "clave-valor"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Neptune, la base de grafos de AWS",
+            "explanation": "Es la correcta: la guía la propone para modelar redes complejas de objetos, como la detección de fraude, y para recorrer relaciones con latencia mínima."
+          },
+          {
+            "id": "b",
+            "text": "Amazon DocumentDB, que almacena documentos tipo JSON",
+            "explanation": "Descartada: la guía asigna DocumentDB a documentos JSON con consultas ricas por campos, no al recorrido de relaciones."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Timestream, que almacena datos con marca de tiempo",
+            "explanation": "Descartada: la guía asigna Timestream a datos con marca de tiempo y tendencias, no a un grafo de conexiones."
+          },
+          {
+            "id": "d",
+            "text": "Amazon ElastiCache, una capa de caché para acelerar lecturas",
+            "explanation": "Descartada: la guía describe ElastiCache como caché efímera de datos de acceso frecuente, no como base para modelar relaciones."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-5-quiz-02",
+      "title": "Detección de fraude por relaciones",
+      "statement": "Un banco quiere detectar fraude siguiendo las conexiones entre cuentas, personas y dispositivos, y recorrer esas relaciones con latencia mínima. ¿Qué servicio encaja MÁS con ese patrón de acceso?",
+      "concepts": [
+        "Neptune",
+        "grafo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon DocumentDB, para documentos con atributos de varios niveles",
+            "explanation": "Descartada: la guía asigna DocumentDB a datos semiestructurados como documentos, no a series de datos con marca de tiempo."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Neptune, para redes de objetos conectados entre sí",
+            "explanation": "Descartada: la guía asigna Neptune a relaciones y grafos, no a lecturas de sensores sobre intervalos."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Keyspaces, para migrar cargas de Apache Cassandra",
+            "explanation": "Descartada: la guía asigna Keyspaces a la migración de Cassandra y a cargas columnares anchas, no a series temporales."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Timestream, la base de series temporales",
+            "explanation": "Es la correcta: la guía la propone para grandes volúmenes de datos con marca de tiempo, como IoT, métricas y seguimiento de activos, y para sus tendencias."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-5-quiz-03",
+      "title": "Telemetría de sensores con marca de tiempo",
+      "statement": "Una flota de sensores IoT envía millones de lecturas con marca de tiempo y el equipo necesita consultar tendencias sobre intervalos de tiempo. ¿Qué base de datos encaja MEJOR según la guía?",
+      "concepts": [
+        "Timestream",
+        "series temporales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon ElastiCache, optimizada como caché efímera de datos frecuentes",
+            "explanation": "Descartada: la guía la describe como caché efímera, así que no cumple el requisito de persistencia completa como base primaria."
+          },
+          {
+            "id": "b",
+            "text": "Amazon MemoryDB, una base en memoria duradera",
+            "explanation": "Es la correcta: la guía la propone cuando hace falta persistencia completa con lecturas de menos de un milisegundo, como base primaria de microservicios."
+          },
+          {
+            "id": "c",
+            "text": "Amazon DocumentDB, para documentos JSON con consultas por campos",
+            "explanation": "Descartada: la guía la describe como base documental, no como base en memoria."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Timestream, para datos con marca de tiempo y tendencias",
+            "explanation": "Descartada: la guía la describe como base de series temporales, no como base en memoria."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-5-quiz-04",
+      "title": "Base en memoria como base primaria",
+      "statement": "Un equipo de microservicios necesita una base de datos primaria en memoria que conserve todos los datos y ofrezca lecturas con latencia inferior al milisegundo. ¿Qué servicio cumple ÚNICAMENTE todos los requisitos?",
+      "concepts": [
+        "MemoryDB",
+        "ElastiCache",
+        "persistencia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon DocumentDB, que es compatible con MongoDB",
+            "explanation": "Descartada: DocumentDB ofrece compatibilidad con MongoDB, no con Cassandra."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Neptune, la base de grafos de AWS",
+            "explanation": "Descartada: la guía asigna Neptune a recorrer relaciones en grafos, no a migrar cargas de Cassandra."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Keyspaces (para Apache Cassandra)",
+            "explanation": "Es la correcta: la guía propone Keyspaces cuando hace falta migrar cargas de Cassandra locales."
+          },
+          {
+            "id": "d",
+            "text": "Amazon ElastiCache, la capa de caché para lecturas",
+            "explanation": "Descartada: la guía describe ElastiCache como caché efímera, no como destino de una migración de Cassandra."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-5-quiz-05",
+      "title": "Migrar una carga de Cassandra",
+      "statement": "Una empresa ejecuta una carga de Apache Cassandra en sus propios centros de datos y quiere migrarla a un servicio administrado de AWS. ¿Cuál es el punto de partida MÁS directo según la guía?",
+      "concepts": [
+        "Keyspaces",
+        "columnar ancha"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon DocumentDB (con compatibilidad con MongoDB)",
+            "explanation": "Es la correcta: la guía la propone para documentos tipo JSON con consultas ricas por sus campos y para datos semiestructurados."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Timestream, la base de series temporales",
+            "explanation": "Descartada: la guía la asigna a datos con marca de tiempo, no a documentos con consultas por campos."
+          },
+          {
+            "id": "c",
+            "text": "Amazon MemoryDB, una base en memoria duradera",
+            "explanation": "Descartada: la guía la describe como base en memoria con persistencia, no como base documental."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Keyspaces, la base columnar ancha de Cassandra",
+            "explanation": "Descartada: la guía la asigna a cargas de Cassandra con muchas lecturas y escrituras, no a documentos JSON."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-5-quiz-06",
+      "title": "Catálogo con documentos JSON",
+      "statement": "Una aplicación guarda su catálogo y perfiles de usuario como documentos tipo JSON semiestructurados y necesita consultar por los campos de esos documentos. ¿Qué base encaja MEJOR?",
+      "concepts": [
+        "DocumentDB",
+        "documental"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "La guía divide las bases OLTP en dos categorías: relacionales y no relacionales",
+            "explanation": "Cumple: es la clasificación de alto nivel que hace la guía."
+          },
+          {
+            "id": "b",
+            "text": "La guía recomienda una sola base para toda la aplicación",
+            "explanation": "No cumple: la guía indica que, por lo general, los requisitos se cubren con una mezcla de las bases que mejor encajan."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Aurora es una base no relacional de clave-valor",
+            "explanation": "No cumple: la guía incluye Aurora en la familia relacional, con motores compatibles con MySQL y PostgreSQL."
+          },
+          {
+            "id": "d",
+            "text": "DynamoDB admite el operador JOIN igual que una base relacional",
+            "explanation": "No cumple: la página de qué es DynamoDB indica que no admite JOIN y recomienda desnormalizar."
+          },
+          {
+            "id": "e",
+            "text": "Para analítica masiva (OLAP), la guía apunta a Amazon Redshift",
+            "explanation": "Cumple: la guía se centra en OLTP y señala Redshift para almacenes de datos y analítica a gran escala."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-5-quiz-07",
+      "title": "Alcance y categorías de la guía de decisión",
+      "statement": "Un equipo repasa el alcance de la guía de decisión de bases de datos de AWS. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "OLTP",
+        "OLAP",
+        "Redshift"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "b",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "DocumentDB para catálogos de productos y perfiles de usuario, por su flexibilidad semiestructurada",
+            "explanation": "Cumple: es la asignación que describe la guía por la flexibilidad de los datos semiestructurados."
+          },
+          {
+            "id": "b",
+            "text": "DynamoDB para la latencia baja y predecible cuando los usuarios navegan el catálogo",
+            "explanation": "Cumple: la guía lo propone por su latencia baja y predecible en la navegación."
+          },
+          {
+            "id": "c",
+            "text": "Aurora para el inventario y el procesamiento de pedidos, con modelo relacional y transacciones",
+            "explanation": "Cumple: la guía lo propone donde hacen falta un modelo relacional y soporte transaccional."
+          },
+          {
+            "id": "d",
+            "text": "Neptune para el inventario y el procesamiento de pedidos",
+            "explanation": "No cumple: la guía asigna Neptune a relaciones en grafos, no al inventario ni a los pedidos transaccionales."
+          },
+          {
+            "id": "e",
+            "text": "Timestream para los perfiles de usuario del sitio",
+            "explanation": "No cumple: la guía asigna Timestream a datos con marca de tiempo, no a perfiles de usuario."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-5-5-quiz-08",
+      "title": "Una tienda con varias bases",
+      "statement": "La guía de decisión da como ejemplo una tienda en línea que combina varias bases. Selecciona TRES asignaciones que coinciden con ese ejemplo.",
+      "concepts": [
+        "combinación de bases",
+        "Aurora",
+        "DynamoDB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "rel",
+            "term": "Relacional: Aurora o RDS",
+            "definition": "Datos estructurados en tablas, con joins y transacciones"
+          },
+          {
+            "id": "kv",
+            "term": "Clave-valor: DynamoDB",
+            "definition": "Sesiones y carritos de compra, serverless y de un solo dígito de milisegundos"
+          },
+          {
+            "id": "doc",
+            "term": "Documental: DocumentDB",
+            "definition": "Documentos tipo JSON con consultas ricas por sus campos"
+          },
+          {
+            "id": "cache",
+            "term": "En memoria: ElastiCache",
+            "definition": "Capa de caché efímera que acelera las lecturas de datos frecuentes"
+          },
+          {
+            "id": "memdb",
+            "term": "En memoria: MemoryDB",
+            "definition": "Base en memoria duradera, con persistencia completa, como base primaria"
+          },
+          {
+            "id": "graph",
+            "term": "Grafo: Neptune",
+            "definition": "Redes de relaciones, como fraude, redes sociales y recomendaciones"
+          },
+          {
+            "id": "wide",
+            "term": "Columnar ancha: Keyspaces",
+            "definition": "Migrar cargas de Apache Cassandra locales"
+          },
+          {
+            "id": "ts",
+            "term": "Series temporales: Timestream",
+            "definition": "Datos con marca de tiempo de IoT, métricas y activos, y sus tendencias"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada modelo de datos y su servicio de AWS con el caso que resuelve. Si dudas, pregúntate qué palabra del enunciado delata el modelo: tablas, clave, documento, relación, marca de tiempo o persistencia.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Relacional frente a no relacional: qué señala el uso de tablas y joins",
+              "Clave-valor, documental y columnar ancha: qué caso asigna la guía a cada una",
+              "Grafo y series temporales: relaciones frente a marca de tiempo",
+              "En memoria: caché efímera frente a base duradera"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-5-5-memoria-01",
+      "title": "Modelo de datos y servicio de AWS frente al caso que resuelve",
+      "statement": "Empareja cada modelo de datos y su servicio de AWS con el caso que resuelve.",
+      "concepts": [
+        "bases de propósito específico",
+        "modelos de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://aws.amazon.com/products/databases/"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-5-5-reflexion-01",
+      "title": "Reflexión: qué base de datos elegir para cada parte de una aplicación y por qué",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una tienda en línea, una app de reparto o un panel de sensores) y escribe un registro breve de decisión sobre sus bases de datos, en 5 a 7 líneas:\n\n1) Decisión: qué base de datos de AWS usarías para cada parte principal de la aplicación (relacional, clave-valor, documental, en memoria, grafo, columnar ancha o series temporales) y qué señal de los datos o del acceso decide cada una.\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, ElastiCache como base primaria, o una base relacional para un recorrido de relaciones) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo al combinar más de una base (varios modelos, varias formas de consulta, la sincronización entre ellas).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento o Optimización de costos) y por qué.\n\n5) Evidencia: qué página oficial (la guía de decisión de bases de datos, la de RDS o la de DynamoDB) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre cada parte, su base y la señal que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "bases de propósito específico",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+        "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html"
+      ],
+      "order": 19
+    }
+  ]
+}
