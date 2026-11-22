@@ -1,0 +1,1216 @@
+{
+  "code": "AWS-U2.4.3",
+  "lessons": [
+    {
+      "slug": "aws-u2-4-3-rendimiento-de-s3-prefijos-carga-multiparte-y-transfer-acceleration",
+      "title": "Rendimiento de S3: prefijos, carga multiparte y Transfer Acceleration",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "El rendimiento de Amazon S3 no se «activa»: se diseña. S3 escala solo, pero tú decides cómo nombras las claves, cómo subes los objetos grandes y desde dónde llegan tus clientes. Esta unidad junta tres palancas de la guía de S3: repartir las solicitudes entre prefijos, subir los objetos grandes con carga multiparte y acercar las subidas lejanas con S3 Transfer Acceleration. En el dominio 3 de SAA-C03, «Diseñar arquitecturas de alto rendimiento», y en su tarea de soluciones de almacenamiento de alto rendimiento o escalables, el enunciado describe el cuello de botella (muchas solicitudes en un prefijo, objetos enormes por una red inestable, clientes lejanos) y tú eliges la palanca que lo resuelve. Las cifras de esta lección son datos de las páginas de la guía de S3 leídas el 2026-11-22; antes de usarlas fuera del estudio, vuelve a comprobarlas en la página oficial."
+        },
+        {
+          "type": "list",
+          "title": "Rendimiento de S3 de un vistazo",
+          "items": [
+            "Solicitudes: según la página de rendimiento, S3 admite como mínimo 3.500 solicitudes PUT/COPY/POST/DELETE u 11.000 GET/HEAD por segundo por prefijo particionado, y escala solo a medida que crece el tráfico.",
+            "Prefijos: para más tasa, reparte las solicitudes entre muchos prefijos; las carpetas con barras no la aumentan por sí solas.",
+            "Escalado: es gradual, no instantáneo; mientras ocurre pueden aparecer errores 503 (Slow Down) que se resuelven al terminar.",
+            "Objetos grandes: la carga multiparte sube las partes en paralelo y reintenta solo la que falla; la guía la recomienda desde 100 MB.",
+            "Distancia: Transfer Acceleration acelera el transporte entre un cliente lejano y un bucket de uso general usando las ubicaciones de borde de CloudFront.",
+            "Otras ayudas: CloudFront o ElastiCache para más velocidad en una sola conexión o latencias de un dígito de milisegundos."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Prefijos y particiones: repartir las solicitudes",
+          "text": "Un prefijo es el conjunto de caracteres iniciales del nombre de la clave de un objeto. S3 no trata la barra (/) como un carácter especial y un prefijo no tiene por qué terminar en /, así que ordenar las claves en rutas parecidas a carpetas no aumenta por sí solo la tasa de solicitudes. Lo que cuenta es la partición: una partición es una unidad de recursos que S3 asigna a un prefijo para servir tasas más altas, y un prefijo particionado es aquel cuyas claves S3 ha puesto en su propia partición a medida que crece el tráfico. Tú influyes en ello con los nombres: repartir las solicitudes entre muchos prefijos ayuda a que S3 particione más de ellos en paralelo. La página cita un patrón concreto, añadir al inicio de la clave un carácter derivado de un hash del nombre, que mantiene el tráfico repartido entre un conjunto estable de prefijos para que S3 escale una vez y siga sirviéndolos. El escalado de un prefijo con tasas nuevas y altas es gradual: mientras ocurre, las solicitudes pueden recibir errores 503 (Slow Down) que se resuelven al terminar el escalado. Si la carga usa cifrado del lado del servidor con AWS KMS, las tasas también dependen de los límites de KMS, que la guía remite a su propia documentación."
+        },
+        {
+          "type": "paragraph",
+          "title": "Carga multiparte: objetos grandes en partes",
+          "text": "La carga multiparte sube un único objeto como un conjunto de partes. Cada parte es una porción contigua de los datos, se sube de forma independiente y en cualquier orden, y cuando están todas, S3 ensambla el objeto. La guía recomienda usarla para objetos de 100 MB o más en lugar de una sola operación. Ventajas: mejor rendimiento, porque las partes se suben en paralelo; recuperación rápida ante fallos de red, porque solo reintentas la parte interrumpida; pausar y reanudar, porque tras iniciar la carga no hay caducidad y tienes que completarla o detenerla de forma explícita; y poder empezar antes de conocer el tamaño final del objeto. El proceso tiene tres pasos: iniciar la carga (S3 devuelve un ID de carga, necesario en el resto de operaciones), subir las partes y completar la carga. Cada parte lleva un número de 1 a 10.000 que identifica su posición; no hace falta que sea consecutivo, pero si subes una parte con un número ya usado, la anterior se sobrescribe. Al completar, envías el ID de carga y la lista de números de parte con sus valores ETag, y S3 concatena las partes en orden ascendente. Si usas sumas de comprobación, los números de parte deben ser consecutivos y empezar en 1."
+        },
+        {
+          "type": "paragraph",
+          "title": "Multiparte: costo y limpieza de partes sin completar",
+          "text": "Después de iniciar una carga y subir partes, debes completarla o detenerla para dejar de pagar el almacenamiento de las partes: solo entonces S3 libera ese almacenamiento y deja de facturarlo. Si detienes la carga, S3 elimina las partes subidas y no se facturan; tras completarla, las partes dejan de existir como tales y solo queda el objeto. Para no acumular partes huérfanas, la guía recomienda configurar una regla de ciclo de vida con la acción AbortIncompleteMultipartUpload, que elimina las cargas incompletas después de un número de días. También conviene saber que, para listar o detener cargas, necesitas permisos específicos: s3:PutObject para iniciar, subir y completar, y s3:AbortMultipartUpload para detener; con cifrado KMS, el solicitante necesita además permisos de kms:GenerateDataKey y kms:Decrypt."
+        },
+        {
+          "type": "paragraph",
+          "title": "S3 Transfer Acceleration: cuando el problema es la distancia",
+          "text": "Transfer Acceleration es una característica a nivel de bucket para transferencias rápidas y seguras de archivos a larga distancia entre tu cliente y un bucket de uso general. Aprovecha las ubicaciones de borde distribuidas por el mundo de Amazon CloudFront: los datos llegan a la ubicación de borde más cercana y desde allí viajan hacia S3 por una ruta de red optimizada. La página la propone cuando tus clientes suben a un bucket centralizado desde todo el mundo, cuando transfieres gigabytes o terabytes con regularidad entre continentes o cuando no logras usar todo tu ancho de banda por Internet al subir. Requisitos: solo admite solicitudes de estilo virtual-hosted; el nombre del bucket debe ser compatible con DNS y no contener puntos; debe habilitarse en el bucket, y tras habilitarla puede tardar hasta 20 minutos en aumentar la velocidad. Para usarla accedes al bucket con el endpoint nombre-del-bucket.s3-accelerate.amazonaws.com (o su variante dual-stack para IPv6) y puedes seguir usando los endpoints regulares para la transferencia estándar. Solo el propietario del bucket cambia el estado, o quien reciba el permiso s3:PutAccelerateConfiguration; el estado es Enabled o Suspended. Pueden aplicarse cargos de transferencia adicionales: consulta la página de precios, que aquí no se copia por ser un dato cambiante."
+        },
+        {
+          "type": "paragraph",
+          "title": "Otras palancas: caché, lagos de datos y latencia",
+          "text": "La página de rendimiento distingue cargas por su sensibilidad. Los lagos de datos que escanean millones o miles de millones de objetos logran velocidades de transferencia por instancia que pueden llegar a 100 Gb/s en una sola instancia EC2 y agregan el rendimiento entre varias instancias hasta varios terabits por segundo. Las aplicaciones sensibles a la latencia, como la mensajería social, logran latencias consistentes de unos 100 a 200 milisegundos en objetos pequeños. Si necesitas más velocidad sobre una sola conexión HTTP o latencias de un dígito de milisegundos, la guía propone Amazon CloudFront o Amazon ElastiCache como caché con S3. Y si necesitas transporte rápido a larga distancia entre cliente y bucket, propone Transfer Acceleration. La clave de examen es casar el cuello de botella con la palanca: la tasa de solicitudes pide prefijos, el objeto grande pide multiparte, la distancia pide Transfer Acceleration y la lectura repetida pide caché."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres cuellos de botella, tres palancas",
+          "text": "Una empresa tiene tres problemas. (1) Una canalización escribe millones de eventos bajo un único prefijo «eventos/» y en cada pico recibe 503 (Slow Down). (2) Un equipo de vídeo sube archivos de 5 GB desde estudios con redes inestables y cada corte reinicia la subida. (3) Clientes de varios continentes suben informes a un bucket centralizado y no aprovechan su ancho de banda. Paso 1: en (1) el dato es «un único prefijo» y «picos nuevos», así que se reparte el tráfico entre muchos prefijos con un carácter de hash al inicio de la clave, y se acepta que el escalado sea gradual. Paso 2: en (2) el dato es «objeto grande» y «red inestable», así que carga multiparte: partes en paralelo y reintento solo de la parte fallida; se añade una regla AbortIncompleteMultipartUpload para limpiar las incompletas. Paso 3: en (3) el dato es «clientes de todo el mundo» y «bucket centralizado», así que Transfer Acceleration, con un nombre de bucket sin puntos y el endpoint acelerado. Resultado: cada decisión salió de un dato del enunciado y no del nombre de la característica."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de rendimiento como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  cargas: [\n    { nombre: \"eventos\", patronDeClave: \"{hash}/eventos/{id}.json\", reparto: \"hash\" },\n    { nombre: \"videos\", multiparte: true, abortarIncompletasDias: 7 },\n    { nombre: \"informes\", transferAcceleration: \"Enabled\", bucket: \"informes-clientes-global\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del cuello de botella a la palanca de rendimiento",
+          "code": "flowchart TB\n  R{\"Cuello de botella del enunciado\"} -->|\"Muchas solicitudes en un prefijo, 503\"| A[\"Repartir entre muchos prefijos\"]\n  R -->|\"Objeto grande o red inestable\"| B[\"Carga multiparte\"]\n  R -->|\"Clientes lejanos hacia un bucket\"| C[\"Transfer Acceleration\"]\n  R -->|\"Lecturas repetidas, milisegundos\"| D[\"CloudFront o ElastiCache\"]\n  B --> L[\"Regla AbortIncompleteMultipartUpload\"]\n  C --> E[\"Endpoint s3-accelerate, nombre sin puntos\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: aplicar la palanca por su fama y no por el cuello de botella",
+          "text": "El enunciado mezcla señales: «un único prefijo», «5 GB», «red inestable», «clientes de todo el mundo», «latencia de un dígito de milisegundos». Transfer Acceleration no sustituye al reparto por prefijos, que amplía la tasa de solicitudes, ni a la caché, que acelera lecturas repetidas; la carga multiparte no acorta la distancia. Subraya el cuello de botella (tasa, tamaño, distancia o lecturas repetidas) y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: organizar las claves en carpetas y esperar más solicitudes por segundo",
+          "text": "Causa: suponer que S3 trata la barra como un separador especial y que cada «carpeta» recibe su propia capacidad. Consecuencia: el tráfico sigue concentrado en pocos prefijos y aparecen errores 503 (Slow Down) en los picos. Solución: reparte las solicitudes entre muchos prefijos, por ejemplo con un carácter de un hash del nombre al inicio de la clave, y recuerda que el escalado de un prefijo nuevo es gradual."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: abandonar cargas multiparte sin completarlas ni detenerlas",
+          "text": "Causa: dar por hecho que una carga iniciada caduca sola. Consecuencia: S3 conserva las partes y sigues pagando su almacenamiento hasta que completas o detienes la carga, porque no hay caducidad. Solución: completa o detén la carga y añade al bucket una regla de ciclo de vida con AbortIncompleteMultipartUpload para limpiar las incompletas."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: habilitar Transfer Acceleration sin cumplir sus requisitos",
+          "text": "Causa: activar la función en un bucket con puntos en el nombre o seguir usando el endpoint regular y solicitudes de estilo ruta. Consecuencia: la función no se puede usar o las cargas no viajan por la ruta acelerada, y la mejora no llega. Solución: usa un nombre compatible con DNS y sin puntos, solicitudes virtual-hosted y el endpoint nombre-del-bucket.s3-accelerate.amazonaws.com, y espera hasta 20 minutos tras habilitarla."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Optimizar el rendimiento de S3 eligiendo entre prefijos, carga multiparte y Transfer Acceleration según el cuello de botella. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar arquitecturas de alto rendimiento». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la palanca, el dato del enunciado que la decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres decisiones del ejemplo: para cada problema, nombra la palanca y el dato que la decide. Explica con tus palabras el diagrama «Del cuello de botella a la palanca de rendimiento». Después responde: si los clientes suben a un bucket centralizado desde todo el mundo, ¿por qué no basta con repartir más prefijos, y qué requisitos del bucket debes comprobar antes de habilitar Transfer Acceleration?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Transfer Acceleration en un bucket con puntos». Una configuración escrita como objeto habilita Transfer Acceleration en un bucket cuyo nombre no cumple el requisito. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la función habilitada, el estilo de solicitud y el endpoint acelerado."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Un único prefijo que concentra el tráfico». Un diseño de claves manda miles de solicitudes por segundo a un solo prefijo y recibe 503 (Slow Down). Decide qué cambias en el patrón de claves sin tocar el bucket ni el volumen de solicitudes. Criterio de paso: las pruebas pasan y justificas por escrito el ajuste con la página de rendimiento de S3."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre prefijos, carga multiparte y Transfer Acceleration. Audítalo en «Auditar un informe de rendimiento de S3 generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de rendimiento, carga multiparte y Transfer Acceleration (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué palanca eliges para cada cuello de botella; a partir de qué tamaño recomienda la guía la carga multiparte y qué ventajas da; qué tres pasos tiene la carga multiparte y qué regla de ciclo de vida limpia las incompletas; qué requisitos exige Transfer Acceleration; y qué significa un 503 (Slow Down). Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa añade una aplicación que lee los mismos objetos pequeños miles de veces por minuto con latencias de un dígito de milisegundos, un archivo de grabaciones de 20 GB que sube desde oficinas con redes irregulares y un portal donde clientes de varios continentes suben documentos a un único bucket. Decide la palanca para cada parte y qué configuración la acompaña. Pregunta de cierre: un compañero dice «activemos Transfer Acceleration y los 503 desaparecerán»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-s3-que-es",
+          "order": 0,
+          "note": "Fuente previa: qué es S3, objetos, buckets y claves sobre los que se aplican las palancas de rendimiento."
+        },
+        {
+          "resourceSlug": "aws-s3-rendimiento",
+          "order": 1,
+          "note": "Fuente de los prefijos: tasas por prefijo particionado, escalado gradual, errores 503 y otras ayudas como CloudFront y ElastiCache."
+        },
+        {
+          "resourceSlug": "aws-s3-carga-multiparte",
+          "order": 2,
+          "note": "Fuente de la carga multiparte: umbral de 100 MB, ventajas, proceso en tres pasos, partes sin completar y regla de ciclo de vida."
+        },
+        {
+          "resourceSlug": "aws-s3-transfer-acceleration",
+          "order": 3,
+          "note": "Fuente de Transfer Acceleration: casos de uso, requisitos, endpoint acelerado y permisos."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Según la página de rendimiento (leída el 2026-11-22), S3 admite como mínimo 3.500 solicitudes PUT/COPY/POST/DELETE u 11.000 GET/HEAD por segundo por prefijo particionado y escala solo al crecer el tráfico. Para más tasa se reparten las solicitudes entre muchos prefijos, por ejemplo con un carácter de un hash del nombre al inicio de la clave. Las carpetas con barras no la aumentan por sí solas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-3-tarjeta-01",
+      "title": "Tarjeta: Prefijos y tasa de solicitudes",
+      "statement": "¿Qué tasa de solicitudes admite S3 por prefijo y cómo se consigue más?",
+      "concepts": [
+        "prefijo",
+        "tasa de solicitudes"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "S3 escala de forma gradual, no instantánea, los prefijos que reciben una tasa nueva y alta. Mientras escala pueden aparecer errores 503 (Slow Down), que se resuelven al terminar el escalado. Conviene repartir el tráfico entre un conjunto estable de prefijos para que S3 escale una vez y siga sirviéndolos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-3-tarjeta-02",
+      "title": "Tarjeta: Errores 503 Slow Down",
+      "statement": "¿Qué significa un 503 (Slow Down) en S3 y qué conviene hacer?",
+      "concepts": [
+        "503 Slow Down",
+        "particiones"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La guía recomienda usarla para objetos de 100 MB o más en lugar de una sola operación. Ventajas: las partes se suben en paralelo para mejorar el rendimiento, solo se reintenta la parte que falla, se puede pausar y reanudar porque la carga no caduca tras iniciarla y se puede empezar antes de conocer el tamaño final."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-3-tarjeta-03",
+      "title": "Tarjeta: Cuándo usar la carga multiparte",
+      "statement": "¿Cuándo recomienda la guía la carga multiparte y qué ventajas da?",
+      "concepts": [
+        "carga multiparte",
+        "100 MB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Tres pasos: iniciar (devuelve un ID de carga), subir las partes (número de 1 a 10.000; repetir un número sobrescribe la parte anterior) y completar con la lista de números de parte y ETag. Hasta completar o detener la carga se factura el almacenamiento de las partes; la guía recomienda una regla de ciclo de vida con AbortIncompleteMultipartUpload para limpiar las incompletas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-3-tarjeta-04",
+      "title": "Tarjeta: Proceso y limpieza de la carga multiparte",
+      "statement": "¿Qué pasos tiene la carga multiparte y cómo se evitan las partes huérfanas?",
+      "concepts": [
+        "carga multiparte",
+        "AbortIncompleteMultipartUpload"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es una característica a nivel de bucket para transferencias rápidas a larga distancia entre el cliente y un bucket de uso general. Usa las ubicaciones de borde de CloudFront y enruta los datos hacia S3 por una ruta optimizada. Conviene con clientes de todo el mundo que suben a un bucket centralizado, con gigabytes o terabytes entre continentes o si no aprovechas tu ancho de banda."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-3-tarjeta-05",
+      "title": "Tarjeta: S3 Transfer Acceleration",
+      "statement": "¿Qué es S3 Transfer Acceleration y cuándo conviene?",
+      "concepts": [
+        "Transfer Acceleration",
+        "CloudFront"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Solo admite solicitudes de estilo virtual-hosted; el nombre del bucket debe ser compatible con DNS y no contener puntos; hay que habilitarla en el bucket y la mejora puede tardar hasta 20 minutos. Se accede con nombre-del-bucket.s3-accelerate.amazonaws.com (o la variante dual-stack para IPv6) y los endpoints regulares siguen sirviendo. Datos de la página consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-3-tarjeta-06",
+      "title": "Tarjeta: Requisitos de Transfer Acceleration",
+      "statement": "¿Qué requisitos tiene S3 Transfer Acceleration y qué endpoint se usa?",
+      "concepts": [
+        "Transfer Acceleration",
+        "requisitos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Bucket de subidas de clientes de todo el mundo con Transfer Acceleration. Corrige su defecto principal.\nexport const bucket = {\n  nombre: \"subidas.clientes.global\",\n  transferAcceleration: \"Enabled\",\n  estiloDeSolicitud: \"virtual-hosted\",\n  endpointAcelerado: true,\n};\n",
+      "solution": {
+        "code": "export const bucket = {\n  nombre: \"subidas-clientes-global\",\n  transferAcceleration: \"Enabled\",\n  estiloDeSolicitud: \"virtual-hosted\",\n  endpointAcelerado: true,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Transfer Acceleration impone un requisito sobre el nombre del bucket. Repasa qué caracteres no puede contener."
+        },
+        {
+          "level": 2,
+          "text": "El nombre del bucket debe ser compatible con DNS y no contener puntos. Sustituye los puntos por un carácter válido en DNS."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el nombre a \"subidas-clientes-global\". No cambies el estado de la función, el estilo de solicitud ni el endpoint acelerado."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el nombre del bucket no contiene puntos",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(!bucket.nombre.includes(\".\"), \"el nombre no puede contener puntos\");"
+          }
+        },
+        {
+          "name": "el nombre es compatible con DNS",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(bucket.nombre), \"el nombre debe ser compatible con DNS\");"
+          }
+        },
+        {
+          "name": "la función sigue habilitada con solicitudes virtual-hosted",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(bucket.transferAcceleration, \"Enabled\");\nassert.strictEqual(bucket.estiloDeSolicitud, \"virtual-hosted\");"
+          }
+        },
+        {
+          "name": "el endpoint acelerado se conserva",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(bucket.endpointAcelerado, true);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-4-3-debug-01",
+      "title": "Transfer Acceleration en un bucket con puntos",
+      "statement": "El objeto `bucket` modela un bucket de subidas de clientes de todo el mundo con Transfer Acceleration habilitada, solicitudes virtual-hosted y endpoint acelerado. Su nombre no cumple uno de los requisitos de la función. Corrige el nombre sin cambiar el estado de la función, el estilo de solicitud ni el endpoint acelerado, y mantén la forma del valor exportado (`export const bucket = { … }`).",
+      "concepts": [
+        "Transfer Acceleration",
+        "requisitos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Eventos que llegan a un único prefijo y reciben 503 Slow Down. Corrige su defecto principal.\nexport const diseno = {\n  bucket: \"pedidos-eventos\",\n  patronDeClave: \"pedidos/{id}.json\",\n  prefijos: 1,\n  reparto: \"ninguno\",\n  solicitudesPorSegundo: 20000,\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  bucket: \"pedidos-eventos\",\n  patronDeClave: \"{hash}/pedidos/{id}.json\",\n  prefijos: 16,\n  reparto: \"hash\",\n  solicitudesPorSegundo: 20000,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "las solicitudes se reparten entre varios prefijos",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(diseno.prefijos > 1, \"un único prefijo concentra el tráfico\");\nassert.strictEqual(diseno.reparto, \"hash\");"
+          }
+        },
+        {
+          "name": "la clave empieza por un carácter derivado de un hash",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(diseno.patronDeClave.startsWith(\"{hash}\"), \"el hash va al inicio de la clave\");"
+          }
+        },
+        {
+          "name": "el bucket y el volumen de solicitudes se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.bucket, \"pedidos-eventos\");\nassert.strictEqual(diseno.solicitudesPorSegundo, 20000);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-4-3-debug-02",
+      "title": "Un único prefijo que concentra el tráfico",
+      "statement": "El objeto `diseno` modela una canalización que escribe unos 20.000 eventos por segundo bajo un único prefijo y recibe errores 503 (Slow Down) en cada pico. Todas las claves empiezan por la misma ruta y no hay reparto entre prefijos. Corrige el diseño de claves para repartir las solicitudes sin cambiar el bucket ni el volumen de solicitudes, y mantén la forma del valor exportado (`export const diseno = { … }`). Organizar las claves en carpetas con barras no basta.",
+      "concepts": [
+        "prefijos",
+        "503 Slow Down",
+        "hash"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de rendimiento de S3 (borrador generado por un asistente)\nEscenario: un lago de datos, vídeos de 5 GB y clientes de todo el mundo.\n1. S3 admite como mínimo 3.500 solicitudes PUT/COPY/POST/DELETE u 11.000 GET/HEAD por segundo por prefijo particionado.\n2. Organizar las claves en carpetas con barras aumenta por sí solo la tasa de solicitudes, porque S3 trata la barra como carácter especial.\n3. Mientras S3 escala para una tasa alta nueva, pueden aparecer errores 503 (Slow Down) que se resuelven al terminar el escalado.\n4. Para objetos de 100 MB o más, la guía recomienda la carga multiparte en lugar de una sola operación.\n5. Una carga multiparte iniciada caduca sola a las 24 horas, así que no genera costo si se abandona.\n6. Transfer Acceleration funciona con cualquier nombre de bucket, incluidos los que llevan puntos.\n7. Tras habilitar Transfer Acceleration, la velocidad puede tardar hasta 20 minutos en aumentar."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Tasa por prefijo particionado",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página de rendimiento (leída el 2026-11-22) da esas cifras como mínimo por prefijo particionado y dice que S3 escala a tasas mayores."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Carpetas y tasa de solicitudes",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: S3 no trata la barra como carácter especial, así que las carpetas no aumentan por sí solas la tasa; hay que repartir las solicitudes entre muchos prefijos."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Errores 503 durante el escalado",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: el escalado es gradual y los 503 (Slow Down) se resuelven cuando termina."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Umbral de la carga multiparte",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la guía lo presenta como práctica recomendada para objetos de 100 MB o más."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Caducidad de la carga multiparte",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: tras iniciar una carga multiparte no hay caducidad; hay que completarla o detenerla, y hasta entonces se factura el almacenamiento de las partes."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Nombres de bucket con puntos",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: el nombre del bucket debe ser compatible con DNS y no contener puntos para usar Transfer Acceleration."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Tiempo hasta notar la mejora",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página indica que tras habilitarla puede tardar hasta 20 minutos en aumentar la velocidad de transferencia."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-4-3-auditoria-01",
+      "title": "Auditar un informe de rendimiento de S3 generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre prefijos, carga multiparte y Transfer Acceleration de S3. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "prefijos",
+        "carga multiparte",
+        "Transfer Acceleration"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Reunir todas las claves bajo un único prefijo para que S3 lo particione una sola vez",
+            "explanation": "Descartada: la página indica distribuir las solicitudes entre muchos prefijos en lugar de concentrarlas en uno solo."
+          },
+          {
+            "id": "b",
+            "text": "Anteponer a la clave un carácter derivado de un hash de su nombre, para repartir entre prefijos",
+            "explanation": "Es la correcta: la página cita añadir al inicio de la clave un carácter de un hash del nombre para repartir el tráfico entre prefijos."
+          },
+          {
+            "id": "c",
+            "text": "Crear carpetas anidadas con barras, porque S3 trata la barra como carácter especial",
+            "explanation": "Descartada: S3 no trata la barra como carácter especial, así que las carpetas no aumentan por sí solas la tasa de solicitudes."
+          },
+          {
+            "id": "d",
+            "text": "Reintentar sin pausa, porque los errores 503 (Slow Down) no se resuelven nunca",
+            "explanation": "Descartada: la página indica que esos errores se resuelven cuando S3 termina de escalar el prefijo."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-3-quiz-01",
+      "title": "Muchas solicitudes bajo un único prefijo",
+      "statement": "Una aplicación escribe millones de objetos con claves bajo un único prefijo y recibe errores 503 (Slow Down) en cada pico nuevo de tráfico. ¿Qué cambio de diseño da la MAYOR capacidad de solicitudes por segundo?",
+      "concepts": [
+        "prefijos",
+        "503 Slow Down"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una única solicitud PUT por objeto, repetida completa si falla",
+            "explanation": "Descartada: con una sola operación hay que reiniciar la subida desde el principio; la guía recomienda multiparte desde 100 MB."
+          },
+          {
+            "id": "b",
+            "text": "Una carga multiparte que obliga a reiniciar todas las partes si una falla",
+            "explanation": "Descartada: en una carga multiparte solo se reintentan las partes interrumpidas, sin tocar las demás."
+          },
+          {
+            "id": "c",
+            "text": "Una carga multiparte que reutiliza el mismo número de parte para cada trozo",
+            "explanation": "Descartada: subir una parte con un número ya usado sobrescribe la anterior, y se perdería parte del contenido."
+          },
+          {
+            "id": "d",
+            "text": "Una carga multiparte en la que solo se reintentan las partes interrumpidas",
+            "explanation": "Es la correcta: cada parte se retransmite sin afectar a las demás, y la guía la recomienda para redes irregulares."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-3-quiz-02",
+      "title": "Subida grande por una red inestable",
+      "statement": "Un equipo sube archivos de 5 GB por una red inestable y cada fallo obliga a empezar de cero. ¿Qué enfoque reduce MEJOR el reenvío?",
+      "concepts": [
+        "carga multiparte",
+        "resiliencia de red"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 Transfer Acceleration, que usa las ubicaciones de borde de CloudFront",
+            "explanation": "Es la correcta: está diseñada para transferencias rápidas a larga distancia entre el cliente y un bucket de uso general."
+          },
+          {
+            "id": "b",
+            "text": "Amazon ElastiCache delante del bucket, para latencias de un dígito de milisegundos",
+            "explanation": "Descartada: la página lo cita como caché para lecturas de muy baja latencia, no para acelerar cargas intercontinentales."
+          },
+          {
+            "id": "c",
+            "text": "Más prefijos, que elevan las solicitudes por segundo pero no acortan la distancia",
+            "explanation": "Descartada: los prefijos amplían la tasa de solicitudes y no cambian la ruta de red que recorre cada carga."
+          },
+          {
+            "id": "d",
+            "text": "S3 Batch Replication, que copia a demanda los objetos que ya existían",
+            "explanation": "Descartada: Batch Replication copia objetos entre buckets y no acelera las cargas de los clientes."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-3-quiz-03",
+      "title": "Clientes de todo el mundo hacia un bucket",
+      "statement": "Clientes de todo el mundo suben datos a un bucket centralizado en una sola Región y no aprovechan su ancho de banda por Internet. ¿Qué característica encaja MÁS?",
+      "concepts": [
+        "Transfer Acceleration",
+        "larga distancia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Mantener el endpoint regular, que ya acelera las cargas sin cambios",
+            "explanation": "Descartada: los endpoints regulares siguen sirviendo la transferencia estándar; el acelerado tiene su propio endpoint."
+          },
+          {
+            "id": "b",
+            "text": "Enviar solicitudes de estilo ruta, que son las que admite la función",
+            "explanation": "Descartada: Transfer Acceleration solo admite solicitudes de estilo virtual-hosted."
+          },
+          {
+            "id": "c",
+            "text": "Usar el endpoint nombre-del-bucket.s3-accelerate.amazonaws.com",
+            "explanation": "Es la correcta: la página indica ese endpoint, o su variante dual-stack para IPv6, para acceder al bucket acelerado."
+          },
+          {
+            "id": "d",
+            "text": "Añadir un punto al nombre del bucket para marcar el modo acelerado",
+            "explanation": "Descartada: el nombre del bucket no debe contener puntos para poder usar Transfer Acceleration."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-3-quiz-04",
+      "title": "Endpoint con Transfer Acceleration",
+      "statement": "Un equipo habilitó Transfer Acceleration en un bucket con un nombre compatible con DNS y sin puntos. ¿Qué cambio ÚNICAMENTE en la aplicación envía sus cargas por la ruta acelerada?",
+      "concepts": [
+        "Transfer Acceleration",
+        "endpoint"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Esperar, porque las cargas multiparte sin completar caducan solas a las 24 horas",
+            "explanation": "Descartada: tras iniciar una carga multiparte no hay caducidad; hay que completarla o detenerla de forma explícita."
+          },
+          {
+            "id": "b",
+            "text": "Una regla de ciclo de vida con la acción AbortIncompleteMultipartUpload",
+            "explanation": "Es la correcta: la guía la recomienda para eliminar las cargas incompletas tras un número de días y reducir el costo de almacenamiento."
+          },
+          {
+            "id": "c",
+            "text": "Reiniciar la aplicación, que libera las partes al desconectarse",
+            "explanation": "Descartada: S3 libera las partes y deja de facturarlas solo cuando completas o detienes la carga multiparte."
+          },
+          {
+            "id": "d",
+            "text": "Repetir el objeto con un PUT sencillo, que borra las partes pendientes",
+            "explanation": "Descartada: un PUT nuevo no completa ni detiene la carga multiparte, así que sus partes siguen almacenadas."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-3-quiz-05",
+      "title": "Partes de cargas multiparte sin completar",
+      "statement": "Una aplicación inició cargas multiparte que nunca se completaron y sus partes siguen facturando almacenamiento. ¿Qué recomienda la guía para el MENOR costo sin intervención manual?",
+      "concepts": [
+        "AbortIncompleteMultipartUpload",
+        "ciclo de vida"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una única instancia EC2 que lee de forma secuencial desde un solo prefijo",
+            "explanation": "Descartada: la guía agrega el rendimiento entre varias instancias y reparte las solicitudes entre muchos prefijos."
+          },
+          {
+            "id": "b",
+            "text": "Transfer Acceleration entre el bucket y instancias EC2 de la misma Región",
+            "explanation": "Descartada: Transfer Acceleration está pensada para el transporte a larga distancia entre cliente y bucket, no para ese caso."
+          },
+          {
+            "id": "c",
+            "text": "Varias instancias EC2 en paralelo, con las claves repartidas entre muchos prefijos",
+            "explanation": "Es la correcta: cada instancia puede llegar a 100 Gb/s y se agrega entre instancias hasta varios terabits por segundo, según la página."
+          },
+          {
+            "id": "d",
+            "text": "Concentrar todas las claves en un prefijo para simplificar el particionado",
+            "explanation": "Descartada: la página recomienda distribuir las solicitudes entre muchos prefijos y no concentrarlas en uno."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-3-quiz-06",
+      "title": "Lago de datos con rendimiento agregado",
+      "statement": "Un lago de datos consulta miles de millones de objetos en S3 desde instancias EC2. ¿Qué diseño logra el MÁXIMO rendimiento agregado?",
+      "concepts": [
+        "lago de datos",
+        "rendimiento agregado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Una carga iniciada caduca sola si no se completa en 24 horas",
+            "explanation": "No cumple: tras iniciar la carga no hay caducidad; hay que completarla o detenerla de forma explícita."
+          },
+          {
+            "id": "b",
+            "text": "Las partes se pueden subir en paralelo y en cualquier orden",
+            "explanation": "Cumple: la guía indica que las partes se suben de forma independiente, en paralelo y en cualquier orden."
+          },
+          {
+            "id": "c",
+            "text": "Subir una parte con un número ya usado la añade sin sobrescribir la anterior",
+            "explanation": "No cumple: si subes una parte con el mismo número que otra previa, la anterior se sobrescribe."
+          },
+          {
+            "id": "d",
+            "text": "Si una parte falla, basta con retransmitir esa parte",
+            "explanation": "Cumple: un fallo de transmisión se resuelve reenviando solo esa parte, sin afectar a las demás."
+          },
+          {
+            "id": "e",
+            "text": "Las partes sin completar no generan costos de almacenamiento",
+            "explanation": "No cumple: hasta que completas o detienes la carga, se factura el almacenamiento de las partes subidas."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-3-quiz-07",
+      "title": "Qué es cierto de la carga multiparte",
+      "statement": "Un arquitecto repasa la carga multiparte de S3. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "carga multiparte",
+        "partes"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo admite solicitudes de estilo virtual-hosted",
+            "explanation": "Cumple: la página indica que Transfer Acceleration solo se admite con solicitudes de estilo virtual-hosted."
+          },
+          {
+            "id": "b",
+            "text": "Funciona con nombres de bucket que contienen puntos",
+            "explanation": "No cumple: el nombre del bucket debe ser compatible con DNS y no contener puntos."
+          },
+          {
+            "id": "c",
+            "text": "Tras habilitarla, la mejora puede tardar hasta 20 minutos",
+            "explanation": "Cumple: la página indica que puede tardar hasta 20 minutos antes de que aumente la velocidad de transferencia."
+          },
+          {
+            "id": "d",
+            "text": "Los endpoints regulares dejan de funcionar al habilitarla",
+            "explanation": "No cumple: puedes seguir usando los endpoints regulares para la transferencia de datos estándar."
+          },
+          {
+            "id": "e",
+            "text": "Se habilita por bucket y su estado es Enabled o Suspended",
+            "explanation": "Cumple: es una característica a nivel de bucket y la página indica que su estado es Enabled o Suspended."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-3-quiz-08",
+      "title": "Qué es cierto de Transfer Acceleration",
+      "statement": "Un equipo planea habilitar Transfer Acceleration. Selecciona TRES afirmaciones correctas según la guía.",
+      "concepts": [
+        "Transfer Acceleration",
+        "requisitos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-4-3-reflexion-01",
+      "title": "Reflexión: qué palanca de rendimiento y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, una canalización que escribe millones de eventos, unos vídeos grandes subidos por una red irregular o un portal donde suben clientes de varios continentes) y escribe un registro breve de decisión sobre cómo mejorarías su rendimiento en S3, en 5 a 7 líneas:\n\n1) Decisión: qué palanca usarías (repartir entre prefijos, carga multiparte, Transfer Acceleration o una caché) y qué dato de la carga la decide (tasa de solicitudes, tamaño del objeto, estabilidad de la red, distancia del cliente).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, Transfer Acceleration para un problema de tasa de solicitudes o carpetas con barras para repartir el tráfico) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (el esquema de claves, la regla AbortIncompleteMultipartUpload, el endpoint acelerado, los reintentos ante 503).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento o Optimización de costos) y por qué.\n\n5) Evidencia: qué página oficial (rendimiento, carga multiparte o Transfer Acceleration) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la palanca y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "rendimiento de S3",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html"
+      ],
+      "order": 18
+    }
+  ]
+}
