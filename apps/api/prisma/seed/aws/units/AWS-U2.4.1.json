@@ -1,0 +1,1316 @@
+{
+  "code": "AWS-U2.4.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-4-1-s3-clases-de-almacenamiento-ciclo-de-vida-versionado-y-replicacion",
+      "title": "S3: clases de almacenamiento, ciclo de vida, versionado y replicación",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cada objeto de Amazon S3 tiene una clase de almacenamiento. Si no indicas ninguna al subirlo, S3 le asigna S3 Standard, la clase por defecto. Elegir la clase según el caso te permite optimizar el costo, el rendimiento y la disponibilidad, y todas ofrecen una durabilidad alta. En el dominio 4 de SAA-C03, «Diseñar arquitecturas optimizadas en costos», el patrón se repite: el enunciado describe cuánto y cómo se accede a los datos, si se pueden recrear y cuánto tiempo se conservan, y tú casas la clase con el caso. Después entran tres mecanismos que se combinan con las clases: el ciclo de vida, que mueve o elimina objetos con reglas; el versionado, que conserva varias versiones de un objeto; y la replicación, que copia objetos entre buckets. Esta unidad prepara la tarea de almacenamiento de ese dominio. Las cifras de días y tamaños que aparecen abajo son datos de la guía de S3 leída el 2026-11-22; antes de usarlas fuera del estudio, vuelve a comprobarlas en la página oficial."
+        },
+        {
+          "type": "list",
+          "title": "Las clases, frente a frente",
+          "items": [
+            "S3 Standard: acceso frecuente con milisegundos; es la clase por defecto y no tiene duración mínima de almacenamiento.",
+            "S3 Standard-IA: datos de larga vida con acceso poco frecuente y milisegundos; guarda los datos en varias zonas de disponibilidad, cobra una tarifa de recuperación por GB y tiene una duración mínima de 30 días.",
+            "S3 One Zone-IA: datos recreables con acceso poco frecuente; guarda los datos en una sola zona de disponibilidad, cuesta menos que Standard-IA y no resiste la pérdida física de esa zona.",
+            "S3 Intelligent-Tiering: datos con patrones de acceso desconocidos o cambiantes; mueve los objetos entre niveles de acceso, no cobra recuperación y sí una pequeña tarifa de supervisión y automatización.",
+            "S3 Glacier Instant Retrieval: archivo de acceso poco frecuente (una vez por trimestre) con recuperación en milisegundos.",
+            "S3 Glacier Flexible Retrieval: archivo con recuperación en minutos u horas, y hay que restaurar el objeto antes de acceder a él.",
+            "S3 Glacier Deep Archive: archivo al que se accede menos de una vez al año, con recuperación en horas y restauración previa."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Clases para acceso poco frecuente y de archivo",
+          "text": "Standard-IA y One Zone-IA sirven para datos de larga vida a los que casi no se accede, pero que deben responder en milisegundos cuando se piden. Según la guía, son adecuadas para objetos de más de 128 KB que vas a guardar al menos 30 días: si un objeto pesa menos de 128 KB, S3 cobra 128 KB, y si lo eliminas antes de 30 días, se cobran los 30 días. La diferencia entre las dos es la resiliencia: Standard-IA guarda los datos en varias zonas de disponibilidad y aguanta la pérdida de una; One Zone-IA usa una sola, por eso cuesta menos y la guía la recomienda para datos que puedes recrear o para réplicas de la replicación entre Regiones. Las tres clases S3 Glacier están pensadas para almacenamiento barato y duradero de datos que casi no se leen: exigen duraciones mínimas (90 días en Instant Retrieval y en Flexible Retrieval, 180 días en Deep Archive) y cobran recuperación por GB. Con Flexible Retrieval y Deep Archive los objetos quedan archivados y hay que restaurarlos antes de leerlos; Instant Retrieval sí está disponible en tiempo real. Tus objetos siguen dentro de S3 y no se acceden por el servicio Amazon Glacier independiente."
+        },
+        {
+          "type": "paragraph",
+          "title": "S3 Intelligent-Tiering: cuando no sabes cómo se accede",
+          "text": "Intelligent-Tiering está diseñada para optimizar costos moviendo automáticamente los datos al nivel de acceso más económico, a nivel de objeto, sin impacto en el rendimiento. Es la clase ideal cuando el patrón de acceso es desconocido o cambia. Los objetos empiezan en el nivel Frequent Access; los que no se acceden durante 30 días consecutivos pasan a Infrequent Access y los que llevan 90 días sin acceso pasan a Archive Instant Access. Hay dos niveles de archivo opcionales, Archive Access y Deep Archive Access, que activas tú solo para datos a los que se puede acceder de forma asíncrona (hay que restaurar el objeto antes de leerlo). No cobra recuperación, y a cambio hay una pequeña tarifa mensual de supervisión y automatización por objeto. Los objetos de menos de 128 KB no se supervisan, no son elegibles para el cambio automático de nivel y se quedan siempre en Frequent Access."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ciclo de vida: mover o eliminar con reglas",
+          "text": "Una configuración de ciclo de vida de S3 es un conjunto de reglas que S3 aplica a un grupo de objetos. Hay dos tipos de acción: las de transición, que definen cuándo pasa un objeto a otra clase (por ejemplo, a Standard-IA 30 días después de crearlo), y las de expiración, que definen cuándo caduca el objeto para que S3 lo elimine por ti. Al añadir la configuración a un bucket, las reglas se aplican tanto a los objetos existentes como a los que subas después. Una política de bucket no puede impedir que una regla de ciclo de vida elimine o transite objetos. Los costos: las transiciones tienen costo por solicitud, no hay cargos de recuperación de datos por las transiciones del ciclo de vida, y la expiración solo cuesta algo si el objeto está en una clase con duración mínima de almacenamiento. Si hay un retraso entre que el objeto es elegible y la acción, el cambio de facturación se aplica desde que es elegible, salvo en las transiciones a Intelligent-Tiering, donde el cambio llega cuando el objeto ya se ha movido."
+        },
+        {
+          "type": "paragraph",
+          "title": "Versionado: conservar cada versión",
+          "text": "El versionado mantiene varias variantes de un objeto en el mismo bucket y permite conservar, recuperar y restaurar cada versión. Por defecto está deshabilitado y hay que habilitarlo de forma explícita. Un bucket puede estar sin versionado (el estado por defecto), con versionado habilitado o con versionado suspendido; el estado se aplica a todos los objetos del bucket, nunca a algunos. Una vez habilitado, el bucket no puede volver al estado sin versionado, solo suspenderse. Si eliminas un objeto en un bucket con versionado habilitado, S3 inserta un marcador de eliminación, que pasa a ser la versión actual, en lugar de quitar el objeto de forma permanente; si lo sobrescribes, se crea una versión nueva. Cada versión es el objeto completo, no solo una diferencia con la anterior, y se cobran las tarifas normales de S3 por cada una: tres versiones se facturan como tres objetos. Por eso la guía recomienda combinar el versionado con el ciclo de vida para controlar el costo, y advierte de que, si tu regla de expiración en un bucket sin versionado producía borrado permanente, al habilitar el versionado debes añadir una configuración de expiración de versiones no actuales para mantener ese comportamiento."
+        },
+        {
+          "type": "paragraph",
+          "title": "Replicación: CRR, SRR y por lotes",
+          "text": "La replicación copia objetos de forma automática y asíncrona entre buckets, que pueden ser de la misma cuenta o de cuentas distintas, y puedes usar uno o varios destinos, en otras Regiones o en la misma. Hay dos tipos. La replicación en vivo copia los objetos nuevos y actualizados a medida que se escriben, y no replica los objetos que ya existían antes de configurarla; tiene dos formas: Cross-Region Replication (CRR), entre Regiones distintas, y Same-Region Replication (SRR), dentro de la misma Región. La replicación a demanda, con S3 Batch Replication, copia los objetos existentes cuando tú lo pides, y también sirve para reintentar los que fallaron. La guía cita casos para CRR (cumplir requisitos de distancia, reducir la latencia acercando copias a los usuarios, operar clústeres en dos Regiones) y para SRR (agregar registros en un solo bucket, replicar entre cuentas de producción y de prueba, cumplir leyes de soberanía de datos). La replicación puede conservar los metadatos y los IDs de versión, puede colocar los objetos directamente en otra clase de destino, como S3 Glacier Deep Archive, y puede cambiar la propiedad de la réplica a la cuenta del bucket de destino. S3 Replication Time Control (S3 RTC) ofrece un plazo previsible de 15 minutos respaldado por un SLA, y no se aplica a Batch Replication."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro cargas, cuatro decisiones",
+          "text": "Una empresa tiene cuatro cargas. (1) Respaldos contables, única copia, no recreables, consultados una vez al mes y con respuesta en milisegundos. (2) Un lago de datos cuyo patrón de acceso nadie conoce y que cambia cada semana. (3) Registros que se consultan durante un mes y después se pueden borrar. (4) Documentos que el equipo sobrescribe y borra por error, con copias exigidas en otra Región. Paso 1: para (1) el calificador es «no recreable» y «milisegundos», así que va a S3 Standard-IA, y no a One Zone-IA porque una sola zona no resiste su pérdida. Paso 2: para (2) la clave es «desconocido o cambiante», así que va a S3 Intelligent-Tiering, que no cobra recuperación. Paso 3: para (3) se deja en S3 Standard y se define una regla de ciclo de vida con una acción de expiración. Paso 4: para (4) se habilita el versionado, que protege de borrados y sobrescrituras, se añade expiración de versiones no actuales para controlar el costo, y se configura CRR hacia el bucket de otra Región. Resultado: cada decisión salió de un dato del enunciado, no del nombre de la clase."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de almacenamiento como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  cargas: [\n    { nombre: \"respaldos-contables\", clase: \"STANDARD_IA\", recreable: false },\n    { nombre: \"lago-de-datos\", clase: \"INTELLIGENT_TIERING\" },\n    { nombre: \"registros\", clase: \"STANDARD\", cicloDeVida: { expiraDias: 30 } },\n    { nombre: \"documentos\", versionado: \"enabled\", expiraNoActualesDias: 30, replicacion: \"CRR\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del patrón de acceso a la clase y al mecanismo",
+          "code": "flowchart TB\n  R{\"Patrón de acceso y exigencia\"} -->|\"Frecuente, milisegundos\"| A[\"S3 Standard\"]\n  R -->|\"Desconocido o cambiante\"| B[\"S3 Intelligent-Tiering\"]\n  R -->|\"Poco frecuente, no recreable\"| C[\"S3 Standard-IA\"]\n  R -->|\"Poco frecuente, recreable\"| D[\"S3 One Zone-IA\"]\n  R -->|\"Archivo trimestral, milisegundos\"| E[\"S3 Glacier Instant Retrieval\"]\n  R -->|\"Archivo, restaurar antes de leer\"| F[\"Glacier Flexible Retrieval o Deep Archive\"]\n  A --> L[\"Ciclo de vida: transición y expiración\"]\n  R -->|\"Recuperar de borrados y sobrescrituras\"| V[\"Versionado\"]\n  R -->|\"Copias en otro bucket\"| P[\"Replicación: CRR, SRR o Batch\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir la clase por el nombre y no por el dato del enunciado",
+          "text": "El enunciado mezcla señales: «no se puede recrear», «milisegundos», «una vez por trimestre», «desconocido o cambiante». One Zone-IA es la más barata de las dos IA, pero no resiste la pérdida de una zona; Glacier Flexible Retrieval y Deep Archive abaratan, pero exigen restaurar el objeto antes de leerlo; Intelligent-Tiering no cobra recuperación pero sí una tarifa de supervisión. Subraya el patrón de acceso, la recreabilidad, el tiempo de respuesta y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: guardar la única copia en One Zone-IA por ahorrar",
+          "text": "Causa: ver «poco frecuente» y «más barata» y elegir One Zone-IA sin mirar si los datos se pueden recrear. Consecuencia: los datos se guardan en una sola zona de disponibilidad y no son resilientes a su pérdida física por un desastre, así que la única copia puede perderse. Solución: usa S3 Standard-IA para la copia primaria que no puedes recrear y reserva One Zone-IA para datos recreables o réplicas de CRR."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: habilitar el versionado y olvidarse de las versiones no actuales",
+          "text": "Causa: dar por hecho que una regla de expiración que antes borraba de forma permanente sigue haciéndolo con el versionado habilitado. Consecuencia: cada versión se factura como un objeto completo y las versiones no actuales se acumulan, con un costo que crece sin control. Solución: añade una configuración de expiración de versiones no actuales al ciclo de vida del bucket; el bucket no puede volver a sin versionado, solo suspenderse."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: esperar que la replicación en vivo copie lo que ya existía",
+          "text": "Causa: configurar CRR o SRR y suponer que se copia todo el contenido del bucket. Consecuencia: los objetos anteriores a la configuración no se replican y el destino queda incompleto, justo cuando se necesita para cumplir un requisito. Solución: usa S3 Batch Replication como acción a demanda para los objetos existentes, para los que fallaron o para nuevos destinos, y recuerda que S3 RTC no se aplica a Batch Replication."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la clase de almacenamiento de S3 según el patrón de acceso y la recreabilidad, y configurar ciclo de vida, versionado y replicación para controlar el costo. Esta unidad prepara el examen SAA-C03, dominio 4 «Diseñar arquitecturas optimizadas en costos». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la clase, el mecanismo y el dato del enunciado que lo decide, y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada carga, nombra la clase o el mecanismo y el dato que lo decide. Explica con tus palabras el diagrama «Del patrón de acceso a la clase y al mecanismo». Después responde: si la única copia no se puede recrear y se consulta una vez al mes, ¿por qué no One Zone-IA, y qué añades al habilitar el versionado para que el costo no crezca?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La única copia en una sola zona». Una configuración escrita como objeto guarda unos respaldos no recreables en One Zone-IA. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la carga, que la copia es primaria y no recreable, y la frecuencia de acceso."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El bucket versionado que acumula versiones». Un bucket con versionado habilitado solo expira la versión actual y no configura nada para las versiones no actuales. Decide qué añades sin desactivar el versionado ni cambiar la expiración actual. Criterio de paso: las pruebas pasan y justificas por escrito el ajuste con la guía del versionado y del ciclo de vida."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre clases, ciclo de vida, versionado y replicación de S3. Audítalo en «Auditar un informe de S3 generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de clases, ciclo de vida, versionado y replicación (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué clase eliges para cada patrón de acceso; qué dos tipos de acción tiene el ciclo de vida; qué hace S3 al eliminar un objeto con versionado habilitado; qué diferencia hay entre replicación en vivo y Batch Replication; y qué clases exigen restaurar antes de leer. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa adquiere un archivo de documentos que se consulta una vez por trimestre con respuesta inmediata, un lago de datos con acceso impredecible y un bucket de documentos que debe tener una copia en otra Región y protegerse de borrados. Decide clase, mecanismo y configuración para cada parte. Pregunta de cierre: un compañero dice «activemos CRR y ya tendremos también los objetos antiguos»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-s3-clases-de-almacenamiento",
+          "order": 0,
+          "note": "Fuente de las clases: acceso, resiliencia, duraciones mínimas, Intelligent-Tiering y Glacier."
+        },
+        {
+          "resourceSlug": "aws-s3-ciclo-de-vida",
+          "order": 1,
+          "note": "Fuente del ciclo de vida: acciones de transición y expiración, objetos existentes y costos."
+        },
+        {
+          "resourceSlug": "aws-s3-versionado",
+          "order": 2,
+          "note": "Fuente del versionado: estados del bucket, marcadores de eliminación y expiración de versiones no actuales."
+        },
+        {
+          "resourceSlug": "aws-s3-replicacion",
+          "order": 3,
+          "note": "Fuente de la replicación: CRR, SRR, Batch Replication y S3 RTC."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 4 (Diseñar arquitecturas optimizadas en costos) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ambas son para datos de larga vida con acceso poco frecuente, milisegundos de acceso, tarifa de recuperación por GB y duración mínima de 30 días. Standard-IA guarda los datos en varias zonas de disponibilidad y resiste la pérdida de una; One Zone-IA usa una sola zona, cuesta menos y no es resiliente a su pérdida física, por lo que sirve para datos recreables."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-1-tarjeta-01",
+      "title": "Tarjeta: Standard-IA y One Zone-IA",
+      "statement": "¿En qué se diferencian S3 Standard-IA y S3 One Zone-IA?",
+      "concepts": [
+        "Standard-IA",
+        "One Zone-IA"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para datos con patrones de acceso desconocidos o cambiantes: mueve automáticamente los objetos entre niveles de acceso, a nivel de objeto. No cobra tarifas de recuperación y sí una pequeña tarifa mensual de supervisión y automatización. Los objetos de menos de 128 KB no se supervisan y se quedan en Frequent Access."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-1-tarjeta-02",
+      "title": "Tarjeta: S3 Intelligent-Tiering",
+      "statement": "¿Cuándo conviene S3 Intelligent-Tiering y qué cobra?",
+      "concepts": [
+        "Intelligent-Tiering",
+        "patrón de acceso"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Instant Retrieval: archivo de acceso trimestral, recuperación en milisegundos y 90 días mínimos. Flexible Retrieval: recuperación en minutos u horas, 90 días mínimos y restauración previa. Deep Archive: acceso menos de una vez al año, recuperación en horas, 180 días mínimos y restauración previa. Datos de la página de clases consultada el 2026-11-22."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-1-tarjeta-03",
+      "title": "Tarjeta: Clases S3 Glacier",
+      "statement": "¿Qué diferencia a las tres clases S3 Glacier en recuperación y duración mínima?",
+      "concepts": [
+        "Glacier",
+        "restauración"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Transición, que mueve los objetos a otra clase de almacenamiento, y expiración, que hace que S3 elimine los objetos caducados. Al añadir la configuración al bucket, las reglas se aplican a los objetos existentes y a los que se añadan después. Una política de bucket no puede impedir sus acciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-1-tarjeta-04",
+      "title": "Tarjeta: Ciclo de vida de S3",
+      "statement": "¿Qué dos tipos de acción tiene una regla de ciclo de vida de S3 y a qué objetos se aplica?",
+      "concepts": [
+        "ciclo de vida",
+        "transición",
+        "expiración"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Mantiene varias versiones de un objeto en el mismo bucket y permite restaurarlas. Está deshabilitado por defecto; una vez habilitado, el bucket solo puede suspenderse y no volver a sin versionado. Al eliminar un objeto se inserta un marcador de eliminación que pasa a ser la versión actual, y cada versión se factura como un objeto completo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-1-tarjeta-05",
+      "title": "Tarjeta: Versionado de S3",
+      "statement": "¿Qué hace el versionado de S3 y qué pasa al eliminar un objeto?",
+      "concepts": [
+        "versionado",
+        "marcador de eliminación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La replicación en vivo copia los objetos nuevos y actualizados a medida que se escriben, entre Regiones (CRR) o en la misma Región (SRR), y no replica los objetos que ya existían. Batch Replication es la opción a demanda para replicar objetos existentes, los que fallaron o los que van a destinos nuevos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-4-1-tarjeta-06",
+      "title": "Tarjeta: Replicación de S3",
+      "statement": "¿Qué diferencia hay entre la replicación en vivo (CRR y SRR) y S3 Batch Replication?",
+      "concepts": [
+        "CRR",
+        "SRR",
+        "Batch Replication"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Respaldos contables cuya única copia no se puede recrear. Corrige su defecto principal.\nexport const respaldo = {\n  carga: \"respaldos-contables\",\n  copiaPrimaria: true,\n  recreable: false,\n  acceso: { frecuencia: \"mensual\", milisegundos: true },\n  clase: \"ONEZONE_IA\",\n};\n",
+      "solution": {
+        "code": "export const respaldo = {\n  carga: \"respaldos-contables\",\n  copiaPrimaria: true,\n  recreable: false,\n  acceso: { frecuencia: \"mensual\", milisegundos: true },\n  clase: \"STANDARD_IA\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "La copia es la única y no se puede recrear. Piensa qué clase de acceso poco frecuente guarda los datos en más de una zona de disponibilidad."
+        },
+        {
+          "level": 2,
+          "text": "S3 One Zone-IA guarda los datos en una sola zona y no resiste su pérdida física. S3 Standard-IA mantiene los milisegundos de acceso y reparte los datos entre varias zonas."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la clase a \"STANDARD_IA\". No cambies la carga, que la copia es primaria y no recreable, ni la frecuencia de acceso."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la clase resiste la pérdida de una zona de disponibilidad",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(respaldo.clase, \"ONEZONE_IA\", \"One Zone-IA usa una sola zona\");\nassert.strictEqual(respaldo.clase, \"STANDARD_IA\");"
+          }
+        },
+        {
+          "name": "sigue respondiendo en milisegundos",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(respaldo.acceso.milisegundos, true);"
+          }
+        },
+        {
+          "name": "la carga y el carácter de la copia se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(respaldo.carga, \"respaldos-contables\");\nassert.strictEqual(respaldo.copiaPrimaria, true);\nassert.strictEqual(respaldo.recreable, false);"
+          }
+        },
+        {
+          "name": "la frecuencia de acceso no cambia",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(respaldo.acceso.frecuencia, \"mensual\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-4-1-debug-01",
+      "title": "La única copia en una sola zona",
+      "statement": "El objeto `respaldo` modela unos respaldos contables que son la única copia, no se pueden recrear, se consultan una vez al mes y deben responder en milisegundos. El diseño actual los guarda en una clase que no resiste la pérdida de una zona de disponibilidad. Corrige la clase sin cambiar la carga, el carácter de la copia ni la frecuencia de acceso, y mantén la forma del valor exportado (`export const respaldo = { … }`).",
+      "concepts": [
+        "Standard-IA",
+        "One Zone-IA",
+        "resiliencia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Bucket con versionado habilitado cuyo costo crece. Corrige su defecto principal.\nexport const bucket = {\n  nombre: \"documentos-clientes\",\n  versionado: \"enabled\",\n  cicloDeVida: {\n    expiracionActual: { dias: 365 },\n    expiracionNoActual: null,\n  },\n};\n",
+      "solution": {
+        "code": "export const bucket = {\n  nombre: \"documentos-clientes\",\n  versionado: \"enabled\",\n  cicloDeVida: {\n    expiracionActual: { dias: 365 },\n    expiracionNoActual: { dias: 30 },\n  },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el ciclo de vida expira las versiones no actuales",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(bucket.cicloDeVida.expiracionNoActual !== null && typeof bucket.cicloDeVida.expiracionNoActual.dias === \"number\", \"falta la expiración de versiones no actuales\");\nassert.ok(bucket.cicloDeVida.expiracionNoActual.dias > 0);"
+          }
+        },
+        {
+          "name": "el versionado sigue habilitado",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(bucket.versionado, \"enabled\", \"el versionado protege de borrados y sobrescrituras\");"
+          }
+        },
+        {
+          "name": "el nombre y la expiración actual se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(bucket.nombre, \"documentos-clientes\");\nassert.strictEqual(bucket.cicloDeVida.expiracionActual.dias, 365);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-4-1-debug-02",
+      "title": "El bucket versionado que acumula versiones",
+      "statement": "El objeto `bucket` modela un bucket de documentos que antes no tenía versionado y expiraba los objetos a los 365 días con borrado permanente. Ahora tiene el versionado habilitado y su ciclo de vida solo expira la versión actual: cada versión se factura como un objeto completo y las versiones no actuales se acumulan. Corrige la configuración sin desactivar el versionado ni cambiar el nombre ni la expiración actual, y mantén la forma del valor exportado (`export const bucket = { … }`).",
+      "concepts": [
+        "versionado",
+        "ciclo de vida",
+        "versiones no actuales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de almacenamiento en S3 (borrador generado por un asistente)\nEscenario: respaldos, un lago de datos, registros y documentos versionados con réplica.\n1. S3 Intelligent-Tiering no cobra tarifas de recuperación, solo una pequeña tarifa mensual de supervisión y automatización.\n2. S3 Standard-IA guarda los datos en una sola zona de disponibilidad, por eso es más barata que S3 One Zone-IA.\n3. Una regla de ciclo de vida añadida hoy se aplica también a los objetos que ya existen en el bucket.\n4. Tras habilitar el versionado, el bucket puede volver al estado sin versionado cuando se quiera.\n5. La replicación en vivo copia también los objetos que existían antes de configurarla.\n6. En un bucket con versionado habilitado, eliminar un objeto inserta un marcador de eliminación que pasa a ser la versión actual.\n7. En S3 Glacier Flexible Retrieval hay que restaurar el objeto antes de poder acceder a él."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Recuperación en Intelligent-Tiering",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Intelligent-Tiering no cobra recuperación y sí una pequeña tarifa mensual de supervisión y automatización."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Zonas de Standard-IA",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Standard-IA guarda los datos en varias zonas de disponibilidad y One Zone-IA es la que usa una sola, y por eso cuesta menos."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Reglas y objetos existentes",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: la configuración se aplica a los objetos existentes y a los que se añadan después."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Volver a sin versionado",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: una vez habilitado el versionado, el bucket nunca vuelve al estado sin versionado; solo puede suspenderse."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Objetos previos a la replicación",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: la replicación en vivo no copia los objetos que ya existían; para ellos se usa S3 Batch Replication."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Marcador de eliminación",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: con versionado habilitado, eliminar inserta un marcador de eliminación que se convierte en la versión actual."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Restauración en Flexible Retrieval",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: los objetos de Flexible Retrieval están archivados y no están disponibles en tiempo real hasta restaurarlos."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-4-1-auditoria-01",
+      "title": "Auditar un informe de S3 generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre clases de almacenamiento, ciclo de vida, versionado y replicación de S3. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "clases de almacenamiento",
+        "versionado",
+        "replicación",
+        "ciclo de vida"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 Standard-IA, con tarifa de recuperación por GB",
+            "explanation": "Descartada: Standard-IA cobra una tarifa de recuperación por GB y está pensada para acceso poco frecuente conocido."
+          },
+          {
+            "id": "b",
+            "text": "S3 Intelligent-Tiering, que mueve los objetos entre niveles de acceso",
+            "explanation": "Es la correcta: está diseñada para acceso desconocido o cambiante, no cobra recuperación y mueve los objetos de forma automática."
+          },
+          {
+            "id": "c",
+            "text": "S3 One Zone-IA, que guarda los datos en una sola zona",
+            "explanation": "Descartada: One Zone-IA cobra recuperación por GB y no mueve los objetos por sí sola según el acceso."
+          },
+          {
+            "id": "d",
+            "text": "S3 Glacier Flexible Retrieval, con restauración previa al acceso",
+            "explanation": "Descartada: en Flexible Retrieval hay que restaurar el objeto antes de leerlo y cobra recuperación por GB."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-1-quiz-01",
+      "title": "Acceso desconocido o cambiante",
+      "statement": "Un equipo guarda datos con patrones de acceso desconocidos o cambiantes. Quiere ahorrar sin tarifas de recuperación y con MENOS esfuerzo operativo, sin escribir reglas de transición. ¿Qué clase elige?",
+      "concepts": [
+        "Intelligent-Tiering",
+        "patrón de acceso"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 One Zone-IA, que guarda los datos en una sola zona",
+            "explanation": "Descartada: One Zone-IA no es resiliente a la pérdida física de la zona de disponibilidad y la guía la reserva para datos recreables."
+          },
+          {
+            "id": "b",
+            "text": "S3 Glacier Deep Archive, para datos que se leen menos de una vez al año",
+            "explanation": "Descartada: Deep Archive recupera en horas y exige restaurar antes de leer, no responde en milisegundos."
+          },
+          {
+            "id": "c",
+            "text": "S3 Glacier Flexible Retrieval, con recuperación en minutos u horas",
+            "explanation": "Descartada: Flexible Retrieval no está disponible en tiempo real y exige restauración previa."
+          },
+          {
+            "id": "d",
+            "text": "S3 Standard-IA, que reparte los datos entre varias zonas",
+            "explanation": "Es la correcta: acceso poco frecuente con milisegundos y datos en varias zonas de disponibilidad, recomendada para una copia única."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-1-quiz-02",
+      "title": "Única copia no recreable de acceso mensual",
+      "statement": "La única copia de unos respaldos contables no se puede recrear, se consulta una vez al mes y debe responder en milisegundos. ¿Qué clase da el MENOR costo de almacenamiento sin perder la resiliencia ante la pérdida de una zona de disponibilidad?",
+      "concepts": [
+        "Standard-IA",
+        "resiliencia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 Glacier Instant Retrieval, archivo con acceso en milisegundos",
+            "explanation": "Es la correcta: la guía la describe para archivo de acceso trimestral con recuperación en milisegundos."
+          },
+          {
+            "id": "b",
+            "text": "S3 Glacier Deep Archive, con recuperación de horas",
+            "explanation": "Descartada: Deep Archive recupera en horas y exige restaurar antes de acceder, no da milisegundos."
+          },
+          {
+            "id": "c",
+            "text": "S3 Glacier Flexible Retrieval, con restauración previa al acceso",
+            "explanation": "Descartada: Flexible Retrieval recupera en minutos u horas y los objetos no están disponibles en tiempo real."
+          },
+          {
+            "id": "d",
+            "text": "S3 Express One Zone, para acceso de un solo dígito de milisegundos",
+            "explanation": "Descartada: Express One Zone es para aplicaciones sensibles a la latencia en una sola zona, no una clase de archivo."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-1-quiz-03",
+      "title": "Archivo trimestral con milisegundos",
+      "statement": "Un archivo de larga duración se consulta una vez por trimestre y, cuando se consulta, debe responder en milisegundos. ¿Qué clase encaja MÁS?",
+      "concepts": [
+        "Glacier Instant Retrieval",
+        "archivo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo afecta a los objetos que se suban después de crearla",
+            "explanation": "Descartada: al añadir la configuración, las reglas se aplican a los objetos existentes y a los que se añadan después."
+          },
+          {
+            "id": "b",
+            "text": "Una política de bucket que deniega todo la bloquea",
+            "explanation": "Descartada: la guía indica que una política de bucket no puede impedir las acciones de una regla de ciclo de vida."
+          },
+          {
+            "id": "c",
+            "text": "Alcanza a los objetos existentes y a los nuevos",
+            "explanation": "Es la correcta: S3 pone en cola para eliminar los objetos existentes de más de 30 días y aplica la regla a los nuevos."
+          },
+          {
+            "id": "d",
+            "text": "Exige recrear los objetos antiguos para que la regla los alcance",
+            "explanation": "Descartada: la regla se aplica a los objetos existentes sin necesidad de recrearlos."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-1-quiz-04",
+      "title": "Regla de expiración y objetos existentes",
+      "statement": "Un equipo añade hoy una regla de ciclo de vida que expira los objetos a los 30 días de su creación en un bucket que ya tiene objetos antiguos. ¿Qué describe MEJOR su efecto?",
+      "concepts": [
+        "ciclo de vida",
+        "expiración"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Borra de forma permanente todas las versiones del objeto",
+            "explanation": "Descartada: con el versionado habilitado, la eliminación no quita el objeto de forma permanente y se puede recuperar."
+          },
+          {
+            "id": "b",
+            "text": "Mueve las versiones a S3 Glacier Deep Archive",
+            "explanation": "Descartada: el versionado no cambia la clase de almacenamiento; inserta un marcador de eliminación."
+          },
+          {
+            "id": "c",
+            "text": "Elimina solo la versión anterior y conserva la actual",
+            "explanation": "Descartada: no elimina ninguna versión; el marcador de eliminación pasa a ser la versión actual."
+          },
+          {
+            "id": "d",
+            "text": "Inserta un marcador de eliminación que pasa a ser la versión actual",
+            "explanation": "Es la correcta: no quita el objeto de forma permanente y puedes restaurar la versión anterior."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-1-quiz-05",
+      "title": "Eliminar un objeto con versionado habilitado",
+      "statement": "Un usuario elimina por error un objeto, sin indicar versión, en un bucket con el versionado habilitado. ¿Qué hace S3 PRIMERO con esa solicitud?",
+      "concepts": [
+        "versionado",
+        "marcador de eliminación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 Batch Replication, el trabajo de replicación a demanda",
+            "explanation": "Es la correcta: replica los objetos existentes cuando lo pides, también los que fallaron o van a destinos nuevos."
+          },
+          {
+            "id": "b",
+            "text": "La replicación en vivo, que copia retroactivamente el bucket",
+            "explanation": "Descartada: la replicación en vivo no replica los objetos que existían antes de configurarla."
+          },
+          {
+            "id": "c",
+            "text": "S3 Replication Time Control, que copia los objetos previos en 15 minutos",
+            "explanation": "Descartada: S3 RTC da un plazo previsible para los objetos nuevos y no se aplica a Batch Replication."
+          },
+          {
+            "id": "d",
+            "text": "Same-Region Replication, que incluye siempre los objetos previos",
+            "explanation": "Descartada: SRR es otra forma de replicación en vivo y tampoco copia lo que existía antes."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-1-quiz-06",
+      "title": "Replicar objetos existentes a demanda",
+      "statement": "Una empresa configuró Cross-Region Replication hoy, pero los objetos que ya existían en el bucket no se copiaron. ¿Qué mecanismo se usa ÚNICAMENTE para copiar esos objetos existentes a demanda?",
+      "concepts": [
+        "Batch Replication",
+        "CRR"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "La replicación en vivo copia también los objetos que existían antes de configurarla",
+            "explanation": "No cumple: la replicación en vivo no replica los objetos preexistentes; para ellos se usa Batch Replication."
+          },
+          {
+            "id": "b",
+            "text": "CRR copia objetos entre buckets de distintas Regiones",
+            "explanation": "Cumple: Cross-Region Replication replica entre buckets de Regiones distintas de AWS."
+          },
+          {
+            "id": "c",
+            "text": "El bucket de origen y el de destino deben ser siempre de la misma cuenta",
+            "explanation": "No cumple: los buckets pueden ser de la misma cuenta o de cuentas distintas."
+          },
+          {
+            "id": "d",
+            "text": "SRR permite agregar registros de varios buckets en uno de la misma Región",
+            "explanation": "Cumple: la guía cita la agregación de registros en un único bucket de la Región como caso de SRR."
+          },
+          {
+            "id": "e",
+            "text": "S3 RTC se aplica también a los trabajos de Batch Replication",
+            "explanation": "No cumple: la guía aclara que S3 RTC no se aplica a Batch Replication."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-1-quiz-07",
+      "title": "Qué es cierto de la replicación",
+      "statement": "Un equipo repasa la replicación de S3. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "CRR",
+        "SRR"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 Standard-IA cobra recuperación por GB y tiene 30 días de duración mínima",
+            "explanation": "Cumple: la tabla de clases indica tarifas de recuperación por GB y una duración mínima de 30 días."
+          },
+          {
+            "id": "b",
+            "text": "S3 One Zone-IA es resiliente a la pérdida física de una zona de disponibilidad",
+            "explanation": "No cumple: One Zone-IA guarda los datos en una sola zona y no es resiliente a su pérdida."
+          },
+          {
+            "id": "c",
+            "text": "S3 Intelligent-Tiering no cobra recuperación, pero sí una tarifa de supervisión",
+            "explanation": "Cumple: no hay tarifas de recuperación y hay una pequeña tarifa mensual de supervisión y automatización."
+          },
+          {
+            "id": "d",
+            "text": "Si no indicas la clase al subir un objeto, S3 asigna S3 Standard-IA",
+            "explanation": "No cumple: por defecto S3 asigna S3 Standard cuando no se especifica la clase."
+          },
+          {
+            "id": "e",
+            "text": "En Glacier Flexible Retrieval hay que restaurar el objeto antes de acceder a él",
+            "explanation": "Cumple: está archivado y no disponible para acceso en tiempo real hasta restaurarlo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-4-1-quiz-08",
+      "title": "Qué es cierto de las clases de S3",
+      "statement": "Un arquitecto repasa las clases de S3. Selecciona las TRES opciones que describen correctamente esas clases.",
+      "concepts": [
+        "clases",
+        "restauración"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "standard",
+            "term": "S3 Standard",
+            "definition": "Acceso frecuente en milisegundos; clase por defecto"
+          },
+          {
+            "id": "standardia",
+            "term": "S3 Standard-IA",
+            "definition": "Copia única no recreable de acceso poco frecuente"
+          },
+          {
+            "id": "onezoneia",
+            "term": "S3 One Zone-IA",
+            "definition": "Datos recreables de acceso poco frecuente en una sola zona"
+          },
+          {
+            "id": "it",
+            "term": "S3 Intelligent-Tiering",
+            "definition": "Acceso desconocido o cambiante, sin tarifa de recuperación"
+          },
+          {
+            "id": "glacierir",
+            "term": "S3 Glacier Instant Retrieval",
+            "definition": "Archivo trimestral con acceso en milisegundos"
+          },
+          {
+            "id": "glacierfr",
+            "term": "S3 Glacier Flexible Retrieval",
+            "definition": "Archivo con recuperación en minutos u horas"
+          },
+          {
+            "id": "deep",
+            "term": "S3 Glacier Deep Archive",
+            "definition": "Archivo de acceso menos de una vez al año; 180 días mínimos"
+          },
+          {
+            "id": "batch",
+            "term": "S3 Batch Replication",
+            "definition": "Copiar a demanda los objetos que ya existían"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada clase de S3 o mecanismo con el caso que resuelve. Si dudas, pregúntate cómo se accede a los datos, si se pueden recrear y si hay que restaurarlos antes de leerlos.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Acceso frecuente y acceso poco frecuente: Standard, Standard-IA y One Zone-IA",
+              "Acceso desconocido o cambiante: Intelligent-Tiering",
+              "Archivo: las tres clases S3 Glacier",
+              "Objetos existentes a demanda: Batch Replication"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-4-1-memoria-01",
+      "title": "Clase de S3 y caso que resuelve",
+      "statement": "Empareja cada clase de almacenamiento de S3 o mecanismo con el caso que resuelve.",
+      "concepts": [
+        "clases de almacenamiento",
+        "Batch Replication"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-4-1-reflexion-01",
+      "title": "Reflexión: qué clase y qué mecanismo y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, unos respaldos que no se pueden recrear, un lago de datos con acceso impredecible o unos documentos que se sobrescriben y se borran por error) y escribe un registro breve de decisión sobre cómo la guardarías en S3, en 5 a 7 líneas:\n\n1) Decisión: qué clase de almacenamiento y qué mecanismo (ciclo de vida, versionado o replicación) usarías, y qué dato de la carga decide cada uno (patrón de acceso, recreabilidad, tiempo de respuesta, copias en otra Región).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, One Zone-IA para una copia única o confiar en la replicación en vivo para los objetos existentes) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (reglas de ciclo de vida, expiración de versiones no actuales, trabajos de Batch Replication, restauraciones de objetos archivados).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Optimización de costos o Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial (clases, ciclo de vida, versionado o replicación) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la clase, el mecanismo y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "clases de almacenamiento",
+        "ciclo de vida",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+      ],
+      "order": 19
+    }
+  ]
+}
