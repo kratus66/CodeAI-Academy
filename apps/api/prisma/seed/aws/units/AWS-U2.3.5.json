@@ -1,0 +1,1232 @@
+{
+  "code": "AWS-U2.3.5",
+  "lessons": [
+    {
+      "slug": "aws-u2-3-5-serverless-con-lambda-concurrencia-limites-lambda-en-vpc-y-cuando-no-usarlo",
+      "title": "Serverless con Lambda: concurrencia, límites, Lambda en VPC y cuándo no usarlo",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "AWS Lambda es un servicio de cómputo sin servidores: ejecutas código sin aprovisionar ni gestionar servidores, y Lambda se ocupa de la infraestructura, la capacidad, el escalado y los parches. Una Event Function ejecuta tu manejador como respuesta a eventos o llamadas a API (API Gateway, S3, SQS, EventBridge y más de 200 servicios), y cada invocación corre de forma independiente, sin estado compartido. En A2 no basta con saber qué es Lambda: ante un escenario decides cuándo encaja, cuánta concurrencia necesita, qué cuotas la limitan y qué cambia cuando la función entra en una VPC. Esta unidad prepara el dominio 3 de SAA-C03, «Diseñar soluciones de alto rendimiento», y su tarea de soluciones de cómputo elásticas y de alto rendimiento."
+        },
+        {
+          "type": "list",
+          "title": "Lambda de un vistazo",
+          "items": [
+            "Modelo: código que responde a eventos con escalado horizontal automático; se factura por solicitud más GB-segundos de ejecución.",
+            "Memoria: de 128 MB a 10.240 MB; Lambda asigna la CPU en proporción a la memoria, y con 1.769 MB equivale a una vCPU.",
+            "Duración: hasta 1.800 segundos (30 minutos) por invocación.",
+            "Concurrencia: por defecto, 1.000 ejecuciones concurrentes por región, compartidas por todas las funciones de la cuenta.",
+            "Red: por defecto tiene acceso a Internet público; adjuntada a una VPC, solo accede a los recursos de esa VPC.",
+            "Cifras: son las de la página oficial de cuotas de Lambda leída el 2026-11-22; es una referencia fechada, no un valor permanente, y las cuentas nuevas pueden tener cuotas reducidas."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Concurrencia: cuántas ejecuciones a la vez",
+          "text": "La concurrencia es el número de solicitudes en curso que tu función atiende al mismo tiempo: para cada solicitud concurrente, Lambda provisiona una instancia separada del entorno de ejecución. Se estima con una fórmula: concurrencia = solicitudes por segundo medias × duración media en segundos. Con 100 solicitudes por segundo de 500 ms la concurrencia es 50, y con 200 por segundo de 250 ms sigue siendo 50. Concurrencia no es lo mismo que solicitudes por segundo. Si se agota la concurrencia disponible hay limitación (throttling) y Lambda puede descartar solicitudes. La página añade que el límite de solicitudes por segundo equivale a 10 veces el de concurrencia, así que en funciones muy rápidas puede mandar este segundo límite: 30.000 solicitudes por segundo de 20 ms son solo 600 de concurrencia, pero superan los 10.000 por segundo del límite por defecto."
+        },
+        {
+          "type": "paragraph",
+          "title": "Reservada y aprovisionada: dos controles distintos",
+          "text": "Hay dos controles por función y no son intercambiables. La concurrencia reservada fija el máximo y el mínimo de ejecuciones concurrentes de una función: ninguna otra función puede usar esa parte, y la función tampoco puede usar la del resto. No tiene cargo adicional, pero cuenta para el límite de la cuenta, y la parte que no uses se desperdicia. La concurrencia aprovisionada preinicializa un número de entornos de ejecución para que respondan de inmediato, lo que reduce los arranques en frío, e incurre en cargos adicionales. Con solo concurrencia reservada ningún entorno viene preinicializado y Lambda puede terminar uno tras un periodo de inactividad. Si configuras ambas, no puedes aprovisionar más de lo reservado, y si la función agota su reservada sufre limitación. Por defecto se pueden reservar hasta 900 unidades porque Lambda deja siempre 100 sin reservar."
+        },
+        {
+          "type": "paragraph",
+          "title": "Límites que deciden el diseño",
+          "text": "Las cuotas fijan qué cabe en una función. Según la página oficial de cuotas de Lambda (leída el 2026-11-22; confirma siempre las cifras vigentes en Service Quotas): el tiempo de espera máximo es de 1.800 segundos; la carga útil síncrona admite 6 MB de solicitud y 6 MB de respuesta, y la asíncrona 1 MB; las variables de entorno suman 4 KB; una función admite 5 capas; un paquete .zip admite 50 MB comprimido y 250 MB descomprimido, y una imagen de contenedor hasta 10 GB; el directorio /tmp va de 512 MB a 10.240 MB. La concurrencia por defecto de 1.000 se puede aumentar con una solicitud de cuota, mientras que los límites de configuración y ejecución, salvo que se indique lo contrario, no se pueden cambiar. Además, cada función escala como máximo 1.000 entornos de ejecución cada 10 segundos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Lambda en una VPC",
+          "text": "Para que una función acceda a recursos de una VPC (RDS, ElastiCache, EC2) la adjuntas a las subredes privadas que los contienen y le asignas grupos de seguridad. Lambda crea interfaces de red Hyperplane (ENI) que comparten las funciones con la misma combinación de subredes y grupos de seguridad, y cada una admite hasta 65.000 conexiones. El rol de ejecución necesita permisos de EC2 sobre interfaces de red, que concede la política administrada AWSLambdaVPCAccessExecutionRole. Dos consecuencias de examen. Primera: por defecto una función tiene acceso a Internet público, pero adjuntada a una VPC solo accede a lo que hay en ella; para llegar a Internet hay que configurar la VPC con acceso a Internet, y conectarla a una subred pública no le da Internet ni dirección IP pública. Segunda: una función no se conecta directamente a una VPC con tenencia dedicada. La cuota por defecto es de 3.000 interfaces de red por VPC, compartida con otros servicios como EFS."
+        },
+        {
+          "type": "paragraph",
+          "title": "Cuándo no usar Lambda",
+          "text": "La página de cuotas describe Lambda como un servicio diseñado para tareas de corta duración que no conservan ni dependen del estado entre invocaciones. De ahí salen las señales de que no encaja como única pieza: una tarea ininterrumpida que supera los 30 minutos por invocación; un componente que guarda sesiones o datos en memoria entre solicitudes, porque los entornos de ejecución pueden reutilizarse pero el estado puede no persistir; y cualquier necesidad que rebase una cuota, como más de 10.240 MB de /tmp o respuestas síncronas de más de 6 MB. En esos casos revisas otro modelo de cómputo de este módulo (contenedores o instancias) o rediseñas la carga en pasos cortos. La página oficial presenta además Web Functions y MicroVMs para otros patrones; esta unidad se centra en las Event Functions y las cifras anteriores son las de estas."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: tres cargas, tres decisiones",
+          "text": "Carga 1: una API recibe 100 solicitudes por segundo de 500 ms de media. Concurrencia = 100 × 0,5 = 50, y el límite por defecto de 1.000 sobra; no hace falta nada más. Carga 2: una función de 20 ms con picos de 30.000 solicitudes por segundo. Concurrencia = 30.000 × 0,02 = 600, pero 30.000 supera los 10.000 por segundo del límite por defecto, así que pides subir el límite de concurrencia de la cuenta a 3.000 o más. Carga 3: una función de informes lee una base de datos RDS privada y llama a una API pública. Va adjunta a las subredes privadas, con el rol que permite gestionar las interfaces de red y con la VPC configurada con acceso a Internet; si no, las llamadas a Internet fallan. Si además la función de informes es crítica, le reservas concurrencia para que otras funciones no la agoten."
+        },
+        {
+          "type": "code",
+          "title": "Un plan de concurrencia como valor (nombres ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  funcion: \"api-pedidos\",\n  solicitudesPorSegundo: 100,\n  duracionMediaSegundos: 0.5,\n  concurrenciaNecesaria: 100 * 0.5,\n  reservada: 60,\n  aprovisionada: 20,\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del requisito a la decisión sobre Lambda",
+          "code": "flowchart TB\n  R{\"Requisito del escenario\"} -->|\"Garantizar capacidad o acotar una función\"| RC[\"Concurrencia reservada: sin cargo, máximo y mínimo\"]\n  R -->|\"Eliminar arranques en frío\"| PC[\"Concurrencia aprovisionada: entornos preinicializados, con cargo\"]\n  R -->|\"Acceder a recursos privados de una VPC\"| V[\"Adjuntar a subredes privadas con grupos de seguridad\"]\n  V -->|\"Y llamar a Internet\"| I[\"Configurar la VPC con acceso a Internet\"]\n  R -->|\"Más de 30 minutos, estado en memoria o una cuota superada\"| N[\"Lambda no encaja como única pieza\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: reservada y aprovisionada suenan parecido",
+          "text": "El enunciado mezcla vocabulario de los dos controles. «Que otras funciones no agoten el límite» o «acotar la función» es concurrencia reservada; «arranques en frío» o «latencia de inicio» es concurrencia aprovisionada. Una cuesta dinero y la otra no, y reservar no preinicializa nada. Subraya la exigencia y el calificador (menor costo, mayor reducción de latencia) antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: creer que reservar concurrencia elimina los arranques en frío",
+          "text": "Causa: pensar que «reservar» significa «tener ya preparado». Consecuencia: la función reservada sigue iniciando entornos bajo demanda y Lambda puede terminarlos tras un periodo de inactividad, de modo que los arranques en frío siguen apareciendo en la primera solicitud tras una pausa. Solución: usa concurrencia aprovisionada para preinicializar entornos (con su cargo adicional) y reserva solo cuando necesites garantizar o acotar la capacidad."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: adjuntar la función a una VPC y esperar que siga llegando a Internet",
+          "text": "Causa: recordar que por defecto una función tiene acceso a Internet público y suponer que eso no cambia. Consecuencia: adjuntada a una VPC, la función solo alcanza los recursos de esa VPC y las llamadas a APIs públicas fallan; moverla a una subred pública tampoco le da Internet ni dirección IP pública. Solución: adjunta la función a subredes privadas y configura la VPC con acceso a Internet cuando la función deba salir a Internet."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: confundir las solicitudes por segundo con la concurrencia",
+          "text": "Causa: dimensionar la función con el número de solicitudes por segundo y olvidar la duración. Consecuencia: se pide capacidad de más o de menos, y con funciones muy rápidas se pasa por alto que el límite de solicitudes por segundo es 10 veces el de concurrencia, de modo que hay limitación aunque la concurrencia parezca suficiente. Solución: calcula concurrencia = solicitudes por segundo × duración media en segundos y comprueba también el límite de solicitudes por segundo antes de pedir un aumento de cuota."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Decidir cuándo usar Lambda considerando concurrencia, límites y Lambda en VPC. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar soluciones de alto rendimiento». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, calculas la concurrencia, eliges entre reservada y aprovisionada, indicas qué cambia al adjuntar la función a una VPC y detectas cuándo Lambda no encaja, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres cargas del ejemplo: para cada una, escribe el cálculo o la decisión y la cifra o la característica que la decide. Explica con tus palabras el diagrama «Del requisito a la decisión sobre Lambda». Después responde: si una función de 20 ms recibe 30.000 solicitudes por segundo, ¿por qué la concurrencia por defecto de 1.000 no basta aunque el cálculo dé 600?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La función crítica con la concurrencia mal dimensionada». Un plan escrito como objeto reserva menos concurrencia de la que exige la carga y aprovisiona más de lo reservado. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la función, las solicitudes por segundo y la duración media."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La función adjunta a la VPC que pierde el acceso a Internet». Un despliegue, escrito como objeto, adjunta una función a subredes públicas sin el permiso del rol y sin acceso a Internet en la VPC. Decide qué cambia sin tocar la función, los grupos de seguridad ni los recursos privados. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la página de Lambda en una VPC."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre Lambda para un escenario con concurrencia, límites y VPC. Audítalo en «Auditar un informe de Lambda generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de Lambda sobre qué es, concurrencia, VPC y cuotas (leídas el 2026-11-22) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué fórmula da la concurrencia; qué diferencia la concurrencia reservada de la aprovisionada y cuál tiene cargo; qué límite de concurrencia y de solicitudes por segundo hay por defecto; qué cuotas de tiempo, de carga útil y de memoria limitan una función; y qué ocurre con el acceso a Internet al adjuntarla a una VPC. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la exigencia y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la aplicación crece, una función de pagos no puede quedarse sin capacidad, otra debe responder sin arranques en frío tras pausas largas y un proceso de conciliación dura 50 minutos de forma ininterrumpida. Decide qué concurrencia configuras para cada función y qué haces con el proceso largo. Pregunta de cierre: un compañero dice «reservemos concurrencia para evitar los arranques en frío»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-lambda-que-es",
+          "order": 0,
+          "note": "Fuente de qué es Lambda: cómputo sin servidores, Event Functions, facturación y duración por invocación."
+        },
+        {
+          "resourceSlug": "aws-lambda-escalado-y-concurrencia",
+          "order": 1,
+          "note": "Fuente de la concurrencia: fórmula, reservada frente a aprovisionada, límite de solicitudes por segundo y tasa de escalado."
+        },
+        {
+          "resourceSlug": "aws-lambda-acceso-a-vpc",
+          "order": 2,
+          "note": "Fuente de Lambda en una VPC: subredes privadas, interfaces Hyperplane, permisos del rol y acceso a Internet."
+        },
+        {
+          "resourceSlug": "aws-lambda-cuotas",
+          "order": 3,
+          "note": "Fuente de las cuotas de Lambda (cifras fechadas, no permanentes): tiempo, memoria, carga útil, /tmp y concurrencia por defecto."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar soluciones de alto rendimiento) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un servicio de cómputo sin servidores: ejecutas código sin aprovisionar ni gestionar servidores, y Lambda se ocupa de la infraestructura, la capacidad, el escalado y los parches. Una Event Function responde a eventos o llamadas a API, cada invocación es independiente y se factura por solicitud más GB-segundos de ejecución."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-5-tarjeta-01",
+      "title": "Tarjeta: Qué es Lambda",
+      "statement": "¿Qué es AWS Lambda y cómo se factura una Event Function?",
+      "concepts": [
+        "Lambda",
+        "sin servidores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Concurrencia = solicitudes por segundo medias × duración media en segundos. Por defecto hay 1.000 ejecuciones concurrentes por región para todas las funciones de la cuenta, y el límite de solicitudes por segundo es 10 veces ese valor. Si se agota, hay limitación y Lambda puede descartar solicitudes."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-5-tarjeta-02",
+      "title": "Tarjeta: Concurrencia",
+      "statement": "¿Cómo se calcula la concurrencia de una función y qué límites hay por defecto?",
+      "concepts": [
+        "concurrencia",
+        "limitación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La reservada fija el máximo y el mínimo de una función, no tiene cargo y no preinicializa entornos. La aprovisionada preinicializa entornos para reducir los arranques en frío e incurre en cargos adicionales; no puede superar la reservada si ambas están configuradas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-5-tarjeta-03",
+      "title": "Tarjeta: Reservada y aprovisionada",
+      "statement": "¿En qué se distinguen la concurrencia reservada y la aprovisionada?",
+      "concepts": [
+        "concurrencia reservada",
+        "concurrencia aprovisionada"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Se adjunta a las subredes privadas que contienen los recursos, con grupos de seguridad; Lambda crea interfaces de red Hyperplane que comparten las funciones con la misma combinación. Adjuntada a una VPC solo accede a sus recursos: para Internet hay que configurar la VPC con acceso a Internet, y una subred pública no basta."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-5-tarjeta-04",
+      "title": "Tarjeta: Lambda en una VPC",
+      "statement": "¿Cómo accede una función de Lambda a recursos de una VPC y qué pasa con Internet?",
+      "concepts": [
+        "VPC",
+        "Hyperplane ENI"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Memoria de 128 MB a 10.240 MB (la CPU crece con la memoria), tiempo de espera de 1.800 segundos, carga útil síncrona de 6 MB por solicitud y por respuesta (1 MB la asíncrona) y /tmp de 512 MB a 10.240 MB. Son cifras de la página en una fecha concreta, no valores permanentes."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-5-tarjeta-05",
+      "title": "Tarjeta: Cuotas de ejecución",
+      "statement": "¿Qué cuotas de ejecución de una función cita la página de cuotas de Lambda?",
+      "concepts": [
+        "cuotas",
+        "tiempo de espera",
+        "carga útil"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para tareas de corta duración que no conservan ni dependen del estado entre invocaciones. No encaja como única pieza una tarea ininterrumpida de más de 30 minutos por invocación, un componente que guarda sesiones en memoria o una carga que rebasa una cuota, como la respuesta síncrona de 6 MB."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "FLASHCARD",
+      "slug": "aws-u2-3-5-tarjeta-06",
+      "title": "Tarjeta: Cuándo no usar Lambda",
+      "statement": "¿Para qué tipo de tareas está diseñado Lambda y qué señales indican que no encaja?",
+      "concepts": [
+        "Lambda",
+        "estado",
+        "límites"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Plan de concurrencia de una función de pagos. Corrige su defecto principal.\nexport const plan = {\n  funcion: \"pagos\",\n  solicitudesPorSegundo: 400,\n  duracionMediaSegundos: 0.5,\n  reservada: 100,\n  aprovisionada: 150,\n};\n",
+      "solution": {
+        "code": "export const plan = {\n  funcion: \"pagos\",\n  solicitudesPorSegundo: 400,\n  duracionMediaSegundos: 0.5,\n  reservada: 200,\n  aprovisionada: 100,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Calcula primero la concurrencia que exige la carga con la fórmula solicitudes por segundo por duración media en segundos y compárala con lo reservado."
+        },
+        {
+          "level": 2,
+          "text": "La carga exige 400 × 0,5 = 200 ejecuciones concurrentes, y la reservada es 100, así que se limita. Además no puedes aprovisionar más de lo reservado (150 frente a 100)."
+        },
+        {
+          "level": 3,
+          "text": "Sube `reservada` hasta cubrir la concurrencia necesaria (200) y deja `aprovisionada` por debajo o igual a `reservada` pero mayor que 0, por ejemplo 100. No cambies la función, las solicitudes por segundo ni la duración."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la concurrencia reservada cubre la que exige la carga",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const necesaria = plan.solicitudesPorSegundo * plan.duracionMediaSegundos;\nassert.ok(plan.reservada >= necesaria, \"la reservada debe cubrir solicitudes por segundo por duración media\");"
+          }
+        },
+        {
+          "name": "la aprovisionada no supera la reservada",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(plan.aprovisionada <= plan.reservada, \"no se puede aprovisionar más de lo reservado\");"
+          }
+        },
+        {
+          "name": "la función, las solicitudes y la duración no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(plan.funcion, \"pagos\");\nassert.strictEqual(plan.solicitudesPorSegundo, 400);\nassert.strictEqual(plan.duracionMediaSegundos, 0.5);"
+          }
+        },
+        {
+          "name": "se conserva la mitigación de arranques en frío y la reserva cabe en el límite por defecto",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(plan.aprovisionada > 0, \"debe seguir habiendo concurrencia aprovisionada\");\nassert.ok(plan.reservada <= 900, \"por defecto solo se pueden reservar 900 unidades\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "DEBUG",
+      "slug": "aws-u2-3-5-debug-01",
+      "title": "La función crítica con la concurrencia mal dimensionada",
+      "statement": "El objeto `plan` modela una función de pagos con 400 solicitudes por segundo y una duración media de 0,5 segundos. Reserva menos concurrencia de la que exige la carga y aprovisiona más de lo que reserva, así que se limita y la configuración no es válida. Corrige `reservada` y `aprovisionada` sin cambiar la función, las solicitudes por segundo ni la duración media, y mantén la forma del valor exportado (`export const plan = { … }`).",
+      "concepts": [
+        "concurrencia",
+        "concurrencia reservada",
+        "concurrencia aprovisionada"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Despliegue de una función de informes en una VPC. Corrige sus defectos.\nexport const despliegue = {\n  funcion: \"informes\",\n  subredes: [\n    { id: \"subred-a\", tipo: \"publica\" },\n    { id: \"subred-b\", tipo: \"publica\" },\n  ],\n  gruposSeguridad: [\"sg-informes\"],\n  politicasRol: [\"AWSLambdaBasicExecutionRole\"],\n  accesoInternet: { configurado: false },\n  recursosPrivados: [\"rds-reportes\"],\n};\n",
+      "solution": {
+        "code": "export const despliegue = {\n  funcion: \"informes\",\n  subredes: [\n    { id: \"subred-a\", tipo: \"privada\" },\n    { id: \"subred-b\", tipo: \"privada\" },\n  ],\n  gruposSeguridad: [\"sg-informes\"],\n  politicasRol: [\"AWSLambdaBasicExecutionRole\", \"AWSLambdaVPCAccessExecutionRole\"],\n  accesoInternet: { configurado: true },\n  recursosPrivados: [\"rds-reportes\"],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la función va adjunta a subredes privadas",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(despliegue.subredes.length >= 1, \"debe haber al menos una subred\");\nfor (const s of despliegue.subredes) {\n  assert.strictEqual(s.tipo, \"privada\", \"la subred \" + s.id + \" debe ser privada\");\n}"
+          }
+        },
+        {
+          "name": "el rol incluye la política de acceso a la VPC",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(despliegue.politicasRol.includes(\"AWSLambdaVPCAccessExecutionRole\"), \"falta AWSLambdaVPCAccessExecutionRole\");"
+          }
+        },
+        {
+          "name": "la VPC está configurada con acceso a Internet",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(despliegue.accesoInternet.configurado, true, \"la función necesita salir a Internet\");"
+          }
+        },
+        {
+          "name": "la función, los grupos de seguridad y los recursos privados no cambian",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(despliegue.funcion, \"informes\");\nassert.deepStrictEqual(despliegue.gruposSeguridad, [\"sg-informes\"]);\nassert.deepStrictEqual(despliegue.recursosPrivados, [\"rds-reportes\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "DEBUG",
+      "slug": "aws-u2-3-5-debug-02",
+      "title": "La función adjunta a la VPC que pierde el acceso a Internet",
+      "statement": "El objeto `despliegue` modela una función de informes que debe leer una base de datos RDS privada (`rds-reportes`) y llamar a una API pública de Internet. Está adjunta a subredes públicas, su rol no incluye la política que permite gestionar las interfaces de red y la VPC no está configurada con acceso a Internet, así que falla. Corrige el despliegue sin cambiar la función, los grupos de seguridad ni los recursos privados, y mantén la forma del valor exportado (`export const despliegue = { … }`).",
+      "concepts": [
+        "Lambda en VPC",
+        "subredes privadas",
+        "acceso a Internet"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de decisión sobre AWS Lambda (borrador generado por un asistente)\nEscenario: una API con picos, una función crítica de pagos y una función de informes que usa una VPC.\n1. La concurrencia se calcula como solicitudes por segundo medias por duración media en segundos; con 100 solicitudes por segundo de 500 ms la concurrencia es 50.\n2. La concurrencia reservada se cobra aparte y deja entornos preinicializados, por lo que elimina los arranques en frío de la función.\n3. El límite por defecto de 1.000 ejecuciones concurrentes es de toda la cuenta en una región, y por defecto solo se pueden reservar 900 porque Lambda deja siempre 100 sin reservar.\n4. Una función adjunta a una VPC conserva su acceso a Internet público, y conectarla a una subred pública le concede una dirección IP pública.\n5. Lambda crea interfaces de red Hyperplane que comparten las funciones con las mismas subredes y grupos de seguridad, y el rol necesita permisos de EC2 como los de AWSLambdaVPCAccessExecutionRole.\n6. Una invocación de una Event Function puede durar hasta 2 horas en cualquier configuración.\n7. La memoria se configura entre 128 MB y 10.240 MB, y Lambda asigna la CPU en proporción a esa memoria."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Cálculo de la concurrencia",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la concurrencia es el producto de las solicitudes por segundo y la duración media, y con 100 solicitudes de 500 ms resulta 50."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Concurrencia reservada",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la concurrencia reservada no tiene cargo adicional y no preinicializa entornos; para reducir los arranques en frío se usa la aprovisionada, que sí tiene cargo."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Límite por defecto y reserva",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: el límite de 1.000 es de la cuenta en una región y, por defecto, se pueden reservar 900 unidades porque Lambda deja siempre 100 sin reservar."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Acceso a Internet en una VPC",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: adjuntada a una VPC la función solo accede a los recursos de esa VPC, y conectarla a una subred pública no le da Internet ni dirección IP pública."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Interfaces Hyperplane y permisos",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: las funciones con la misma combinación de subredes y grupos de seguridad comparten la interfaz Hyperplane, y el rol necesita permisos de EC2 como los de la política administrada."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Duración máxima",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: el tiempo de espera máximo de una función es de 1.800 segundos (30 minutos), muy por debajo de 2 horas."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Memoria y CPU",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la memoria va de 128 MB a 10.240 MB y Lambda asigna la CPU en proporción a la memoria configurada."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "AUDIT",
+      "slug": "aws-u2-3-5-auditoria-01",
+      "title": "Auditar un informe de Lambda generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre concurrencia, VPC y límites de Lambda para tres funciones. Audítalo contra las páginas oficiales de Lambda: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "concurrencia",
+        "Lambda en VPC",
+        "cuotas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "800 ejecuciones concurrentes, que resultan de dividir las solicitudes por la duración",
+            "explanation": "Descartada: divide 200 entre 0,25 en lugar de multiplicar; la concurrencia es solicitudes por segundo por duración en segundos."
+          },
+          {
+            "id": "b",
+            "text": "200 ejecuciones concurrentes, una por cada solicitud que llega cada segundo",
+            "explanation": "Descartada: confunde la concurrencia con las solicitudes por segundo; la página indica que son magnitudes distintas."
+          },
+          {
+            "id": "c",
+            "text": "50 ejecuciones concurrentes, resultado de multiplicar solicitudes por duración",
+            "explanation": "Es la correcta: concurrencia = solicitudes por segundo por duración en segundos, es decir, 200 × 0,25 = 50."
+          },
+          {
+            "id": "d",
+            "text": "1.000 ejecuciones concurrentes, el límite que Lambda asigna por defecto a toda la cuenta en la región",
+            "explanation": "Descartada: es el límite por defecto de toda la cuenta en una región, no el resultado de este cálculo, que da 50."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "QUIZ",
+      "slug": "aws-u2-3-5-quiz-01",
+      "title": "Calcular la concurrencia de una función",
+      "statement": "Una función de Lambda recibe de media 200 solicitudes por segundo y cada solicitud dura de media 250 ms. ¿Cuál es el MÍNIMO de ejecuciones concurrentes que debe poder atender para no sufrir limitación?",
+      "concepts": [
+        "concurrencia",
+        "fórmula"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Concurrencia reservada para esa función, que le dedica parte del límite de la cuenta",
+            "explanation": "Es la correcta: la concurrencia reservada dedica capacidad exclusiva a la función y no tiene cargo adicional."
+          },
+          {
+            "id": "b",
+            "text": "Concurrencia aprovisionada igual al máximo esperado, con entornos ya preinicializados en la región",
+            "explanation": "Descartada: la aprovisionada incurre en cargos adicionales y, sin reservada, la función pasa a usar la concurrencia no reservada al agotarla."
+          },
+          {
+            "id": "c",
+            "text": "Aumentar el tiempo de espera de la función a 1.800 segundos, el máximo permitido",
+            "explanation": "Descartada: el tiempo de espera limita la duración de cada invocación y no reserva ejecuciones concurrentes."
+          },
+          {
+            "id": "d",
+            "text": "Aumentar la memoria de la función a 10.240 MB para que obtenga más ejecuciones",
+            "explanation": "Descartada: la memoria determina la CPU de cada ejecución, no el número de ejecuciones concurrentes que puede usar."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "QUIZ",
+      "slug": "aws-u2-3-5-quiz-02",
+      "title": "Garantizar capacidad a una función crítica",
+      "statement": "Una función crítica de pagos no debe quedarse sin capacidad porque otras funciones de la cuenta consuman el grupo compartido de 1.000 ejecuciones concurrentes de la región. ¿Qué configuración cumple el requisito con el MENOR costo adicional?",
+      "concepts": [
+        "concurrencia reservada",
+        "costo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Concurrencia reservada, que mantiene siempre los entornos de ejecución ya inicializados",
+            "explanation": "Descartada: la reservada fija un máximo y un mínimo, pero ningún entorno viene preinicializado y Lambda puede terminarlos tras la inactividad."
+          },
+          {
+            "id": "b",
+            "text": "Aumentar la cuota de concurrencia de la cuenta a decenas de miles de ejecuciones",
+            "explanation": "Descartada: amplía cuánta concurrencia se puede usar, pero Lambda sigue inicializando los entornos bajo demanda."
+          },
+          {
+            "id": "c",
+            "text": "Reducir la memoria de la función a 128 MB para que inicialice con menos CPU",
+            "explanation": "Descartada: Lambda asigna la CPU en proporción a la memoria, así que reducirla recorta la CPU disponible y no elimina la inicialización."
+          },
+          {
+            "id": "d",
+            "text": "Concurrencia aprovisionada, que preinicializa un número fijo de entornos",
+            "explanation": "Es la correcta: la aprovisionada preinicializa entornos que responden de inmediato, y por eso mitiga los arranques en frío."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "QUIZ",
+      "slug": "aws-u2-3-5-quiz-03",
+      "title": "Reducir los arranques en frío de una API",
+      "statement": "Una API síncrona con requisitos de baja latencia sufre arranques en frío cuando el tráfico vuelve tras una pausa. Se busca la MAYOR reducción de la latencia de arranque. ¿Qué configuración aplica el arquitecto?",
+      "concepts": [
+        "concurrencia aprovisionada",
+        "arranque en frío"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Mover la función a una subred pública para que reciba una dirección IP pública propia",
+            "explanation": "Descartada: conectar la función a una subred pública no le da acceso a Internet ni una dirección IP pública."
+          },
+          {
+            "id": "b",
+            "text": "Configurar la VPC con acceso a Internet, porque adjunta solo alcanza sus recursos",
+            "explanation": "Es la correcta: adjuntada a una VPC la función solo accede a sus recursos, y para llegar a Internet hay que configurar la VPC con acceso a Internet."
+          },
+          {
+            "id": "c",
+            "text": "Quitar la función de la VPC y conservar el acceso a la base de datos RDS privada",
+            "explanation": "Descartada: sin adjuntarla a las subredes privadas que contienen el recurso, la función no accede a la base de datos privada."
+          },
+          {
+            "id": "d",
+            "text": "Añadir al rol de ejecución los permisos de EC2 que gestionan interfaces de red",
+            "explanation": "Descartada: esos permisos sirven para que Lambda cree y gestione las interfaces de red de la VPC, no para dar acceso a Internet."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "QUIZ",
+      "slug": "aws-u2-3-5-quiz-04",
+      "title": "Una función en la VPC que debe salir a Internet",
+      "statement": "Una función de Lambda adjunta a subredes privadas de una VPC lee una base de datos RDS privada y debe llamar también a una API pública de Internet, pero tras adjuntarla esas llamadas fallan. ¿Qué debe hacer PRIMERO el arquitecto?",
+      "concepts": [
+        "Lambda en VPC",
+        "acceso a Internet"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La carga útil de una invocación síncrona, limitada a 6 MB para la respuesta",
+            "explanation": "Es la correcta: la cuota de carga útil síncrona es de 6 MB para la respuesta, y el informe de 12 MB la supera."
+          },
+          {
+            "id": "b",
+            "text": "El tiempo de espera máximo de 30 minutos, que la función ya rebasa",
+            "explanation": "Descartada: la función tarda unos 2 minutos, muy por debajo de los 1.800 segundos de la cuota."
+          },
+          {
+            "id": "c",
+            "text": "La memoria máxima de 10.240 MB, que la función ya supera",
+            "explanation": "Descartada: la función usa 512 MB, muy por debajo de la cuota de 10.240 MB."
+          },
+          {
+            "id": "d",
+            "text": "El tamaño del paquete de despliegue, limitado a 50 MB, que el informe supera",
+            "explanation": "Descartada: el límite de 50 MB se refiere al paquete de despliegue comprimido, no a la respuesta de una invocación."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "QUIZ",
+      "slug": "aws-u2-3-5-quiz-05",
+      "title": "Qué cuota rompe una respuesta síncrona grande",
+      "statement": "Una función se invoca de forma síncrona desde una API, tarda unos 2 minutos, usa 512 MB de memoria y debe devolver un informe de 12 MB en la respuesta. ¿Qué cuota de Lambda es la causa MÁS directa del fallo?",
+      "concepts": [
+        "cuotas",
+        "carga útil"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un proceso de una sola ejecución ininterrumpida de 2 horas, invocado de forma síncrona",
+            "explanation": "Descartada: una invocación admite como máximo 30 minutos, así que un proceso de 2 horas no cabe en una sola invocación."
+          },
+          {
+            "id": "b",
+            "text": "Un servidor que guarda en memoria la sesión de cada usuario entre solicitudes",
+            "explanation": "Descartada: Lambda está diseñada para tareas que no conservan ni dependen del estado entre invocaciones."
+          },
+          {
+            "id": "c",
+            "text": "El procesamiento de cada archivo que se sube a S3, con tareas cortas e independientes",
+            "explanation": "Es la correcta: es una tarea corta que responde a un evento, sin estado compartido, que es el modelo para el que se diseñó Lambda."
+          },
+          {
+            "id": "d",
+            "text": "Un trabajo que necesita 50 GB de almacenamiento temporal en el directorio /tmp",
+            "explanation": "Descartada: el directorio /tmp admite entre 512 MB y 10.240 MB, por debajo de lo que pide el trabajo."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "QUIZ",
+      "slug": "aws-u2-3-5-quiz-06",
+      "title": "La carga que sí encaja en Lambda",
+      "statement": "Un equipo evalúa cuatro cargas para ejecutarlas en una Lambda Event Function estándar. ¿Qué carga encaja MEJOR con el modelo para el que se diseñó Lambda?",
+      "concepts": [
+        "cuándo usar Lambda",
+        "estado",
+        "límites"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Lambda crea interfaces de red Hyperplane que comparten las funciones con las mismas subredes y grupos de seguridad",
+            "explanation": "Cumple: las funciones con la misma combinación de subredes y grupos de seguridad pueden compartir una interfaz Hyperplane."
+          },
+          {
+            "id": "b",
+            "text": "Conectar la función a una subred pública le concede una dirección IP pública y acceso a Internet",
+            "explanation": "No cumple: conectar la función a una subred pública no le da acceso a Internet ni una dirección IP pública."
+          },
+          {
+            "id": "c",
+            "text": "Una vez adjunta a la VPC, la función mantiene su acceso a Internet sin cambios en la configuración de la VPC",
+            "explanation": "No cumple: adjuntada a una VPC solo accede a sus recursos, y para llegar a Internet hay que configurar la VPC con acceso a Internet."
+          },
+          {
+            "id": "d",
+            "text": "El rol de ejecución necesita permisos de EC2 sobre interfaces de red, como los de AWSLambdaVPCAccessExecutionRole",
+            "explanation": "Cumple: Lambda necesita esos permisos para crear y gestionar las interfaces de red que conectan la función a la VPC."
+          },
+          {
+            "id": "e",
+            "text": "Una función puede conectarse directamente a una VPC con tenencia dedicada igual que a una de tenencia predeterminada",
+            "explanation": "No cumple: no puede; para llegar a una VPC dedicada hay que emparejarla con otra VPC de tenencia predeterminada."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "QUIZ",
+      "slug": "aws-u2-3-5-quiz-07",
+      "title": "Qué es cierto de Lambda en una VPC",
+      "statement": "Un arquitecto revisa cómo funciona una función de Lambda adjunta a una VPC. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Lambda en VPC",
+        "Hyperplane ENI"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "La concurrencia aprovisionada de una función se puede asignar por encima de su concurrencia reservada",
+            "explanation": "No cumple: no se puede asignar más concurrencia aprovisionada que reservada a una función."
+          },
+          {
+            "id": "b",
+            "text": "El límite por defecto de 1.000 ejecuciones concurrentes se aplica por separado a cada función de la cuenta",
+            "explanation": "No cumple: es un límite de toda la cuenta en una región, compartido por todas las funciones."
+          },
+          {
+            "id": "c",
+            "text": "La concurrencia reservada no tiene cargo adicional, pero cuenta para el límite de concurrencia de la cuenta",
+            "explanation": "Cumple: configurar concurrencia reservada no se cobra, y esa parte se resta del límite de la cuenta."
+          },
+          {
+            "id": "d",
+            "text": "Una función que agota su concurrencia reservada pasa a usar la concurrencia no reservada de la cuenta",
+            "explanation": "No cumple: al alcanzar su reservada la función sufre limitación y no puede usar la concurrencia no reservada."
+          },
+          {
+            "id": "e",
+            "text": "El límite de solicitudes por segundo de la cuenta equivale a 10 veces su límite de concurrencia",
+            "explanation": "Cumple: con el límite por defecto de 1.000 de concurrencia, el de solicitudes por segundo es de 10.000."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "QUIZ",
+      "slug": "aws-u2-3-5-quiz-08",
+      "title": "Qué es cierto de la concurrencia en Lambda",
+      "statement": "Un equipo repasa cómo funciona la concurrencia en Lambda. Selecciona las DOS opciones correctas.",
+      "concepts": [
+        "concurrencia reservada",
+        "límite de solicitudes por segundo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C4"
+      ],
+      "type": "REFLECT",
+      "slug": "aws-u2-3-5-reflexion-01",
+      "title": "Reflexión: usar Lambda o no, y con qué configuración",
+      "statement": "Elige una carga que conozcas (por ejemplo, una API con picos de tráfico, un procesamiento de archivos subidos a S3 o una función que consulta una base de datos privada) y escribe un registro breve de decisión sobre si la ejecutarías en Lambda, en 5 a 7 líneas:\n\n1) Decisión: si usarías Lambda y con qué concurrencia (reservada, aprovisionada o ninguna), y qué exigencia de la carga lo decide (capacidad garantizada, arranques en frío, duración, estado).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, aprovisionar concurrencia cuando solo querías acotar la función, o usar Lambda para una tarea ininterrumpida de más de 30 minutos) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (cálculo de concurrencia, cuotas, subredes privadas y acceso a Internet de la VPC, permisos del rol, costo de la concurrencia aprovisionada).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento o Optimización de costos) y por qué.\n\n5) Evidencia: qué página oficial de Lambda (qué es, concurrencia, VPC o cuotas) usarías para comprobarlo, recordando que las cifras de cuotas son de una fecha concreta y se confirman en Service Quotas.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la decisión sobre Lambda y la exigencia que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "Lambda",
+        "decisión",
+        "concurrencia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html",
+        "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "order": 18
+    }
+  ]
+}
