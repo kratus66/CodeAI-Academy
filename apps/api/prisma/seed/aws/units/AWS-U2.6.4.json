@@ -1,0 +1,1229 @@
+{
+  "code": "AWS-U2.6.4",
+  "lessons": [
+    {
+      "slug": "aws-u2-6-4-api-gateway-rest-frente-a-http-api-limitacion-cache-y-autorizadores",
+      "title": "API Gateway: REST frente a HTTP API, limitación, caché y autorizadores",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon API Gateway es un servicio de AWS para crear, publicar, mantener, monitorizar y proteger APIs REST, HTTP y WebSocket a cualquier escala; actúa como «puerta de entrada» de las aplicaciones a la lógica de tus servicios de backend, como código en AWS Lambda o cargas en Amazon EC2. En el examen casi nunca preguntan «qué es API Gateway»; preguntan cuatro decisiones. La primera es el tipo de API: REST o HTTP. La segunda es cómo limitar el ritmo de las peticiones para proteger el backend. La tercera es cuándo usar la caché de la etapa. La cuarta es qué mecanismo autoriza a quien invoca. En el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», el enunciado describe una necesidad (claves de API por cliente, un backend saturado por lecturas repetidas, validar tokens sin código propio) y tú eliges la opción que la cubre. Ojo con el alcance: las páginas de limitación, caché y autorizadores que usamos son las de REST API, y la página de comparación indica qué parte de eso no existe en HTTP API. Las cifras de esta lección proceden de esas páginas, leídas el 2026-11-23; antes de usarlas fuera del estudio, vuelve a comprobarlas en la página oficial."
+        },
+        {
+          "type": "list",
+          "title": "API Gateway: las cuatro decisiones de un vistazo",
+          "items": [
+            "Tipo de API: la REST API admite más funciones; la HTTP API se diseña con funciones mínimas para ofrecerse a un precio menor. La página recomienda REST si necesitas claves de API, limitación por cliente, validación de peticiones, AWS WAF o puntos de enlace privados, y HTTP si no necesitas esas funciones.",
+            "Limitación: algoritmo de cubo de fichas con tasa y ráfaga; al superarlas el cliente puede recibir 429 Too Many Requests. Los límites son objetivos «de mejor esfuerzo», no techos garantizados.",
+            "Caché de etapa (solo REST): TTL por defecto de 300 segundos, máximo de 3600 y TTL 0 que la desactiva; al activarla solo se cachean los métodos GET por defecto.",
+            "Autorizadores en REST: políticas de recursos, IAM, autorizadores JWT, autorizadores Lambda y grupos de usuarios de Amazon Cognito; los planes de uso con claves de API siguen y limitan el acceso ya concedido."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "REST API frente a HTTP API: qué funciones cambian",
+          "text": "La página de comparación resume que ambas son productos RESTful, pero que la REST API admite más funciones. Solo la REST API ofrece los tipos de punto de enlace de borde optimizado y privado (ambas tienen Regional), certificados para autenticar ante el backend, AWS WAF, políticas de recursos, claves de API, limitación y uso por cliente, portal de desarrolladores, invocaciones de prueba, caché, validación de peticiones, transformación del cuerpo de la petición, respuestas de gateway personalizadas, despliegues canary, registros de acceso a Amazon Data Firehose, registros de ejecución, trazas con AWS X-Ray, integraciones simuladas (mock) y streaming de respuestas. Solo la HTTP API ofrece despliegues automáticos e integraciones privadas con AWS Cloud Map. Las dos admiten TLS mutuo, IAM, autorizadores Lambda, JWT y Amazon Cognito mediante un autorizador JWT, dominios personalizados, CORS y las integraciones con Lambda, servicios de AWS y balanceadores de red y de aplicación. La regla de examen: si el requisito nombra una función de la lista exclusiva de REST (caché, claves de API, WAF, validación, API privada), la respuesta es REST; si solo se necesita enrutar a Lambda o a un backend HTTP con autorización JWT y el enunciado pide el menor coste, la HTTP API basta."
+        },
+        {
+          "type": "paragraph",
+          "title": "Limitación: tasa, ráfaga y el orden de los límites",
+          "text": "La página de limitación explica que API Gateway usa el algoritmo de cubo de fichas, donde cada ficha cuenta una petición: examina la tasa y la ráfaga de peticiones contra todas las APIs de tu cuenta, por Región. Cuando se superan la tasa en régimen estable y la ráfaga, empieza a limitar y los clientes pueden recibir respuestas 429 Too Many Requests; el cliente puede reenviar las peticiones fallidas de forma que respete el límite. Hay cuatro tipos de ajustes. Los límites de AWS se aplican en cada Región a todas las cuentas y no los cambia el cliente. Los límites por cuenta y Región se aplican a todas las APIs de la cuenta; pueden aumentarse bajo petición al AWS Support Center, sin superar nunca los límites de AWS. Los límites por API y etapa se aplican a nivel de método, iguales para todos los métodos o distintos por método. Los límites por cliente se aplican a quienes usan claves de API asociadas a un plan de uso y no pueden superar los límites por cuenta. El orden de aplicación es: primero los límites por cliente o por método de un plan de uso para una etapa, luego los límites por método de la etapa, después el límite por cuenta y Región, y al final el límite regional de AWS. Esta página no publica cifras de tasa ni de ráfaga (remite a la página de cuotas, que no es una fuente de esta unidad), así que no memorices números de ella. Aclaración de alcance: según la comparación, la limitación por cliente con claves de API es de la REST API y no existe en la HTTP API."
+        },
+        {
+          "type": "paragraph",
+          "title": "Caché de la etapa: qué cambia y qué no",
+          "text": "En una REST API puedes activar la caché de una etapa para reducir las llamadas a tu endpoint y mejorar la latencia. API Gateway guarda las respuestas del endpoint durante un TTL en segundos y responde desde la caché en vez de llamar al backend. Por defecto el TTL es de 300 segundos, el máximo es de 3600 y TTL=0 significa caché desactivada. La caché es de mejor esfuerzo; las métricas CacheHitCount y CacheMissCount de Amazon CloudWatch miden las peticiones servidas desde ella. El tamaño máximo de una respuesta cacheable es de 1048576 bytes. Al activarla en una etapa solo se cachean los métodos GET por defecto, y puedes cachear otros sustituyendo los ajustes del método, aunque la página recomienda no hacerlo por la seguridad y disponibilidad de la API. Debes elegir una capacidad de caché; la página no enumera los tamaños y remite al parámetro cacheClusterSize de la referencia de la API (su ejemplo usa 0,5 GB). Crear o borrar la caché tarda unos 4 minutos, y cambiar la capacidad elimina la instancia existente y crea otra, de modo que se pierden los datos cacheados. La caché se cobra por hora según el tamaño elegido y no entra en la capa gratuita de AWS. Para indexar respuestas puedes usar parámetros del método o de la integración como clave de caché (encabezados, rutas o cadenas de consulta); se exige al menos uno, y las respuestas se cachean por separado para cada valor. Se puede vaciar la caché de la etapa; tras vaciarla, las peticiones vuelven al endpoint hasta que se reconstruye. Un cliente autorizado puede invalidar una entrada con el encabezado Cache-Control: max-age=0, siempre que tenga el permiso execute-api:InvalidateCache. Según la comparación, la HTTP API no tiene caché."
+        },
+        {
+          "type": "paragraph",
+          "title": "Autorizadores: quién puede invocar",
+          "text": "La página de control de acceso de la REST API lista varios mecanismos. Las políticas de recursos permiten o deniegan el acceso a APIs y métodos desde direcciones IP de origen o puntos de enlace de VPC concretos. Los roles y políticas de IAM controlan quién crea y gestiona las APIs y quién las invoca, sobre toda la API o sobre métodos concretos. Los autorizadores JWT validan en la puerta de enlace los tokens JSON Web Token de un proveedor OpenID Connect, sin función: un mismo autorizador puede confiar en varios emisores y cada método puede exigir sus propios ámbitos (scopes). Los autorizadores Lambda son funciones que controlan el acceso a los métodos mediante un token portador o mediante encabezados, rutas, cadenas de consulta, variables de etapa o de contexto. Los grupos de usuarios de Amazon Cognito sirven para crear soluciones de autenticación y autorización personalizables. Además, CORS, los certificados SSL de cliente y AWS WAF cubren otras tareas de acceso, y los planes de uso permiten entregar claves de API a los clientes y seguir y limitar el uso de etapas y métodos por clave. Dos distinciones frecuentes: una clave de API con su plan de uso sirve para medir y limitar, no es el mecanismo que autentica a quien invoca; y entre REST y HTTP, la comparación indica que IAM, autorizadores Lambda, JWT y Cognito (mediante JWT) están en ambas, pero las políticas de recursos solo en REST."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de cuatro requisitos a cuatro decisiones",
+          "text": "Una empresa publica la API de un catálogo con backend en Lambda. Requisitos: (1) cada socio recibe una clave y un límite propio de peticiones; (2) las listas de productos se consultan igual miles de veces y el backend se satura; (3) solo se acepta tráfico desde las IP de un proveedor; (4) los clientes móviles envían tokens JWT que deben validarse sin escribir código. Paso 1: en (1) el dato es «clave y límite por cliente»; eso está en la lista exclusiva de REST (claves de API, limitación por cliente), así que la API es REST con un plan de uso por socio. Paso 2: en (2) el dato es «misma lectura repetida»; se activa la caché de la etapa para los métodos GET con un TTL de 1 a 3600 segundos y una clave de caché con el parámetro que cambia la respuesta. Paso 3: en (3) el dato es «filtrar por IP de origen»; una política de recursos. Paso 4: en (4) el dato es «validar JWT sin código»; un autorizador JWT, no una función Lambda. Resultado: cada decisión salió de un dato del enunciado y no del nombre del servicio. Si el único requisito fuera enrutar a Lambda con JWT al menor coste, bastaría una HTTP API."
+        },
+        {
+          "type": "code",
+          "title": "Una etapa de REST API con caché y límite por cliente como valor (valores ficticios)",
+          "language": "typescript",
+          "code": "export const etapa = {\n  tipo: \"rest\",\n  nombre: \"prod\",\n  cache: { habilitada: true, ttlSeg: 300, metodos: [\"GET\"] },\n  planDeUso: { claveDeApi: \"socio-a\", tasaRps: 50, rafaga: 100 },\n  autorizador: \"jwt\",\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la necesidad a la decisión de API Gateway",
+          "code": "flowchart TB\n  S{\"Necesidad del enunciado\"} -->|\"Claves de API, límite por cliente, caché, WAF o API privada\"| A[\"REST API\"]\n  S -->|\"Enrutar a Lambda con JWT al menor coste\"| B[\"HTTP API\"]\n  A --> C[\"Limitar: plan de uso por clave de API\"]\n  A --> D[\"Repetir lecturas GET: caché de la etapa con TTL\"]\n  A --> E{\"Quién invoca\"}\n  E -->|\"Filtrar por IP o VPC\"| F[\"Política de recursos\"]\n  E -->|\"Validar JWT sin función\"| G[\"Autorizador JWT\"]\n  E -->|\"Lógica propia con encabezados o token\"| H[\"Autorizador Lambda\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: dar a la HTTP API funciones de la REST API",
+          "text": "El enunciado pide caché, claves de API, limitación por cliente o AWS WAF y una de las opciones propone «una HTTP API, que es más barata». Según la comparación, esas funciones no están en la HTTP API. Lo inverso también engaña: si no se necesita ninguna función exclusiva de REST y se pide el menor coste, elegir REST añade funciones que nadie pidió. Subraya los verbos del enunciado (cachear, limitar por cliente, filtrar por IP, validar JWT) y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: elegir HTTP API por precio sin revisar los requisitos",
+          "text": "Causa: dar por hecho que la HTTP API cubre todo lo que cubre la REST API a menor precio. Consecuencia: el diseño exige caché, claves de API o limitación por cliente, funciones que la HTTP API no tiene, y hay que rehacer la API. Solución: lista las funciones que pide el enunciado, compáralas con la tabla de la página y elige HTTP solo si ninguna es exclusiva de REST."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confiar la protección del backend solo a la caché o a un TTL alto",
+          "text": "Causa: suponer que un TTL mayor o una caché más grande bastan, olvidando que el TTL máximo es de 3600 segundos y que la caché es de mejor esfuerzo. Consecuencia: tras vaciar la caché o cambiar su capacidad, las peticiones vuelven en bloque al endpoint y la latencia sube de forma temporal. Solución: combina la caché con límites de tasa y ráfaga, y planifica los cambios de capacidad sabiendo que borran los datos cacheados."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: tratar la clave de API como un autorizador",
+          "text": "Causa: creer que una clave de API con su plan de uso autentica a quien invoca. Consecuencia: cualquiera que tenga la clave puede llamar, y el plan solo mide y limita el uso. Solución: usa un mecanismo de autorización (IAM, autorizador JWT, autorizador Lambda o Cognito, y una política de recursos si hay que filtrar por IP o VPC) y deja las claves y planes de uso para seguir y limitar el acceso concedido."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre REST API y HTTP API en API Gateway y configurar la limitación, la caché y los autorizadores según el requisito del enunciado. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la decisión, el dato del enunciado que la determina y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo del catálogo: para cada requisito, nombra la decisión y el dato que la determina. Explica con tus palabras el diagrama «De la necesidad a la decisión de API Gateway». Después responde: si un socio debe tener su propio límite de peticiones, ¿por qué no sirve subir el límite de la cuenta ni elegir una HTTP API?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Un límite por cliente mayor que el de la cuenta». Una configuración de limitación tiene un límite por cliente que supera el de la cuenta por Región. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas el límite de la cuenta."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Una API que no cubre sus requisitos». La configuración usa una HTTP API pero necesita claves de API, caché y validación de JWT sin función. Decide qué cambias y justifica por escrito cada ajuste con la página de comparación y la de caché. Criterio de paso: las pruebas pasan y cada cambio cita su página."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre la caché, la limitación y los autorizadores de API Gateway. Audítalo en «Auditar un informe de API Gateway generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales (leídas el 2026-11-23) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué funciones son exclusivas de la REST API; qué algoritmo y qué código de respuesta usa la limitación; cuál es el TTL por defecto de la caché, su máximo y qué hace TTL=0; qué métodos se cachean por defecto; y qué diferencia hay entre un autorizador y un plan de uso. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el requisito y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la empresa añade una API interna para un solo equipo que enruta a Lambda con tokens JWT, sin caché ni claves, y quiere el menor coste; y una API pública de partners con límites propios por partner y protección con AWS WAF. Decide el tipo de API de cada una, dónde pones la limitación y qué autorizador usas. Pregunta de cierre: un compañero dice «con la caché activada ya no hace falta limitar las peticiones»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-api-gateway-que-es",
+          "order": 0,
+          "note": "Fuente previa: qué es API Gateway, los tres tipos de API y su papel como puerta de entrada de los servicios de backend."
+        },
+        {
+          "resourceSlug": "aws-api-gateway-http-vs-rest",
+          "order": 1,
+          "note": "Fuente de la comparación entre REST API y HTTP API: qué funciones tiene cada una."
+        },
+        {
+          "resourceSlug": "aws-api-gateway-throttling",
+          "order": 2,
+          "note": "Fuente de la limitación en REST API: cubo de fichas, 429, cuatro tipos de límite y orden de aplicación."
+        },
+        {
+          "resourceSlug": "aws-api-gateway-cache",
+          "order": 3,
+          "note": "Fuente de la caché de REST API: TTL, métodos GET, capacidad, claves de caché e invalidación."
+        },
+        {
+          "resourceSlug": "aws-api-gateway-autorizadores",
+          "order": 4,
+          "note": "Fuente de los mecanismos de control de acceso de REST API: políticas de recursos, IAM, JWT, Lambda y Cognito."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 5,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Según las páginas de API Gateway (leídas el 2026-11-23), la REST API admite más funciones; la HTTP API se diseña con funciones mínimas para ofrecerse a menor precio. Se elige REST si hacen falta claves de API, limitación por cliente, validación de peticiones, AWS WAF o puntos de enlace privados; HTTP si no se necesita ninguna de esas funciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-4-tarjeta-01",
+      "title": "Tarjeta: REST API frente a HTTP API",
+      "statement": "¿En qué se diferencian la REST API y la HTTP API?",
+      "concepts": [
+        "REST API",
+        "HTTP API"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Caché, claves de API, limitación y uso por cliente, AWS WAF, políticas de recursos, validación de peticiones, canary, X-Ray, punto de enlace de borde o privado y portal de desarrolladores. La HTTP API aporta despliegues automáticos e integración privada con AWS Cloud Map. Ambas admiten JWT, IAM, autorizadores Lambda y TLS mutuo. Página consultada el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-4-tarjeta-02",
+      "title": "Tarjeta: Solo en REST API",
+      "statement": "¿Qué funciones tiene la REST API y no la HTTP API?",
+      "concepts": [
+        "comparación",
+        "funciones exclusivas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Usa el algoritmo de cubo de fichas con una tasa en régimen estable y una ráfaga, aplicados a todas las APIs de la cuenta por Región. Al superarlos, el cliente puede recibir 429 Too Many Requests y reintentar respetando el ritmo. Los límites son objetivos de mejor esfuerzo, no techos garantizados. Página de REST API consultada el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-4-tarjeta-03",
+      "title": "Tarjeta: Limitación",
+      "statement": "¿Cómo limita las peticiones API Gateway y qué recibe el cliente al superar el límite?",
+      "concepts": [
+        "limitación",
+        "429"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Por cliente o por método en un plan de uso de la etapa, por método de la etapa, por cuenta y Región, y el límite regional de AWS. Los de AWS no los cambia el cliente; el de cuenta puede aumentarse bajo petición sin superar los de AWS; el de cliente no puede superar el de cuenta. Datos de la página consultada el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-4-tarjeta-04",
+      "title": "Tarjeta: Orden de los límites",
+      "statement": "¿Qué cuatro tipos de límite hay y en qué orden se aplican?",
+      "concepts": [
+        "plan de uso",
+        "límite por cuenta"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El TTL por defecto es de 300 segundos, el máximo de 3600 y TTL=0 la desactiva. Solo se cachean los métodos GET por defecto, y la respuesta cacheable no supera 1048576 bytes. Crear o borrar la caché tarda unos 4 minutos y cambiar su capacidad borra los datos cacheados. Se cobra por hora y no entra en la capa gratuita. Página consultada el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-4-tarjeta-05",
+      "title": "Tarjeta: Caché de la etapa",
+      "statement": "¿Qué valores y reglas tiene la caché de una REST API?",
+      "concepts": [
+        "caché",
+        "TTL"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Políticas de recursos (IP o VPC), IAM, autorizadores JWT sin función, autorizadores Lambda (token, encabezados, rutas, consultas) y grupos de usuarios de Cognito. Los planes de uso con claves de API siguen y limitan el uso por clave del acceso ya concedido; no son el mecanismo que autentica. Consultado el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-4-tarjeta-06",
+      "title": "Tarjeta: Autorizadores y planes de uso",
+      "statement": "¿Qué mecanismos de acceso lista la página de REST API y qué papel tienen los planes de uso?",
+      "concepts": [
+        "autorizador",
+        "plan de uso"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Limitación de una REST API (valores ficticios). Corrige su defecto principal.\nexport const limites = {\n  cuenta: { tasaRps: 1000 },\n  cliente: { claveDeApi: \"socio-a\", tasaRps: 2000 },\n};\n",
+      "solution": {
+        "code": "export const limites = {\n  cuenta: { tasaRps: 1000 },\n  cliente: { claveDeApi: \"socio-a\", tasaRps: 500 },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "La página de limitación dice que los límites por cliente no pueden ser superiores a los límites por cuenta. Compara los dos valores."
+        },
+        {
+          "level": 2,
+          "text": "El límite por cliente debe ser positivo y no pasar del de la cuenta. Cambia solo el campo del cliente."
+        },
+        {
+          "level": 3,
+          "text": "Pon cliente.tasaRps en un valor entre 1 y 1000 (por ejemplo 500). No cambies el límite de la cuenta ni la clave de API."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el límite por cliente no supera el de la cuenta",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(limites.cliente.tasaRps <= limites.cuenta.tasaRps, \"el límite por cliente no puede ser mayor que el de la cuenta\");"
+          }
+        },
+        {
+          "name": "el límite por cliente es positivo",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(limites.cliente.tasaRps > 0, \"un límite de 0 o menos bloquearía al cliente\");"
+          }
+        },
+        {
+          "name": "el límite de la cuenta se conserva",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(limites.cuenta.tasaRps, 1000);"
+          }
+        },
+        {
+          "name": "la clave de API se conserva",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(limites.cliente.claveDeApi, \"socio-a\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-6-4-debug-01",
+      "title": "Un límite por cliente mayor que el de la cuenta",
+      "order": 7,
+      "statement": "El objeto `limites` modela la limitación de una REST API: un límite por cuenta y Región y el límite de un cliente con clave de API (valores ficticios). El límite del cliente supera el de la cuenta, y la página dice que no puede hacerlo. Corrige el límite del cliente sin tocar el de la cuenta, y mantén la forma del valor exportado (`export const limites = { … }`).",
+      "concepts": [
+        "limitación",
+        "límite por cliente"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html"
+      ]
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Una API que debe usar claves de API, caché y validar JWT sin función. Corrige sus defectos principales.\nexport const api = {\n  tipo: \"http\",\n  necesita: [\"claves-de-api\", \"cache\", \"jwt-sin-funcion\"],\n  autorizador: \"clave-de-api\",\n  cache: { habilitada: true, ttlSeg: 0 },\n};\n",
+      "solution": {
+        "code": "export const api = {\n  tipo: \"rest\",\n  necesita: [\"claves-de-api\", \"cache\", \"jwt-sin-funcion\"],\n  autorizador: \"jwt\",\n  cache: { habilitada: true, ttlSeg: 300 },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el tipo de API ofrece caché y claves de API",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(api.tipo, \"rest\", \"la caché y las claves de API son funciones de la REST API\");"
+          }
+        },
+        {
+          "name": "el autorizador valida JWT sin función propia",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(api.autorizador, \"jwt\", \"un autorizador JWT valida los tokens en la puerta de enlace sin función\");"
+          }
+        },
+        {
+          "name": "el TTL de la caché la activa y no pasa del máximo",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(api.cache.ttlSeg > 0, \"TTL=0 desactiva la caché\");\nassert.ok(api.cache.ttlSeg <= 3600, \"el TTL máximo es de 3600 segundos\");"
+          }
+        },
+        {
+          "name": "los requisitos y la caché habilitada se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(api.necesita, [\"claves-de-api\", \"cache\", \"jwt-sin-funcion\"]);\nassert.strictEqual(api.cache.habilitada, true);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-6-4-debug-02",
+      "title": "Una API que no cubre sus requisitos",
+      "order": 8,
+      "statement": "El objeto `api` modela una API que necesita claves de API, caché y validar tokens JWT sin escribir una función. Está definida como HTTP API, con una clave de API como autorizador y un TTL de caché de 0. Corrige el tipo, el autorizador y el TTL según las páginas, sin cambiar la lista de requisitos, y mantén la forma del valor exportado (`export const api = { … }`).",
+      "concepts": [
+        "REST API",
+        "HTTP API",
+        "caché",
+        "autorizador JWT"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de API Gateway (borrador generado por un asistente)\nEscenario: una REST API con caché, clientes con claves de API y varios mecanismos de acceso.\n1. El TTL por defecto de la caché es de 300 segundos, el máximo es de 3600 y TTL=0 la desactiva.\n2. Al activar la caché de una etapa se cachean por defecto todos los métodos, incluido POST.\n3. Cambiar la capacidad de la caché elimina la instancia existente y crea otra, así que se pierden los datos cacheados.\n4. La HTTP API admite la caché de etapa igual que la REST API.\n5. Los planes de uso con claves de API sirven para seguir y limitar el uso por cliente de lo ya concedido; no son un autorizador.\n6. El límite por cliente puede superar el límite por cuenta y Región si se pide al soporte de AWS.\n7. Las políticas de recursos de una REST API permiten permitir o denegar el acceso desde direcciones IP o puntos de enlace de VPC concretos."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Valores del TTL",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página indica 300 segundos por defecto, 3600 de máximo y que TTL=0 significa caché desactivada."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Métodos cacheados por defecto",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: al activar la caché de la etapa solo se cachean los métodos GET por defecto; otros métodos exigen sustituir los ajustes del método."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Cambio de capacidad de la caché",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: la página explica que cambiar la capacidad elimina la instancia existente y crea una nueva, y se borran los datos cacheados."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Caché en la HTTP API",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la tabla de comparación indica que la caché es una función de la REST API y no de la HTTP API."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Papel de los planes de uso",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página los presenta como mecanismo para seguir y limitar el acceso ya concedido a clientes autorizados, no como autenticación."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Límite por cliente y límite por cuenta",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: los límites por cliente no pueden ser superiores a los límites por cuenta; lo que puede aumentarse bajo petición es el límite por cuenta, sin pasar del de AWS."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Políticas de recursos",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página dice que permiten permitir o denegar el acceso a APIs y métodos desde IP de origen o puntos de enlace de VPC concretos."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-6-4-auditoria-01",
+      "title": "Auditar un informe de API Gateway generado por IA",
+      "order": 9,
+      "statement": "Un asistente de IA redactó este informe sobre la caché, la limitación y el control de acceso de una REST API de API Gateway. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "caché",
+        "limitación",
+        "autorizadores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una HTTP API, que incluye claves de API y limitación por cliente",
+            "explanation": "Descartada: según la comparación, la HTTP API no tiene claves de API ni limitación por cliente."
+          },
+          {
+            "id": "b",
+            "text": "Una HTTP API, porque ofrece más funciones que la REST API",
+            "explanation": "Descartada: la página indica lo contrario: la REST API admite más funciones y la HTTP API se diseña con funciones mínimas."
+          },
+          {
+            "id": "c",
+            "text": "Una REST API con un plan de uso y una clave de API por socio",
+            "explanation": "Es la correcta: las claves de API y la limitación por cliente son funciones de la REST API y los planes de uso las aplican."
+          },
+          {
+            "id": "d",
+            "text": "Una API WebSocket, pensada para comunicación sin estado",
+            "explanation": "Descartada: la API WebSocket mantiene comunicación con estado y bidireccional; la comunicación sin estado es la de las APIs HTTP y REST."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-4-quiz-01",
+      "title": "Claves y límite por socio",
+      "statement": "Una empresa expone su backend de Lambda a socios y necesita entregar a cada socio una clave de API con un límite propio de peticiones. ¿Qué tipo de API encaja MEJOR?",
+      "concepts": [
+        "claves de API",
+        "REST API"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Activar la caché de la etapa con un TTL mayor que 0 y menor o igual que 3600 segundos",
+            "explanation": "Es la correcta: API Gateway responde desde la caché durante el TTL y reduce las llamadas al endpoint sin cambiar el código."
+          },
+          {
+            "id": "b",
+            "text": "Pasar la API a una HTTP API, que incluye caché de etapa",
+            "explanation": "Descartada: según la comparación, la caché no está disponible en la HTTP API."
+          },
+          {
+            "id": "c",
+            "text": "Fijar el TTL de la caché en 7200 segundos para cachear más tiempo",
+            "explanation": "Descartada: el TTL máximo es de 3600 segundos, así que ese valor no es válido."
+          },
+          {
+            "id": "d",
+            "text": "Poner el TTL de la caché en 0 para que no caduque nunca",
+            "explanation": "Descartada: TTL=0 significa que la caché está desactivada, no que las entradas no caduquen."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-4-quiz-02",
+      "title": "Lecturas repetidas saturan el backend",
+      "statement": "El backend de una REST API se satura porque miles de clientes piden la misma lista de productos con GET. ¿Qué cambio reduce las llamadas al backend con el MENOR cambio de código?",
+      "concepts": [
+        "caché",
+        "TTL"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Bajar el límite por cuenta y Región, que solo afecta a ese socio",
+            "explanation": "Descartada: el límite por cuenta se aplica a todas las APIs de la cuenta en la Región, no a un único cliente."
+          },
+          {
+            "id": "b",
+            "text": "Pasar la API a una HTTP API con limitación por cliente",
+            "explanation": "Descartada: según la comparación, la HTTP API no tiene limitación por cliente ni claves de API."
+          },
+          {
+            "id": "c",
+            "text": "Una política de recursos que limite las peticiones por segundo del socio",
+            "explanation": "Descartada: las políticas de recursos permiten o deniegan el acceso por IP de origen o punto de enlace de VPC, no limitan la tasa."
+          },
+          {
+            "id": "d",
+            "text": "Un plan de uso con la clave de API del socio y su propia tasa y ráfaga",
+            "explanation": "Es la correcta: los límites por cliente se aplican a quien usa claves de API asociadas a un plan de uso."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-4-quiz-03",
+      "title": "Limitar solo a un socio",
+      "statement": "Un socio envía más peticiones de las acordadas a una REST API y hay que limitar su ritmo con el MENOR impacto posible sobre los demás clientes. ¿Qué configuración aplicas?",
+      "concepts": [
+        "plan de uso",
+        "limitación por cliente"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un autorizador Lambda con una función que valide el token",
+            "explanation": "Descartada: funciona, pero exige escribir y mantener una función; el autorizador JWT valida sin ella."
+          },
+          {
+            "id": "b",
+            "text": "Un autorizador JWT en la puerta de enlace, sin función",
+            "explanation": "Es la correcta: valida en la puerta de enlace los tokens de un proveedor OpenID Connect sin función."
+          },
+          {
+            "id": "c",
+            "text": "Una política de recursos con la lista de emisores del token",
+            "explanation": "Descartada: las políticas de recursos filtran por IP de origen o punto de enlace de VPC y no validan tokens."
+          },
+          {
+            "id": "d",
+            "text": "Una clave de API por usuario dentro de un plan de uso",
+            "explanation": "Descartada: las claves de API con plan de uso siguen y limitan el uso, no autentican tokens."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-4-quiz-04",
+      "title": "Validar JWT sin código",
+      "statement": "Una REST API debe validar tokens JWT de un proveedor OpenID Connect y el equipo quiere escribir MENOS código posible. ¿Qué usas?",
+      "concepts": [
+        "autorizador JWT",
+        "autorizador Lambda"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un autorizador JWT que decide según la dirección IP de origen",
+            "explanation": "Descartada: el autorizador JWT valida tokens de un proveedor OpenID Connect, no filtra por dirección IP."
+          },
+          {
+            "id": "b",
+            "text": "Un plan de uso que admite o rechaza según la IP de origen",
+            "explanation": "Descartada: los planes de uso siguen y limitan el uso por clave de API y no filtran por IP."
+          },
+          {
+            "id": "c",
+            "text": "Una política de recursos que permita esas IP y ese punto de enlace de VPC",
+            "explanation": "Es la correcta: las políticas de recursos permiten o deniegan el acceso desde IP de origen o puntos de enlace de VPC concretos."
+          },
+          {
+            "id": "d",
+            "text": "Un grupo de usuarios de Amazon Cognito con un rango de IP permitido",
+            "explanation": "Descartada: los grupos de usuarios de Cognito sirven para autenticar y autorizar usuarios, no para filtrar por IP."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-4-quiz-05",
+      "title": "Aceptar solo IP del proveedor",
+      "statement": "Una REST API debe aceptar únicamente peticiones de las direcciones IP de un proveedor y de un punto de enlace de VPC concreto. ¿Qué mecanismo encaja MEJOR?",
+      "concepts": [
+        "política de recursos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una REST API, la única de las dos que admite autorizadores JWT",
+            "explanation": "Descartada: según la comparación, la HTTP API también admite JWT y Amazon Cognito mediante un autorizador JWT."
+          },
+          {
+            "id": "b",
+            "text": "Una REST API, porque la HTTP API no admite ningún autorizador",
+            "explanation": "Descartada: la HTTP API admite IAM, autorizadores Lambda y JWT según la tabla de autorización."
+          },
+          {
+            "id": "c",
+            "text": "Una HTTP API, usando una clave de API para autorizar las llamadas",
+            "explanation": "Descartada: la HTTP API no tiene claves de API, y una clave de API tampoco es un mecanismo de autorización."
+          },
+          {
+            "id": "d",
+            "text": "Una HTTP API, diseñada con funciones mínimas y compatible con JWT",
+            "explanation": "Es la correcta: no se necesita ninguna función exclusiva de REST, y la HTTP API se ofrece a menor precio."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-4-quiz-06",
+      "title": "API interna de bajo coste",
+      "statement": "Un equipo necesita una API que enrute a Lambda con tokens JWT, sin caché, claves de API ni WAF, y quiere el MENOR coste. ¿Qué opción encaja?",
+      "concepts": [
+        "HTTP API",
+        "JWT"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Autorización con un autorizador JWT",
+            "explanation": "No cumple: el autorizador JWT está disponible en la REST API y en la HTTP API."
+          },
+          {
+            "id": "b",
+            "text": "Caché de respuestas en la etapa",
+            "explanation": "Cumple: según la tabla de comparación, la caché es una función de la REST API y no de la HTTP API."
+          },
+          {
+            "id": "c",
+            "text": "Configuración de CORS",
+            "explanation": "No cumple: la tabla indica que CORS se puede configurar en ambos tipos de API."
+          },
+          {
+            "id": "d",
+            "text": "Protección con AWS WAF",
+            "explanation": "Cumple: AWS WAF está disponible en la REST API y no en la HTTP API según la página."
+          },
+          {
+            "id": "e",
+            "text": "Autenticación TLS mutua",
+            "explanation": "No cumple: la tabla indica que el TLS mutuo está disponible en los dos tipos de API."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-4-quiz-07",
+      "title": "Funciones exclusivas de REST",
+      "statement": "Un arquitecto compara REST API y HTTP API. Selecciona DOS funciones que solo ofrece la REST API.",
+      "concepts": [
+        "comparación",
+        "REST API"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "El TTL por defecto de la caché es de 300 segundos",
+            "explanation": "Cumple: la página indica 300 segundos por defecto, con un máximo de 3600 y TTL=0 para desactivarla."
+          },
+          {
+            "id": "b",
+            "text": "La caché de etapa también está disponible en la HTTP API",
+            "explanation": "No cumple: según la tabla de comparación, la HTTP API no tiene caché."
+          },
+          {
+            "id": "c",
+            "text": "Al activarla en una etapa solo se cachean los métodos GET por defecto",
+            "explanation": "Cumple: otros métodos exigen sustituir los ajustes del método, aunque la página recomienda no hacerlo."
+          },
+          {
+            "id": "d",
+            "text": "La caché entra en la capa gratuita de AWS al elegir la capacidad mínima",
+            "explanation": "No cumple: la caché se cobra por hora según el tamaño elegido y no es apta para la capa gratuita."
+          },
+          {
+            "id": "e",
+            "text": "Cambiar la capacidad elimina la instancia y borra los datos cacheados",
+            "explanation": "Cumple: API Gateway crea una instancia nueva con la capacidad modificada y se eliminan los datos existentes."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-4-quiz-08",
+      "title": "Reglas de la caché",
+      "statement": "Un equipo repasa la caché de una REST API. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "caché",
+        "TTL"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-6-4-reflexion-01",
+      "title": "Reflexión: qué tipo de API y por qué",
+      "order": 18,
+      "statement": "Elige un sistema que conozcas (por ejemplo, una API pública para socios, una API interna de un solo equipo o una tienda cuyo catálogo se consulta sin parar) y escribe un registro breve de decisión sobre cómo configurarías su API en API Gateway, en 5 a 7 líneas:\n\n1) Decisión: qué tipo de API usarías (REST o HTTP) y qué requisito lo decide (claves de API, limitación por cliente, caché, WAF, JWT, coste).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, una HTTP API por su menor precio, o un autorizador Lambda cuando bastaba un autorizador JWT) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (el TTL y la capacidad de la caché, los planes de uso y sus límites, el autorizador elegido).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad, Seguridad o Optimización de costos) y por qué.\n\n5) Evidencia: qué página oficial (comparación REST y HTTP, limitación, caché o control de acceso) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la decisión y el requisito que la determina. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "API Gateway",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html",
+        "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html"
+      ]
+    }
+  ]
+}
