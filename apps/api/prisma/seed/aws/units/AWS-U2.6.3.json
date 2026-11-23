@@ -1,0 +1,1296 @@
+{
+  "code": "AWS-U2.6.3",
+  "lessons": [
+    {
+      "slug": "aws-u2-6-3-step-functions-orquestacion-frente-a-coreografia",
+      "title": "Step Functions: orquestación frente a coreografía",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cuando un proceso tiene varios pasos que deben ocurrir en un orden, con decisiones y con errores que gestionar, hay dos maneras de organizarlo. En la orquestación, un coordinador central define el flujo, sabe en qué paso está y decide cuál sigue; en AWS lo hace AWS Step Functions. En la coreografía, ningún componente dirige: cada pieza reacciona por su cuenta a los eventos que le llegan, como en los buses y las reglas de la unidad anterior. Esta unidad se centra en el primer enfoque: qué es una máquina de estados, cómo se escribe en Amazon States Language (ASL), qué tipos de estado existen, cómo se gestionan los errores con Retry y Catch y cuándo elegir un flujo Standard o Express. En el laboratorio escribirás máquinas de estados válidas y comprobarás con el evaluador asl del arnés que todos sus estados son alcanzables. Ojo: las páginas oficiales de esta unidad no usan la palabra «coreografía»; es el contraste de arquitectura con la unidad anterior, y todo lo que se afirma de Step Functions sale de ellas."
+        },
+        {
+          "type": "list",
+          "title": "Los conceptos que esta unidad conecta",
+          "items": [
+            "Step Functions: permite crear flujos de trabajo, llamados máquinas de estados, para construir aplicaciones distribuidas, automatizar procesos, orquestar microservicios y crear canalizaciones de datos y de aprendizaje automático.",
+            "Estado y ejecución: cada paso de un flujo es un estado; una ejecución es una instancia de un flujo en marcha.",
+            "Amazon States Language (ASL): lenguaje estructurado basado en JSON con el que se define la máquina de estados.",
+            "Tipos de estado: los estados de flujo controlan el recorrido (Choice, Wait, Map, Parallel); los estados Task representan una unidad de trabajo que realiza otro servicio de AWS.",
+            "Retry y Catch: reintentar una tarea fallida o capturar el error y ejecutar pasos alternativos.",
+            "Tipo de flujo: Standard (duradero, de hasta un año) o Express (de alto volumen, de hasta cinco minutos)."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Orquestación frente a coreografía",
+          "text": "Según la guía (página consultada el 2026-11-23), con Step Functions puedes crear flujos que orquestan una serie de tareas o pasos en un orden concreto: la tarea A puede ser una función de Lambda que da la entrada a otra función en la tarea B, y el último paso entrega el resultado final. El flujo es un único artefacto que describe todo el proceso: el orden, las decisiones según los datos, los reintentos y las alternativas ante un error, y desde la consola puedes visualizarlo, editarlo y depurarlo y examinar el estado de cada paso. En la coreografía no existe ese artefacto central: un publicador envía un evento a un bus o a un tema y cada suscriptor decide qué hace, sin conocer a los demás. De ahí el criterio de decisión: si necesitas un orden garantizado entre pasos, decisiones sobre los datos y control explícito de errores, una máquina de estados; si necesitas que varios consumidores independientes reaccionen a un hecho sin coordinarse, eventos. No son excluyentes: la guía indica que ambos tipos de flujo pueden iniciarse en respuesta a eventos, como las solicitudes HTTP de API Gateway, las reglas de IoT y más de 140 orígenes de eventos de EventBridge."
+        },
+        {
+          "type": "paragraph",
+          "title": "Máquinas de estados, estados y ejecuciones",
+          "text": "Step Functions se basa en máquinas de estados, también llamadas flujos de trabajo, formadas por una serie de pasos orientados a eventos. Cada paso es un estado y hay dos clases: los estados de flujo, que controlan el recorrido (Choice aporta lógica condicional, Wait pausa la ejecución, Map ejecuta flujos hijos para cada elemento de un conjunto de datos y Parallel crea ramas separadas), y los estados Task, que representan una unidad de trabajo que realiza otro servicio, como llamar a otro servicio o API de AWS. También se pueden usar trabajadores que corren fuera de Step Functions, llamados Activities. Cuando se ejecuta un flujo, Step Functions crea una instancia llamada ejecución, cuyo estado puedes monitorizar. Cada estado recibe como entrada un JSON y su salida es la entrada del siguiente; los datos del flujo se representan en texto JSON. La guía explica que, desde re:Invent 2024, el lenguaje de consulta recomendado es JSONata y que las máquinas anteriores usan JSONPath; en cada estado solo puede usarse uno de los dos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Amazon States Language y estructura de una máquina",
+          "text": "Amazon States Language es un lenguaje estructurado basado en JSON con el que defines la máquina de estados: una colección de estados que pueden hacer trabajo (estados Task), determinar a qué estado pasar después (estados Choice), detener una ejecución con un error (estados Fail) y más. Si defines las máquinas fuera de la consola, por ejemplo en un editor propio, debes guardarlas con la extensión .asl.json. La definición incluye campos como StartAt, TimeoutSeconds y Version. Al iniciar una ejecución, el sistema empieza por el estado que nombra el campo StartAt de primer nivel, y esa cadena debe coincidir exactamente, incluidas las mayúsculas, con el nombre de un estado. Tras ejecutar un estado, Step Functions usa su campo Next para decidir a cuál pasar; también es una cadena sensible a mayúsculas que debe coincidir exactamente con el nombre de un estado. La mayoría de los estados admiten una sola regla Next; los estados de control como Choice pueden tener varias reglas, cada una con su propio Next. El proceso se repite hasta llegar a un estado terminal (con Type Succeed, Type Fail o End: true) o hasta que ocurre un error en tiempo de ejecución."
+        },
+        {
+          "type": "paragraph",
+          "title": "Reglas de los estados y errores en la ejecución",
+          "text": "La guía fija varias reglas sobre los estados de una máquina. Pueden aparecer en cualquier orden dentro del bloque que los contiene, pero el orden en que se listan no determina el orden de ejecución: ese orden lo deciden sus contenidos. Solo puede haber un estado de inicio, el que nombra StartAt. Si la lógica tiene varias ramas, puede haber más de un estado final, y si la máquina tiene un solo estado, este es a la vez el de inicio y el de fin. Los estados pueden tener varias transiciones entrantes. Si una ejecución sufre un error, el flujo puede capturarlo y, según el caso, puedes reejecutarla más tarde con redrive para reanudar el flujo. Para gestionar errores dentro del flujo, la guía de Step Functions describe Retry y Catch: puedes reintentar tareas fallidas o capturar las que fallan y ejecutar automáticamente pasos alternativos. Por ejemplo, si la primera llamada a un servicio de validación falla, el flujo puede reintentar y continuar cuando la segunda tiene éxito; si el nombre solicitado no es válido, un Catch puede llevar a un paso que sugiera una alternativa. Ojo: los campos concretos de Retry y Catch (ErrorEquals, MaxAttempts, BackoffRate, Next) no se detallan en las páginas de esta unidad; son la convención del evaluador asl, que sigue la de ASL."
+        },
+        {
+          "type": "paragraph",
+          "title": "Standard frente a Express",
+          "text": "Al crear una máquina debes elegir su tipo, Standard (el predeterminado) o Express, y el tipo no puede cambiarse después. Según la página consultada el 2026-11-23, los flujos Standard son ideales para flujos duraderos y auditables de larga duración, de hasta un año: puedes recuperar el historial completo de la ejecución con la API hasta 90 días después de que termine. Siguen un modelo de exactamente una vez: las tareas y los estados nunca se ejecutan más de una vez, salvo que hayas especificado un comportamiento Retry en ASL, y por eso encajan para orquestar acciones no idempotentes como iniciar un clúster de EMR o procesar pagos. Se facturan por transiciones de estado. Los flujos Express son ideales para cargas de trabajo de procesamiento de eventos de alto volumen, como la ingesta de datos de IoT, el procesamiento de datos en streaming y los backends de aplicaciones móviles, y duran hasta cinco minutos. Siguen un modelo de al menos una vez, así que una ejecución podría ejecutarse más de una vez: encajan para acciones idempotentes, como transformar datos para guardarlos en DynamoDB con una operación PUT. Se facturan por número de ejecuciones, duración y memoria consumida. Los Express asíncronos devuelven la confirmación de inicio sin esperar el resultado (al menos una vez); los síncronos esperan y devuelven el resultado (a lo sumo una vez). Los Express no admiten los patrones .sync ni .waitForTaskToken, ni Distributed Map ni Activities, y su estado no persiste entre transiciones."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de los requisitos a la máquina",
+          "text": "Requisito: un proceso de pedidos debe (1) validar, (2) cobrar y reintentar si el cobro tarda, (3) pasar a un paso de fallo si el cobro sigue fallando, (4) preparar el envío y (5) esperar la confirmación de un humano antes de cerrar. Decisión 1: el orden con pasos que dependen unos de otros pide orquestación, es decir, una máquina de estados con estados Task. Decisión 2: (2) es un Retry sobre la tarea de cobro y (3) es un Catch cuyo Next apunta a un estado Fail. Decisión 3: (4) es otra tarea y el estado final del camino feliz es un Succeed. Decisión 4: (5) es una espera de larga duración con un callback: pide un flujo Standard. Si en cambio el proceso fuese una transformación de datos de IoT de menos de cinco minutos con acciones idempotentes y muchísimos eventos, la elección sería Express. En el arnés, aws.asl.validateStateMachine devuelve la lista de problemas de la definición y aws.asl.reachableStates los estados alcanzables desde StartAt. Ojo: los campos de la máquina de ejemplo son la convención del evaluador asl; los conceptos salen de las páginas oficiales."
+        },
+        {
+          "type": "code",
+          "title": "Una máquina de estados y su comprobación con el arnés",
+          "language": "typescript",
+          "code": "// Cobro con reintento y salida de error. Los nombres de los estados son los del proceso.\nexport const maquina = {\n  StartAt: \"Cobrar\",\n  States: {\n    Cobrar: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:Cobrar\",\n      Retry: [{ ErrorEquals: [\"States.Timeout\"], IntervalSeconds: 2, MaxAttempts: 3, BackoffRate: 2 }],\n      Catch: [{ ErrorEquals: [\"States.ALL\"], Next: \"Fallido\" }],\n      Next: \"Listo\",\n    },\n    Listo: { Type: \"Succeed\" },\n    Fallido: { Type: \"Fail\", Error: \"CobroRechazado\", Cause: \"El cobro no se completó\" },\n  },\n};\n\n// Con el arnés:\n// aws.asl.validateStateMachine(maquina) debe dar [] (sin problemas).\n// aws.asl.reachableStates(maquina) da [\"Cobrar\", \"Listo\", \"Fallido\"]: todos son alcanzables,\n// Fallido gracias al Catch. Un estado que nadie nombra en Next, Choices, Default o Catch no lo sería."
+        },
+        {
+          "type": "mermaid",
+          "title": "De la necesidad al enfoque y al tipo de flujo",
+          "code": "flowchart TD\n  N[\"Proceso de varios pasos\"] --> Q{\"¿Qué se pide?\"}\n  Q -->|\"orden entre pasos, decisiones y control de errores\"| O[\"Orquestación: máquina de estados de Step Functions\"]\n  Q -->|\"consumidores independientes que reaccionan a un hecho\"| C[\"Eventos sin coordinador central (SNS, bus de EventBridge)\"]\n  O --> T{\"¿Duración y semántica?\"}\n  T -->|\"hasta un año, exactamente una vez, historial completo\"| ST[\"Flujo Standard\"]\n  T -->|\"hasta cinco minutos, alto volumen, acciones idempotentes\"| EX[\"Flujo Express\"]\n  C -.->|\"puede iniciar una ejecución\"| O"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir el tipo por el volumen y olvidar la semántica",
+          "text": "Si el escenario habla de pasos no idempotentes (cobros, arrancar clústeres), de esperar días a una persona o de auditar el historial completo, la respuesta es un flujo Standard. Si habla de procesar muchísimos eventos de corta duración con acciones idempotentes, es Express. Y si necesita los patrones de ejecutar un trabajo y esperar (.sync) o de esperar un callback (.waitForTaskToken), Express queda descartado: solo admite la solicitud-respuesta."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar eventos sueltos cuando el negocio exige un orden",
+          "text": "Causa: encadenar los pasos de un proceso mediante mensajes de modo que cada pieza dispara la siguiente, aunque el negocio exija un orden, decisiones y alternativas ante los fallos. Consecuencia: el recorrido del proceso queda repartido en muchos componentes, nadie lo ve entero y cada fallo hay que resolverlo pieza a pieza. Solución: describe el proceso en una máquina de estados, donde el orden, los Choice, los Retry y los Catch están en una sola definición; deja los eventos para iniciar la ejecución o para que otros consumidores reaccionen al resultado."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: elegir Express para un paso que no se puede repetir",
+          "text": "Causa: escoger Express por su volumen sin comprobar la semántica de ejecución. Consecuencia: el modelo es de al menos una vez, así que un paso como procesar un pago podría ejecutarse más de una vez, y el tipo no se puede cambiar tras crear la máquina. Solución: usa Standard para acciones no idempotentes (el modelo es de exactamente una vez) y reserva Express para cargas de alto volumen con acciones idempotentes y duración menor de cinco minutos."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: escribir una definición ASL con transiciones que no existen o estados que nadie alcanza",
+          "text": "Causa: un Next o un StartAt cuyo texto no coincide exactamente (mayúsculas incluidas) con el nombre de un estado, o un estado que ninguna transición nombra. Consecuencia: la definición es inválida o deja pasos muertos que jamás se ejecutan, y un camino de error sin Catch deja la ejecución sin salida controlada. Solución: comprueba que cada Next, Default y Catch nombra un estado existente, que hay un estado terminal (Succeed, Fail o End: true) y que todos los estados son alcanzables desde StartAt; con el arnés, valida con aws.asl.validateStateMachine y compara aws.asl.reachableStates con la lista de estados."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Decidir entre orquestación con Step Functions y coreografía de eventos, y escribir una máquina de estados ASL válida con Task, Choice, Retry y Catch en la que todos los estados sean alcanzables, comprobándolo con el evaluador asl del arnés. Prepara el examen SAA-C03, dominio 2 (Diseñar arquitecturas resilientes). Criterio: las pruebas de los laboratorios pasan y sabes explicar cuándo conviene un flujo Standard o Express y por qué."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y sigue el ejemplo resuelto, de los requisitos a la máquina. Explica con tus palabras, sin mirar el texto, el diagrama «De la necesidad al enfoque y al tipo de flujo». Después responde: si cuatro pasos deben ejecutarse en orden y el segundo puede fallar, ¿qué te da una máquina de estados que no te dan eventos sueltos?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Máquina de estados de un pedido con reintentos y captura de errores»: la definición inicial tiene una transición a un estado que no existe, un estado sin salida y un camino de error sin Catch. Empieza por ejecutar aws.asl.validateStateMachine y leer cada problema. Usa las pistas por niveles solo si te atascas. Criterio de paso: la definición es válida y todos sus estados son alcanzables."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Solicitud de crédito: Choice, Parallel y Wait». Escribe el flujo completo a partir de los requisitos y decide qué estado cubre cada uno. Criterio de paso: la máquina es válida, todos los estados (también los de las ramas) son alcanzables y justificas por escrito cada estado que añadiste."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente que explique por qué una definición ASL se rechaza y audita su respuesta contra la página de Amazon States Language y la de máquinas de estados (consultadas con fecha) antes de aceptarla. Anota qué dice la guía sobre StartAt, Next y los estados terminales. Resuelve también «Depurar la máquina con reintentos y captura mal escritos» y escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué es una máquina de estados y qué es una ejecución; qué diferencia hay entre estados de flujo y estados Task; cuándo termina una ejecución; qué hacen Retry y Catch; y qué distingue a un flujo Standard de uno Express. Después responde sin apuntes las 9 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 7 de las 9 preguntas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: el proceso de pedidos añade un paso que espera varios días a que una persona apruebe la devolución y otro que procesa miles de eventos de seguimiento por segundo. Decide qué parte va en un flujo Standard y cuál en uno Express, qué parte dejarías como reacción a eventos y qué estados nuevos añades a la máquina. Pregunta de cierre: ¿por qué no basta con encadenar mensajes si el cobro no puede ejecutarse dos veces?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-step-functions-que-es",
+          "order": 0,
+          "note": "Fuente de qué es Step Functions: flujos, estados, ejecuciones, casos de uso, Retry y Catch."
+        },
+        {
+          "resourceSlug": "aws-step-functions-asl",
+          "order": 1,
+          "note": "Fuente de Amazon States Language: lenguaje JSON para definir la máquina de estados."
+        },
+        {
+          "resourceSlug": "aws-step-functions-maquinas-de-estado",
+          "order": 2,
+          "note": "Fuente de las máquinas de estados: tipos de estado, StartAt, Next, terminales y reglas de transición."
+        },
+        {
+          "resourceSlug": "aws-step-functions-estandar-vs-express",
+          "order": 3,
+          "note": "Fuente de la elección del tipo de flujo: Standard frente a Express y sus garantías de ejecución."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio para crear flujos de trabajo, llamados máquinas de estados, con los que construir aplicaciones distribuidas, automatizar procesos y orquestar microservicios. Cada paso es un estado; una ejecución es una instancia del flujo en marcha. El estado Task representa una unidad de trabajo que realiza otro servicio de AWS."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 1,
+      "slug": "aws-u2-6-3-tarjeta-01",
+      "title": "Tarjeta: Qué es Step Functions",
+      "statement": "¿Qué es AWS Step Functions y qué es una máquina de estados?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Step Functions",
+        "máquina de estados"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Orquestación: un flujo central ordena los pasos, decide según los datos y gestiona los errores (Step Functions, según la guía). Coreografía: cada pieza reacciona por su cuenta a los eventos de un bus o un tema, sin coordinador. Ojo: las páginas oficiales no usan el término coreografía; es el contraste de arquitectura con SNS y EventBridge."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 2,
+      "slug": "aws-u2-6-3-tarjeta-02",
+      "title": "Tarjeta: Orquestación frente a coreografía",
+      "statement": "¿En qué se diferencian la orquestación con Step Functions y la coreografía con eventos?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "orquestación",
+        "coreografía"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Lenguaje estructurado basado en JSON para definir la máquina de estados: una colección de estados que hacen trabajo (Task), deciden la transición (Choice), detienen la ejecución con error (Fail) y más. Si la defines fuera de la consola, guárdala con la extensión .asl.json. Incluye campos como StartAt, TimeoutSeconds y Version."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 3,
+      "slug": "aws-u2-6-3-tarjeta-03",
+      "title": "Tarjeta: Amazon States Language",
+      "statement": "¿Qué es Amazon States Language y cómo se nombra el archivo fuera de la consola?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "ASL",
+        "StartAt"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Los estados de flujo controlan el recorrido: Choice (lógica condicional), Wait (pausa), Map (un flujo hijo por elemento) y Parallel (ramas separadas). Los estados Task representan una unidad de trabajo que realiza otro servicio de AWS o un trabajador externo (Activities). Terminan la ejecución Succeed, Fail o un estado con End: true."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 4,
+      "slug": "aws-u2-6-3-tarjeta-04",
+      "title": "Tarjeta: Tipos de estado",
+      "statement": "¿Qué son los estados de flujo y los estados Task?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Task",
+        "Choice",
+        "estados"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Standard: duradero y auditable, hasta un año, exactamente una vez, historial completo (la API lo da hasta 90 días tras terminar); para acciones no idempotentes. Express: alto volumen, hasta cinco minutos, al menos una vez (asíncrono) o a lo sumo una vez (síncrono); para acciones idempotentes. El tipo no se cambia tras crear la máquina. Datos de la página consultada el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 5,
+      "slug": "aws-u2-6-3-tarjeta-05",
+      "title": "Tarjeta: Standard frente a Express",
+      "statement": "¿Qué distingue a un flujo Standard de uno Express?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Standard",
+        "Express"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Retry reintenta una tarea fallida; Catch captura el fallo y ejecuta pasos alternativos de forma automática. Ejemplo de la guía: si la primera llamada al servicio de validación falla, el flujo reintenta y avanza cuando la segunda tiene éxito; si el nombre no es válido, un Catch lleva a un paso que sugiere otro. Si el error no se captura, la ejecución puede terminar con error."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 6,
+      "slug": "aws-u2-6-3-tarjeta-06",
+      "title": "Tarjeta: Retry y Catch",
+      "statement": "¿Qué hacen Retry y Catch en una máquina de estados?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Retry",
+        "Catch"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html"
+      ]
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cobro con reintentos y captura de errores.\nexport const maquinaReintentos = {\n  StartAt: \"LlamarPasarela\",\n  States: {\n    LlamarPasarela: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:LlamarPasarela\",\n      Retry: [\n        { ErrorEquals: [\"States.ALL\"], MaxAttempts: 1 },\n        { ErrorEquals: [\"States.Fallo\", \"PasarelaOcupada\"], IntervalSeconds: 2, MaxAttempts: 3, BackoffRate: 2 },\n      ],\n      Catch: [{ ErrorEquals: [\"States.ALL\"], Next: \"AvisaFallo\" }],\n      Next: \"Confirmar\",\n    },\n    Confirmar: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:Confirmar\",\n      Next: \"Fin\",\n      End: true,\n    },\n    AvisarFallo: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:AvisarFallo\",\n      Next: \"Fallido\",\n    },\n    Fallido: { Type: \"Fail\", Error: \"CobroFallido\", Cause: \"La pasarela no respondió\" },\n  },\n};\n",
+      "solution": {
+        "code": "// Cobro con reintentos y captura de errores.\nexport const maquinaReintentos = {\n  StartAt: \"LlamarPasarela\",\n  States: {\n    LlamarPasarela: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:LlamarPasarela\",\n      Retry: [\n        { ErrorEquals: [\"States.Timeout\", \"PasarelaOcupada\"], IntervalSeconds: 2, MaxAttempts: 3, BackoffRate: 2 },\n        { ErrorEquals: [\"States.ALL\"], MaxAttempts: 1 },\n      ],\n      Catch: [{ ErrorEquals: [\"States.ALL\"], Next: \"AvisarFallo\" }],\n      Next: \"Confirmar\",\n    },\n    Confirmar: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:Confirmar\",\n      End: true,\n    },\n    AvisarFallo: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:AvisarFallo\",\n      Next: \"Fallido\",\n    },\n    Fallido: { Type: \"Fail\", Error: \"CobroFallido\", Cause: \"La pasarela no respondió\" },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta aws.asl.validateStateMachine(maquinaReintentos) y lee la ruta (path) y el mensaje de cada problema. Hay varios, en tres estados distintos."
+        },
+        {
+          "level": 2,
+          "text": "En Retry y Catch, States.ALL debe ir solo y en el último elemento de la lista, y los nombres que empiezan por «States.» deben ser los predefinidos (¿era Fallo o Timeout?). Confirmar tiene Next y End a la vez, y el Catch apunta a un estado con otro nombre."
+        },
+        {
+          "level": 3,
+          "text": "Pon el reintento de States.Timeout y PasarelaOcupada antes que el de States.ALL, cambia AvisaFallo por AvisarFallo y deja en Confirmar solo End: true. No cambies los nombres de los estados ni quites ninguno."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la definición es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.asl.validateStateMachine(maquinaReintentos), []);"
+          }
+        },
+        {
+          "name": "States.ALL es el último reintento y solo usa nombres de error válidos",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const retry = maquinaReintentos.States.LlamarPasarela.Retry;\nassert.ok(Array.isArray(retry) && retry.length === 2, \"Debe haber dos reintentos\");\nassert.deepStrictEqual(retry[retry.length - 1].ErrorEquals, [\"States.ALL\"]);\nassert.ok(retry[0].ErrorEquals.includes(\"States.Timeout\"), \"El primero reintenta el tiempo de espera\");\nassert.ok(retry[0].ErrorEquals.every((nombre) => !nombre.startsWith(\"States.\") || nombre === \"States.Timeout\"));"
+          }
+        },
+        {
+          "name": "el Catch lleva al estado de aviso y todos los estados se alcanzan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const catchers = maquinaReintentos.States.LlamarPasarela.Catch;\nassert.strictEqual(catchers[0].Next, \"AvisarFallo\");\nassert.deepStrictEqual(aws.asl.reachableStates(maquinaReintentos).sort(), Object.keys(maquinaReintentos.States).sort());"
+          }
+        },
+        {
+          "name": "Confirmar termina con End y la estructura no ha cambiado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const estados = maquinaReintentos.States;\nassert.strictEqual(estados.Confirmar.End, true);\nassert.strictEqual(\"Next\" in estados.Confirmar, false);\nassert.deepStrictEqual(Object.keys(estados).sort(), [\"AvisarFallo\", \"Confirmar\", \"Fallido\", \"LlamarPasarela\"]);\nassert.strictEqual(maquinaReintentos.StartAt, \"LlamarPasarela\");\nassert.strictEqual(estados.Fallido.Type, \"Fail\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "DEBUG",
+      "order": 7,
+      "slug": "aws-u2-6-3-debug-01",
+      "title": "Depurar la máquina con reintentos y captura mal escritos",
+      "statement": "La máquina `maquinaReintentos` llama a una pasarela de cobro con reintentos y, si sigue fallando, avisa y termina con error. El validador del arnés la rechaza y, además, nunca llegaría al aviso en caso de fallo. Localiza los defectos con `aws.asl.validateStateMachine`, contrasta la estructura con las páginas de Amazon States Language y de máquinas de estados y corrígelos con el cambio mínimo, sin cambiar los nombres de los estados ni quitar ninguno. Explica por qué fallaba y cómo lo comprobaste. Recuerda: los campos de Retry y Catch (ErrorEquals, MaxAttempts, BackoffRate) y las reglas de States.ALL son la convención del evaluador asl, que sigue la de ASL; los conceptos de Retry y Catch salen de la guía.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "Retry",
+        "Catch",
+        "validación"
+      ],
+      "estimatedMin": 25,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html"
+      ]
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Flujo de un pedido: validar, cobrar con reintentos y preparar el envío.\nexport const maquinaPedido = {\n  Comment: \"Flujo de un pedido orquestado con Step Functions\",\n  StartAt: \"ValidarPedido\",\n  States: {\n    ValidarPedido: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:ValidarPedido\",\n      Next: \"CobraPago\",\n    },\n    CobrarPago: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:CobrarPago\",\n      Retry: [{ ErrorEquals: [\"States.Timeout\"], IntervalSeconds: 2, MaxAttempts: 3, BackoffRate: 2 }],\n      Next: \"PrepararEnvio\",\n    },\n    PrepararEnvio: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:PrepararEnvio\",\n    },\n    PedidoCompletado: { Type: \"Succeed\" },\n    PagoFallido: { Type: \"Fail\", Error: \"PagoRechazado\", Cause: \"El cobro no se completó\" },\n  },\n};\n",
+      "solution": {
+        "code": "// Flujo de un pedido: validar, cobrar con reintentos y preparar el envío.\nexport const maquinaPedido = {\n  Comment: \"Flujo de un pedido orquestado con Step Functions\",\n  StartAt: \"ValidarPedido\",\n  States: {\n    ValidarPedido: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:ValidarPedido\",\n      Next: \"CobrarPago\",\n    },\n    CobrarPago: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:CobrarPago\",\n      Retry: [{ ErrorEquals: [\"States.Timeout\"], IntervalSeconds: 2, MaxAttempts: 3, BackoffRate: 2 }],\n      Catch: [{ ErrorEquals: [\"States.ALL\"], Next: \"PagoFallido\" }],\n      Next: \"PrepararEnvio\",\n    },\n    PrepararEnvio: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:PrepararEnvio\",\n      Next: \"PedidoCompletado\",\n    },\n    PedidoCompletado: { Type: \"Succeed\" },\n    PagoFallido: { Type: \"Fail\", Error: \"PagoRechazado\", Cause: \"El cobro no se completó\" },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta aws.asl.validateStateMachine(maquinaPedido) y lee cada problema. Después compara aws.asl.reachableStates(maquinaPedido) con las claves de States: ¿qué estados faltan?"
+        },
+        {
+          "level": 2,
+          "text": "Hay tres defectos: un Next que no coincide con ningún estado (las mayúsculas y las letras importan), un estado de la tarea sin Next ni End y un camino de error sin salida. Por eso PagoFallido no se alcanza."
+        },
+        {
+          "level": 3,
+          "text": "Escribe Next: \"CobrarPago\" en ValidarPedido, Next: \"PedidoCompletado\" en PrepararEnvio y añade a CobrarPago un Catch con ErrorEquals [\"States.ALL\"] y Next: \"PagoFallido\". No cambies los nombres ni quites estados."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la máquina es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.asl.validateStateMachine(maquinaPedido), []);"
+          }
+        },
+        {
+          "name": "todos los estados son alcanzables desde StartAt",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const alcanzables = aws.asl.reachableStates(maquinaPedido);\nassert.deepStrictEqual([...alcanzables].sort(), Object.keys(maquinaPedido.States).sort(), \"No debe haber estados muertos\");\nassert.strictEqual(alcanzables[0], \"ValidarPedido\");"
+          }
+        },
+        {
+          "name": "un fallo del cobro se captura y lleva a PagoFallido",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const catchers = maquinaPedido.States.CobrarPago.Catch;\nassert.ok(Array.isArray(catchers) && catchers.length > 0, \"CobrarPago necesita un Catch\");\nconst ultimo = catchers[catchers.length - 1];\nassert.deepStrictEqual(ultimo.ErrorEquals, [\"States.ALL\"]);\nassert.strictEqual(ultimo.Next, \"PagoFallido\");"
+          }
+        },
+        {
+          "name": "el camino feliz termina en Succeed y el cobro conserva su reintento",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const e = maquinaPedido.States;\nassert.strictEqual(e.ValidarPedido.Next, \"CobrarPago\");\nassert.strictEqual(e.CobrarPago.Next, \"PrepararEnvio\");\nassert.strictEqual(e.PrepararEnvio.Next, \"PedidoCompletado\");\nassert.strictEqual(e.PedidoCompletado.Type, \"Succeed\");\nassert.strictEqual(e.PagoFallido.Type, \"Fail\");\nassert.ok(e.CobrarPago.Retry[0].ErrorEquals.includes(\"States.Timeout\"));"
+          }
+        },
+        {
+          "name": "la estructura no ha cambiado",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(maquinaPedido.StartAt, \"ValidarPedido\");\nassert.deepStrictEqual(Object.keys(maquinaPedido.States).sort(), [\"CobrarPago\", \"PagoFallido\", \"PedidoCompletado\", \"PrepararEnvio\", \"ValidarPedido\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "LAB",
+      "order": 8,
+      "slug": "aws-u2-6-3-laboratorio-01",
+      "title": "Máquina de estados de un pedido con reintentos y captura de errores",
+      "statement": "Un proceso de pedido se orquesta con una máquina de estados: valida el pedido, cobra con reintento si el cobro agota el tiempo, prepara el envío y termina con éxito; si el cobro falla de forma definitiva, pasa a un estado de fallo. La definición inicial `maquinaPedido` tiene defectos: una transición a un estado que no existe, un estado sin salida y un camino de error sin captura. Corrígela comprobando con `aws.asl.validateStateMachine` que es válida y con `aws.asl.reachableStates` que todos los estados son alcanzables. Recuerda: los campos de la definición (Type, Resource, Next, Retry, Catch) son la convención del evaluador asl, que sigue la de ASL; los conceptos de orquestación salen de las páginas oficiales.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "máquina de estados",
+        "Next",
+        "Catch",
+        "alcanzabilidad"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html"
+      ]
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Solicitud de crédito: evaluar, decidir según el importe, notificar y esperar.\nexport const maquinaCredito = {\n  Comment: \"Solicitud de crédito orquestada con Step Functions\",\n  StartAt: \"Evaluar\",\n  States: {\n    Evaluar: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:Evaluar\",\n      Next: \"ClasificarImporte\",\n    },\n    ClasificarImporte: {\n      Type: \"Choice\",\n      Choices: [{ Variable: \"$.importe\", NumericGreaterThan: 10000, Next: \"RevisionManul\" }],\n    },\n    RevisionManual: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:RevisionManual\",\n      TimeoutSeconds: 600,\n      HeartbeatSeconds: 900,\n      Catch: [{ ErrorEquals: [\"States.Timeout\"], Next: \"Rechazada\" }],\n      Next: \"Notificar\",\n    },\n    AprobacionAutomatica: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:AprobacionAutomatica\",\n      Next: \"Notificar\",\n    },\n    Notificar: {\n      Type: \"Parallel\",\n      Branches: [\n        {\n          StartAt: \"EnviarCorreo\",\n          States: { EnviarCorreo: { Type: \"Task\", Resource: \"arn:aws:lambda:region:123456789012:function:EnviarCorreo\", End: true } },\n        },\n        {\n          StartAt: \"RegistrarAuditoria\",\n          States: {\n            RegistrarAuditoria: { Type: \"Task\", Resource: \"arn:aws:lambda:region:123456789012:function:RegistrarAuditoria\", End: true },\n            Huerfano: { Type: \"Pass\", End: true },\n          },\n        },\n      ],\n      Next: \"Pausa\",\n    },\n    Pausa: {\n      Type: \"Wait\",\n      Seconds: 30,\n      Timestamp: \"2026-12-01T00:00:00Z\",\n      Next: \"Completada\",\n    },\n    Completada: { Type: \"Succeed\" },\n  },\n};\n",
+      "solution": {
+        "code": "// Solicitud de crédito: evaluar, decidir según el importe, notificar y esperar.\nexport const maquinaCredito = {\n  Comment: \"Solicitud de crédito orquestada con Step Functions\",\n  StartAt: \"Evaluar\",\n  States: {\n    Evaluar: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:Evaluar\",\n      Next: \"ClasificarImporte\",\n    },\n    ClasificarImporte: {\n      Type: \"Choice\",\n      Choices: [{ Variable: \"$.importe\", NumericGreaterThan: 10000, Next: \"RevisionManual\" }],\n      Default: \"AprobacionAutomatica\",\n    },\n    RevisionManual: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:RevisionManual\",\n      TimeoutSeconds: 600,\n      HeartbeatSeconds: 300,\n      Catch: [{ ErrorEquals: [\"States.Timeout\"], Next: \"Rechazada\" }],\n      Next: \"Notificar\",\n    },\n    AprobacionAutomatica: {\n      Type: \"Task\",\n      Resource: \"arn:aws:lambda:region:123456789012:function:AprobacionAutomatica\",\n      Next: \"Notificar\",\n    },\n    Notificar: {\n      Type: \"Parallel\",\n      Branches: [\n        {\n          StartAt: \"EnviarCorreo\",\n          States: { EnviarCorreo: { Type: \"Task\", Resource: \"arn:aws:lambda:region:123456789012:function:EnviarCorreo\", End: true } },\n        },\n        {\n          StartAt: \"RegistrarAuditoria\",\n          States: { RegistrarAuditoria: { Type: \"Task\", Resource: \"arn:aws:lambda:region:123456789012:function:RegistrarAuditoria\", End: true } },\n        },\n      ],\n      Next: \"Pausa\",\n    },\n    Pausa: {\n      Type: \"Wait\",\n      Seconds: 30,\n      Next: \"Completada\",\n    },\n    Completada: { Type: \"Succeed\" },\n    Rechazada: { Type: \"Fail\", Error: \"RevisionExpirada\", Cause: \"La revisión manual no terminó a tiempo\" },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la máquina completa es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.asl.validateStateMachine(maquinaCredito), []);"
+          }
+        },
+        {
+          "name": "los ocho estados del primer nivel son alcanzables",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const nombres = Object.keys(maquinaCredito.States).sort();\nassert.deepStrictEqual(nombres, [\"AprobacionAutomatica\", \"ClasificarImporte\", \"Completada\", \"Evaluar\", \"Notificar\", \"Pausa\", \"RevisionManual\", \"Rechazada\"].sort());\nassert.deepStrictEqual([...aws.asl.reachableStates(maquinaCredito)].sort(), nombres, \"No debe haber estados muertos\");"
+          }
+        },
+        {
+          "name": "el Choice envía los importes grandes a revisión y el resto a aprobación automática",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const decision = maquinaCredito.States.ClasificarImporte;\nassert.strictEqual(decision.Type, \"Choice\");\nassert.strictEqual(decision.Choices.length, 1);\nassert.strictEqual(decision.Choices[0].Variable, \"$.importe\");\nassert.strictEqual(decision.Choices[0].NumericGreaterThan, 10000);\nassert.strictEqual(decision.Choices[0].Next, \"RevisionManual\");\nassert.strictEqual(decision.Default, \"AprobacionAutomatica\");"
+          }
+        },
+        {
+          "name": "la revisión caducada se captura y termina en un estado de fallo",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const revision = maquinaCredito.States.RevisionManual;\nassert.strictEqual(revision.Catch[0].Next, \"Rechazada\");\nassert.strictEqual(maquinaCredito.States.Rechazada.Type, \"Fail\");\nassert.ok(revision.HeartbeatSeconds < revision.TimeoutSeconds, \"El latido debe ser menor que el tiempo máximo\");"
+          }
+        },
+        {
+          "name": "las dos ramas del Parallel son máquinas válidas y completas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const ramas = maquinaCredito.States.Notificar.Branches;\nassert.strictEqual(ramas.length, 2);\nfor (const rama of ramas) {\n  assert.deepStrictEqual(aws.asl.validateStateMachine(rama), []);\n  assert.deepStrictEqual([...aws.asl.reachableStates(rama)].sort(), Object.keys(rama.States).sort());\n}\nassert.deepStrictEqual(ramas.map((rama) => rama.StartAt).sort(), [\"EnviarCorreo\", \"RegistrarAuditoria\"]);"
+          }
+        },
+        {
+          "name": "la espera usa un único campo y el camino feliz termina en Succeed",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const e = maquinaCredito.States;\nassert.strictEqual(e.Pausa.Type, \"Wait\");\nassert.strictEqual(e.Pausa.Seconds, 30);\nassert.strictEqual(\"Timestamp\" in e.Pausa, false);\nassert.strictEqual(e.Pausa.Next, \"Completada\");\nassert.strictEqual(e.Completada.Type, \"Succeed\");\nassert.strictEqual(maquinaCredito.StartAt, \"Evaluar\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "LAB",
+      "order": 9,
+      "slug": "aws-u2-6-3-laboratorio-02",
+      "title": "Solicitud de crédito: Choice, Parallel y Wait",
+      "statement": "Una solicitud de crédito se orquesta así: se evalúa; si el importe supera 10000 pasa a una revisión manual con tiempo máximo de 600 segundos y un latido menor que ese tiempo, y si no, a una aprobación automática; si la revisión caduca (States.Timeout), se captura y se termina en un estado de fallo `Rechazada`; ambos caminos notifican en paralelo por correo y por auditoría (dos ramas completas), esperan 30 segundos y terminan con éxito en `Completada`. Arranca de la definición inicial `maquinaCredito`, que tiene defectos: una transición a un estado inexistente, un Choice sin ruta por defecto, un latido incorrecto, un estado huérfano en una rama, un Wait con dos campos de espera y un Catch hacia un estado que falta. Comprueba con `aws.asl.validateStateMachine` y `aws.asl.reachableStates` y justifica cada estado. Recuerda: los campos (Choices, Default, Parallel, Wait, Catch) son la convención del evaluador asl, que sigue la de ASL; el evaluador valida cada rama como una sub-máquina aislada.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "Choice",
+        "Parallel",
+        "Wait",
+        "alcanzabilidad"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un tema de SNS con una cola por paso, para que cada paso reaccione al mensaje anterior",
+            "explanation": "Descartada: un tema entrega copias idénticas a todos sus suscriptores en paralelo; no hay una definición central del orden ni de las alternativas."
+          },
+          {
+            "id": "b",
+            "text": "Una máquina de estados de Step Functions con estados Task, Retry en el cobro y Catch hacia un paso alternativo",
+            "explanation": "Es la correcta: el flujo orquesta los pasos en orden y permite reintentar tareas fallidas o capturarlas para ejecutar pasos alternativos."
+          },
+          {
+            "id": "c",
+            "text": "Un flujo Express con una Activity que ejecute los tres pasos en un trabajador externo",
+            "explanation": "Descartada: los flujos Express no admiten Activities, así que esta combinación no puede definirse."
+          },
+          {
+            "id": "d",
+            "text": "Un estado Parallel con una rama por paso para que cada uno se ejecute cuando le llegue su turno",
+            "explanation": "Descartada: Parallel crea ramas separadas que procesan la entrada en paralelo; no impone el orden entre pasos."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 10,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-01",
+      "title": "Pasos en orden con reintento y alternativa",
+      "statement": "Un flujo de pedido debe validar, cobrar y preparar el envío EN ESE ORDEN, reintentar el cobro si agota el tiempo y pasar a un paso alternativo si sigue fallando, con el control del recorrido en una sola definición. ¿Qué diseño es el MEJOR?",
+      "concepts": [
+        "orquestación",
+        "Retry",
+        "Catch"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un flujo Express síncrono, porque devuelve el resultado al terminar",
+            "explanation": "Descartada: los flujos Express duran hasta cinco minutos, menos que los ocho meses de espera del proceso."
+          },
+          {
+            "id": "b",
+            "text": "Un flujo Express asíncrono, porque confirma el inicio sin esperar el resultado",
+            "explanation": "Descartada: el modelo asíncrono es de al menos una vez, así que un paso de pago podría ejecutarse más de una vez."
+          },
+          {
+            "id": "c",
+            "text": "Varios flujos Express encadenados, para sumar cinco minutos cada uno hasta cubrir la espera",
+            "explanation": "Descartada: el estado de un Express no persiste entre transiciones y cada ejecución dura como máximo cinco minutos."
+          },
+          {
+            "id": "d",
+            "text": "Un flujo Standard, que dura hasta un año y sigue el modelo de exactamente una vez",
+            "explanation": "Es la correcta: es duradero y auditable, y sus pasos no se ejecutan más de una vez salvo que se especifique Retry."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 11,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-02",
+      "title": "Aprobación que espera meses y no admite repetir pasos",
+      "statement": "Un proceso de aprobación puede esperar hasta ocho meses a la confirmación de una persona, debe auditar el historial completo y no puede ejecutar dos veces un paso de pago. ¿Qué tipo de flujo es el MÁS adecuado?",
+      "concepts": [
+        "Standard",
+        "exactamente una vez"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un flujo Express, pensado para cargas de procesamiento de eventos de alto volumen y duración de hasta cinco minutos",
+            "explanation": "Es la correcta: la guía lo recomienda para ingesta de IoT y para acciones idempotentes, con su modelo de al menos una vez."
+          },
+          {
+            "id": "b",
+            "text": "Un flujo Standard, porque los flujos Express no admiten integraciones con servicios de AWS",
+            "explanation": "Descartada: los flujos Express admiten todas las integraciones de servicio, aunque no todos los patrones."
+          },
+          {
+            "id": "c",
+            "text": "Un flujo Standard, porque es el único que puede ejecutarse en respuesta a eventos de EventBridge",
+            "explanation": "Descartada: ambos tipos de flujo pueden iniciarse en respuesta a eventos, incluidos los de EventBridge."
+          },
+          {
+            "id": "d",
+            "text": "Un flujo Express con un patrón .waitForTaskToken para esperar cada evento",
+            "explanation": "Descartada: los flujos Express no admiten los patrones .sync ni .waitForTaskToken."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 12,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-03",
+      "title": "Ingesta de eventos de IoT de corta duración",
+      "statement": "Una aplicación debe procesar un gran volumen de eventos de IoT; cada ejecución dura segundos y solo transforma datos que se guardan con una operación PUT idempotente. ¿Qué tipo de flujo es el MÁS adecuado según la guía?",
+      "concepts": [
+        "Express",
+        "idempotencia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un estado Fail justo detrás de la tarea, para que cualquier fallo detenga la ejecución",
+            "explanation": "Descartada: Fail detiene la ejecución con un error; ni reintenta la tarea ni ejecuta un paso alternativo."
+          },
+          {
+            "id": "b",
+            "text": "Un campo Next de la tarea que apunte al paso de aviso, para que se ejecute solo si falla",
+            "explanation": "Descartada: Next indica el estado al que avanzar después de que el estado se ejecuta; no distingue el fallo."
+          },
+          {
+            "id": "c",
+            "text": "Un Retry en la tarea y un Catch cuyo Next apunte al paso que avisa",
+            "explanation": "Es la correcta: Retry reintenta la tarea fallida y Catch captura el error para ejecutar pasos alternativos."
+          },
+          {
+            "id": "d",
+            "text": "Un estado Wait tras la tarea, que repita la llamada pasado un tiempo",
+            "explanation": "Descartada: Wait solo pausa la ejecución; no vuelve a ejecutar la tarea ni captura su error."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 13,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-04",
+      "title": "Reintentar y, si persiste, avisar",
+      "statement": "Una tarea de una máquina de estados falla a veces por tiempo de espera. Hay que reintentarla y, si el error persiste, ejecutar un paso alternativo que avise al equipo. ¿Qué configuración es la MEJOR?",
+      "concepts": [
+        "Retry",
+        "Catch"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un estado Parallel, que reparte la entrada entre dos ramas y espera a ambas",
+            "explanation": "Descartada: Parallel crea ramas que se ejecutan a la vez; no elige un camino según el valor de la entrada."
+          },
+          {
+            "id": "b",
+            "text": "Un estado Choice, que aporta lógica condicional con varias reglas y un Next por regla",
+            "explanation": "Es la correcta: un Choice permite tomar decisiones según el estado de entrada, como el importe de la solicitud."
+          },
+          {
+            "id": "c",
+            "text": "Un estado Map, que repite los pasos para cada elemento de un conjunto de datos",
+            "explanation": "Descartada: Map ejecuta los pasos para cada elemento de un conjunto; no ramifica según un valor."
+          },
+          {
+            "id": "d",
+            "text": "Un estado Wait, que pausa la ejecución hasta que alguien la reanude",
+            "explanation": "Descartada: Wait solo pausa el flujo; no evalúa ninguna condición sobre la entrada."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 14,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-05",
+      "title": "Decidir según los datos de la solicitud",
+      "statement": "Un flujo de crédito debe enviar a un responsable las solicitudes que superan el límite preaprobado y aprobar automáticamente el resto. ¿Qué estado es el MÁS adecuado para decidir según la entrada?",
+      "concepts": [
+        "Choice"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Step Functions ignora las mayúsculas y resuelve la transición al estado CobrarPago",
+            "explanation": "Descartada: la cadena es sensible a mayúsculas y debe coincidir exactamente con el nombre del estado."
+          },
+          {
+            "id": "b",
+            "text": "Step Functions ejecuta el siguiente estado por el orden en que aparecen listados",
+            "explanation": "Descartada: el orden en que se listan los estados no determina el orden de ejecución."
+          },
+          {
+            "id": "c",
+            "text": "Step Functions trata la transición como un estado terminal y termina la ejecución",
+            "explanation": "Descartada: un estado es terminal si es Succeed, Fail o lleva End: true, no por un Next desconocido."
+          },
+          {
+            "id": "d",
+            "text": "El Next debe coincidir exactamente, mayúsculas incluidas, con el nombre de un estado, así que esa transición no es válida",
+            "explanation": "Es la correcta: tanto StartAt como Next son cadenas que deben coincidir exactamente con el nombre de un estado."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 15,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-06",
+      "title": "Una transición con otras mayúsculas",
+      "statement": "Una máquina de estados tiene un estado llamado CobrarPago, pero el Next del estado anterior dice cobrarpago. ¿Cuál es la explicación MÁS precisa del defecto?",
+      "concepts": [
+        "Next",
+        "transición"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Un flujo Standard puede durar hasta un año y sigue el modelo de exactamente una vez",
+            "explanation": "Cumple: así describe la guía los flujos Standard, ideales para flujos duraderos y auditables."
+          },
+          {
+            "id": "b",
+            "text": "Un flujo Express admite los patrones .sync y .waitForTaskToken como los Standard",
+            "explanation": "No cumple: Express solo admite los patrones de solicitud-respuesta."
+          },
+          {
+            "id": "c",
+            "text": "Un flujo Express asíncrono dura hasta cinco minutos y sigue el modelo de al menos una vez",
+            "explanation": "Cumple: una ejecución Express podría ejecutarse más de una vez, por lo que encaja con acciones idempotentes."
+          },
+          {
+            "id": "d",
+            "text": "El tipo de flujo no puede cambiarse después de crear la máquina de estados",
+            "explanation": "Cumple: la guía indica que el tipo de flujo es inmutable tras la creación."
+          },
+          {
+            "id": "e",
+            "text": "Un flujo Standard no admite integraciones con ningún servicio de AWS",
+            "explanation": "No cumple: Standard admite todas las integraciones de servicio y todos los patrones."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 16,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-07",
+      "title": "Qué es cierto de los flujos Standard y Express",
+      "statement": "Un arquitecto repasa los tipos de flujo de Step Functions. Selecciona TRES afirmaciones correctas según la guía.",
+      "concepts": [
+        "Standard",
+        "Express"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Si la lógica tiene varias ramas, la máquina puede tener más de un estado final",
+            "explanation": "Cumple: puede haber más de un estado final, y una máquina de un solo estado es a la vez inicio y fin."
+          },
+          {
+            "id": "b",
+            "text": "Una máquina puede tener varios estados de inicio, indicados en una lista dentro de StartAt",
+            "explanation": "No cumple: solo hay un estado de inicio, el que nombra el campo StartAt de primer nivel."
+          },
+          {
+            "id": "c",
+            "text": "Una ejecución termina al llegar a un estado Succeed, un estado Fail o un estado con End: true",
+            "explanation": "Cumple: son los estados terminales; la ejecución también acaba si ocurre un error en tiempo de ejecución."
+          },
+          {
+            "id": "d",
+            "text": "El orden en que se listan los estados determina el orden en que se ejecutan",
+            "explanation": "No cumple: pueden aparecer en cualquier orden y el orden de ejecución lo deciden sus contenidos."
+          },
+          {
+            "id": "e",
+            "text": "Un estado Task solo puede llamar a servicios de AWS y nunca a trabajadores externos",
+            "explanation": "No cumple: los trabajadores externos que realizan tareas se llaman Activities."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 17,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-08",
+      "title": "Qué es cierto de la estructura de una máquina de estados",
+      "statement": "Un equipo revisa la estructura de una definición ASL. Selecciona DOS afirmaciones correctas según la guía.",
+      "concepts": [
+        "estados terminales",
+        "StartAt"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un flujo Express asíncrono que espere hasta una hora la confirmación de cada pedido",
+            "explanation": "Descartada: un flujo Express dura como máximo cinco minutos, menos que la espera prevista."
+          },
+          {
+            "id": "b",
+            "text": "Un Next que apunte al nombre de un estado de otra máquina para encadenar los pasos",
+            "explanation": "Descartada: Next debe coincidir con el nombre de un estado de la misma máquina de estados."
+          },
+          {
+            "id": "c",
+            "text": "Una regla de EventBridge que inicie la ejecución de una máquina de estados que ordena los pasos",
+            "explanation": "Es la correcta: los flujos pueden iniciarse en respuesta a eventos y la máquina orquesta el orden y los errores."
+          },
+          {
+            "id": "d",
+            "text": "Un estado Choice como punto de entrada, que escuche el bus y decida a qué ejecución pertenece cada evento",
+            "explanation": "Descartada: la ejecución empieza en el estado de StartAt y Choice solo decide según la entrada."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 18,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-3-quiz-09",
+      "title": "Eventos que inician un proceso ordenado",
+      "statement": "Los pedidos llegan como eventos a un bus y los pasos posteriores deben ejecutarse en orden y con control de errores en una sola definición. ¿Qué combinación es la MEJOR?",
+      "concepts": [
+        "orquestación",
+        "EventBridge"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "REFLECT",
+      "order": 19,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "slug": "aws-u2-6-3-reflexion-01",
+      "title": "Reflexión: orquestar o dejar que los eventos coreografíen",
+      "statement": "Elige un proceso que conozcas (por ejemplo, un pedido con cobro y envío, una solicitud de crédito o el procesamiento nocturno de datos) y escribe un registro breve de decisión sobre cómo lo coordinarías, en 5 a 7 líneas:\n\n1) Decisión: si lo orquestarías con una máquina de estados o dejarías que los eventos lo coreografíen, y qué dato del problema lo decide (si hay un orden entre pasos, si hay decisiones según los datos, si hay que controlar errores y alternativas, si los consumidores son independientes).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, encadenar mensajes de SNS o reglas de EventBridge, o elegir Express para un paso que no se puede repetir) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (la definición ASL, los Retry y Catch, el tipo de flujo Standard o Express, el historial de ejecuciones).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad o Excelencia operativa) y por qué.\n\n5) Evidencia: qué página oficial (qué es Step Functions, Amazon States Language, máquinas de estados o elección del tipo de flujo) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el caso, el enfoque y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "orquestación",
+        "coreografía",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+        "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html"
+      ]
+    }
+  ]
+}
