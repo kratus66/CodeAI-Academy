@@ -1,0 +1,1377 @@
+{
+  "code": "AWS-U2.6.2",
+  "lessons": [
+    {
+      "slug": "aws-u2-6-2-sns-y-fan-out-eventbridge-buses-reglas-pipes-y-scheduler",
+      "title": "SNS y fan-out; EventBridge: buses, reglas, Pipes y Scheduler",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cuando una aplicación debe avisar a otras de que algo ocurrió sin conocerlas ni esperarlas, necesitas una pieza de integración entre ellas. Esta unidad conecta cuatro: Amazon SNS, que publica un mensaje en un tema y lo entrega a varios suscriptores (el patrón de fan-out); los buses de eventos de Amazon EventBridge, que reciben eventos y los enrutan con reglas; EventBridge Pipes, que conecta un origen con un destino con filtrado y enriquecimiento opcionales; y EventBridge Scheduler, que lanza tareas a una hora o con una frecuencia. En el laboratorio escribirás patrones de eventos y comprobarás con el evaluador events del arnés que casan los eventos correctos y descartan los demás."
+        },
+        {
+          "type": "list",
+          "title": "Las cuatro piezas que esta unidad conecta",
+          "items": [
+            "SNS: servicio totalmente administrado de mensajería de publicación y suscripción; los publicadores envían a un tema y los suscriptores reciben por distintos puntos de enlace (SQS, Lambda, HTTP(S), correo, notificaciones móviles, SMS, Firehose).",
+            "Bus de eventos de EventBridge: enruta eventos de muchos orígenes a cero o más destinos según las reglas que escribes; encaja en el enrutado de muchos a muchos.",
+            "EventBridge Pipes: integración punto a punto, con un único origen y un único destino, y filtro y enriquecimiento opcionales entre ambos.",
+            "EventBridge Scheduler: planificador sin servidor para tareas recurrentes (expresiones cron y rate) o de una sola ejecución, con ventana flexible, límite de reintentos y retención máxima de las invocaciones fallidas."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "SNS: temas y suscriptores",
+          "text": "Amazon SNS es un servicio totalmente administrado que entrega mensajes de publicadores (productores) a suscriptores (consumidores). Los publicadores se comunican de forma asíncrona enviando mensajes a un tema, que es un punto de acceso lógico y un canal de comunicación. Los suscriptores de un tema pueden recibir los mensajes por distintos puntos de enlace según su caso de uso: Amazon SQS, Lambda, HTTP(S), correo electrónico, notificaciones push móviles, mensajes de texto (SMS), Amazon Data Firehose y proveedores de servicios como Datadog, MongoDB o Splunk. SNS admite mensajería de aplicación a aplicación (A2A) y de aplicación a persona (A2P). SNS empuja los mensajes a los suscriptores, de modo que estos no tienen que consultar si hay novedades; la guía lo describe como un mecanismo de envío «push» para mensajes urgentes dirigidos a varios suscriptores."
+        },
+        {
+          "type": "paragraph",
+          "title": "Fan-out de SNS a SQS",
+          "text": "El fan-out es el escenario en el que un mensaje publicado en un tema de SNS se replica y se empuja a varios puntos de enlace, como colas de SQS, funciones de Lambda, puntos HTTP(S) o flujos de entrega de Firehose, lo que permite un procesamiento asíncrono en paralelo. El ejemplo de la guía es una aplicación que publica en un tema cada vez que se hace un pedido: las colas de SQS suscritas reciben notificaciones idénticas, un servidor conectado a una cola se ocupa de preparar el pedido y otro, conectado a un almacén de datos, analiza todos los pedidos recibidos. También sirve para replicar los datos de producción en un entorno de pruebas suscribiendo otra cola; ojo, la propia página avisa de considerar la privacidad y la seguridad antes de enviar datos de producción a pruebas. Combinar SNS con SQS aporta las dos ventajas: los mensajes llegan de inmediato a quien necesita la notificación y además persisten en una cola de SQS para que otras aplicaciones los procesen más tarde. SQS usa un modelo de consulta (polling) y desacopla emisor y receptor sin exigir que ambos estén disponibles a la vez. El mensaje que recibe la cola es un documento JSON con el asunto y el mensaje publicados, más metadatos."
+        },
+        {
+          "type": "paragraph",
+          "title": "EventBridge: buses de eventos y reglas",
+          "text": "Amazon EventBridge es un servicio sin servidor que usa eventos para conectar los componentes de una aplicación. Ofrece dos formas de procesar y entregar eventos: los buses de eventos y los pipes. Un bus de eventos es un enrutador que recibe eventos y los entrega a cero o más destinos; encaja en el enrutado de muchos orígenes a muchos destinos, con transformación opcional antes de la entrega. Según la página consultada el 2026-11-23, hay dos buses: el Custom Event Bus (enruta a suscriptores que creas, conserva los eventos el periodo que fijes y admite entrega ordenada, repetición y cargas que no son JSON) y el Custom Event Bus - Classic (enruta con reglas y destinos que escribes); para aplicaciones nuevas la guía recomienda empezar por el primero. Qué hace EventBridge con los eventos de un bus lo defines con reglas: una regla especifica qué eventos se envían a qué destinos, y una sola regla puede enviar un evento a varios destinos, que se ejecutan en paralelo. Hay dos tipos de regla: las que coinciden con los datos del evento (mediante un patrón de eventos) y las que se ejecutan según una programación. Además, algunos servicios de AWS crean y gestionan reglas en tu cuenta; borrar una de esas reglas gestionadas hace que dejen de funcionar las funciones que dependen de ella."
+        },
+        {
+          "type": "paragraph",
+          "title": "Patrones de eventos: seleccionar un subconjunto",
+          "text": "Lo normal es que no quieras procesar todos los eventos que llegan a un bus: quieres seleccionar un subconjunto según el origen, el tipo o los atributos del evento. Para eso creas un patrón de eventos, que define los datos con los que EventBridge decide si envía el evento al destino. Los patrones tienen la misma estructura que los eventos que casan, y un patrón o coincide con un evento o no coincide. El ejemplo de la guía selecciona los eventos de terminación de instancias de Amazon EC2 con tres requisitos a la vez: que el origen (source) sea Amazon EC2, que el tipo (detail-type) sea una notificación de cambio de estado y que el estado en el detalle (detail) sea terminated. En un bus cada regla lleva su patrón; en un pipe el patrón filtra los eventos del único origen que entrega el pipe al destino, y no todos los campos del evento sirven para construirlo. La guía advierte de que una regla mal escrita puede disparar cargos y limitaciones superiores a lo esperado, por ejemplo un bucle infinito en el que la acción de la regla vuelve a disparar la misma regla. Ojo: la sintaxis detallada de las reglas de contenido (prefix, suffix, anything-but, numeric, exists y $or) no se explica en las páginas de esta unidad; es la convención del evaluador events del arnés, que sigue la de EventBridge, y los conceptos salen de las páginas oficiales."
+        },
+        {
+          "type": "paragraph",
+          "title": "Pipes: punto a punto con filtro y enriquecimiento",
+          "text": "EventBridge Pipes conecta orígenes con destinos y está pensado para integraciones punto a punto entre orígenes y destinos admitidos, con transformaciones avanzadas y enriquecimiento. Para montar un pipe eliges el origen, añades un filtro opcional, defines un enriquecimiento opcional y eliges el destino. Cada pipe recibe eventos de un único origen y los entrega a un único destino. Si configuras un filtro, el pipe evalúa el evento y solo lo envía al destino si coincide, y solo se cobra por los eventos que coinciden. Si configuras un enriquecimiento, lo ejecuta sobre el evento antes de enviarlo, y con eventos agrupados en lotes mantiene el orden. El ejemplo de la guía: una cola de SQS de pedidos recibidos como origen, una API Destination de EventBridge como enriquecimiento (devuelve los datos del cliente del pedido) y una máquina de estados de AWS Step Functions como destino. Los pipes y los buses se usan a menudo juntos: un pipe puede tener un bus como destino, por ejemplo con un flujo de DynamoDB como origen, y el bus lo reparte después a varios destinos según sus reglas."
+        },
+        {
+          "type": "paragraph",
+          "title": "Scheduler: tareas programadas",
+          "text": "EventBridge Scheduler es un planificador sin servidor para crear, ejecutar y gestionar tareas desde un servicio central y administrado. Crea programaciones recurrentes con expresiones cron y rate, o invocaciones de una sola vez en una fecha y hora con zona horaria. Permite una ventana flexible (con una ventana de 15 minutos y una programación horaria, la tarea se ejecuta dentro de los 15 minutos posteriores al inicio de cada hora), definir límites de reintentos y fijar la retención máxima de las invocaciones fallidas; según la página consultada el 2026-11-23, la edad máxima del evento es de 24 horas y el máximo de reintentos es 185. Los eventos no entregados pueden ir a una cola de SQS de la misma cuenta o de otra como cola de mensajes fallidos. Para que Scheduler invoque la API de un destino necesita un rol de ejecución con los permisos adecuados. Las reglas programadas que existían en EventBridge son una función heredada: la guía dice que Scheduler tiene más escalabilidad, más operaciones de API de destino y servicios admitidos, y recomienda usarlo para invocar destinos con una programación."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de los requisitos a la pieza",
+          "text": "Requisito: una tienda quiere que cada pedido nuevo llegue (1) al equipo de preparación y (2) al de análisis, que (3) solo los pedidos grandes avisen a facturación, que (4) un pedido recibido en una cola se enriquezca con los datos del cliente antes de una máquina de estados y que (5) un informe se genere cada noche. Decisión 1: (1) y (2) son un fan-out; publicar en un tema de SNS con una cola de SQS suscrita por consumidor entrega copias idénticas y en paralelo. Decisión 2: (3) es una regla de un bus con un patrón de eventos que fija el origen, el tipo y el importe. Decisión 3: (4) es un pipe con la cola como origen, una API Destination como enriquecimiento y Step Functions como destino. Decisión 4: (5) es una programación recurrente de Scheduler con una expresión cron. En el arnés, aws.events.validatePattern comprueba que un patrón se puede evaluar y aws.events.matches dice si un evento lo cumple. Ojo: la forma del patrón y de los eventos de ejemplo es la convención del evaluador events; los conceptos salen de las páginas oficiales."
+        },
+        {
+          "type": "code",
+          "title": "Un patrón de eventos y su comprobación con el arnés",
+          "language": "typescript",
+          "code": "// Regla de un bus: solo los pedidos creados por tienda.pedidos con un total mayor que 100.\nexport const patron = {\n  source: [\"tienda.pedidos\"],\n  \"detail-type\": [\"Pedido creado\"],\n  detail: { total: [{ numeric: [\">\", 100] }] },\n};\n\n// Un evento tiene la misma estructura que el patrón que lo casa.\nconst evento = {\n  source: \"tienda.pedidos\",\n  \"detail-type\": \"Pedido creado\",\n  detail: { pedidoId: \"P-1\", total: 250 },\n};\n\n// Con el arnés:\n// aws.events.validatePattern(patron) debe dar [] (un patrón se puede evaluar).\n// aws.events.matches(patron, evento) da true; con total: 40 daría false.\n// Los campos del evento que el patrón no menciona (como pedidoId) se ignoran."
+        },
+        {
+          "type": "mermaid",
+          "title": "De la necesidad a la pieza de integración",
+          "code": "flowchart TD\n  N[\"Necesidad de integración\"] --> Q{\"¿Qué se pide?\"}\n  Q -->|\"copia idéntica a varios consumidores\"| S[\"Tema de SNS con una cola de SQS por consumidor (fan-out)\"]\n  Q -->|\"enrutar eventos de muchos orígenes a muchos destinos\"| B[\"Bus de eventos de EventBridge con reglas y patrones\"]\n  Q -->|\"un origen, un destino, con filtro o enriquecimiento\"| P[\"EventBridge Pipes\"]\n  Q -->|\"ejecutar a una hora o con una frecuencia\"| C[\"EventBridge Scheduler (cron, rate o una sola vez)\"]\n  P -.->|\"opcional: destino\"| B"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir la pieza que suena parecida",
+          "text": "Si la pregunta pide que varios consumidores reciban cada uno una copia del mismo mensaje, la respuesta es un tema de SNS con suscriptores (fan-out), no un pipe. Si pide enrutar eventos de muchos orígenes a muchos destinos con criterios, son un bus de eventos y reglas con patrones. Si habla de un único origen con un único destino y enriquecimiento, es un pipe. Y si pide ejecutar algo a una hora o con una frecuencia, es Scheduler: la regla programada es la opción heredada y la guía recomienda Scheduler."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar un pipe para repartir un evento entre varios destinos",
+          "text": "Causa: pensar que un pipe, por conectar un origen con un destino, también reparte el evento a varios destinos. Consecuencia: cada pipe recibe de un único origen y entrega a un único destino, así que haría falta un pipe por destino y se pierde la gestión central de las reglas. Solución: reparte con un bus de eventos y varias reglas (o con un tema de SNS si lo que necesitas son copias idénticas), y usa el pipe solo para el tramo punto a punto; puede tener el bus como destino."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: escribir un patrón que casa de más o de menos",
+          "text": "Causa: omitir un campo que debía restringir (por ejemplo, el tipo de evento) o fijar un valor que no coincide con el del evento, como un valor con otras mayúsculas o un campo suelto en lugar de un arreglo de valores. Consecuencia: el patrón recibe eventos que no debía, o ninguno, y el destino se ejecuta de más o nunca; en el evaluador events, un valor que no es un arreglo hace el patrón inválido. Solución: parte de un evento real, restringe cada requisito con su campo (origen, tipo y detalle), comprueba con aws.events.matches los eventos que sí y los que no deben casar y valida el patrón con aws.events.validatePattern."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: programar con reglas programadas heredadas lo que pide Scheduler",
+          "text": "Causa: crear una regla programada porque ya existía en EventBridge, aunque la tarea necesite una ventana flexible, límites de reintentos o una ejecución única. Consecuencia: la guía indica que las reglas programadas son una función heredada y que Scheduler ofrece más escalabilidad y una gama más amplia de operaciones de API de destino y servicios. Solución: crea la programación en Scheduler con una expresión cron o rate (o una invocación única), un rol de ejecución, la política de reintentos que necesites y, si quieres conservar lo no entregado, una cola de SQS como cola de mensajes fallidos."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Diseñar un fan-out con SNS y enrutar eventos con buses y reglas de EventBridge, Pipes y Scheduler, comprobando con el evaluador events del arnés que un patrón de eventos casa los eventos correctos y descarta los demás. Prepara el examen SAA-C03, dominio 2 (Diseñar arquitecturas resilientes). Criterio: las pruebas de los laboratorios pasan y sabes explicar, para cada necesidad de integración, qué pieza la resuelve y por qué."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y sigue el ejemplo resuelto, de los requisitos a la pieza. Explica con tus palabras, sin mirar el texto, el diagrama «De la necesidad a la pieza de integración». Después responde: si necesitas que el mismo evento llegue a tres destinos, ¿qué opciones tienes y en qué se diferencian un tema de SNS y un bus de eventos?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Patrón de eventos para los pedidos grandes y nuevos»: el patrón inicial es válido pero casa de más. Empieza por probar con aws.events.matches los eventos de ejemplo y anota cuáles casan y no deberían. Usa las pistas por niveles solo si te atascas. Criterio de paso: el patrón es válido, casa los pedidos que debe y descarta todos los demás."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Alertas de guardia: dos patrones con prefix, anything-but, exists y $or». Escribe un patrón para el equipo de guardia y otro para una revisión posterior, y decide qué campos restringe cada uno. Criterio de paso: ambos patrones son válidos, todas las comprobaciones pasan y justificas por escrito cada condición que añadiste."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente que explique por qué una regla de EventBridge nunca recibe los eventos esperados y audita su respuesta contra la página de patrones de eventos (consultada con fecha) antes de aceptarla. Anota qué dice la guía sobre la estructura del patrón y de los eventos. Resuelve también «Depurar la regla que nunca recibe un pedido enviado» y escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué es el fan-out de SNS a SQS y qué ventaja aporta cada servicio; qué diferencia hay entre un bus de eventos y un pipe; qué hace una regla y qué es un patrón de eventos; qué opcionales tiene un pipe; y qué ofrece Scheduler frente a las reglas programadas. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la tienda añade una aplicación de devoluciones que debe recibir solo los pedidos cancelados, y además cada noche hay que revisar los pedidos con retraso. Decide qué reglas y qué patrón añades al bus, si el reparto lo haces con SNS o con EventBridge, y qué programación de Scheduler creas. Pregunta de cierre: un evento de pedido debe enriquecerse con una API externa antes de llegar a un único destino; ¿qué pieza usas y por qué no una regla?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-sns-que-es",
+          "order": 0,
+          "note": "Fuente previa de SNS: temas, publicadores, suscriptores y puntos de enlace."
+        },
+        {
+          "resourceSlug": "aws-eventbridge-que-es",
+          "order": 1,
+          "note": "Fuente previa de EventBridge: buses de eventos, pipes y Scheduler."
+        },
+        {
+          "resourceSlug": "aws-sns-fanout",
+          "order": 2,
+          "note": "Fuente del fan-out de SNS a SQS: replicación a varias colas y formato del mensaje."
+        },
+        {
+          "resourceSlug": "aws-eventbridge-reglas",
+          "order": 3,
+          "note": "Fuente de las reglas: tipos, varios destinos y reglas gestionadas."
+        },
+        {
+          "resourceSlug": "aws-eventbridge-patrones-de-eventos",
+          "order": 4,
+          "note": "Fuente de los patrones de eventos: estructura, buses y pipes."
+        },
+        {
+          "resourceSlug": "aws-eventbridge-pipes",
+          "order": 5,
+          "note": "Fuente de Pipes: origen, filtro, enriquecimiento y destino."
+        },
+        {
+          "resourceSlug": "aws-eventbridge-scheduler",
+          "order": 6,
+          "note": "Fuente de Scheduler: programaciones, ventana flexible, reintentos y rol de ejecución."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 7,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio totalmente administrado de publicación y suscripción: los publicadores envían mensajes de forma asíncrona a un tema, un punto de acceso lógico. Los suscriptores lo reciben por SQS, Lambda, HTTP(S), correo, notificaciones móviles, SMS, Firehose o proveedores de servicios. Admite mensajería A2A y A2P."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 1,
+      "slug": "aws-u2-6-2-tarjeta-01",
+      "title": "Tarjeta: Qué es SNS",
+      "statement": "¿Cómo funciona Amazon SNS y quién puede suscribirse a un tema?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "tema",
+        "suscriptor"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un mensaje publicado en un tema se replica y se empuja a varios puntos de enlace (colas de SQS, Lambda, HTTP(S), Firehose) para procesarlo en paralelo y de forma asíncrona. SNS lo entrega de inmediato a quien necesita la notificación y SQS lo conserva en una cola para procesarlo después."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 2,
+      "slug": "aws-u2-6-2-tarjeta-02",
+      "title": "Tarjeta: Fan-out de SNS a SQS",
+      "statement": "¿Qué es el fan-out y qué aporta combinar SNS con SQS?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "fan-out",
+        "SNS",
+        "SQS"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html",
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "SNS usa un mecanismo push: envía los mensajes a los suscriptores, que no tienen que consultar si hay novedades. SQS usa un modelo de consulta (polling) y desacopla emisor y receptor sin exigir que ambos estén disponibles a la vez. El mensaje que recibe la cola es un JSON con asunto, mensaje y metadatos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 3,
+      "slug": "aws-u2-6-2-tarjeta-03",
+      "title": "Tarjeta: Push frente a polling",
+      "statement": "¿Qué diferencia hay entre cómo recibe mensajes un suscriptor de SNS y un consumidor de SQS?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "push",
+        "polling"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una regla especifica qué eventos de un bus se envían a qué destinos. Una sola regla puede enviar un evento a varios destinos, que se ejecutan en paralelo. Tipos: reglas que coinciden con los datos del evento (patrón de eventos) y reglas que se ejecutan según una programación. Algunos servicios de AWS crean y gestionan reglas en tu cuenta."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 4,
+      "slug": "aws-u2-6-2-tarjeta-04",
+      "title": "Tarjeta: Reglas de un bus",
+      "statement": "¿Qué hace una regla de EventBridge y qué tipos hay?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "regla",
+        "destino"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Define los datos con los que EventBridge decide si envía el evento al destino. Tiene la misma estructura que los eventos que casa y coincide o no coincide. El ejemplo de la guía exige a la vez origen EC2, tipo de cambio de estado y estado terminated. En un bus va en cada regla; en un pipe filtra los eventos de su único origen."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 5,
+      "slug": "aws-u2-6-2-tarjeta-05",
+      "title": "Tarjeta: Patrón de eventos",
+      "statement": "¿Qué es un patrón de eventos y cuándo coincide con un evento?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "patrón de eventos",
+        "filtro"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para integraciones punto a punto entre un origen y un destino admitidos, con transformaciones avanzadas y enriquecimiento. Pasos: elegir el origen, añadir un filtro opcional, definir un enriquecimiento opcional y elegir el destino. Cada pipe tiene un único origen. Solo se cobra por los eventos que coinciden con el filtro."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 6,
+      "slug": "aws-u2-6-2-tarjeta-06",
+      "title": "Tarjeta: EventBridge Pipes",
+      "statement": "¿Para qué sirve EventBridge Pipes y qué pasos tiene un pipe?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Pipes",
+        "enriquecimiento"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Planificador sin servidor: programaciones recurrentes con cron y rate, o una sola invocación, con ventana flexible, límite de reintentos y retención máxima de las invocaciones fallidas. La guía lo recomienda frente a las reglas programadas (función heredada) por su mayor escalabilidad y su gama de operaciones de API de destino. Necesita un rol de ejecución."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "FLASHCARD",
+      "order": 7,
+      "slug": "aws-u2-6-2-tarjeta-07",
+      "title": "Tarjeta: EventBridge Scheduler",
+      "statement": "¿Qué ofrece EventBridge Scheduler y por qué se prefiere a las reglas programadas?",
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "concepts": [
+        "Scheduler",
+        "cron",
+        "rate"
+      ],
+      "estimatedMin": 1,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/using-eventbridge-scheduler.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html"
+      ]
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Regla de envíos: solo los pedidos enviados con Correos por tienda.envios.\nexport const patronEnvios = {\n  source: \"tienda.envios\",\n  \"detail-type\": [\"pedido enviado\"],\n  detail: { transportista: [\"correos\"] },\n};\n",
+      "solution": {
+        "code": "// Regla de envíos: solo los pedidos enviados con Correos por tienda.envios.\nexport const patronEnvios = {\n  source: [\"tienda.envios\"],\n  \"detail-type\": [\"Pedido enviado\"],\n  detail: { transportista: [\"Correos\"] },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Ejecuta aws.events.validatePattern(patronEnvios) y lee el mensaje que devuelve. Después prueba con aws.events.matches el evento ev1 y mira qué cambia."
+        },
+        {
+          "level": 2,
+          "text": "Hay dos defectos. El campo source no es un arreglo de valores, así que el patrón ni se puede evaluar. Y aunque lo fuera, los valores se comparan tal cual: «pedido enviado» y «correos» no son «Pedido enviado» y «Correos»."
+        },
+        {
+          "level": 3,
+          "text": "Escribe source: [\"tienda.envios\"], \"detail-type\": [\"Pedido enviado\"] y transportista: [\"Correos\"]. No cambies la estructura del patrón ni quites ningún campo."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el patrón es válido según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const ev1 = { source: \"tienda.envios\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1001\", transportista: \"Correos\" } };\nconst ev2 = { source: \"tienda.envios\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1002\", transportista: \"Mensajeria\" } };\nconst ev3 = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1003\", transportista: \"Correos\" } };\nconst ev4 = { source: \"tienda.envios\", \"detail-type\": \"Pedido cancelado\", detail: { pedidoId: \"P-1004\", transportista: \"Correos\" } };\nassert.deepStrictEqual(aws.events.validatePattern(patronEnvios), []);"
+          }
+        },
+        {
+          "name": "casa el pedido enviado por Correos desde tienda.envios",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const ev1 = { source: \"tienda.envios\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1001\", transportista: \"Correos\" } };\nconst ev2 = { source: \"tienda.envios\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1002\", transportista: \"Mensajeria\" } };\nconst ev3 = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1003\", transportista: \"Correos\" } };\nconst ev4 = { source: \"tienda.envios\", \"detail-type\": \"Pedido cancelado\", detail: { pedidoId: \"P-1004\", transportista: \"Correos\" } };\nassert.strictEqual(aws.events.matches(patronEnvios, ev1), true, \"Debe casar ev1\");"
+          }
+        },
+        {
+          "name": "descarta otro transportista y otro origen",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const ev1 = { source: \"tienda.envios\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1001\", transportista: \"Correos\" } };\nconst ev2 = { source: \"tienda.envios\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1002\", transportista: \"Mensajeria\" } };\nconst ev3 = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1003\", transportista: \"Correos\" } };\nconst ev4 = { source: \"tienda.envios\", \"detail-type\": \"Pedido cancelado\", detail: { pedidoId: \"P-1004\", transportista: \"Correos\" } };\nassert.strictEqual(aws.events.matches(patronEnvios, ev2), false, \"Otro transportista\");\nassert.strictEqual(aws.events.matches(patronEnvios, ev3), false, \"Otro origen\");"
+          }
+        },
+        {
+          "name": "descarta otro tipo de evento y la estructura no ha cambiado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const ev1 = { source: \"tienda.envios\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1001\", transportista: \"Correos\" } };\nconst ev2 = { source: \"tienda.envios\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1002\", transportista: \"Mensajeria\" } };\nconst ev3 = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido enviado\", detail: { pedidoId: \"P-1003\", transportista: \"Correos\" } };\nconst ev4 = { source: \"tienda.envios\", \"detail-type\": \"Pedido cancelado\", detail: { pedidoId: \"P-1004\", transportista: \"Correos\" } };\nassert.strictEqual(aws.events.matches(patronEnvios, ev4), false, \"Un pedido cancelado no es un pedido enviado\");\nassert.deepStrictEqual(Object.keys(patronEnvios).sort(), [\"detail\", \"detail-type\", \"source\"]);\nassert.deepStrictEqual(Object.keys(patronEnvios.detail), [\"transportista\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "DEBUG",
+      "order": 8,
+      "slug": "aws-u2-6-2-debug-01",
+      "title": "Depurar la regla que nunca recibe un pedido enviado",
+      "statement": "Una regla de un bus de eventos debe enviar al destino los eventos de `tienda.envios`, de tipo `Pedido enviado`, cuyo `detail.transportista` sea `Correos`. Con el patrón `patronEnvios` la regla no recibe nada: el equipo ve que el validador del arnés se queja y, aun corrigiendo eso, el evento de ejemplo sigue sin casar. Localiza los defectos comprobando con `aws.events.validatePattern` y `aws.events.matches` y contrastando la estructura con la página de patrones de eventos; corrígelos con el cambio mínimo, sin quitar campos ni cambiar el nombre del valor exportado. Explica por qué fallaba y cómo lo comprobaste. Recuerda: que los valores sean arreglos y se comparen con las mismas mayúsculas es la convención del evaluador events; la estructura del patrón sale de la guía.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "patrón de eventos",
+        "validación",
+        "depuración"
+      ],
+      "estimatedMin": 25,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html"
+      ]
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Regla del bus de pedidos: avisar a facturación de los pedidos creados, nuevos y grandes.\nexport const patronPedidosGrandes = {\n  source: [\"tienda.pedidos\"],\n  detail: {\n    estado: [\"nuevo\"],\n  },\n};\n",
+      "solution": {
+        "code": "// Regla del bus de pedidos: avisar a facturación de los pedidos creados, nuevos y grandes.\nexport const patronPedidosGrandes = {\n  source: [\"tienda.pedidos\"],\n  \"detail-type\": [\"Pedido creado\"],\n  detail: {\n    estado: [\"nuevo\"],\n    total: [{ numeric: [\">\", 100] }],\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Prueba con aws.events.matches el patrón contra los eventos de ejemplo y anota cuáles casan sin deber. Fíjate en el tipo de evento («detail-type») y en el importe: el patrón inicial no los restringe."
+        },
+        {
+          "level": 2,
+          "text": "Un patrón solo evalúa los campos que menciona y todos a la vez. Faltan dos requisitos: el tipo de evento debe ser «Pedido creado» y el total debe ser estrictamente mayor que 100 (un pedido de exactamente 100 no avisa a facturación)."
+        },
+        {
+          "level": 3,
+          "text": "Añade \"detail-type\": [\"Pedido creado\"] y, dentro de detail, total: [{ numeric: [\">\", 100] }]. Conserva source y estado, y no uses operadores que no necesites."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el patrón es válido según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const A = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-1\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst F = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-6\", estado: \"nuevo\", total: 100.5, pais: \"MX\" } };\nconst B = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-2\", estado: \"nuevo\", total: 100, pais: \"ES\" } };\nconst C = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-3\", estado: \"nuevo\", total: 40, pais: \"ES\" } };\nconst D = { source: \"tienda.inventario\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-4\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst E = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido actualizado\", detail: { pedidoId: \"P-5\", estado: \"nuevo\", total: 300, pais: \"ES\" } };\nconst G = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-7\", estado: \"devuelto\", total: 500, pais: \"ES\" } };\nconst H = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-8\", estado: \"nuevo\", pais: \"ES\" } };\nassert.deepStrictEqual(aws.events.validatePattern(patronPedidosGrandes), []);"
+          }
+        },
+        {
+          "name": "casa los pedidos creados, nuevos y grandes de tienda.pedidos",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const A = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-1\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst F = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-6\", estado: \"nuevo\", total: 100.5, pais: \"MX\" } };\nconst B = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-2\", estado: \"nuevo\", total: 100, pais: \"ES\" } };\nconst C = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-3\", estado: \"nuevo\", total: 40, pais: \"ES\" } };\nconst D = { source: \"tienda.inventario\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-4\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst E = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido actualizado\", detail: { pedidoId: \"P-5\", estado: \"nuevo\", total: 300, pais: \"ES\" } };\nconst G = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-7\", estado: \"devuelto\", total: 500, pais: \"ES\" } };\nconst H = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-8\", estado: \"nuevo\", pais: \"ES\" } };\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, A), true, \"Debe casar el pedido de 250\");\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, F), true, \"Debe casar el pedido de 100,5\");"
+          }
+        },
+        {
+          "name": "descarta los pedidos pequeños, de otro origen o de otro tipo",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const A = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-1\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst F = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-6\", estado: \"nuevo\", total: 100.5, pais: \"MX\" } };\nconst B = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-2\", estado: \"nuevo\", total: 100, pais: \"ES\" } };\nconst C = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-3\", estado: \"nuevo\", total: 40, pais: \"ES\" } };\nconst D = { source: \"tienda.inventario\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-4\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst E = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido actualizado\", detail: { pedidoId: \"P-5\", estado: \"nuevo\", total: 300, pais: \"ES\" } };\nconst G = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-7\", estado: \"devuelto\", total: 500, pais: \"ES\" } };\nconst H = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-8\", estado: \"nuevo\", pais: \"ES\" } };\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, B), false, \"Un total de 100 exacto no es mayor que 100\");\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, C), false, \"Un total de 40 es pequeño\");\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, D), false, \"El origen tienda.inventario no es tienda.pedidos\");\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, E), false, \"Un pedido actualizado no es un pedido creado\");"
+          }
+        },
+        {
+          "name": "descarta un pedido que no está en estado nuevo y uno sin total",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const A = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-1\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst F = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-6\", estado: \"nuevo\", total: 100.5, pais: \"MX\" } };\nconst B = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-2\", estado: \"nuevo\", total: 100, pais: \"ES\" } };\nconst C = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-3\", estado: \"nuevo\", total: 40, pais: \"ES\" } };\nconst D = { source: \"tienda.inventario\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-4\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst E = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido actualizado\", detail: { pedidoId: \"P-5\", estado: \"nuevo\", total: 300, pais: \"ES\" } };\nconst G = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-7\", estado: \"devuelto\", total: 500, pais: \"ES\" } };\nconst H = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-8\", estado: \"nuevo\", pais: \"ES\" } };\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, G), false, \"El estado devuelto no debe casar\");\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, H), false, \"Un evento sin total no cumple la condición numérica\");"
+          }
+        },
+        {
+          "name": "el patrón sigue acotando el origen y no acepta cualquier evento",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const A = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-1\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst F = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-6\", estado: \"nuevo\", total: 100.5, pais: \"MX\" } };\nconst B = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-2\", estado: \"nuevo\", total: 100, pais: \"ES\" } };\nconst C = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-3\", estado: \"nuevo\", total: 40, pais: \"ES\" } };\nconst D = { source: \"tienda.inventario\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-4\", estado: \"nuevo\", total: 250, pais: \"ES\" } };\nconst E = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido actualizado\", detail: { pedidoId: \"P-5\", estado: \"nuevo\", total: 300, pais: \"ES\" } };\nconst G = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-7\", estado: \"devuelto\", total: 500, pais: \"ES\" } };\nconst H = { source: \"tienda.pedidos\", \"detail-type\": \"Pedido creado\", detail: { pedidoId: \"P-8\", estado: \"nuevo\", pais: \"ES\" } };\nassert.deepStrictEqual(patronPedidosGrandes.source, [\"tienda.pedidos\"]);\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, {}), false);\nassert.strictEqual(aws.events.matches(patronPedidosGrandes, { source: \"tienda.pedidos\" }), false);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "LAB",
+      "order": 9,
+      "slug": "aws-u2-6-2-laboratorio-01",
+      "title": "Patrón de eventos para los pedidos grandes y nuevos",
+      "statement": "El bus de eventos de una tienda recibe eventos con `source`, `detail-type` y `detail` (con `pedidoId`, `estado`, `total` y `pais`). Una regla debe avisar a facturación solo de los pedidos que cumplan a la vez: origen `tienda.pedidos`, tipo `Pedido creado`, estado `nuevo` y un `total` estrictamente mayor que 100. El patrón inicial `patronPedidosGrandes` es válido pero casa de más. Corrígelo comprobando con `aws.events.matches` los eventos de ejemplo que deben casar y los que no, y con `aws.events.validatePattern` que el patrón se puede evaluar. Recuerda: la sintaxis del patrón es una convención del evaluador events, que sigue la de EventBridge; los conceptos salen de las páginas oficiales.",
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "concepts": [
+        "patrón de eventos",
+        "regla",
+        "filtrado por contenido"
+      ],
+      "estimatedMin": 35,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html"
+      ]
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Avisos inmediatos al equipo de guardia.\nexport const patronGuardia = {\n  source: [\"plataforma.pagos\"],\n  \"detail-type\": [\"Alerta\"],\n  detail: {\n    severidad: [\"critica\"],\n    entorno: [{ \"anything-but\": \"pruebas\" }],\n  },\n};\n\n// Revisión posterior: producción con severidad crítica o con un código HTTP de error de servidor.\nexport const patronRevision = {\n  source: [{ prefix: \"plataforma.\" }],\n  \"detail-type\": [\"Alerta\"],\n  detail: {\n    entorno: [\"produccion\"],\n    $or: [{ severidad: [\"critica\"] }, { codigoHttp: [{ numeric: [\">\", 499] }] }],\n  },\n};\n",
+      "solution": {
+        "code": "// Avisos inmediatos al equipo de guardia.\nexport const patronGuardia = {\n  source: [{ prefix: \"plataforma.\" }],\n  \"detail-type\": [\"Alerta\"],\n  detail: {\n    severidad: [\"alta\", \"critica\"],\n    entorno: [{ \"anything-but\": \"pruebas\" }],\n    silenciada: [{ exists: false }],\n  },\n};\n\n// Revisión posterior: producción con severidad crítica o con un código HTTP de error de servidor.\nexport const patronRevision = {\n  source: [{ prefix: \"plataforma.\" }],\n  \"detail-type\": [\"Alerta\"],\n  detail: {\n    $or: [\n      { entorno: [\"produccion\"], severidad: [\"critica\"] },\n      { entorno: [\"produccion\"], codigoHttp: [{ numeric: [\">\", 499] }] },\n    ],\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "los dos patrones son válidos según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const ev = (source, tipo, detail) => ({ source, \"detail-type\": tipo, detail });\nconst e1 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e2 = ev(\"plataforma.catalogo\", \"Alerta\", { severidad: \"alta\", entorno: \"preproduccion\", codigoHttp: 200 });\nconst e3 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 503 });\nconst e4 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"pruebas\", codigoHttp: 200 });\nconst e5 = ev(\"externo.proveedor\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e6 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", silenciada: true, codigoHttp: 200 });\nconst e7 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", codigoHttp: 200 });\nconst e8 = ev(\"plataforma.pagos\", \"Informe\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e9 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 499 });\nconst e10 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 500 });\nconst e11 = ev(\"plataforma.recomendaciones\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nassert.deepStrictEqual(aws.events.validatePattern(patronGuardia), [], \"patronGuardia\");\nassert.deepStrictEqual(aws.events.validatePattern(patronRevision), [], \"patronRevision\");"
+          }
+        },
+        {
+          "name": "la guardia recibe las alertas de la plataforma que deben avisar",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const ev = (source, tipo, detail) => ({ source, \"detail-type\": tipo, detail });\nconst e1 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e2 = ev(\"plataforma.catalogo\", \"Alerta\", { severidad: \"alta\", entorno: \"preproduccion\", codigoHttp: 200 });\nconst e3 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 503 });\nconst e4 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"pruebas\", codigoHttp: 200 });\nconst e5 = ev(\"externo.proveedor\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e6 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", silenciada: true, codigoHttp: 200 });\nconst e7 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", codigoHttp: 200 });\nconst e8 = ev(\"plataforma.pagos\", \"Informe\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e9 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 499 });\nconst e10 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 500 });\nconst e11 = ev(\"plataforma.recomendaciones\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst m = (e) => aws.events.matches(patronGuardia, e);\nassert.strictEqual(m(e1), true, \"e1: crítica en producción\");\nassert.strictEqual(m(e2), true, \"e2: alta en preproducción\");\nassert.strictEqual(m(e7), true, \"e7: alta en producción sin silenciar\");\nassert.strictEqual(m(e11), true, \"e11: otro servicio de la plataforma\");"
+          }
+        },
+        {
+          "name": "la guardia descarta lo que no debe avisar",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const ev = (source, tipo, detail) => ({ source, \"detail-type\": tipo, detail });\nconst e1 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e2 = ev(\"plataforma.catalogo\", \"Alerta\", { severidad: \"alta\", entorno: \"preproduccion\", codigoHttp: 200 });\nconst e3 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 503 });\nconst e4 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"pruebas\", codigoHttp: 200 });\nconst e5 = ev(\"externo.proveedor\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e6 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", silenciada: true, codigoHttp: 200 });\nconst e7 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", codigoHttp: 200 });\nconst e8 = ev(\"plataforma.pagos\", \"Informe\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e9 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 499 });\nconst e10 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 500 });\nconst e11 = ev(\"plataforma.recomendaciones\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst m = (e) => aws.events.matches(patronGuardia, e);\nassert.strictEqual(m(e3), false, \"e3: severidad baja\");\nassert.strictEqual(m(e4), false, \"e4: entorno de pruebas\");\nassert.strictEqual(m(e5), false, \"e5: origen externo\");\nassert.strictEqual(m(e6), false, \"e6: alerta silenciada\");\nassert.strictEqual(m(e8), false, \"e8: no es una alerta\");"
+          }
+        },
+        {
+          "name": "la revisión casa producción crítica o con código HTTP mayor que 499",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const ev = (source, tipo, detail) => ({ source, \"detail-type\": tipo, detail });\nconst e1 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e2 = ev(\"plataforma.catalogo\", \"Alerta\", { severidad: \"alta\", entorno: \"preproduccion\", codigoHttp: 200 });\nconst e3 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 503 });\nconst e4 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"pruebas\", codigoHttp: 200 });\nconst e5 = ev(\"externo.proveedor\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e6 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", silenciada: true, codigoHttp: 200 });\nconst e7 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", codigoHttp: 200 });\nconst e8 = ev(\"plataforma.pagos\", \"Informe\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e9 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 499 });\nconst e10 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 500 });\nconst e11 = ev(\"plataforma.recomendaciones\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst m = (e) => aws.events.matches(patronRevision, e);\nassert.strictEqual(m(e1), true, \"e1: crítica en producción\");\nassert.strictEqual(m(e3), true, \"e3: código 503\");\nassert.strictEqual(m(e10), true, \"e10: código 500\");"
+          }
+        },
+        {
+          "name": "la revisión descarta otros entornos, orígenes, tipos y el límite 499",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const ev = (source, tipo, detail) => ({ source, \"detail-type\": tipo, detail });\nconst e1 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e2 = ev(\"plataforma.catalogo\", \"Alerta\", { severidad: \"alta\", entorno: \"preproduccion\", codigoHttp: 200 });\nconst e3 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 503 });\nconst e4 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"pruebas\", codigoHttp: 200 });\nconst e5 = ev(\"externo.proveedor\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e6 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", silenciada: true, codigoHttp: 200 });\nconst e7 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", codigoHttp: 200 });\nconst e8 = ev(\"plataforma.pagos\", \"Informe\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e9 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 499 });\nconst e10 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 500 });\nconst e11 = ev(\"plataforma.recomendaciones\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst m = (e) => aws.events.matches(patronRevision, e);\nassert.strictEqual(m(e2), false, \"e2: preproducción\");\nassert.strictEqual(m(e4), false, \"e4: pruebas\");\nassert.strictEqual(m(e5), false, \"e5: origen externo\");\nassert.strictEqual(m(e7), false, \"e7: alta sin código de error\");\nassert.strictEqual(m(e8), false, \"e8: no es una alerta\");\nassert.strictEqual(m(e9), false, \"e9: 499 no es mayor que 499\");"
+          }
+        },
+        {
+          "name": "la guardia no depende de una lista cerrada de servicios y respeta el límite entre prefijos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const ev = (source, tipo, detail) => ({ source, \"detail-type\": tipo, detail });\nconst e1 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e2 = ev(\"plataforma.catalogo\", \"Alerta\", { severidad: \"alta\", entorno: \"preproduccion\", codigoHttp: 200 });\nconst e3 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 503 });\nconst e4 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"critica\", entorno: \"pruebas\", codigoHttp: 200 });\nconst e5 = ev(\"externo.proveedor\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e6 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", silenciada: true, codigoHttp: 200 });\nconst e7 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"alta\", entorno: \"produccion\", codigoHttp: 200 });\nconst e8 = ev(\"plataforma.pagos\", \"Informe\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst e9 = ev(\"plataforma.pagos\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 499 });\nconst e10 = ev(\"plataforma.envios\", \"Alerta\", { severidad: \"baja\", entorno: \"produccion\", codigoHttp: 500 });\nconst e11 = ev(\"plataforma.recomendaciones\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\", codigoHttp: 200 });\nconst nuevo = ev(\"plataforma.servicio-nuevo\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\" });\nconst casiPlataforma = ev(\"plataformas.otra\", \"Alerta\", { severidad: \"critica\", entorno: \"produccion\" });\nassert.strictEqual(aws.events.matches(patronGuardia, nuevo), true);\nassert.strictEqual(aws.events.matches(patronGuardia, casiPlataforma), false);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "LAB",
+      "order": 10,
+      "slug": "aws-u2-6-2-laboratorio-02",
+      "title": "Alertas de guardia: dos patrones con prefix, anything-but, exists y $or",
+      "statement": "Los servicios de la plataforma publican alertas en un bus con `source` que empieza por `plataforma.`, `detail-type` `Alerta` y un `detail` con `severidad`, `entorno`, `codigoHttp` y, a veces, `silenciada`. Escribe dos patrones. `patronGuardia`: alertas de cualquier servicio de la plataforma con severidad `alta` o `critica`, en cualquier entorno menos `pruebas` y que no lleven el campo `silenciada`. `patronRevision`: alertas de la plataforma en `produccion` con severidad `critica` o con un `codigoHttp` mayor que 499. Arranca del código inicial, que tiene defectos: uno casa de menos y el otro no se puede evaluar. Comprueba cada patrón con `aws.events.validatePattern` y `aws.events.matches` y justifica cada condición. Recuerda: la sintaxis (prefix, anything-but, exists, numeric y `$or`) es una convención del evaluador events, y este rechaza un `$or` junto a otros campos de su mismo nivel.",
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "concepts": [
+        "patrón de eventos",
+        "filtrado por contenido",
+        "$or"
+      ],
+      "estimatedMin": 40,
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un tema de SNS al que se suscribe una sola cola, porque SNS admite un único suscriptor por tema",
+            "explanation": "Descartada: un tema de SNS entrega a varios suscriptores y por eso se usa el fan-out; no está limitado a uno."
+          },
+          {
+            "id": "b",
+            "text": "Publicar en un tema de SNS y suscribir una cola de SQS por cada aplicación",
+            "explanation": "Es la correcta: el mensaje se replica y se empuja a varias colas, que reciben notificaciones idénticas para procesarlas en paralelo."
+          },
+          {
+            "id": "c",
+            "text": "Un pipe de EventBridge con la cola de pedidos como origen y las dos aplicaciones como destino",
+            "explanation": "Descartada: cada pipe tiene un único origen y un único destino, así que no reparte el aviso entre dos aplicaciones."
+          },
+          {
+            "id": "d",
+            "text": "Un tema de SNS que entrega a un punto de enlace y solo pasa al siguiente cuando el anterior termina",
+            "explanation": "Descartada: SNS replica y empuja el mensaje a varios puntos de enlace para un procesamiento asíncrono en paralelo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 11,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-2-quiz-01",
+      "title": "Copia idéntica del pedido para dos aplicaciones",
+      "statement": "Cuando se realiza un pedido, la aplicación de preparación y la de análisis deben recibir cada una una copia idéntica del aviso y procesarla de forma asíncrona. ¿Qué diseño es el MEJOR?",
+      "concepts": [
+        "fan-out",
+        "SNS",
+        "SQS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html",
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "b"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "SNS empuja los mensajes a los suscriptores sin que estos tengan que consultar",
+            "explanation": "Cumple: SNS usa un mecanismo push, así que los suscriptores no necesitan consultar si hay novedades."
+          },
+          {
+            "id": "b",
+            "text": "SQS desacopla emisor y receptor sin exigir que ambos estén disponibles a la vez",
+            "explanation": "Cumple: la cola conserva los mensajes hasta que la aplicación receptora los procesa."
+          },
+          {
+            "id": "c",
+            "text": "Los consumidores de SQS reciben los mensajes porque SQS los empuja hacia ellos",
+            "explanation": "No cumple: SQS usa un modelo de consulta (polling), no un envío push."
+          },
+          {
+            "id": "d",
+            "text": "Los únicos puntos de enlace que admite un tema de SNS son las colas de SQS",
+            "explanation": "No cumple: también admite Lambda, HTTP(S), correo, notificaciones móviles, SMS, Firehose y proveedores de servicios."
+          },
+          {
+            "id": "e",
+            "text": "El mensaje que llega a la cola solo contiene el texto publicado, sin asunto ni metadatos",
+            "explanation": "No cumple: llega un documento JSON con el asunto, el mensaje y metadatos del mensaje."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 12,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-2-quiz-02",
+      "title": "Qué es cierto de SNS y SQS juntos",
+      "statement": "Un equipo repasa cómo se complementan SNS y SQS. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "push",
+        "polling",
+        "fan-out"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html",
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un pipe por origen, porque cada pipe entrega a todos los destinos de la organización",
+            "explanation": "Descartada: cada pipe recibe de un único origen y entrega a un único destino; no hace enrutado de muchos a muchos."
+          },
+          {
+            "id": "b",
+            "text": "Una programación única de Scheduler en cada aplicación consumidora",
+            "explanation": "Descartada: Scheduler invoca destinos a una hora o con una frecuencia; no enruta eventos que llegan de otros orígenes."
+          },
+          {
+            "id": "c",
+            "text": "Una regla programada heredada que lee los eventos cada cierto intervalo",
+            "explanation": "Descartada: las reglas programadas lanzan destinos a intervalos y son una función heredada; no seleccionan eventos por su contenido."
+          },
+          {
+            "id": "d",
+            "text": "Un bus de eventos con reglas que seleccionan los eventos para cada destino",
+            "explanation": "Es la correcta: los buses son enrutadores de eventos de muchos orígenes a muchos destinos, y las reglas eligen qué va a cada uno."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 13,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-2-quiz-03",
+      "title": "Buses o pipes para enrutar de muchos a muchos",
+      "statement": "Un equipo debe enrutar eventos de sus aplicaciones, de servicios de AWS y de software de terceros hacia varias aplicaciones consumidoras. ¿Qué componente de EventBridge es el MÁS adecuado?",
+      "concepts": [
+        "bus de eventos",
+        "regla"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "a",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un pipe con la cola como origen, una API Destination como enriquecimiento y Step Functions como destino",
+            "explanation": "Es la correcta: los pipes admiten enriquecimiento entre el origen y el destino, y es el ejemplo que da la guía."
+          },
+          {
+            "id": "b",
+            "text": "Un pipe con tres colas de SQS como origen y la máquina de estados como destino",
+            "explanation": "Descartada: cada pipe tiene un único origen, así que no puede leer de tres colas a la vez."
+          },
+          {
+            "id": "c",
+            "text": "Una programación única de Scheduler que se ejecuta cuando llega cada mensaje",
+            "explanation": "Descartada: Scheduler invoca a una hora o con una frecuencia fijadas; no reacciona a un mensaje de una cola."
+          },
+          {
+            "id": "d",
+            "text": "Un tema de SNS al que se suscribe la máquina de estados, porque SNS enriquece los mensajes con datos de una API",
+            "explanation": "Descartada: SNS replica y entrega mensajes a los suscriptores; el enriquecimiento es una etapa opcional de los pipes."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 14,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-2-quiz-04",
+      "title": "Enriquecer un mensaje antes de un destino",
+      "statement": "Un mensaje de pedido recibido en una cola de SQS debe enriquecerse con los datos del cliente de una API y enviarse a una máquina de estados de Step Functions, con el MENOR código de integración. ¿Qué opción cumple?",
+      "concepts": [
+        "Pipes",
+        "enriquecimiento"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "c",
+        "options": [
+          {
+            "id": "a",
+            "text": "Todos los eventos de Amazon EC2, porque el patrón solo comprueba el origen",
+            "explanation": "Descartada: el patrón comprueba los tres campos; un evento de EC2 con otro tipo o estado no coincide."
+          },
+          {
+            "id": "b",
+            "text": "Los eventos que cumplan al menos uno de los tres campos del patrón",
+            "explanation": "Descartada: los requisitos se aplican a la vez; el ejemplo de la guía exige los tres para que el evento coincida."
+          },
+          {
+            "id": "c",
+            "text": "Solo las notificaciones de cambio de estado de EC2 cuyo estado es terminated",
+            "explanation": "Es la correcta: el origen, el tipo y el estado del detalle deben cumplirse a la vez para que el patrón coincida."
+          },
+          {
+            "id": "d",
+            "text": "Los eventos de cualquier servicio con estado terminated, porque el patrón ignora el origen",
+            "explanation": "Descartada: el origen forma parte del patrón y debe ser Amazon EC2."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 15,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-2-quiz-05",
+      "title": "Qué selecciona un patrón con tres campos",
+      "statement": "Una regla usa un patrón con source [\"aws.ec2\"], detail-type [\"EC2 Instance State-change Notification\"] y detail con state [\"terminated\"]. ¿Qué eventos recibe el destino? Elige la descripción MÁS precisa.",
+      "concepts": [
+        "patrón de eventos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "b",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una regla programada heredada, que la guía recomienda frente a Scheduler",
+            "explanation": "Descartada: la guía señala las reglas programadas como función heredada y recomienda Scheduler para invocar destinos con una programación."
+          },
+          {
+            "id": "b",
+            "text": "Una programación recurrente de Scheduler con una expresión rate y la política de reintentos",
+            "explanation": "Es la correcta: Scheduler admite expresiones cron y rate, ventana flexible, límite de reintentos y retención de las invocaciones fallidas."
+          },
+          {
+            "id": "c",
+            "text": "Un pipe con un patrón de eventos que se activa a cada hora en punto",
+            "explanation": "Descartada: un pipe conecta un origen con un destino y filtra los eventos que recibe; no genera una programación."
+          },
+          {
+            "id": "d",
+            "text": "Un tema de SNS al que se publica una vez por hora desde el destino",
+            "explanation": "Descartada: SNS entrega mensajes que alguien publica; no planifica ejecuciones ni gestiona reintentos de invocación."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 16,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-2-quiz-06",
+      "title": "Tarea programada con ventana flexible y reintentos",
+      "statement": "Hay que invocar una API cada hora, con una ventana flexible de 15 minutos y un límite de reintentos configurable. ¿Qué opción es la MEJOR según la guía?",
+      "concepts": [
+        "Scheduler",
+        "ventana flexible"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/using-eventbridge-scheduler.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Admite programaciones recurrentes con cron o rate y también invocaciones de una sola vez",
+            "explanation": "Cumple: la guía lo describe con expresiones cron y rate para patrones recurrentes y con invocaciones únicas."
+          },
+          {
+            "id": "b",
+            "text": "Ofrece menos escalabilidad que las reglas programadas, que son la opción recomendada",
+            "explanation": "No cumple: la guía dice que Scheduler tiene mayor escalabilidad y recomienda usarlo en lugar de las reglas programadas."
+          },
+          {
+            "id": "c",
+            "text": "Necesita un rol de ejecución con los permisos para invocar la API del destino",
+            "explanation": "Cumple: Scheduler necesita permiso para invocar la API del destino en tu nombre mediante un rol de ejecución."
+          },
+          {
+            "id": "d",
+            "text": "Puede guardar los eventos no entregados en una cola de SQS como cola de mensajes fallidos",
+            "explanation": "Cumple: la cola puede estar en la misma cuenta o en otra distinta de la programación."
+          },
+          {
+            "id": "e",
+            "text": "Descarta siempre sin reintentar la invocación que falla, porque no tiene política de reintentos",
+            "explanation": "No cumple: se puede definir una política con edad máxima del evento y número máximo de reintentos."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 17,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-2-quiz-07",
+      "title": "Qué es cierto de EventBridge Scheduler",
+      "statement": "Un arquitecto repasa EventBridge Scheduler. Selecciona TRES afirmaciones correctas según la guía.",
+      "concepts": [
+        "Scheduler",
+        "reintentos",
+        "cola de mensajes fallidos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/using-eventbridge-scheduler.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "correctOptionId": "d",
+        "options": [
+          {
+            "id": "a",
+            "text": "Dos reglas con el mismo patrón, porque cada regla admite un solo destino",
+            "explanation": "Descartada: una sola regla puede enviar un evento a varios destinos; no hace falta duplicarla."
+          },
+          {
+            "id": "b",
+            "text": "Un pipe con la función y la cola como destinos",
+            "explanation": "Descartada: cada pipe entrega a un único destino, por lo que no sirve para llegar a los dos."
+          },
+          {
+            "id": "c",
+            "text": "Una regla con dos destinos, que se ejecutan uno después del otro",
+            "explanation": "Descartada: los destinos de una regla se ejecutan en paralelo, no uno tras otro."
+          },
+          {
+            "id": "d",
+            "text": "Una regla con los dos destinos configurados, que se ejecutan en paralelo",
+            "explanation": "Es la correcta: una sola regla puede enviar un evento a varios destinos, que se ejecutan en paralelo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "QUIZ",
+      "order": 18,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "slug": "aws-u2-6-2-quiz-08",
+      "title": "Un evento a dos destinos con una sola regla",
+      "statement": "Un evento de pedido debe llegar a la vez a una función y a una cola, y se quiere ÚNICAMENTE una regla en el bus. ¿Qué configuración lo permite?",
+      "concepts": [
+        "regla",
+        "destinos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "fanout",
+            "term": "Copia idéntica de un pedido a varias colas en paralelo",
+            "definition": "Fan-out: tema de SNS con una cola de SQS por consumidor"
+          },
+          {
+            "id": "bus",
+            "term": "Enrutar eventos de muchos orígenes a muchos destinos",
+            "definition": "Bus de eventos de EventBridge con reglas"
+          },
+          {
+            "id": "regla",
+            "term": "Elegir qué eventos del bus llegan a cada destino",
+            "definition": "Regla con un patrón de eventos"
+          },
+          {
+            "id": "varios",
+            "term": "Un evento a varios destinos con una sola regla",
+            "definition": "Una regla con varios destinos, que corren en paralelo"
+          },
+          {
+            "id": "pipe",
+            "term": "Punto a punto con filtro y enriquecimiento",
+            "definition": "EventBridge Pipes: un origen y un destino"
+          },
+          {
+            "id": "recurrente",
+            "term": "Tarea cada hora con ventana flexible y reintentos",
+            "definition": "Programación recurrente de Scheduler (rate o cron)"
+          },
+          {
+            "id": "unica",
+            "term": "Invocar un destino una sola vez en fecha y hora",
+            "definition": "Programación de una sola vez de Scheduler"
+          },
+          {
+            "id": "notifica",
+            "term": "Avisar por correo, SMS y notificación móvil",
+            "definition": "Tema de SNS con suscripciones de esos tipos"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada caso con el servicio o la pieza que lo resuelve. Si dudas, pregúntate cuántos orígenes y destinos hay, si el aviso debe repartirse en copias idénticas y si la tarea se dispara por un evento o por una hora.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Cuándo basta un tema de SNS con suscriptores y cuándo hace falta un bus con reglas",
+              "Qué decide una regla y cuántos destinos admite",
+              "Cuándo un pipe (un origen, un destino) y cuándo un bus",
+              "Qué programaciones ofrece Scheduler y cuándo usarlo"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "MEMORY",
+      "order": 19,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "slug": "aws-u2-6-2-memoria-01",
+      "title": "Caso de integración y pieza que lo resuelve",
+      "statement": "Empareja cada caso de integración con el servicio o la pieza que lo resuelve.",
+      "concepts": [
+        "SNS",
+        "bus de eventos",
+        "Pipes",
+        "Scheduler"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/welcome.html",
+        "https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/using-eventbridge-scheduler.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "type": "REFLECT",
+      "order": 20,
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "slug": "aws-u2-6-2-reflexion-01",
+      "title": "Reflexión: qué pieza de integración y por qué",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una tienda con pedidos, un sistema de alertas o un proceso que se ejecuta cada noche) y escribe un registro breve de decisión sobre cómo conectarías sus componentes, en 5 a 7 líneas:\n\n1) Decisión: qué pieza usarías (tema de SNS con colas, bus de eventos con reglas, pipe o Scheduler) y qué dato del problema la decide (cuántos destinos, si hay un solo origen, si hay que filtrar o enriquecer, si lo dispara una hora).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, un pipe cuando hacía falta repartir a varios destinos, o una regla programada heredada en lugar de Scheduler) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (los patrones de eventos de las reglas, las colas suscritas, el rol de ejecución y la política de reintentos de las programaciones).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad o Excelencia operativa) y por qué.\n\n5) Evidencia: qué página oficial (fan-out de SNS, reglas, patrones de eventos, Pipes o Scheduler) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el caso, la pieza y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "integración",
+        "evento",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html",
+        "https://docs.aws.amazon.com/eventbridge/latest/userguide/using-eventbridge-scheduler.html"
+      ]
+    }
+  ]
+}
