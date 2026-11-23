@@ -1,0 +1,1231 @@
+{
+  "code": "AWS-U2.6.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-6-1-sqs-estandar-frente-a-fifo-tiempo-de-visibilidad-y-colas-de-mensajes-fallidos",
+      "title": "SQS: estándar frente a FIFO, tiempo de visibilidad y colas de mensajes fallidos",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Amazon SQS es una cola alojada, duradera y disponible que permite integrar y desacoplar los componentes de un sistema distribuido: los productores envían mensajes a la cola y los consumidores los reciben cuando pueden, sin depender unos de otros. En el examen casi nunca preguntan «qué es SQS»; preguntan tres decisiones que se toman al configurarla. La primera es el tipo de cola: estándar o FIFO, según el orden y los duplicados que tolere la carga. La segunda es el tiempo de visibilidad: cuánto tiempo queda oculto un mensaje recibido mientras un consumidor lo procesa. La tercera es la cola de mensajes fallidos, a donde van los mensajes que no se procesan con éxito para poder analizarlos. En el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», el enunciado describe un síntoma (mensajes procesados dos veces, órdenes desordenadas, un mensaje que bloquea la cola) y tú eliges el ajuste que lo corrige. Las cifras de esta lección proceden de las páginas de la guía de SQS leídas el 2026-11-23; antes de usarlas fuera del estudio, vuelve a comprobarlas en la página oficial."
+        },
+        {
+          "type": "list",
+          "title": "SQS: las tres decisiones de un vistazo",
+          "items": [
+            "Cola estándar: entrega al menos una vez; un mensaje puede llegar más de una vez, así que el consumidor debe tolerar duplicados.",
+            "Cola FIFO: orden de envío y recepción preservado estrictamente, procesamiento exactamente una vez y grupos de mensajes; tiene un número limitado de transacciones por segundo, ampliable con el modo de alto rendimiento.",
+            "Tiempo de visibilidad: tras recibir un mensaje, queda en la cola pero oculto para otros consumidores; vale 30 segundos por defecto y puedes cambiarlo con ChangeMessageVisibility, hasta un máximo de 12 horas.",
+            "Cola de mensajes fallidos: una cola aparte, en la misma cuenta y Región, adonde el origen mueve un mensaje tras maxReceiveCount recepciones sin borrarlo.",
+            "Retención: SQS borra los mensajes que superan el período de retención, que es de 4 días por defecto y se puede fijar entre 60 segundos y 14 días."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Estándar frente a FIFO: la garantía que necesitas",
+          "text": "La página de qué es SQS indica que las colas estándar admiten la entrega al menos una vez y que las colas FIFO admiten el procesamiento exactamente una vez y el modo de alto rendimiento. La página de FIFO describe sus dos características principales: el orden en que se envían y se reciben los mensajes se conserva estrictamente, y cada mensaje se entrega una vez y no está disponible hasta que un consumidor lo procesa y lo borra; además, no se introducen duplicados en la cola. FIFO admite grupos de mensajes, que permiten varias secuencias ordenadas dentro de una misma cola, y la página aclara que no hay cuota para el número de grupos. Sus casos de uso son los que dependen del orden o no toleran duplicados: la gestión de pedidos de una tienda, la integración con sistemas de terceros cuyos eventos deben procesarse en orden, las entradas de usuario procesadas en el orden recibido o una venta de entradas por orden de llegada. La contrapartida está en la nota de la página: FIFO ofrece procesamiento exactamente una vez, pero con un número limitado de transacciones por segundo; el modo de alto rendimiento sirve para ampliar ese límite. La regla de examen: si el enunciado exige orden o ausencia de duplicados, es FIFO; si solo exige desacoplar y absorber picos con un consumidor tolerante a repeticiones, la cola estándar basta."
+        },
+        {
+          "type": "paragraph",
+          "title": "Tiempo de visibilidad: qué hace y qué no hace",
+          "text": "Cuando un consumidor recibe un mensaje, este permanece en la cola pero se vuelve temporalmente invisible para los demás durante el tiempo de visibilidad; el consumidor debe procesarlo y borrarlo antes de que venza, con DeleteMessage o con el borrado automático de algunos SDK. Si no lo borra a tiempo, por un error, una caída o un problema de conectividad, el mensaje vuelve a ser visible y la misma u otra instancia puede recibirlo para otro intento. Así los mensajes no se pierden aunque el primer intento falle. El valor por defecto de una cola es de 30 segundos, ajustable al tiempo que tu aplicación necesita para procesar y borrar, y también puedes fijar un valor para un mensaje concreto sin cambiar el de la cola. ChangeMessageVisibility lo amplía o lo acorta; si lo pones en 0 segundos, el mensaje queda disponible de inmediato para otros consumidores. La página recomienda partir del tiempo máximo que suele tardar el procesamiento y, si no lo conoces, empezar con un valor corto (menciona 2 minutos como ejemplo) y ampliarlo con un latido periódico. El techo es de 12 horas desde la primera recepción, y ampliar el tiempo no reinicia ese límite; si el trabajo necesita más, la página propone AWS Step Functions o dividir la tarea. Dos matices: un valor demasiado alto retrasa la reaparición de los mensajes no procesados y ralentiza los reintentos, y, por el modelo de entrega al menos una vez, el tiempo de visibilidad no garantiza de forma absoluta que un mensaje no se entregue más de una vez."
+        },
+        {
+          "type": "paragraph",
+          "title": "Visibilidad en FIFO y mensajes en vuelo",
+          "text": "En una cola FIFO, los mensajes con el mismo ID de grupo se procesan en secuencia estricta: mientras uno está en vuelo, los siguientes de ese grupo no se ofrecen hasta que se borre o venza su tiempo de visibilidad. Eso no bloquea el grupo indefinidamente, porque cada mensaje avanza cuando se borra o vuelve a ser visible. Como el orden se garantiza dentro de cada grupo, para tener varias secuencias en marcha con orden dentro de cada entidad (por ejemplo, por pedido) se usa un grupo por entidad y no un único grupo para todo. Los mensajes en vuelo son los recibidos y aún no borrados. Según la página, en una cola estándar el límite es de unos 120.000 mensajes en vuelo, según el tráfico y la acumulación; al alcanzarlo con sondeo corto SQS devuelve un error OverLimit, y con sondeo largo no devuelve error, pero tampoco entrega mensajes nuevos hasta que el número baje del límite. En FIFO los límites dependen de los grupos activos. Se mitiga borrando pronto, con alarmas de CloudWatch, repartiendo la carga o solicitando un aumento de cuota."
+        },
+        {
+          "type": "paragraph",
+          "title": "Colas de mensajes fallidos: aislar para diagnosticar",
+          "text": "Una cola de mensajes fallidos (DLQ) es una cola a la que una cola de origen envía los mensajes que no se procesan con éxito, y sirve para depurar: aíslas los mensajes no consumidos y examinas los registros de excepciones, analizas su contenido, compruebas si diste tiempo suficiente al consumidor y los reenvías después con la redirección (redrive). Debe estar en la misma cuenta y Región que la cola de origen y hay que crearla antes de configurarla como DLQ. La política de redirección (redrive policy) fija el maxReceiveCount, el número de veces que un consumidor puede recibir un mensaje de la cola de origen antes de moverlo a la DLQ; con un valor tan bajo como 1, un solo fallo ya lo mueve, y la página pide un valor lo bastante alto para permitir reintentos suficientes. La política de permiso de redirección (redrive allow policy) decide qué colas de origen pueden usar la DLQ: por defecto, todas; con byQueue puedes indicar hasta 10 ARN; con denyAll, la cola no puede ser DLQ. Sobre la retención: en una cola estándar, la caducidad se calcula siempre desde la marca de tiempo de encolado original, que no cambia al moverse; por eso la página recomienda fijar en la DLQ un período de retención más largo que en la cola de origen. En FIFO la marca de tiempo se reinicia al mover el mensaje. Y una advertencia: no uses una DLQ con una cola FIFO si no quieres romper el orden exacto de los mensajes."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de tres síntomas a tres ajustes",
+          "text": "Una tienda tiene una cola SQS de pedidos y tres problemas. (1) Cada pedido debe procesarse en el orden de sus líneas, sin duplicados, y varios pedidos deben avanzar a la vez. (2) Los consumidores tardan unos 90 segundos y los mensajes se procesan dos veces. (3) Un mensaje malformado hace fallar al consumidor una y otra vez. Paso 1: en (1) el dato es «orden y unicidad por pedido con varios pedidos a la vez», así que una cola FIFO con un ID de grupo por pedido; un único grupo serializaría todo y una cola estándar entrega al menos una vez. Paso 2: en (2) el dato es «procesamiento de 90 s frente a 30 s por defecto»: los mensajes reaparecen antes de que se borren; se sube el tiempo de visibilidad por encima de 90 segundos (y, si el tiempo varía, se amplía con ChangeMessageVisibility), sin pasar de 12 horas. Paso 3: en (3) el dato es «un mensaje que falla siempre»: se crea una DLQ en la misma cuenta y Región, se define una política de redirección con un maxReceiveCount suficiente para absorber fallos transitorios y se fija en la DLQ una retención mayor que la del origen (teniendo en cuenta la advertencia de la página sobre usar DLQ con FIFO si el orden exacto importa). Resultado: cada decisión salió de un dato del enunciado y no del nombre del ajuste."
+        },
+        {
+          "type": "code",
+          "title": "Una cola de pedidos y su cola de mensajes fallidos como valor (nombres ficticios)",
+          "language": "typescript",
+          "code": "export const colas = {\n  pedidos: {\n    tipo: \"fifo\",\n    tiempoDeVisibilidadSeg: 120,\n    retencionDias: 4,\n    redireccion: { destino: \"pedidos-dlq\", maxReceiveCount: 5 },\n  },\n  pedidosDlq: {\n    tipo: \"fifo\",\n    retencionDias: 14,\n    mismaCuentaYRegion: true,\n  },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del síntoma al ajuste de SQS",
+          "code": "flowchart TB\n  S{\"Síntoma del enunciado\"} -->|\"Orden estricto o sin duplicados\"| A[\"Cola FIFO con ID de grupo por entidad\"]\n  S -->|\"Mensajes que reaparecen antes de terminar\"| B[\"Subir el tiempo de visibilidad o ampliarlo con ChangeMessageVisibility\"]\n  S -->|\"Mensaje que falla siempre\"| C[\"Cola de mensajes fallidos con maxReceiveCount\"]\n  S -->|\"Desacoplar tolerando repeticiones\"| D[\"Cola estándar: al menos una vez\"]\n  B --> E[\"Techo de 12 horas desde la primera recepción\"]\n  C --> F[\"Retención de la DLQ más larga que la del origen\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: arreglar con la herramienta equivocada",
+          "text": "El enunciado mezcla señales: «duplicados», «orden», «el mensaje reaparece», «el mensaje nunca se procesa». Cada señal tiene su ajuste: duplicados u orden estricto piden FIFO; un mensaje que reaparece mientras aún se procesa pide más tiempo de visibilidad; un mensaje que falla siempre pide una cola de mensajes fallidos. El tiempo de visibilidad no ordena ni deduplica, la retención no oculta mensajes recibidos y la DLQ no corrige un consumidor lento. Subraya el síntoma y el calificador antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: dejar el tiempo de visibilidad por defecto con consumidores lentos",
+          "text": "Causa: suponer que los 30 segundos por defecto sirven para cualquier carga. Consecuencia: el mensaje vuelve a ser visible antes de que el consumidor lo borre, otro consumidor lo recibe y se procesa dos veces. Solución: fija el tiempo de visibilidad según el tiempo máximo de procesamiento, amplíalo con ChangeMessageVisibility cuando varíe y recuerda que el techo es de 12 horas desde la primera recepción."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: un maxReceiveCount demasiado bajo y una DLQ con retención corta",
+          "text": "Causa: poner maxReceiveCount en 1 y dejar en la DLQ una retención igual o menor que la del origen. Consecuencia: un solo fallo transitorio manda el mensaje a la DLQ y, en una cola estándar, como la marca de tiempo de encolado no cambia, los mensajes caducan antes de que nadie los analice. Solución: elige un maxReceiveCount que permita reintentos suficientes y fija en la DLQ una retención mayor que la de la cola de origen."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: esperar de una cola estándar la unicidad de FIFO",
+          "text": "Causa: dar por hecho que una cola estándar entrega cada mensaje una sola vez. Consecuencia: el consumidor puede recibir un mensaje más de una vez, porque la entrega es al menos una vez, y repetir una operación que no debía repetirse. Solución: si el requisito es orden estricto o ausencia de duplicados, usa una cola FIFO con un ID de grupo por entidad; si usas estándar, diseña el consumidor para tolerar repeticiones."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre SQS estándar y FIFO y configurar el tiempo de visibilidad y las colas de mensajes fallidos según el síntoma del enunciado. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el ajuste, el dato del enunciado que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las tres decisiones del ejemplo: para cada problema, nombra el ajuste y el dato que lo decide. Explica con tus palabras el diagrama «Del síntoma al ajuste de SQS». Después responde: si los mensajes se procesan dos veces porque el consumidor tarda 90 segundos, ¿por qué no basta con pasar la cola a FIFO ni con crear una cola de mensajes fallidos?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Mensajes que reaparecen antes de terminar». Una cola tiene un tiempo de visibilidad menor que el tiempo de procesamiento de sus consumidores. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas el tipo de cola y su retención."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Una cola de mensajes fallidos mal configurada». La configuración tiene la DLQ en otra Región, una retención menor que la del origen y un maxReceiveCount de 1. Decide qué cambias sin tocar la cola de origen. Criterio de paso: las pruebas pasan y justificas por escrito cada ajuste con la página de colas de mensajes fallidos."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre el tiempo de visibilidad, FIFO y las colas de mensajes fallidos. Audítalo en «Auditar un informe de SQS generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de SQS (leídas el 2026-11-23) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué garantía de entrega da cada tipo de cola; qué valor tiene por defecto el tiempo de visibilidad y cuál es su techo; cómo se termina antes de tiempo la visibilidad de un mensaje; qué fija el maxReceiveCount; y cómo se calcula la retención en una DLQ de una cola estándar. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el síntoma y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: la tienda añade una cola de movimientos de inventario que no admite duplicados ni desorden por producto, un proceso de facturación que puede tardar hasta 20 minutos por mensaje y un requisito de revisar los mensajes que fallan sin romper el orden. Decide el tipo de cola, el tiempo de visibilidad y qué haces con la DLQ. Pregunta de cierre: un compañero dice «con una DLQ ya no hay mensajes perdidos ni desordenados»; ¿qué le respondes y qué propones?"
+        }
+      ],
+      "resources": [
+        {
+          "resourceSlug": "aws-sqs-que-es",
+          "order": 0,
+          "note": "Fuente previa: qué es SQS, garantías de entrega de cada tipo de cola y período de retención por defecto."
+        },
+        {
+          "resourceSlug": "aws-sqs-fifo",
+          "order": 1,
+          "note": "Fuente de las colas FIFO: orden estricto, procesamiento exactamente una vez, grupos de mensajes y límite de transacciones."
+        },
+        {
+          "resourceSlug": "aws-sqs-tiempo-de-visibilidad",
+          "order": 2,
+          "note": "Fuente del tiempo de visibilidad: valor por defecto, ChangeMessageVisibility, límite de 12 horas y mensajes en vuelo."
+        },
+        {
+          "resourceSlug": "aws-sqs-colas-de-mensajes-fallidos",
+          "order": 3,
+          "note": "Fuente de las colas de mensajes fallidos: política de redirección, maxReceiveCount y retención."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Según las páginas de SQS (leídas el 2026-11-23), las colas estándar admiten la entrega al menos una vez, así que el consumidor debe tolerar duplicados. Las colas FIFO admiten el procesamiento exactamente una vez: el orden de envío y recepción se conserva estrictamente y no se introducen duplicados en la cola."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-1-tarjeta-01",
+      "title": "Tarjeta: Estándar frente a FIFO",
+      "statement": "¿Qué garantía de entrega da cada tipo de cola de SQS?",
+      "concepts": [
+        "cola estándar",
+        "cola FIFO"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Orden estricto de envío y recepción, procesamiento exactamente una vez y grupos de mensajes: varias secuencias ordenadas en una cola, sin cuota para el número de grupos. Tienen un número limitado de transacciones por segundo, que el modo de alto rendimiento permite ampliar. Página consultada el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-1-tarjeta-02",
+      "title": "Tarjeta: Qué aporta FIFO",
+      "statement": "¿Qué características y qué límite tienen las colas FIFO?",
+      "concepts": [
+        "FIFO",
+        "grupos de mensajes"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un mensaje recibido sigue en la cola pero invisible para otros consumidores. Por defecto son 30 segundos, ajustables por cola o por mensaje. ChangeMessageVisibility lo amplía o lo acorta, y con 0 segundos libera el mensaje de inmediato. El máximo es de 12 horas desde la primera recepción y ampliar no lo reinicia. Página consultada el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-1-tarjeta-03",
+      "title": "Tarjeta: Tiempo de visibilidad",
+      "statement": "¿Qué valor y qué límites tiene el tiempo de visibilidad de SQS?",
+      "concepts": [
+        "tiempo de visibilidad",
+        "ChangeMessageVisibility"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Son los mensajes recibidos por un consumidor y aún no borrados. En una cola estándar el límite es de unos 120.000 mensajes en vuelo; con sondeo corto SQS devuelve un error OverLimit, y con sondeo largo no devuelve error pero no entrega mensajes nuevos hasta bajar del límite. En FIFO depende de los grupos activos. Datos de la página consultada el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-1-tarjeta-04",
+      "title": "Tarjeta: Mensajes en vuelo",
+      "statement": "¿Qué son los mensajes en vuelo y qué ocurre al alcanzar su límite?",
+      "concepts": [
+        "mensajes en vuelo",
+        "OverLimit"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Debe estar en la misma cuenta y Región que la cola de origen y se crea antes de configurarla. La política de redirección fija el maxReceiveCount, el número de recepciones permitidas antes de mover el mensaje; con 1, un solo fallo lo mueve. La política de permiso admite todas las colas (por defecto), hasta 10 por ARN con byQueue o ninguna con denyAll."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-1-tarjeta-05",
+      "title": "Tarjeta: Cola de mensajes fallidos",
+      "statement": "¿Cómo se configura una cola de mensajes fallidos y qué fija el maxReceiveCount?",
+      "concepts": [
+        "DLQ",
+        "maxReceiveCount"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La retención por defecto es de 4 días y se fija entre 60 segundos y 14 días. En una cola estándar, la caducidad se basa en la marca de tiempo de encolado original, que no cambia al mover el mensaje: conviene una retención mayor en la DLQ. En FIFO la marca se reinicia al moverlo. No uses DLQ con FIFO si debes conservar el orden exacto. Consultado el 2026-11-23."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-1-tarjeta-06",
+      "title": "Tarjeta: Retención y la DLQ",
+      "statement": "¿Cómo afecta la retención a los mensajes que pasan a una cola de mensajes fallidos?",
+      "concepts": [
+        "retención",
+        "marca de tiempo de encolado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cola de pedidos cuyos consumidores tardan 90 segundos por mensaje. Corrige su defecto principal.\nexport const cola = {\n  nombre: \"pedidos\",\n  tipo: \"estandar\",\n  tiempoDeProcesamientoSeg: 90,\n  tiempoDeVisibilidadSeg: 30,\n  retencionDias: 4,\n};\n",
+      "solution": {
+        "code": "export const cola = {\n  nombre: \"pedidos\",\n  tipo: \"estandar\",\n  tiempoDeProcesamientoSeg: 90,\n  tiempoDeVisibilidadSeg: 120,\n  retencionDias: 4,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Un mensaje vuelve a ser visible si no se borra antes de que venza el tiempo de visibilidad. Compara ese tiempo con lo que tarda el consumidor."
+        },
+        {
+          "level": 2,
+          "text": "El tiempo de visibilidad debe cubrir el tiempo máximo de procesamiento y no pasar de 12 horas. Cambia solo ese campo."
+        },
+        {
+          "level": 3,
+          "text": "Pon tiempoDeVisibilidadSeg por encima de 90 (por ejemplo 120). No cambies el tipo de cola ni la retención."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el tiempo de visibilidad cubre el tiempo de procesamiento",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(cola.tiempoDeVisibilidadSeg >= cola.tiempoDeProcesamientoSeg, \"el mensaje reaparece si vence antes de que el consumidor termine\");"
+          }
+        },
+        {
+          "name": "el tiempo de visibilidad no supera el máximo de 12 horas",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(cola.tiempoDeVisibilidadSeg <= 43200, \"el máximo es de 12 horas (43200 segundos)\");"
+          }
+        },
+        {
+          "name": "el tipo de cola y la retención se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(cola.tipo, \"estandar\");\nassert.strictEqual(cola.retencionDias, 4);"
+          }
+        },
+        {
+          "name": "el nombre y el tiempo de procesamiento se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(cola.nombre, \"pedidos\");\nassert.strictEqual(cola.tiempoDeProcesamientoSeg, 90);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-6-1-debug-01",
+      "title": "Mensajes que reaparecen antes de terminar",
+      "order": 7,
+      "statement": "El objeto `cola` modela una cola SQS estándar de pedidos cuyos consumidores tardan 90 segundos en procesar y borrar cada mensaje, pero cuyo tiempo de visibilidad es de 30 segundos: los mensajes reaparecen y se procesan dos veces. Corrige el tiempo de visibilidad sin cambiar el tipo de cola ni la retención, y mantén la forma del valor exportado (`export const cola = { … }`).",
+      "concepts": [
+        "tiempo de visibilidad",
+        "procesamiento duplicado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html"
+      ]
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cola de pedidos con su cola de mensajes fallidos. Corrige sus defectos principales.\nexport const colas = {\n  origen: { nombre: \"pedidos\", region: \"eu-west-1\", retencionDias: 7 },\n  dlq: { nombre: \"pedidos-dlq\", region: \"us-east-1\", retencionDias: 4 },\n  politicaDeRedireccion: { maxReceiveCount: 1 },\n};\n",
+      "solution": {
+        "code": "export const colas = {\n  origen: { nombre: \"pedidos\", region: \"eu-west-1\", retencionDias: 7 },\n  dlq: { nombre: \"pedidos-dlq\", region: \"eu-west-1\", retencionDias: 14 },\n  politicaDeRedireccion: { maxReceiveCount: 5 },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la DLQ está en la misma Región que la cola de origen",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(colas.dlq.region, colas.origen.region, \"la DLQ debe estar en la misma cuenta y Región que el origen\");"
+          }
+        },
+        {
+          "name": "la retención de la DLQ es mayor que la del origen",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(colas.dlq.retencionDias > colas.origen.retencionDias, \"en una cola estándar conviene una retención mayor en la DLQ\");"
+          }
+        },
+        {
+          "name": "la retención de la DLQ no pasa de 14 días",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.ok(colas.dlq.retencionDias <= 14, \"el máximo de retención es de 14 días\");"
+          }
+        },
+        {
+          "name": "maxReceiveCount permite varios intentos",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.ok(colas.politicaDeRedireccion.maxReceiveCount > 1, \"con 1, un solo fallo mueve el mensaje a la DLQ\");"
+          }
+        },
+        {
+          "name": "la cola de origen y los nombres se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(colas.origen.nombre, \"pedidos\");\nassert.strictEqual(colas.origen.region, \"eu-west-1\");\nassert.strictEqual(colas.origen.retencionDias, 7);\nassert.strictEqual(colas.dlq.nombre, \"pedidos-dlq\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-6-1-debug-02",
+      "title": "Una cola de mensajes fallidos mal configurada",
+      "order": 8,
+      "statement": "El objeto `colas` modela una cola SQS estándar de pedidos y su cola de mensajes fallidos. La DLQ está en otra Región, su retención es menor que la del origen y el maxReceiveCount es 1. Corrige la configuración para que cumpla las reglas de la página sin cambiar la cola de origen, y mantén la forma del valor exportado (`export const colas = { … }`).",
+      "concepts": [
+        "cola de mensajes fallidos",
+        "maxReceiveCount",
+        "retención"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de SQS (borrador generado por un asistente)\nEscenario: una cola de pedidos con consumidores lentos, un mensaje que falla siempre y varias colas de origen.\n1. El tiempo de visibilidad por defecto de una cola SQS es de 30 segundos y puede ajustarse por cola o por mensaje.\n2. Cada vez que se amplía con ChangeMessageVisibility, el límite máximo de 12 horas se reinicia.\n3. Una cola de mensajes fallidos puede estar en una Región distinta de la cola de origen para ganar resiliencia.\n4. El maxReceiveCount es el número de veces que un consumidor puede recibir un mensaje de la cola de origen antes de moverlo a la DLQ.\n5. En una cola FIFO, mientras un mensaje de un grupo está en vuelo, los siguientes del mismo grupo no se ofrecen hasta que se borra o vence la visibilidad.\n6. Las colas FIFO no tienen límite de transacciones por segundo porque ofrecen procesamiento exactamente una vez.\n7. En una cola estándar, al mover un mensaje a la DLQ no cambia su marca de tiempo de encolado, así que la retención de la DLQ cuenta desde el envío original."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Valor por defecto de la visibilidad",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página indica 30 segundos por defecto y que puede fijarse un valor para un mensaje concreto sin cambiar el de la cola."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Reinicio del límite de 12 horas",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: el máximo es de 12 horas desde la primera recepción del mensaje y ampliar el tiempo de visibilidad no reinicia ese límite."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Región de la cola de mensajes fallidos",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la cola de mensajes fallidos debe estar en la misma cuenta y Región que la cola de origen."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Significado de maxReceiveCount",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página lo define como el número de veces que un consumidor puede recibir un mensaje antes de que se mueva a la DLQ."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Mensajes en vuelo de un grupo FIFO",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: la página explica que los siguientes mensajes del grupo no se ofrecen hasta que el mensaje en vuelo se borra o vence su visibilidad."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Límite de transacciones de FIFO",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: las colas FIFO tienen un número limitado de transacciones por segundo, que el modo de alto rendimiento permite ampliar."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Retención de la DLQ en una cola estándar",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: en una cola estándar la marca de tiempo de encolado no cambia al mover el mensaje y la caducidad se calcula desde el encolado original."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-6-1-auditoria-01",
+      "title": "Auditar un informe de SQS generado por IA",
+      "order": 9,
+      "statement": "Un asistente de IA redactó este informe sobre el tiempo de visibilidad, FIFO y las colas de mensajes fallidos de SQS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "tiempo de visibilidad",
+        "FIFO",
+        "cola de mensajes fallidos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"
+      ]
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una cola estándar, que ofrece procesamiento exactamente una vez",
+            "explanation": "Descartada: la cola estándar ofrece entrega al menos una vez; el procesamiento exactamente una vez es el de las colas FIFO."
+          },
+          {
+            "id": "b",
+            "text": "Una cola FIFO, con un ID de grupo de mensajes por cliente",
+            "explanation": "Es la correcta: FIFO preserva estrictamente el orden de envío y recepción, no introduce duplicados y admite varios grupos ordenados en una cola."
+          },
+          {
+            "id": "c",
+            "text": "Una cola estándar, con el tiempo de visibilidad fijado en 12 horas",
+            "explanation": "Descartada: el tiempo de visibilidad solo oculta un mensaje recibido a otros consumidores; no ordena ni evita duplicados."
+          },
+          {
+            "id": "d",
+            "text": "Una cola de mensajes fallidos, que reordena los mensajes al entregarlos",
+            "explanation": "Descartada: una cola de mensajes fallidos recibe los mensajes que no se procesaron con éxito para analizarlos; no reordena la entrega."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-1-quiz-01",
+      "title": "Orden y sin duplicados por cliente",
+      "statement": "Una tienda necesita que los mensajes de cada cliente se procesen en el orden en que se enviaron y que no se introduzcan duplicados en la cola. ¿Qué tipo de cola encaja MEJOR?",
+      "concepts": [
+        "cola FIFO",
+        "orden"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Poner el tiempo de visibilidad en 0 segundos para liberar antes cada mensaje",
+            "explanation": "Descartada: con 0 segundos el mensaje queda disponible de inmediato para otros consumidores, lo que agrava el procesamiento duplicado."
+          },
+          {
+            "id": "b",
+            "text": "Subir el período de retención a 14 días para que los mensajes no caduquen",
+            "explanation": "Descartada: la retención fija cuánto se conserva un mensaje en la cola y no oculta un mensaje que ya se recibió."
+          },
+          {
+            "id": "c",
+            "text": "Fijar el maxReceiveCount en 1 para que el mensaje salga de la cola principal",
+            "explanation": "Descartada: con 1, un solo fallo mueve el mensaje a la cola de mensajes fallidos y no corrige que venza el tiempo de visibilidad."
+          },
+          {
+            "id": "d",
+            "text": "Subir el tiempo de visibilidad por encima de 90 segundos, sin pasar de 12 horas",
+            "explanation": "Es la correcta: el valor por defecto es de 30 segundos y debe ajustarse al tiempo que la aplicación necesita para procesar y borrar el mensaje."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-1-quiz-02",
+      "title": "Consumidores más lentos que la visibilidad",
+      "statement": "Los consumidores de una cola SQS tardan unos 90 segundos en procesar cada mensaje, pero la cola conserva el tiempo de visibilidad predeterminado y los mensajes se procesan dos veces. ¿Qué cambio corrige la causa con el MENOR esfuerzo?",
+      "concepts": [
+        "tiempo de visibilidad",
+        "duplicados"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una cola de mensajes fallidos con política de redirección y un maxReceiveCount",
+            "explanation": "Es la correcta: SQS mueve el mensaje a la cola de mensajes fallidos al superar ese número de recepciones, y allí puedes examinarlo."
+          },
+          {
+            "id": "b",
+            "text": "Subir el tiempo de visibilidad a 12 horas para que el mensaje reaparezca tarde",
+            "explanation": "Descartada: un tiempo de visibilidad alto solo retrasa los reintentos; no aísla el mensaje en otra cola."
+          },
+          {
+            "id": "c",
+            "text": "Reducir la retención de la cola a 60 segundos para que el mensaje caduque",
+            "explanation": "Descartada: la retención elimina los mensajes de toda la cola sin aislarlos para analizar por qué falló."
+          },
+          {
+            "id": "d",
+            "text": "Crear una cola FIFO, que procesa cada mensaje exactamente una vez",
+            "explanation": "Descartada: el procesamiento exactamente una vez no aísla los mensajes que fallan; para eso sirve una cola de mensajes fallidos."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-1-quiz-03",
+      "title": "Aislar un mensaje que siempre falla",
+      "statement": "Un mensaje malformado hace fallar al consumidor una y otra vez y vuelve a circular por la cola principal. ¿Qué configuración lo aísla para analizarlo con el MÍNIMO cambio en el consumidor?",
+      "concepts": [
+        "cola de mensajes fallidos",
+        "maxReceiveCount"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "4 días, porque la retención de la DLQ empieza al mover el mensaje",
+            "explanation": "Descartada: en una cola estándar la marca de tiempo de encolado no cambia al mover el mensaje; ese reinicio es el comportamiento de FIFO."
+          },
+          {
+            "id": "b",
+            "text": "1 día, que es lo que pasó en la cola de origen",
+            "explanation": "Descartada: el día en la cola de origen se descuenta de los 4 días de retención de la DLQ; no es lo que permanece."
+          },
+          {
+            "id": "c",
+            "text": "3 días, porque la caducidad se cuenta desde el encolado original",
+            "explanation": "Es la correcta: en una cola estándar la expiración se basa en la marca de tiempo de encolado original, así que quedan 4 menos 1 días."
+          },
+          {
+            "id": "d",
+            "text": "5 días, porque se suman los períodos del origen y de la DLQ",
+            "explanation": "Descartada: los períodos no se suman; la expiración depende de la marca de tiempo de encolado original."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-1-quiz-04",
+      "title": "Retención de un mensaje en la DLQ",
+      "statement": "Un mensaje pasa 1 día en una cola estándar y se mueve a una cola de mensajes fallidos con período de retención de 4 días. ¿Cuánto tiempo MÁS permanece en la cola de mensajes fallidos?",
+      "concepts": [
+        "retención",
+        "cola de mensajes fallidos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Llamar a DeleteMessage, que devuelve el mensaje a la cola",
+            "explanation": "Descartada: DeleteMessage elimina el mensaje de la cola; no lo devuelve para que otro consumidor lo reciba."
+          },
+          {
+            "id": "b",
+            "text": "Llamar a ChangeMessageVisibility con VisibilityTimeout en 0 segundos",
+            "explanation": "Es la correcta: poner el valor en 0 segundos termina la visibilidad y hace que el mensaje esté disponible de inmediato."
+          },
+          {
+            "id": "c",
+            "text": "Esperar a que venza el período de retención de 4 días de la cola",
+            "explanation": "Descartada: la retención elimina los mensajes antiguos; no hace visible un mensaje que ya se recibió."
+          },
+          {
+            "id": "d",
+            "text": "Ampliar a 12 horas el tiempo de visibilidad con ChangeMessageVisibility",
+            "explanation": "Descartada: ampliar el tiempo mantiene el mensaje invisible durante más tiempo en lugar de liberarlo."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-1-quiz-05",
+      "title": "Liberar un mensaje que no se va a procesar",
+      "statement": "Un consumidor recibió un mensaje y decide no procesarlo. ¿Qué acción lo deja disponible de inmediato para otros consumidores con la MENOR espera?",
+      "concepts": [
+        "ChangeMessageVisibility",
+        "mensaje en vuelo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un único ID de grupo de mensajes para todos los pedidos de la cola",
+            "explanation": "Descartada: los mensajes de un mismo grupo se procesan en secuencia estricta, así que un solo grupo hace esperar unos pedidos a otros."
+          },
+          {
+            "id": "b",
+            "text": "Una cola FIFO distinta por pedido, porque cada cola admite un solo grupo",
+            "explanation": "Descartada: una cola FIFO admite varios grupos de mensajes ordenados y no hay cuota para el número de grupos."
+          },
+          {
+            "id": "c",
+            "text": "Una cola FIFO con un máximo de 10 grupos de mensajes",
+            "explanation": "Descartada: la página indica que no hay cuota para el número de grupos de mensajes dentro de una cola FIFO."
+          },
+          {
+            "id": "d",
+            "text": "Una cola FIFO con un ID de grupo de mensajes distinto por cada pedido",
+            "explanation": "Es la correcta: cada grupo conserva su orden estricto y los demás grupos de la misma cola no quedan bloqueados por él."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-1-quiz-06",
+      "title": "Varias secuencias ordenadas a la vez",
+      "statement": "Una cola FIFO debe procesar en orden los mensajes de cada pedido sin que unos pedidos esperen a otros. ¿Qué diseño da el MAYOR paralelismo?",
+      "concepts": [
+        "grupos de mensajes",
+        "FIFO"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "b"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Por defecto, el tiempo de visibilidad de una cola es de 30 segundos",
+            "explanation": "Cumple: la página indica ese valor por defecto, ajustable al tiempo que la aplicación necesita para procesar y borrar el mensaje."
+          },
+          {
+            "id": "b",
+            "text": "Ampliar el tiempo con ChangeMessageVisibility no reinicia el límite de 12 horas",
+            "explanation": "Cumple: el máximo es de 12 horas desde la primera recepción y ampliarlo no reinicia ese límite."
+          },
+          {
+            "id": "c",
+            "text": "Cada ampliación del tiempo reinicia el límite máximo de 12 horas",
+            "explanation": "No cumple: el límite se cuenta desde que el mensaje se recibe por primera vez y las ampliaciones no lo reinician."
+          },
+          {
+            "id": "d",
+            "text": "SQS elimina el mensaje cuando vence su tiempo de visibilidad",
+            "explanation": "No cumple: al vencer sin que se borre, el mensaje vuelve a ser visible y otro consumidor puede recibirlo."
+          },
+          {
+            "id": "e",
+            "text": "El tiempo solo puede fijarse para toda la cola y nunca por mensaje",
+            "explanation": "No cumple: la página indica que puedes fijar un tiempo concreto para mensajes individuales sin cambiar el de la cola."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-1-quiz-07",
+      "title": "Qué es cierto del tiempo de visibilidad",
+      "statement": "Un arquitecto repasa el tiempo de visibilidad de SQS. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "tiempo de visibilidad",
+        "12 horas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "La cola estándar admite la entrega al menos una vez",
+            "explanation": "Cumple: la página de qué es SQS indica que las colas estándar admiten la entrega al menos una vez."
+          },
+          {
+            "id": "b",
+            "text": "La cola FIFO preserva estrictamente el orden de envío y recepción",
+            "explanation": "Cumple: la página de FIFO describe el orden estricto como una de sus dos características principales."
+          },
+          {
+            "id": "c",
+            "text": "La cola FIFO no tiene límite de transacciones por segundo",
+            "explanation": "No cumple: la página indica que FIFO tiene un número limitado de transacciones por segundo."
+          },
+          {
+            "id": "d",
+            "text": "El modo de alto rendimiento permite ampliar el límite de una cola FIFO",
+            "explanation": "Cumple: la página indica que puedes usar el modo de alto rendimiento para aumentar el límite de transacciones."
+          },
+          {
+            "id": "e",
+            "text": "La cola estándar ofrece procesamiento exactamente una vez",
+            "explanation": "No cumple: el procesamiento exactamente una vez es el de las colas FIFO; la estándar entrega al menos una vez."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-1-quiz-08",
+      "title": "Estándar frente a FIFO: qué es cierto",
+      "statement": "Un equipo compara las colas estándar y FIFO de SQS. Selecciona TRES afirmaciones correctas según la guía.",
+      "concepts": [
+        "cola estándar",
+        "cola FIFO"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-6-1-reflexion-01",
+      "title": "Reflexión: qué ajuste de SQS y por qué",
+      "order": 18,
+      "statement": "Elige un sistema que conozcas (por ejemplo, una tienda que procesa pedidos, un servicio de facturación lento o una aplicación donde un mensaje defectuoso bloquea el trabajo) y escribe un registro breve de decisión sobre cómo configurarías su cola en SQS, en 5 a 7 líneas:\n\n1) Decisión: qué ajuste usarías (cola estándar o FIFO, tiempo de visibilidad o cola de mensajes fallidos) y qué dato de la carga lo decide (duplicados, orden, tiempo de procesamiento, mensajes que fallan).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, FIFO cuando bastaba una cola estándar, o subir la retención para evitar duplicados) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (el tiempo de visibilidad frente al tiempo de procesamiento, el maxReceiveCount, la retención de la cola de mensajes fallidos, el límite de transacciones de FIFO).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad o Eficiencia del rendimiento) y por qué.\n\n5) Evidencia: qué página oficial (colas FIFO, tiempo de visibilidad o colas de mensajes fallidos) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, el ajuste y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "SQS",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"
+      ]
+    }
+  ]
+}
