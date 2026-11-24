@@ -1,0 +1,1272 @@
+{
+  "code": "AWS-U2.7.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-7-1-kms-claves-politicas-de-clave-cifrado-envolvente-y-rotacion",
+      "title": "KMS: claves, políticas de clave, cifrado envolvente y rotación",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-kms-que-es",
+          "order": 0,
+          "note": "Fuente previa de KMS: qué es el servicio, por qué usarlo y cómo protege las claves."
+        },
+        {
+          "resourceSlug": "aws-kms-conceptos",
+          "order": 1,
+          "note": "Fuente de los tipos de clave (administrada por el cliente, por AWS y propiedad de AWS) y de la jerarquía de claves y las claves de datos."
+        },
+        {
+          "resourceSlug": "aws-kms-politicas-de-clave",
+          "order": 2,
+          "note": "Fuente de la política de clave: qué es, por qué toda KMS key debe tener una y por qué es regional."
+        },
+        {
+          "resourceSlug": "aws-kms-politica-predeterminada",
+          "order": 3,
+          "note": "Fuente de la política de clave predeterminada y de la sentencia que habilita las políticas IAM."
+        },
+        {
+          "resourceSlug": "aws-kms-rotacion",
+          "order": 4,
+          "note": "Fuente de la rotación automática, bajo demanda y manual, y de lo que la rotación no hace."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 5,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "AWS Key Management Service (AWS KMS) es un servicio administrado que facilita crear y controlar las claves con las que se cifran y firman los datos. Las KMS keys que creas están protegidas por módulos de seguridad de hardware (HSM) validados FIPS 140-3 Nivel de seguridad 3 y nunca salen de AWS KMS sin cifrar: para usarlas o administrarlas, llamas al servicio. En el dominio 1 de SAA-C03, «Diseñar arquitecturas seguras», en la parte de controles de seguridad de los datos, el enunciado dice quién debe controlar la clave, quién debe poder usarla, si hay que auditarla y si debe rotarse, y tú decides tres cosas: qué tipo de clave, qué política de clave y qué rotación. Los datos de abajo son de las páginas oficiales de AWS KMS leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas que esta unidad conecta",
+          "items": [
+            "Clave administrada por el cliente: la creas y administras tú; tienes control total de su política de clave, sus políticas IAM y sus concesiones (grants), de habilitarla o deshabilitarla, rotarla, etiquetarla, crearle alias y programar su eliminación. Tiene una cuota mensual y un cargo por uso; la rotación automática es opcional.",
+            "Clave administrada por AWS: existe en tu cuenta con un alias del tipo aws/servicio (por ejemplo aws/ebs), pero solo se usa en el contexto del servicio y por principales de la misma cuenta; no administras su ciclo de vida ni sus permisos y se rota automáticamente cada año. No puedes compartir con otras cuentas los recursos cifrados con ella.",
+            "Clave propiedad de AWS: la mantiene el servicio en una cuenta suya; es gratuita, no cuenta contra tus cuotas y no puedes cambiar su política, auditar su actividad ni eliminarla. Es buena opción salvo que debas auditar o controlar la clave que protege tus recursos.",
+            "Política de clave: política de recursos de la KMS key y la forma principal de controlar el acceso; toda KMS key debe tener una. Los permisos se conceden de forma explícita: ningún principal, ni el usuario raíz ni quien creó la clave, tiene permisos si no se le permiten en la política de clave, una política IAM o una concesión.",
+            "Claves de datos: AWS KMS puede generar claves de datos protegidas bajo una KMS key y devolverlas en texto plano, cifradas o ambas; la KMS key actúa como clave de cifrado de claves (wrapping key) y las claves de datos cifran tus datos.",
+            "Rotación: automática (por defecto cada año o con un periodo personalizado), bajo demanda y manual; cambia solo el material criptográfico actual y no vuelve a cifrar datos ni rota las claves de datos."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Tres tipos de clave: control frente a comodidad",
+          "text": "La página de conceptos resume la decisión así: usa claves administradas por el cliente cuando el control es importante y claves propiedad de AWS cuando lo más importante es la comodidad. La clave administrada por el cliente es la única en la que la política de clave está controlada exclusivamente por ti, la actividad aparece en tu registro de AWS CloudTrail y tú decides la rotación, el borrado y la Región. La clave administrada por AWS se parece a una clave del cliente acotada: la ves en tu cuenta, pero solo puede usarla el servicio que la creó y solo en nombre de principales de tu cuenta, y por eso los recursos que cifra no se pueden compartir con otras cuentas. La página añade que las claves administradas por AWS son un tipo heredado: desde 2021 no se crean para servicios nuevos, que cifran por defecto con claves propiedad de AWS. La clave propiedad de AWS es la de menor esfuerzo: no la creas ni mantienes, ni ella ni su política, y no tiene ningún cargo; a cambio no puedes cambiar su política ni ver su actividad."
+        },
+        {
+          "type": "paragraph",
+          "title": "La política de clave: nadie tiene permisos por defecto",
+          "text": "Una política de clave es una política de recursos de la KMS key. Cada KMS key debe tener una y cada KMS key tiene una política de clave predeterminada. A diferencia de otras políticas de recursos de AWS, una política de clave no concede automáticamente permiso a la cuenta ni a ninguna de sus identidades: hay que darlo con una sentencia explícita. La sentencia clave es la que da acceso al principal de cuenta, que se escribe arn:aws:iam::id-de-cuenta:root, con la acción kms:* y el recurso *. Esa sentencia no da permiso a ningún principal IAM concreto; permite que la cuenta use políticas IAM para delegar el acceso a la KMS key. Sin ella, las políticas IAM que permiten acceso a la clave no tienen efecto (las políticas IAM que deniegan siguen siendo efectivas). Además reduce el riesgo de que la clave quede inmanejable: si una política concede acceso solo a un usuario y ese usuario se elimina, la clave queda inmanejable y hay que contactar con AWS Support para recuperar el acceso. Las políticas de clave son regionales, a diferencia de las políticas IAM, que son globales: una política de clave solo controla las KMS keys de su misma Región. Cuando creas una clave con la consola, la política empieza con la sentencia de la cuenta y añade sentencias para administradores de la clave, usuarios de la clave y, en la mayoría de los tipos, para usar la clave con otros servicios de AWS; cuando la creas por API sin indicar una política, AWS KMS aplica una política predeterminada muy simple con solo la sentencia de la cuenta. Al crear o cambiar una política, AWS KMS ejecuta una comprobación de seguridad que rechaza una política que impediría a quien hace la petición volver a llamar a PutKeyPolicy."
+        },
+        {
+          "type": "paragraph",
+          "title": "Claves de datos y jerarquía de claves (cifrado envolvente)",
+          "text": "Las KMS keys se usan sobre todo como claves de envoltura, también llamadas claves de cifrado de claves: en lugar de cifrar los datos, cifran las claves de datos que cifran tus datos. Por eso se usan mucho menos que las claves de datos y casi nunca se reutilizan lo bastante como para agotarse. Puedes pedir a AWS KMS que genere claves de datos protegidas bajo una KMS key; se devuelven en texto plano, cifradas o ambas, y todo lo cifrado bajo una KMS key solo se puede descifrar en un HSM mediante una llamada a AWS KMS. El texto cifrado o la carga útil descifrada nunca se almacenan en AWS KMS: se te devuelven por tu conexión TLS. Las páginas describen esta jerarquía sin usar el nombre «cifrado envolvente», que es el nombre habitual de este patrón (clave de cifrado de claves que protege claves de datos). Una buena práctica criptográfica que recoge la página de rotación: usa cada clave de datos una vez o pocas veces, porque cifrar millones de mensajes con una misma clave de 256 bits puede agotarla."
+        },
+        {
+          "type": "paragraph",
+          "title": "Rotación: automática, bajo demanda o manual",
+          "text": "Para obtener material criptográfico nuevo de una clave administrada por el cliente puedes activar la rotación automática, hacer una rotación bajo demanda o crear una KMS key nueva y cambiar las aplicaciones o los alias. Por defecto, la rotación automática genera material nuevo cada año y también puedes definir un periodo de rotación personalizado, en días. La rotación bajo demanda se inicia al instante, con o sin rotación automática activa, y no cambia el calendario automático. La rotación automática solo es compatible con claves simétricas de cifrado con material generado por AWS KMS (origen AWS_KMS); la rotación bajo demanda admite además las simétricas con material importado (origen EXTERNAL); las claves asimétricas, las claves HMAC y las claves en almacenes de claves personalizados solo se pueden rotar manualmente. AWS KMS siempre rota cada año el material de las claves administradas por AWS; la rotación de las claves propiedad de AWS la gestiona el servicio propietario. La rotación cambia solo el material criptográfico actual: al descifrar, AWS KMS usa el material con el que se cifró, así que puedes usar una clave rotada sin cambiar el código, y la KMS key sigue siendo el mismo recurso lógico. AWS KMS conserva todo el material de una clave con origen AWS_KMS, aunque desactives la rotación, y solo lo elimina cuando eliminas la KMS key. Un límite importante: la rotación no rota las claves de datos que generó la KMS key ni vuelve a cifrar los datos que protege, y no mitiga el efecto de una clave de datos comprometida."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Debe controlar quién usa la clave de un bucket, auditar su actividad y exigir su rotación anual. (2) Cifra volúmenes de EBS y no necesita ni controlar la clave ni compartir los volúmenes con otras cuentas. (3) Debe compartir con otra cuenta datos cifrados con una clave. (4) Una clave asimétrica debe rotarse por normativa. Paso 1: para (1), la clave es «control, auditoría y rotación», así que va una clave administrada por el cliente con la rotación automática activada. Paso 2: para (2), la clave es «sin control ni compartir», así que sirve la clave administrada por AWS del servicio (aws/ebs), que se rota sola cada año. Paso 3: para (3), la clave administrada por AWS no sirve, porque los recursos cifrados con ella no se pueden compartir con otras cuentas: va una clave administrada por el cliente, cuya política de clave controlas tú. Paso 4: para (4), la rotación automática y la bajo demanda no admiten claves asimétricas, así que se rota manualmente: se crea una KMS key nueva y se cambian las aplicaciones o los alias. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una clave con su política de clave y su rotación, como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const clave = {\n  tipo: \"administrada-por-el-cliente\",\n  simetrica: true,\n  rotacionAutomatica: { activada: true, periodoEnDias: 365 },\n  politicaDeClave: [\n    { quien: \"arn:aws:iam::111122223333:root\", acciones: [\"kms:*\"], para: \"habilitar las politicas IAM\" },\n    { quien: \"rol-administrador\", acciones: [\"administrar\"], para: \"administrar la clave\" },\n    { quien: \"rol-aplicacion\", acciones: [\"cifrar\", \"descifrar\"], para: \"usar la clave\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del dato del enunciado al tipo de clave, la política y la rotación",
+          "code": "flowchart TB\n  N{\"Qué exige el enunciado\"} -->|\"Sin crear ni mantener la clave, sin cargos\"| O[\"Clave propiedad de AWS\"]\n  N -->|\"Cifrar con un servicio sin gestionar la clave\"| A[\"Clave administrada por AWS\"]\n  N -->|\"Controlar la política, auditar y decidir la rotación\"| C[\"Clave administrada por el cliente\"]\n  C --> P[\"Política de clave: cuenta, administradores y usuarios\"]\n  C --> R{\"Qué tipo de clave es\"}\n  R -->|\"Simétrica con material de AWS KMS\"| U[\"Rotación automática o bajo demanda\"]\n  R -->|\"Asimétrica, HMAC o almacén personalizado\"| M[\"Rotación manual: clave nueva y alias\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: dar por hecho que basta una política IAM o que la rotación vuelve a cifrar los datos",
+          "text": "El enunciado mezcla señales: «el rol tiene una política IAM que lo permite pero recibe acceso denegado», «la política de clave solo da acceso a un usuario», «se exige rotar la clave», «hay que compartir con otra cuenta», «la clave es asimétrica». Una política IAM que permite no basta si la política de clave no habilita las políticas IAM; la rotación cambia el material criptográfico actual, pero no rota las claves de datos ni vuelve a cifrar los datos; y la clave administrada por AWS no permite compartir los recursos cifrados con otras cuentas. Subraya quién controla la clave, qué tipo de clave es y qué política la gobierna antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: escribir la política de clave sin la sentencia del principal de cuenta",
+          "text": "Causa: tratar una KMS key como otros recursos, donde la cuenta tiene acceso por defecto, y conceder acceso solo a un rol o usuario. Consecuencia: las políticas IAM que permiten acceso a la clave no tienen efecto, y si ese rol o usuario se elimina, la clave queda inmanejable y hay que contactar con AWS Support. Solución: incluye la sentencia del principal de cuenta (arn:aws:iam::id-de-cuenta:root, con kms:*) como hace la política predeterminada, y concede el uso con sentencias de administradores y de usuarios de la clave."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: creer que la rotación vuelve a cifrar los datos o rota las claves de datos",
+          "text": "Causa: leer «rotar la clave» y suponer que se renueva todo lo que la clave protege. Consecuencia: la rotación cambia solo el material actual de la KMS key; no rota las claves de datos que generó, no vuelve a cifrar los datos protegidos y no mitiga el efecto de una clave de datos comprometida, así que un equipo que confía en ella para esa amenaza queda expuesto. Solución: usa la rotación para cumplir requisitos de rotación de la KMS key, de forma transparente para las aplicaciones, y trata el compromiso de una clave de datos como una tarea propia de la aplicación (claves de datos nuevas y re-cifrado), no de la rotación."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: elegir una clave administrada por AWS cuando se exige control o compartir entre cuentas",
+          "text": "Causa: ver «cifrado por defecto y sin cargo mensual» y escoger la clave administrada por AWS sin comprobar qué controles pide el enunciado. Consecuencia: no puedes administrar su ciclo de vida ni sus permisos, su rotación es anual y no la decides tú, y los recursos que cifra no se pueden compartir con otras cuentas. Solución: cuando el enunciado exija controlar la política, decidir la rotación, auditar su uso o compartir con otras cuentas, elige una clave administrada por el cliente; reserva las claves de AWS para cuando la comodidad sea lo más importante."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir el tipo de clave de AWS KMS (administrada por el cliente, administrada por AWS o propiedad de AWS), escribir una política de clave que habilite las políticas IAM y separe administradores de usuarios, explicar el papel de la KMS key como clave de cifrado de claves frente a las claves de datos, y elegir el tipo de rotación (automática, bajo demanda o manual) que admite cada tipo de clave. Esta unidad prepara el examen SAA-C03, dominio 1 «Diseñar arquitecturas seguras», en la parte de controles de seguridad de los datos. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el tipo de clave, la política y la rotación, el dato del enunciado que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra el tipo de clave o el tipo de rotación y el dato que lo decide. Explica con tus palabras el diagrama «Del dato del enunciado al tipo de clave, la política y la rotación». Después responde: si una política IAM permite kms:Decrypt a un rol y el rol recibe acceso denegado, ¿qué compruebas primero en la política de clave y por qué?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el laboratorio «Plantilla de una clave KMS con política de clave, rotación y alias»: la plantilla inicial tiene varios defectos y mezcla administración y uso en una sola sentencia. Empieza por llamar a aws.cfn.validateTemplate y lee los problemas que devuelve; usa aws.cfn.dependencyOrder para ver el orden de creación. Usa las pistas por niveles solo si te atascas. Criterio de paso: la plantilla es válida, el alias apunta con Ref a la clave, la rotación está activada y la política separa a los administradores de los usuarios sin quitar la sentencia de la cuenta."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Clave de los informes con rotación personalizada y acceso restringido». Decide qué tipo de clave admite la rotación automática, qué periodo de rotación pide el enunciado y a quién debe dar acceso la política. Criterio de paso: todas las comprobaciones pasan y justificas por escrito cada propiedad que has cambiado con las páginas de rotación y de políticas de clave."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Pide a un asistente una política de clave que solo permita a un rol de aplicación cifrar y descifrar, y audita su respuesta contra la página de la política de clave predeterminada (consultada con fecha) antes de aceptarla: anota si incluye la sentencia del principal de cuenta y qué ocurre sin ella. Resuelve también «Depurar la clave cuya política no habilita las políticas IAM» y escribe la corrección y su evidencia."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: en qué se diferencian los tres tipos de clave; qué hace la sentencia del principal de cuenta y qué pasa sin ella; qué papel tiene la KMS key frente a las claves de datos; y qué tipos de rotación existen, qué claves admiten cada uno y qué no hace la rotación. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la restricción y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas, sin consultar la lección."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una tienda cifra los pedidos con una clave que debe poder auditar y rotar cada año, cifra los volúmenes de sus servidores con la clave que ofrece el servicio y debe compartir un conjunto de datos cifrados con una cuenta de un socio. Decide el tipo de clave de cada parte, qué debe incluir la política de la clave de los pedidos y qué rotación aplica. Pregunta de cierre: un compañero dice «rotamos la clave, así que los datos antiguos ya están cifrados con material nuevo»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio administrado para crear y controlar las claves que cifran y firman datos. Las KMS keys están protegidas por HSM validados FIPS 140-3 Nivel 3 y nunca salen de AWS KMS sin cifrar: para usarlas o administrarlas llamas al servicio. Las políticas de clave aseguran que solo los principales de confianza accedan a ellas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-1-tarjeta-01",
+      "title": "Tarjeta: qué es AWS KMS",
+      "statement": "¿Qué es AWS KMS y cómo protege las claves?",
+      "concepts": [
+        "AWS KMS",
+        "KMS key",
+        "HSM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/overview.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Administrada por el cliente: control total de política, rotación, alias y borrado; cuota mensual y cargo por uso. Administrada por AWS: alias aws/servicio, la usa solo el servicio, rotación anual obligatoria, sin cuota mensual. Propiedad de AWS: en la cuenta del servicio, gratuita; no ves ni cambias su política ni auditas su uso."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-1-tarjeta-02",
+      "title": "Tarjeta: los tres tipos de clave",
+      "statement": "¿Qué tres tipos de clave hay en AWS KMS y qué controlas en cada uno?",
+      "concepts": [
+        "clave administrada por el cliente",
+        "clave administrada por AWS",
+        "clave propiedad de AWS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es la política de recursos de la KMS key y la forma principal de controlar el acceso; toda KMS key debe tener una. Ningún principal, ni el usuario raíz ni quien creó la clave, tiene permisos si no se le permiten de forma explícita. Sin permiso de la política de clave, las políticas IAM que permiten no tienen efecto. Es regional."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-1-tarjeta-03",
+      "title": "Tarjeta: la política de clave",
+      "statement": "¿Qué es la política de clave y qué permisos tiene por defecto cada principal?",
+      "concepts": [
+        "política de clave",
+        "permisos explícitos",
+        "regional"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Principal arn:aws:iam::cuenta:root, acción kms:*, recurso *. No da permiso a ningún principal IAM concreto: permite que la cuenta use políticas IAM para delegar el acceso. Sin ella, las políticas IAM que permiten no tienen efecto y, si la política da acceso a un solo usuario que se elimina, la clave queda inmanejable."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-1-tarjeta-04",
+      "title": "Tarjeta: la sentencia del principal de cuenta",
+      "statement": "¿Qué hace la sentencia del principal de cuenta en la política de clave y qué pasa sin ella?",
+      "concepts": [
+        "principal de cuenta",
+        "políticas IAM",
+        "clave inmanejable"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La KMS key es una clave de envoltura (de cifrado de claves): cifra las claves de datos, que son las que cifran tus datos. AWS KMS genera claves de datos y las devuelve en texto plano, cifradas o ambas; lo cifrado bajo una KMS key solo se descifra en un HSM vía AWS KMS. Usa cada clave de datos una vez o pocas veces."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-1-tarjeta-05",
+      "title": "Tarjeta: claves de datos y KMS key",
+      "statement": "¿Qué papel tiene la KMS key frente a las claves de datos?",
+      "concepts": [
+        "clave de datos",
+        "clave de cifrado de claves",
+        "cifrado envolvente"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Automática (anual o con periodo personalizado) solo en claves simétricas con material AWS_KMS; bajo demanda, además con material EXTERNAL; manual (clave nueva y alias) para asimétricas, HMAC y almacenes personalizados. No rota las claves de datos ni vuelve a cifrar los datos, ni mitiga una clave de datos comprometida."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-1-tarjeta-06",
+      "title": "Tarjeta: tipos de rotación",
+      "statement": "¿Qué tipos de rotación hay y qué no hace la rotación?",
+      "concepts": [
+        "rotación automática",
+        "rotación manual",
+        "claves de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Clave de los datos de la tienda: solo el rol de la aplicación puede usarla. Localiza y corrige el defecto de su política.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Clave KMS con rotación automática y un alias\",\n  Parameters: {\n    RolAplicacion: { Type: \"String\" },\n  },\n  Resources: {\n    ClaveDatos: {\n      Type: \"AWS::KMS::Key\",\n      Properties: {\n        Description: \"Clave de los datos de la tienda\",\n        EnableKeyRotation: true,\n        KeyPolicy: {\n          Version: \"2012-10-17\",\n          Statement: [\n            {\n              Sid: \"UsuariosDeLaClave\",\n              Effect: \"Allow\",\n              Principal: { AWS: { Ref: \"RolAplicacion\" } },\n              Action: [\"kms:Encrypt\", \"kms:Decrypt\", \"kms:GenerateDataKey*\", \"kms:DescribeKey\"],\n              Resource: \"*\",\n            },\n          ],\n        },\n      },\n    },\n    AliasDatos: {\n      Type: \"AWS::KMS::Alias\",\n      Properties: { AliasName: \"alias/datos-tienda\", TargetKeyId: { Ref: \"ClaveDatos\" } },\n    },\n  },\n};\n",
+      "solution": {
+        "code": "// Clave de los datos de la tienda: solo el rol de la aplicación puede usarla. Localiza y corrige el defecto de su política.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Clave KMS con rotación automática y un alias\",\n  Parameters: {\n    RolAplicacion: { Type: \"String\" },\n  },\n  Resources: {\n    ClaveDatos: {\n      Type: \"AWS::KMS::Key\",\n      Properties: {\n        Description: \"Clave de los datos de la tienda\",\n        EnableKeyRotation: true,\n        KeyPolicy: {\n          Version: \"2012-10-17\",\n          Statement: [\n            {\n              Sid: \"HabilitarPoliticasIAM\",\n              Effect: \"Allow\",\n              Principal: { AWS: { \"Fn::Join\": [\"\", [\"arn:aws:iam::\", { Ref: \"AWS::AccountId\" }, \":root\"]] } },\n              Action: \"kms:*\",\n              Resource: \"*\",\n            },\n            {\n              Sid: \"UsuariosDeLaClave\",\n              Effect: \"Allow\",\n              Principal: { AWS: { Ref: \"RolAplicacion\" } },\n              Action: [\"kms:Encrypt\", \"kms:Decrypt\", \"kms:GenerateDataKey*\", \"kms:DescribeKey\"],\n              Resource: \"*\",\n            },\n          ],\n        },\n      },\n    },\n    AliasDatos: {\n      Type: \"AWS::KMS::Alias\",\n      Properties: { AliasName: \"alias/datos-tienda\", TargetKeyId: { Ref: \"ClaveDatos\" } },\n    },\n  },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.cfn.validateTemplate(template): no encuentra problemas, así que el defecto no es de forma. Mira quién aparece como principal en la política de clave y qué dice la página de la política predeterminada sobre la cuenta."
+        },
+        {
+          "level": 2,
+          "text": "En una política de clave nadie tiene permisos si no se le conceden de forma explícita, tampoco la cuenta. Falta la sentencia que permite a la cuenta usar políticas IAM sobre la clave."
+        },
+        {
+          "level": 3,
+          "text": "Añade una sentencia con efecto Allow, como principal el ARN raíz de la cuenta (arn:aws:iam::<cuenta>:root, construido con Fn::Join y Ref a AWS::AccountId), acción \"kms:*\" y recurso \"*\". No cambies la sentencia del rol de la aplicación."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "la política incluye la sentencia que da acceso al principal de cuenta y habilita las políticas IAM",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const sentencias = template.Resources.ClaveDatos.Properties.KeyPolicy.Statement;\nconst texto = (sentencia) => JSON.stringify(sentencia.Principal);\nconst lista = (valor) => (Array.isArray(valor) ? valor : [valor]);\nconst cuenta = sentencias.find((sentencia) => texto(sentencia).includes(\"AWS::AccountId\") && texto(sentencia).includes(\":root\"));\nassert.ok(cuenta, \"Falta la sentencia del principal de cuenta (arn:aws:iam::<cuenta>:root)\");\nassert.strictEqual(cuenta.Effect, \"Allow\");\nassert.deepStrictEqual(lista(cuenta.Action), [\"kms:*\"]);"
+          }
+        },
+        {
+          "name": "la sentencia del rol de la aplicación sigue igual",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sentencias = template.Resources.ClaveDatos.Properties.KeyPolicy.Statement;\nconst texto = (sentencia) => JSON.stringify(sentencia.Principal);\nconst lista = (valor) => (Array.isArray(valor) ? valor : [valor]);\nconst usuarios = sentencias.find((sentencia) => texto(sentencia).includes(\"RolAplicacion\"));\nassert.ok(usuarios, \"Falta la sentencia del rol de la aplicación\");\nassert.strictEqual(usuarios.Effect, \"Allow\");\nassert.deepStrictEqual(lista(usuarios.Action), [\"kms:Encrypt\", \"kms:Decrypt\", \"kms:GenerateDataKey*\", \"kms:DescribeKey\"]);"
+          }
+        },
+        {
+          "name": "la rotación, el alias y el orden de creación no se han tocado",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const propiedades = template.Resources.ClaveDatos.Properties;\nassert.strictEqual(propiedades.EnableKeyRotation, true);\nassert.deepStrictEqual(template.Resources.AliasDatos.Properties.TargetKeyId, { Ref: \"ClaveDatos\" });\nconst orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla no tiene un orden de creación\");\nassert.ok(orden.indexOf(\"ClaveDatos\") < orden.indexOf(\"AliasDatos\"), \"La clave debe crearse antes que el alias\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 25,
+      "type": "DEBUG",
+      "slug": "aws-u2-7-1-debug-01",
+      "title": "Depurar la clave cuya política no habilita las políticas IAM",
+      "statement": "La plantilla `template` (`export const template = {...}`) crea la clave de datos de una tienda con rotación automática y un alias. Pasa el validador del arnés y la política de clave deja usar la clave al rol de la aplicación, pero el equipo de identidades no consigue concederle acceso a nadie más con políticas IAM, y si el rol de la aplicación se eliminara la clave quedaría inmanejable. Localiza el defecto contrastando la política con la política de clave predeterminada y corrígelo con el cambio mínimo: sin tocar la sentencia del rol de la aplicación, la rotación, el alias ni la forma del valor exportado. Explica por qué fallaba y cómo lo comprobaste.",
+      "concepts": [
+        "política de clave",
+        "principal de cuenta",
+        "clave inmanejable"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Clave de datos de la tienda: política de clave, rotación automática y un alias.\nexport const template = {\n  AWSTemplateFormatVersion: \"2012-10-17\",\n  Description: \"Clave KMS para los datos de la tienda, con administradores y usuarios separados\",\n  Parameters: {\n    RolAdministrador: { Type: \"String\" },\n    RolAplicacion: { Type: \"String\" },\n  },\n  Resources: {\n    ClaveDatos: {\n      Type: \"AWS::KMS::Key\",\n      Properties: {\n        Description: \"Clave de los datos de la tienda\",\n        EnableKeyRotation: false,\n        KeyPolicy: {\n          Version: \"2012-10-17\",\n          Statement: [\n            {\n              Sid: \"HabilitarPoliticasIAM\",\n              Effect: \"Allow\",\n              Principal: { AWS: { \"Fn::Join\": [\"\", [\"arn:aws:iam::\", { Ref: \"AWS::AccountId\" }, \":root\"]] } },\n              Action: \"kms:*\",\n              Resource: \"*\",\n            },\n            {\n              Sid: \"TodoParaLaAplicacion\",\n              Effect: \"Allow\",\n              Principal: { AWS: { Ref: \"RolAplicacion\" } },\n              Action: \"kms:*\",\n              Resource: \"*\",\n            },\n          ],\n        },\n      },\n    },\n    AliasDatos: {\n      Type: \"AWS::KMS::Alias\",\n      Properties: { AliasName: \"alias/datos-tienda\", TargetKeyId: { Ref: \"ClaveDato\" } },\n    },\n  },\n  Outputs: { ArnClave: { Value: { \"Fn::GetAtt\": [\"ClaveDatos\", \"Arn\"] } } },\n};\n",
+      "solution": {
+        "code": "// Clave de datos de la tienda: política de clave, rotación automática y un alias.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Clave KMS para los datos de la tienda, con administradores y usuarios separados\",\n  Parameters: {\n    RolAdministrador: { Type: \"String\" },\n    RolAplicacion: { Type: \"String\" },\n  },\n  Resources: {\n    ClaveDatos: {\n      Type: \"AWS::KMS::Key\",\n      Properties: {\n        Description: \"Clave de los datos de la tienda\",\n        EnableKeyRotation: true,\n        KeyPolicy: {\n          Version: \"2012-10-17\",\n          Statement: [\n            {\n              Sid: \"HabilitarPoliticasIAM\",\n              Effect: \"Allow\",\n              Principal: { AWS: { \"Fn::Join\": [\"\", [\"arn:aws:iam::\", { Ref: \"AWS::AccountId\" }, \":root\"]] } },\n              Action: \"kms:*\",\n              Resource: \"*\",\n            },\n            {\n              Sid: \"AdministradoresDeLaClave\",\n              Effect: \"Allow\",\n              Principal: { AWS: { Ref: \"RolAdministrador\" } },\n              Action: [\"kms:Create*\", \"kms:Describe*\", \"kms:Enable*\", \"kms:List*\", \"kms:Put*\", \"kms:Update*\", \"kms:Revoke*\", \"kms:Disable*\", \"kms:Get*\", \"kms:ScheduleKeyDeletion\", \"kms:CancelKeyDeletion\"],\n              Resource: \"*\",\n            },\n            {\n              Sid: \"UsuariosDeLaClave\",\n              Effect: \"Allow\",\n              Principal: { AWS: { Ref: \"RolAplicacion\" } },\n              Action: [\"kms:Encrypt\", \"kms:Decrypt\", \"kms:ReEncrypt*\", \"kms:GenerateDataKey*\", \"kms:DescribeKey\"],\n              Resource: \"*\",\n            },\n          ],\n        },\n      },\n    },\n    AliasDatos: {\n      Type: \"AWS::KMS::Alias\",\n      Properties: { AliasName: \"alias/datos-tienda\", TargetKeyId: { Ref: \"ClaveDatos\" } },\n    },\n  },\n  Outputs: { ArnClave: { Value: { \"Fn::GetAtt\": [\"ClaveDatos\", \"Arn\"] } } },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "Llama a aws.cfn.validateTemplate(template) y lee path y message de cada problema: te dice dónde está el defecto de forma. Mira también la versión de formato, el nombre que usa cada Ref y la sentencia que da todos los permisos al rol de la aplicación."
+        },
+        {
+          "level": 2,
+          "text": "Hay cuatro defectos: la versión de formato no es la única válida, el Ref del alias apunta a un nombre lógico que no existe, la rotación automática está desactivada y una sola sentencia da kms:* al rol de la aplicación, mezclando administración y uso."
+        },
+        {
+          "level": 3,
+          "text": "Pon AWSTemplateFormatVersion en \"2010-09-09\", cambia el Ref del alias a \"ClaveDatos\" y EnableKeyRotation a true. Sustituye la sentencia TodoParaLaAplicacion por dos: una con el rol RolAdministrador y acciones de administración, y otra con el rol RolAplicacion y solo kms:Encrypt, kms:Decrypt, kms:ReEncrypt*, kms:GenerateDataKey* y kms:DescribeKey."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "la plantilla declara una clave y un alias y se puede ordenar",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const tipos = Object.values(template.Resources).map((recurso) => recurso.Type);\nassert.ok(tipos.includes(\"AWS::KMS::Key\"), \"Falta un recurso AWS::KMS::Key\");\nassert.ok(tipos.includes(\"AWS::KMS::Alias\"), \"Falta un recurso AWS::KMS::Alias\");\nassert.ok(aws.cfn.dependencyOrder(template) !== null, \"La plantilla tiene una dependencia circular\");"
+          }
+        },
+        {
+          "name": "el alias referencia con Ref la clave",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.deepStrictEqual(template.Resources.AliasDatos.Properties.TargetKeyId, { Ref: \"ClaveDatos\" });"
+          }
+        },
+        {
+          "name": "la clave se crea antes que el alias",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla no tiene un orden de creación\");\nassert.ok(orden.indexOf(\"ClaveDatos\") < orden.indexOf(\"AliasDatos\"), \"ClaveDatos debe crearse antes que AliasDatos\");"
+          }
+        },
+        {
+          "name": "la rotación automática está activada",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(template.Resources.ClaveDatos.Properties.EnableKeyRotation, true);"
+          }
+        },
+        {
+          "name": "la política conserva la sentencia del principal de cuenta",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sentencias = template.Resources.ClaveDatos.Properties.KeyPolicy.Statement;\nconst texto = (sentencia) => JSON.stringify(sentencia.Principal);\nconst lista = (valor) => (Array.isArray(valor) ? valor : [valor]);\nconst cuenta = sentencias.find((sentencia) => texto(sentencia).includes(\"AWS::AccountId\") && texto(sentencia).includes(\":root\"));\nassert.ok(cuenta, \"Falta la sentencia del principal de cuenta (arn:aws:iam::<cuenta>:root)\");\nassert.strictEqual(cuenta.Effect, \"Allow\");\nassert.deepStrictEqual(lista(cuenta.Action), [\"kms:*\"]);"
+          }
+        },
+        {
+          "name": "los administradores solo administran y los usuarios solo usan la clave",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sentencias = template.Resources.ClaveDatos.Properties.KeyPolicy.Statement;\nconst texto = (sentencia) => JSON.stringify(sentencia.Principal);\nconst lista = (valor) => (Array.isArray(valor) ? valor : [valor]);\nconst admin = sentencias.find((sentencia) => texto(sentencia).includes(\"RolAdministrador\"));\nconst usuario = sentencias.find((sentencia) => texto(sentencia).includes(\"RolAplicacion\"));\nassert.ok(admin, \"Falta la sentencia de los administradores de la clave\");\nassert.ok(usuario, \"Falta la sentencia de los usuarios de la clave\");\nconst accionesAdmin = lista(admin.Action);\nconst accionesUsuario = lista(usuario.Action);\nassert.strictEqual(admin.Effect, \"Allow\");\nassert.strictEqual(usuario.Effect, \"Allow\");\nfor (const accion of [\"kms:*\", \"kms:Encrypt\", \"kms:Decrypt\", \"kms:GenerateDataKey*\", \"kms:ReEncrypt*\"]) {\n  assert.ok(!accionesAdmin.includes(accion), \"Los administradores no deben poder usar la clave: \" + accion);\n}\nfor (const accion of [\"kms:Encrypt\", \"kms:Decrypt\", \"kms:GenerateDataKey*\"]) {\n  assert.ok(accionesUsuario.includes(accion), \"Los usuarios deben poder usar la clave: \" + accion);\n}\nfor (const accion of [\"kms:*\", \"kms:Put*\", \"kms:Create*\", \"kms:Enable*\", \"kms:Disable*\", \"kms:ScheduleKeyDeletion\"]) {\n  assert.ok(!accionesUsuario.includes(accion), \"Los usuarios no deben poder administrar la clave: \" + accion);\n}"
+          }
+        },
+        {
+          "name": "la plantilla conserva la versión de formato, los parámetros y el nombre del alias",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(template.AWSTemplateFormatVersion, \"2010-09-09\");\nassert.deepStrictEqual(Object.keys(template.Parameters).sort(), [\"RolAdministrador\", \"RolAplicacion\"]);\nassert.strictEqual(template.Resources.AliasDatos.Properties.AliasName, \"alias/datos-tienda\");\nassert.strictEqual(template.Resources.ClaveDatos.Properties.KeyPolicy.Version, \"2012-10-17\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 35,
+      "type": "LAB",
+      "slug": "aws-u2-7-1-lab-guiado-01",
+      "title": "Plantilla de una clave KMS con política de clave, rotación y alias",
+      "statement": "Escribe la plantilla `template` de la clave de datos de una tienda. Versión de formato 2010-09-09 y dos parámetros: RolAdministrador y RolAplicacion (String). Dos recursos: ClaveDatos (AWS::KMS::Key) con la rotación automática activada y una política de clave con tres sentencias —la del principal de cuenta, una para los administradores de la clave (el rol RolAdministrador, solo acciones de administración) y otra para los usuarios de la clave (el rol RolAplicacion, solo acciones criptográficas)—; y AliasDatos (AWS::KMS::Alias) que apunta con Ref a ClaveDatos. Criterios: (1) la plantilla es válida con `aws.cfn.validateTemplate`; (2) el orden de `aws.cfn.dependencyOrder` crea la clave antes que el alias; (3) la rotación está activada; (4) la política conserva la sentencia de la cuenta y separa la administración del uso: los administradores no pueden cifrar ni descifrar y los usuarios no pueden administrar ni programar la eliminación de la clave. El código inicial exporta la plantilla con varios defectos: corrígelos y complétala sin cambiar el nombre del valor exportado (`export const template = { … }`). Recuerda: la forma de la plantilla y los nombres de propiedad son una convención de CloudFormation y del arnés; la separación entre administradores y usuarios es una decisión de diseño del enunciado; los conceptos de KMS salen de la guía.",
+      "concepts": [
+        "política de clave",
+        "rotación automática",
+        "administradores y usuarios de la clave",
+        "alias"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Clave de los informes: simétrica, rotación automática personalizada y acceso solo del rol de informes.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Clave KMS de los informes con rotación automática cada 180 días\",\n  Parameters: {\n    RolAdministrador: { Type: \"String\" },\n    RolInformes: { Type: \"String\" },\n  },\n  Resources: {\n    ClaveInformes: {\n      Type: \"AWS::KMS::Key\",\n      Properties: {\n        Description: \"Clave de los informes\",\n        KeySpec: \"RSA_2048\",\n        KeyUsage: \"ENCRYPT_DECRYPT\",\n        EnableKeyRotation: true,\n        KeyPolicy: {\n          Version: \"2012-10-17\",\n          Statement: [\n            {\n              Sid: \"HabilitarPoliticasIAM\",\n              Effect: \"Allow\",\n              Principal: { AWS: { \"Fn::Join\": [\"\", [\"arn:aws:iam::\", { Ref: \"AWS::AccountId\" }, \":root\"]] } },\n              Action: \"kms:*\",\n              Resource: \"*\",\n            },\n            {\n              Sid: \"AdministradoresDeLaClave\",\n              Effect: \"Allow\",\n              Principal: { AWS: { Ref: \"RolAdministrador\" } },\n              Action: [\"kms:Create*\", \"kms:Describe*\", \"kms:Enable*\", \"kms:List*\", \"kms:Put*\", \"kms:Update*\", \"kms:Revoke*\", \"kms:Disable*\", \"kms:Get*\", \"kms:ScheduleKeyDeletion\", \"kms:CancelKeyDeletion\"],\n              Resource: \"*\",\n            },\n            {\n              Sid: \"UsuariosDeLaClave\",\n              Effect: \"Allow\",\n              Principal: \"*\",\n              Action: \"kms:*\",\n              Resource: \"*\",\n            },\n          ],\n        },\n      },\n    },\n    AliasInformes: {\n      Type: \"AWS::KMS::Alias\",\n      Properties: { AliasName: \"alias/informes\", TargetKeyId: { Ref: \"ClaveInformes\" } },\n    },\n  },\n  Outputs: { ArnClaveInformes: { Value: { \"Fn::GetAtt\": [\"ClaveInforme\", \"Arn\"] } } },\n};\n",
+      "solution": {
+        "code": "// Clave de los informes: simétrica, rotación automática personalizada y acceso solo del rol de informes.\nexport const template = {\n  AWSTemplateFormatVersion: \"2010-09-09\",\n  Description: \"Clave KMS de los informes con rotación automática cada 180 días\",\n  Parameters: {\n    RolAdministrador: { Type: \"String\" },\n    RolInformes: { Type: \"String\" },\n  },\n  Resources: {\n    ClaveInformes: {\n      Type: \"AWS::KMS::Key\",\n      Properties: {\n        Description: \"Clave de los informes\",\n        KeySpec: \"SYMMETRIC_DEFAULT\",\n        KeyUsage: \"ENCRYPT_DECRYPT\",\n        EnableKeyRotation: true,\n        RotationPeriodInDays: 180,\n        KeyPolicy: {\n          Version: \"2012-10-17\",\n          Statement: [\n            {\n              Sid: \"HabilitarPoliticasIAM\",\n              Effect: \"Allow\",\n              Principal: { AWS: { \"Fn::Join\": [\"\", [\"arn:aws:iam::\", { Ref: \"AWS::AccountId\" }, \":root\"]] } },\n              Action: \"kms:*\",\n              Resource: \"*\",\n            },\n            {\n              Sid: \"AdministradoresDeLaClave\",\n              Effect: \"Allow\",\n              Principal: { AWS: { Ref: \"RolAdministrador\" } },\n              Action: [\"kms:Create*\", \"kms:Describe*\", \"kms:Enable*\", \"kms:List*\", \"kms:Put*\", \"kms:Update*\", \"kms:Revoke*\", \"kms:Disable*\", \"kms:Get*\", \"kms:ScheduleKeyDeletion\", \"kms:CancelKeyDeletion\"],\n              Resource: \"*\",\n            },\n            {\n              Sid: \"UsuariosDeLaClave\",\n              Effect: \"Allow\",\n              Principal: { AWS: { Ref: \"RolInformes\" } },\n              Action: [\"kms:Encrypt\", \"kms:Decrypt\", \"kms:GenerateDataKey*\", \"kms:DescribeKey\"],\n              Resource: \"*\",\n            },\n          ],\n        },\n      },\n    },\n    AliasInformes: {\n      Type: \"AWS::KMS::Alias\",\n      Properties: { AliasName: \"alias/informes\", TargetKeyId: { Ref: \"ClaveInformes\" } },\n    },\n  },\n  Outputs: { ArnClaveInformes: { Value: { \"Fn::GetAtt\": [\"ClaveInformes\", \"Arn\"] } } },\n};\n"
+      },
+      "harness": "aws",
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la plantilla es válida según el validador",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.deepStrictEqual(aws.cfn.validateTemplate(template), []);"
+          }
+        },
+        {
+          "name": "la plantilla tiene una clave y un alias y la clave se crea antes que el alias",
+          "isHidden": false,
+          "weight": 1,
+          "spec": {
+            "code": "const tipos = Object.values(template.Resources).map((recurso) => recurso.Type);\nassert.ok(tipos.includes(\"AWS::KMS::Key\"), \"Falta un recurso AWS::KMS::Key\");\nassert.ok(tipos.includes(\"AWS::KMS::Alias\"), \"Falta un recurso AWS::KMS::Alias\");\nconst orden = aws.cfn.dependencyOrder(template);\nassert.ok(orden !== null, \"La plantilla no tiene un orden de creación\");\nassert.ok(orden.indexOf(\"ClaveInformes\") < orden.indexOf(\"AliasInformes\"), \"La clave debe crearse antes que el alias\");"
+          }
+        },
+        {
+          "name": "la clave es simétrica, de cifrado y descifrado, con la rotación automática activada",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "const propiedades = template.Resources.ClaveInformes.Properties;\nassert.strictEqual(propiedades.KeySpec, \"SYMMETRIC_DEFAULT\", \"La rotación automática solo admite claves simétricas de cifrado\");\nassert.strictEqual(propiedades.KeyUsage, \"ENCRYPT_DECRYPT\");\nassert.strictEqual(propiedades.EnableKeyRotation, true);"
+          }
+        },
+        {
+          "name": "el periodo de rotación automática es de 180 días",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(template.Resources.ClaveInformes.Properties.RotationPeriodInDays, 180);"
+          }
+        },
+        {
+          "name": "la política conserva la sentencia del principal de cuenta",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sentencias = template.Resources.ClaveInformes.Properties.KeyPolicy.Statement;\nconst texto = (sentencia) => JSON.stringify(sentencia.Principal);\nconst lista = (valor) => (Array.isArray(valor) ? valor : [valor]);\nconst cuenta = sentencias.find((sentencia) => texto(sentencia).includes(\"AWS::AccountId\") && texto(sentencia).includes(\":root\"));\nassert.ok(cuenta, \"Falta la sentencia del principal de cuenta (arn:aws:iam::<cuenta>:root)\");\nassert.strictEqual(cuenta.Effect, \"Allow\");\nassert.deepStrictEqual(lista(cuenta.Action), [\"kms:*\"]);"
+          }
+        },
+        {
+          "name": "solo el rol de informes usa la clave, sin comodines ni acciones de administración",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const sentencias = template.Resources.ClaveInformes.Properties.KeyPolicy.Statement;\nconst texto = (sentencia) => JSON.stringify(sentencia.Principal);\nconst lista = (valor) => (Array.isArray(valor) ? valor : [valor]);\nconst usuario = sentencias.find((sentencia) => texto(sentencia).includes(\"RolInformes\"));\nassert.ok(usuario, \"Falta la sentencia del rol de informes\");\nassert.ok(!texto(usuario).includes(\"*\"), \"El principal de los usuarios no puede ser un comodín\");\nconst acciones = lista(usuario.Action);\nfor (const accion of [\"kms:Encrypt\", \"kms:Decrypt\", \"kms:GenerateDataKey*\"]) {\n  assert.ok(acciones.includes(accion), \"Debe poder usar la clave: \" + accion);\n}\nfor (const accion of [\"kms:*\", \"kms:Put*\", \"kms:Create*\", \"kms:Enable*\", \"kms:Disable*\", \"kms:ScheduleKeyDeletion\"]) {\n  assert.ok(!acciones.includes(accion), \"No debe administrar la clave: \" + accion);\n}\nfor (const sentencia of sentencias) {\n  if (texto(sentencia).includes(\"RolAdministrador\")) {\n    for (const accion of [\"kms:*\", \"kms:Encrypt\", \"kms:Decrypt\"]) {\n      assert.ok(!lista(sentencia.Action).includes(accion), \"Los administradores no deben poder usar la clave: \" + accion);\n    }\n  }\n}"
+          }
+        },
+        {
+          "name": "las salidas y el alias referencian la clave y los recursos existen",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.deepStrictEqual(template.Resources.AliasInformes.Properties.TargetKeyId, { Ref: \"ClaveInformes\" });\nassert.deepStrictEqual(template.Outputs.ArnClaveInformes.Value, { \"Fn::GetAtt\": [\"ClaveInformes\", \"Arn\"] });"
+          }
+        },
+        {
+          "name": "la plantilla conserva la versión de formato y los parámetros",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(template.AWSTemplateFormatVersion, \"2010-09-09\");\nassert.deepStrictEqual(Object.keys(template.Parameters).sort(), [\"RolAdministrador\", \"RolInformes\"]);\nassert.strictEqual(template.Resources.AliasInformes.Properties.AliasName, \"alias/informes\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 40,
+      "type": "LAB",
+      "slug": "aws-u2-7-1-lab-autonomo-01",
+      "title": "Clave de los informes con rotación personalizada y acceso restringido",
+      "statement": "Corrige la plantilla `template` de la clave que cifra los informes de una empresa. Parámetros: RolAdministrador y RolInformes (String). Dos recursos: ClaveInformes (AWS::KMS::Key) y AliasInformes (AWS::KMS::Alias). Criterios: (1) la plantilla es válida con `aws.cfn.validateTemplate` y `aws.cfn.dependencyOrder` crea la clave antes que el alias; (2) la normativa exige rotación automática de la clave con un periodo personalizado de 180 días, de modo que la clave debe ser de un tipo que admita la rotación automática, y su uso es el de cifrar y descifrar; (3) la política conserva la sentencia del principal de cuenta y los administradores no usan la clave; (4) solo el rol RolInformes puede usar la clave, únicamente con acciones criptográficas: ni un principal comodín ni acciones de administración; (5) las salidas referencian recursos que existen. El código inicial exporta la plantilla con varios defectos: corrígelos sin cambiar el nombre del valor exportado (`export const template = { … }`) ni los nombres de los recursos.",
+      "concepts": [
+        "rotación automática",
+        "claves simétricas",
+        "periodo de rotación personalizado",
+        "principio de mínimo privilegio"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una clave administrada por el cliente con la rotación automática activada",
+            "explanation": "Descartada: la clave administrada por el cliente la creas y mantienes tú, y tiene una cuota mensual y un cargo por uso."
+          },
+          {
+            "id": "b",
+            "text": "Una clave propiedad de AWS, que mantiene el servicio en su propia cuenta",
+            "explanation": "Es la correcta: es gratuita, no cuenta contra tus cuotas y no hace falta crear ni mantener la clave ni su política."
+          },
+          {
+            "id": "c",
+            "text": "Una clave administrada por AWS (alias aws/servicio) de tu cuenta",
+            "explanation": "Descartada: existe sin cuota mensual en tu cuenta, pero se cobra su uso al servicio asignado, así que no cumple «nada por su uso»."
+          },
+          {
+            "id": "d",
+            "text": "Una clave administrada por el cliente con material criptográfico importado",
+            "explanation": "Descartada: con material importado el material de la clave lo gestionas tú, lo contrario de no mantener nada."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-1-quiz-01",
+      "title": "Clave sin crear ni mantener nada",
+      "statement": "Una aplicación cifra sus datos en un servicio de AWS y el equipo no quiere crear ni mantener ninguna clave ni su política, ni pagar nada por la clave ni por su uso. ¿Qué tipo de clave exige la MENOR administración?",
+      "concepts": [
+        "clave propiedad de AWS",
+        "comodidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una clave propiedad de AWS, porque es la que mantiene el servicio",
+            "explanation": "Descartada: no puedes cambiar su política ni auditar su actividad; la gestiona el servicio propietario."
+          },
+          {
+            "id": "b",
+            "text": "Una clave administrada por AWS, porque existe en tu cuenta",
+            "explanation": "Descartada: no administras su ciclo de vida ni sus permisos y su rotación anual es obligatoria y no la decides tú."
+          },
+          {
+            "id": "c",
+            "text": "Una clave propiedad de AWS con la auditoría activada en CloudTrail",
+            "explanation": "Descartada: la actividad de las claves propiedad de AWS no es visible para el cliente, así que no se puede auditar."
+          },
+          {
+            "id": "d",
+            "text": "Una clave administrada por el cliente con su propia política de clave",
+            "explanation": "Es la correcta: controlas su política, auditas su uso en CloudTrail y gestionas su rotación y su ciclo de vida."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-1-quiz-02",
+      "title": "Máximo control sobre la clave",
+      "statement": "Un equipo debe decidir quién puede usar la clave, ver su actividad en AWS CloudTrail y decidir cuándo se rota su material. ¿Qué tipo de clave da el MAYOR control?",
+      "concepts": [
+        "clave administrada por el cliente",
+        "control",
+        "auditoría"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La clave queda inmanejable y hay que contactar con AWS Support para recuperar el acceso",
+            "explanation": "Es la correcta: es la consecuencia que describe la página de la política predeterminada para este caso."
+          },
+          {
+            "id": "b",
+            "text": "El usuario raíz de la cuenta conserva acceso automático y puede seguir administrando la clave",
+            "explanation": "Descartada: una política de clave no concede permiso automático a la cuenta; hay que darlo con una sentencia explícita."
+          },
+          {
+            "id": "c",
+            "text": "AWS KMS programa la eliminación de la clave de forma automática",
+            "explanation": "Descartada: la consecuencia descrita no es la eliminación de la clave, sino que queda inmanejable."
+          },
+          {
+            "id": "d",
+            "text": "AWS KMS restaura la política predeterminada al detectar al usuario eliminado",
+            "explanation": "Descartada: AWS KMS no reescribe la política; por eso conviene incluir la sentencia del principal de cuenta."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-1-quiz-03",
+      "title": "El único usuario con acceso se elimina",
+      "statement": "La política de una KMS key solo concede acceso a un usuario IAM concreto y ese usuario se elimina después. ¿Cuál es el resultado MÁS probable?",
+      "concepts": [
+        "clave inmanejable",
+        "principal de cuenta"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que el rol tenga adjunta la política administrada AdministratorAccess",
+            "explanation": "Descartada: una política IAM que permite no tiene efecto si la política de clave no lo habilita, por amplia que sea."
+          },
+          {
+            "id": "b",
+            "text": "Que la rotación automática esté activada en la KMS key",
+            "explanation": "Descartada: la rotación cambia el material criptográfico, no decide quién puede usar la clave."
+          },
+          {
+            "id": "c",
+            "text": "Que la política de clave incluya la sentencia que habilita las políticas IAM para la cuenta",
+            "explanation": "Es la correcta: sin ella, las políticas IAM que permiten acceso a la clave no tienen efecto."
+          },
+          {
+            "id": "d",
+            "text": "Que exista una copia de la política de clave en otra Región",
+            "explanation": "Descartada: las políticas de clave son regionales y una copia en otra Región no afecta a esta KMS key."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-1-quiz-04",
+      "title": "Acceso denegado pese a una política IAM",
+      "statement": "Un rol tiene una política IAM que permite kms:Decrypt sobre una KMS key, pero recibe acceso denegado. La política de clave solo concede permisos a otro rol. ¿Qué debes comprobar PRIMERO?",
+      "concepts": [
+        "política de clave",
+        "políticas IAM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cifra directamente los archivos grandes dentro de AWS KMS y los devuelve ya cifrados",
+            "explanation": "Descartada: las KMS keys cifran las claves de datos que cifran tus datos, en lugar de cifrar los datos directamente."
+          },
+          {
+            "id": "b",
+            "text": "Actúa como clave de cifrado de claves que protege la clave de datos que cifra los archivos",
+            "explanation": "Es la correcta: las KMS keys se usan como claves de envoltura que cifran las claves de datos, que son las que cifran tus datos."
+          },
+          {
+            "id": "c",
+            "text": "Se entrega a la aplicación en texto plano para que cifre ella misma los archivos",
+            "explanation": "Descartada: las KMS keys nunca salen de AWS KMS sin cifrar; lo que se devuelve es la clave de datos."
+          },
+          {
+            "id": "d",
+            "text": "Almacena en AWS KMS los archivos cifrados para descifrarlos allí cuando haga falta",
+            "explanation": "Descartada: el texto cifrado y la carga útil descifrada nunca se almacenan en AWS KMS."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-1-quiz-05",
+      "title": "El papel de la KMS key con claves de datos",
+      "statement": "Una aplicación debe cifrar archivos grandes y pide a AWS KMS una clave de datos para ello. ¿Qué describe MEJOR el papel de la KMS key en ese diseño?",
+      "concepts": [
+        "clave de datos",
+        "clave de cifrado de claves",
+        "cifrado envolvente"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear una KMS key nueva cada año y cambiar las aplicaciones o los alias para que la usen",
+            "explanation": "Descartada: es la rotación manual, que exige cambiar las aplicaciones o los alias en cada rotación."
+          },
+          {
+            "id": "b",
+            "text": "Volver a cifrar con código propio todos los datos después de cada rotación",
+            "explanation": "Descartada: la rotación no vuelve a cifrar los datos ni obliga a hacerlo; AWS KMS descifra con el material correcto."
+          },
+          {
+            "id": "c",
+            "text": "Exportar el material de la clave para sustituirlo a mano cada año",
+            "explanation": "Descartada: las KMS keys nunca salen de AWS KMS sin cifrar, así que no se exporta su material para sustituirlo."
+          },
+          {
+            "id": "d",
+            "text": "Activar la rotación automática de la clave, que es transparente para las aplicaciones",
+            "explanation": "Es la correcta: AWS KMS genera material nuevo cada año por defecto y descifra con el material adecuado, sin cambiar el código."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-1-quiz-06",
+      "title": "Rotación anual con pocos cambios",
+      "statement": "Una normativa exige rotar cada año el material de una clave administrada por el cliente, simétrica y creada en AWS KMS. El equipo quiere hacer las MENOS modificaciones en las aplicaciones. ¿Qué debe hacer?",
+      "concepts": [
+        "rotación automática",
+        "transparencia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "La cuenta raíz tiene acceso a la KMS key de forma automática, sin necesidad de ninguna sentencia",
+            "explanation": "No cumple: a diferencia de otras políticas de recursos, la política de clave no concede permiso automático a la cuenta."
+          },
+          {
+            "id": "b",
+            "text": "Toda KMS key debe tener una política de clave",
+            "explanation": "Cumple: la política de clave es obligatoria y es la forma principal de controlar el acceso a la clave."
+          },
+          {
+            "id": "c",
+            "text": "Una política IAM que permite el acceso sigue siendo efectiva aunque la política de clave no lo habilite",
+            "explanation": "No cumple: sin permiso de la política de clave, las políticas IAM que permiten no tienen efecto."
+          },
+          {
+            "id": "d",
+            "text": "Una política de clave solo controla las KMS keys de su misma Región",
+            "explanation": "Cumple: las políticas de clave son regionales y no afectan a las KMS keys de otras Regiones."
+          },
+          {
+            "id": "e",
+            "text": "Las políticas de clave son globales, igual que las políticas IAM",
+            "explanation": "No cumple: las políticas IAM son globales, pero las políticas de clave son regionales."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-1-quiz-07",
+      "title": "Qué es cierto de la política de clave",
+      "statement": "Un equipo revisa cómo se controla el acceso a una KMS key. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "política de clave",
+        "regional"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "La rotación no vuelve a cifrar los datos ni rota las claves de datos que generó la KMS key",
+            "explanation": "Cumple: la rotación cambia solo el material actual de la KMS key y no mitiga el efecto de una clave de datos comprometida."
+          },
+          {
+            "id": "b",
+            "text": "Al rotar, AWS KMS elimina el material criptográfico anterior de la KMS key",
+            "explanation": "No cumple: AWS KMS conserva todo el material de una clave con origen AWS_KMS y solo lo elimina al eliminar la clave."
+          },
+          {
+            "id": "c",
+            "text": "La rotación automática solo es compatible con claves simétricas de cifrado con material de AWS KMS",
+            "explanation": "Cumple: las claves asimétricas, las HMAC y las de almacenes personalizados solo se rotan manualmente."
+          },
+          {
+            "id": "d",
+            "text": "Cada rotación cambia el ARN de la KMS key, así que las aplicaciones deben actualizarlo",
+            "explanation": "No cumple: la KMS key es el mismo recurso lógico, cuantas veces cambie su material."
+          },
+          {
+            "id": "e",
+            "text": "Las claves administradas por AWS se rotan siempre cada año y no se puede cambiar ese calendario",
+            "explanation": "Cumple: AWS KMS rota cada año el material de las claves administradas por AWS."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-1-quiz-08",
+      "title": "Qué es cierto de la rotación de claves",
+      "statement": "Un equipo repasa cómo funciona la rotación en AWS KMS. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "rotación",
+        "claves de datos",
+        "material criptográfico"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-7-1-reflexion-01",
+      "title": "Reflexión: qué clave, qué política y qué rotación y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, los pedidos de una tienda, los informes de una empresa o los volúmenes de unos servidores) y escribe un registro breve de decisión sobre cómo protegerías sus datos con AWS KMS, en 5 a 7 líneas:\n\n1) Decisión: qué tipo de clave (administrada por el cliente, administrada por AWS o propiedad de AWS), qué debe incluir su política de clave y qué rotación aplicarías, y qué dato de la carga lo decide (quién debe controlarla, si hay que auditarla o compartirla, el tipo de clave que exige el requisito).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, una clave administrada por AWS para una carga que debe compartirse con otra cuenta, o una política de clave sin la sentencia de la cuenta) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (la política de clave, el periodo de rotación, los alias y los roles de administradores y usuarios).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad) y por qué.\n\n5) Evidencia: qué página oficial (conceptos de KMS, políticas de clave o rotación de claves) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, el tipo de clave, la política y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "AWS KMS",
+        "política de clave",
+        "rotación",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html",
+        "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html"
+      ],
+      "order": 18
+    }
+  ]
+}
