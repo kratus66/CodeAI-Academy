@@ -1,0 +1,1357 @@
+{
+  "code": "AWS-U2.7.4",
+  "lessons": [
+    {
+      "slug": "aws-u2-7-4-deteccion-y-auditoria-cloudtrail-config-guardduty-security-hub-y-macie",
+      "title": "Detección y auditoría: CloudTrail, Config, GuardDuty, Security Hub y Macie",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-cloudtrail-que-es",
+          "order": 0,
+          "note": "Fuente previa de CloudTrail: qué es, qué registra y las tres formas de registrar eventos."
+        },
+        {
+          "resourceSlug": "aws-cloudtrail-como-funciona",
+          "order": 1,
+          "note": "Fuente de cómo funciona CloudTrail: Event history, Lake y almacenes de datos de eventos, trails e Insights."
+        },
+        {
+          "resourceSlug": "aws-config-que-es",
+          "order": 2,
+          "note": "Fuente previa de AWS Config: qué es, qué necesita y en qué escenarios se usa."
+        },
+        {
+          "resourceSlug": "aws-config-evaluar-recursos",
+          "order": 3,
+          "note": "Fuente de las reglas de AWS Config: reglas administradas, personalizadas y de organización, y evaluación."
+        },
+        {
+          "resourceSlug": "aws-guardduty-que-es",
+          "order": 4,
+          "note": "Fuente previa de Amazon GuardDuty: detección de amenazas, fuentes de datos fundamentales y escenarios."
+        },
+        {
+          "resourceSlug": "aws-security-hub-que-es",
+          "order": 5,
+          "note": "Fuente previa de AWS Security Hub CSPM: vista única de hallazgos, estándares y controles."
+        },
+        {
+          "resourceSlug": "aws-security-hub-estandares",
+          "order": 6,
+          "note": "Fuente de los estándares de seguridad de Security Hub CSPM: controles, hallazgos y puntuación."
+        },
+        {
+          "resourceSlug": "aws-macie-que-es",
+          "order": 7,
+          "note": "Fuente previa de Amazon Macie: descubrimiento de datos sensibles en S3 y evaluación de buckets."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 8,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cinco servicios responden a cinco preguntas distintas sobre la seguridad de una cuenta. AWS CloudTrail registra qué acciones realizó un usuario, un rol o un servicio de AWS. AWS Config da una vista detallada de cómo están configurados tus recursos y de cómo lo estuvieron en el pasado, y evalúa esa configuración con reglas. Amazon GuardDuty detecta amenazas analizando continuamente datos y registros de AWS. Amazon Macie descubre datos sensibles en Amazon S3. AWS Security Hub CSPM reúne los hallazgos de otros servicios y evalúa tu entorno frente a estándares de seguridad. En el dominio 1 de SAA-C03, «Diseñar arquitecturas seguras», el enunciado describe la señal que se quiere obtener (quién hizo algo, qué cambió, qué amenaza hay, dónde hay datos sensibles, cómo está el cumplimiento) y tú eliges el servicio. Los datos de abajo son de las páginas oficiales de cada servicio leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Los cinco servicios frente a frente",
+          "items": [
+            "CloudTrail: auditoría operativa y de riesgos, gobernanza y cumplimiento. Las acciones de un usuario, rol o servicio de AWS (desde la consola, la CLI, los SDK y las API) se registran como eventos. Hay tres formas de registrarlos: Event history, CloudTrail Lake y trails.",
+            "AWS Config: vista detallada de la configuración de los recursos, de sus relaciones y de su historial. Las reglas de Config representan la configuración ideal y marcan como no conforme el recurso que las incumple, enviando una notificación.",
+            "Amazon GuardDuty: servicio de detección de amenazas que usa fuentes de inteligencia de amenazas (listas de IP y dominios maliciosos, hashes de archivos) y modelos de aprendizaje automático para identificar actividad sospechosa o maliciosa.",
+            "Amazon Macie: servicio de seguridad de datos que descubre datos sensibles en Amazon S3 con aprendizaje automático y coincidencia de patrones, y evalúa y supervisa la seguridad y el control de acceso de los buckets.",
+            "AWS Security Hub CSPM: reúne datos de seguridad de varias cuentas, servicios y productos de terceros, ejecuta comprobaciones de controles de estándares (como AWS FSBP, CIS, PCI DSS y NIST) y recibe los hallazgos de GuardDuty, Inspector y Macie en una única vista."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "CloudTrail: quién hizo qué, y durante cuánto tiempo se conserva",
+          "text": "CloudTrail ayuda a habilitar la auditoría operativa y de riesgos, la gobernanza y el cumplimiento de tu cuenta de AWS. Ofrece tres formas de registrar eventos. El Event history es un registro que se puede ver, buscar, descargar e inmutable de los últimos 90 días de eventos de administración de una Región; tienes acceso automáticamente al crear la cuenta, solo puedes buscar filtrando por un único atributo y no se cobra por consultarlo. CloudTrail Lake es un lago de datos administrado para capturar, almacenar, acceder y analizar la actividad de usuarios y de API; agrupa los eventos en almacenes de datos de eventos inmutables, que pueden ser de una cuenta o de varias con AWS Organizations, y se cobran las consultas según los datos analizados. Los trails capturan un registro de las actividades de AWS y entregan y almacenan los eventos en un bucket de Amazon S3, con entrega opcional a CloudWatch Logs y a Amazon EventBridge; pueden crearse para una cuenta o para varias con AWS Organizations, y pueden registrar eventos Insights para analizar los eventos de administración en busca de comportamientos anómalos en las tasas de llamadas y de errores de la API. Un detalle de diseño que subraya la página: el Event history no está conectado a los trails ni a los almacenes de datos de eventos de tu cuenta, y para tener un registro continuo más allá de 90 días hay que crear un trail o un almacén de datos de eventos de CloudTrail Lake. Los almacenes de datos de eventos cifran los eventos por defecto y puedes elegir tu propia clave de AWS KMS; una vez asociada, la clave no se puede quitar ni cambiar."
+        },
+        {
+          "type": "paragraph",
+          "title": "AWS Config: configuración, historial y reglas",
+          "text": "AWS Config proporciona una vista detallada de la configuración de los recursos de tu cuenta, de cómo se relacionan entre sí y de cómo estaban configurados en el pasado, de modo que puedes ver cómo cambian con el tiempo las configuraciones y las relaciones. Para usarlo necesitas un bucket de S3 que reciba las instantáneas y el historial de configuración, un tema de Amazon SNS para las notificaciones y un rol de IAM con los permisos necesarios, y decides qué tipos de recursos quieres que registre. Config te avisa cuando se crean, modifican o eliminan recursos, sin que tengas que consultar las llamadas a cada recurso. Las reglas de AWS Config representan tu configuración ideal: cuando un recurso incumple las condiciones de una regla, Config lo marca como no conforme y envía una notificación, y evalúa continuamente los recursos a medida que se crean, cambian o se eliminan. Hay reglas administradas (predefinidas y personalizables), reglas personalizadas, reglas vinculadas a servicios y reglas de organización. La página enumera escenarios de uso: administración de recursos, auditoría y cumplimiento (el historial demuestra cumplimiento), gestión y resolución de problemas de cambios de configuración (ver cómo se relaciona un recurso con otros y recuperar la última configuración buena conocida) y análisis de seguridad (ver, por ejemplo, la política de IAM que tenía un usuario en un momento dado). Una advertencia: las reglas evalúan directamente la configuración de un recurso y no tienen en cuenta las políticas de IAM u otras políticas de AWS Organizations que puedan afectar a si Config tiene permisos para registrar los cambios."
+        },
+        {
+          "type": "paragraph",
+          "title": "GuardDuty y Macie: amenazas y datos sensibles",
+          "text": "Amazon GuardDuty monitoriza, analiza y procesa de forma continua fuentes de datos y registros de tu entorno de AWS. Al habilitarlo en una cuenta, empieza a ingerir automáticamente las fuentes de datos fundamentales de esa cuenta: los eventos de administración de CloudTrail, los registros de flujo de VPC (de instancias de EC2) y los registros de DNS; no hay que habilitar nada más para que los analice y genere hallazgos de seguridad. La página enumera escenarios que ayuda a detectar: credenciales de AWS comprometidas y exfiltradas, exfiltración y destrucción de datos que pueden derivar en un ransomware, patrones inusuales de inicios de sesión en Amazon Aurora y Amazon RDS, minería de criptomonedas no autorizada en instancias de EC2 y cargas de trabajo de contenedores, presencia de malware (incluidos los archivos recién subidos a buckets de S3) y eventos de sistema operativo, de red y de archivos que indican comportamiento no autorizado en EKS, ECS con Fargate y EC2. Su capacidad Extended Threat Detection detecta ataques de varias etapas que abarcan fuentes de datos, tipos de recursos y tiempo, y se habilita automáticamente y sin coste adicional al habilitar GuardDuty. Amazon Macie, en cambio, es un servicio de seguridad de datos: descubre datos sensibles con aprendizaje automático y coincidencia de patrones, te da un inventario de los buckets de S3 de propósito general y evalúa y supervisa su seguridad y control de acceso. Si Macie detecta un posible problema, como un bucket que pasa a ser de acceso público, genera un hallazgo; si detecta datos sensibles en un objeto de S3, genera un hallazgo de datos sensibles. Puede descubrirlos de dos formas: con un descubrimiento automatizado (muestrea objetos representativos de los buckets) y con trabajos de descubrimiento de datos sensibles, más profundos y dirigidos, que pueden ejecutarse una vez o de forma periódica. Los identificadores de datos administrados detectan muchos tipos de datos sensibles (información de identificación personal, datos financieros y credenciales) y también puedes definir identificadores personalizados."
+        },
+        {
+          "type": "paragraph",
+          "title": "Security Hub CSPM: una vista única y estándares de seguridad",
+          "text": "AWS Security Hub CSPM te da una vista completa de tu estado de seguridad en AWS y te ayuda a evaluar tu entorno frente a estándares y buenas prácticas de seguridad del sector. Recopila datos de seguridad de varias cuentas de AWS, servicios de AWS y productos de terceros compatibles, y te ayuda a analizar tendencias y a identificar los problemas de mayor prioridad. Admite varios estándares: el AWS Foundational Security Best Practices (FSBP), desarrollado por AWS, y marcos de cumplimiento externos como el Center for Internet Security (CIS), el Payment Card Industry Data Security Standard (PCI DSS) y el National Institute of Standards and Technology (NIST). Cada estándar incluye varios controles de seguridad, cada uno de los cuales representa una buena práctica. Security Hub CSPM ejecuta comprobaciones de esos controles y genera hallazgos de control; además, recibe hallazgos de otros servicios de AWS, como Amazon GuardDuty, Amazon Inspector y Amazon Macie, y de productos de terceros compatibles, lo que ofrece una única vista de muchos problemas de seguridad. Procesa los hallazgos con el formato AWS Security Finding Format (ASFF), un formato estándar. Al habilitar un estándar se habilitan automáticamente todos los controles que le corresponden; Security Hub CSPM calcula una puntuación de seguridad por estándar y, para entornos con varias cuentas y Regiones, la página recomienda usar la configuración central. Ofrece automatización para clasificar y corregir hallazgos, como reglas de automatización y la integración con Amazon EventBridge."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cinco casos, cinco decisiones",
+          "text": "Un equipo tiene cinco casos. (1) Debe averiguar qué rol eliminó un recurso hace dos semanas. (2) Debe ver cómo estaba configurado un grupo de seguridad hace un mes y recibir un aviso cuando un recurso incumpla una regla. (3) Quiere detectar credenciales de AWS comprometidas y minería de criptomonedas en sus instancias de EC2 sin habilitar manualmente los registros. (4) Quiere saber en qué buckets de S3 hay datos personales. (5) Quiere una única vista de los hallazgos de GuardDuty, Inspector y Macie y comprobar el cumplimiento con CIS y PCI DSS. Paso 1: para (1), la clave es «quién hizo qué», así que va CloudTrail (el Event history sirve si es de los últimos 90 días). Paso 2: para (2), la clave es «configuración en el pasado y regla de configuración», así que va AWS Config. Paso 3: para (3), la clave es «detección de amenazas con fuentes de datos fundamentales automáticas», así que va GuardDuty. Paso 4: para (4), la clave es «datos sensibles en S3», así que va Macie. Paso 5: para (5), la clave es «una única vista y estándares», así que va Security Hub CSPM. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una decisión de detección como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const decisiones = {\n  casos: [\n    { necesidad: \"quien-elimino-un-recurso\", servicio: \"cloudtrail\" },\n    { necesidad: \"configuracion-pasada-y-reglas\", servicio: \"config\" },\n    { necesidad: \"credenciales-comprometidas\", servicio: \"guardduty\" },\n    { necesidad: \"datos-personales-en-s3\", servicio: \"macie\" },\n    { necesidad: \"vista-unica-y-estandares\", servicio: \"security-hub\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la señal que se busca al servicio",
+          "code": "flowchart TB\n  N{\"Qué señal pide el enunciado\"} -->|\"Quién hizo qué llamada o acción\"| T[\"AWS CloudTrail\"]\n  N -->|\"Cómo estaba configurado un recurso y si cumple una regla\"| C[\"AWS Config\"]\n  N -->|\"Amenazas: credenciales comprometidas, criptominería, malware\"| G[\"Amazon GuardDuty\"]\n  N -->|\"Datos sensibles en buckets de S3\"| M[\"Amazon Macie\"]\n  N -->|\"Una vista única de hallazgos y estándares como CIS o PCI DSS\"| S[\"AWS Security Hub CSPM\"]\n  G --> S\n  M --> S\n  T --> R{\"Cuánto tiempo hay que conservar\"}\n  R -->|\"Hasta 90 días de eventos de administración\"| E[\"Event history\"]\n  R -->|\"Más de 90 días o varias cuentas\"| L[\"Un trail o un almacén de datos de eventos\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir quién detecta, quién registra y quién agrega",
+          "text": "El enunciado mezcla señales: «quién eliminó el recurso», «cómo estaba configurado», «credenciales comprometidas», «datos personales en S3», «una única vista», «más de 90 días». CloudTrail registra acciones, Config registra configuraciones y evalúa reglas, GuardDuty detecta amenazas, Macie descubre datos sensibles en S3 y Security Hub CSPM reúne hallazgos y evalúa estándares; y el Event history solo guarda 90 días de eventos de administración. Subraya la señal (acción, configuración, amenaza, dato sensible o cumplimiento) y el periodo antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar el Event history de CloudTrail para un registro de más de 90 días",
+          "text": "Causa: ver que CloudTrail registra la actividad desde que se crea la cuenta y suponer que el Event history la conserva sin límite. Consecuencia: el Event history solo guarda los últimos 90 días de eventos de administración de una Región, así que las acciones más antiguas no se pueden consultar. Solución: crea un trail (entrega a un bucket de S3) o un almacén de datos de eventos de CloudTrail Lake para tener un registro continuo más allá de 90 días, de una o de varias cuentas con AWS Organizations."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir GuardDuty con Macie",
+          "text": "Causa: pensar que cualquier problema «de seguridad en S3» lo resuelve el mismo servicio. Consecuencia: GuardDuty detecta amenazas (credenciales comprometidas, criptominería, malware, exfiltración) a partir de los datos y registros de AWS; no es el servicio que inventaría los buckets de S3 y descubre datos personales en sus objetos, y Macie no detecta la minería de criptomonedas de una instancia de EC2. Solución: usa Macie cuando la pregunta sea dónde hay datos sensibles y cómo está el control de acceso de los buckets, y GuardDuty cuando la pregunta sea si hay una actividad sospechosa o maliciosa."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: esperar que Security Hub detecte amenazas por sí solo en lugar de agregar y evaluar",
+          "text": "Causa: ver «vista única de seguridad» y suponer que Security Hub CSPM sustituye a los servicios de detección. Consecuencia: Security Hub CSPM ejecuta comprobaciones de controles de estándares y recibe hallazgos de otros servicios como GuardDuty, Inspector y Macie; si esos servicios no están habilitados, no llegan hallazgos de amenazas ni de datos sensibles. Solución: habilita los servicios que generan los hallazgos y usa Security Hub CSPM para reunirlos, priorizarlos y medir el cumplimiento de estándares como CIS, PCI DSS o AWS FSBP."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir el servicio de detección o auditoría (CloudTrail, AWS Config, GuardDuty, Macie o Security Hub CSPM) que responde a la señal que pide un enunciado, y distinguir el Event history de un trail o un almacén de datos de eventos según el periodo de conservación. Esta unidad prepara el examen SAA-C03, dominio 1 «Diseñar arquitecturas seguras». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el servicio, el dato del enunciado que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cinco decisiones del ejemplo: para cada caso, nombra el servicio y el dato que lo decide. Explica con tus palabras el diagrama «De la señal que se busca al servicio». Después responde: si necesitas saber quién hizo una llamada a la API hace seis meses, ¿basta el Event history de CloudTrail y por qué?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El registro de actividad que no llega a 90 días». Una configuración escrita como objeto usa un mecanismo de CloudTrail que no cubre el periodo exigido. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la necesidad y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Tres necesidades de detección, dos servicios mal elegidos». Decide qué servicio corresponde a cada necesidad sin alterar el nombre de las necesidades. Criterio de paso: las pruebas pasan y justificas por escrito cada cambio con las páginas oficiales de GuardDuty, Macie y Security Hub CSPM."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre detección y auditoría. Audítalo en «Auditar un informe de detección y auditoría generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de CloudTrail, AWS Config, GuardDuty, Macie y Security Hub CSPM (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué registra CloudTrail y cuáles son sus tres formas de registrar eventos; qué ofrece AWS Config y qué hace una regla; qué fuentes de datos analiza GuardDuty por defecto; qué descubre Macie y dónde; y qué estándares admite Security Hub CSPM y qué hallazgos recibe. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la señal y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa con varias cuentas debe conservar el registro de actividad de la API durante más de 90 días, detectar actividad sospechosa, saber dónde hay datos personales en S3 y presentar el cumplimiento de CIS a un auditor. Decide qué servicio usas para cada necesidad y cómo los conectas. Pregunta de cierre: un compañero dice «el Event history de CloudTrail nos sirve para el registro de un año»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Registra como eventos las acciones de un usuario, un rol o un servicio de AWS (consola, CLI, SDK y API) para auditoría, gobernanza y cumplimiento. Tres formas: Event history (últimos 90 días de eventos de administración de una Región, sin cargo por consultarlo), CloudTrail Lake (almacenes de datos de eventos que se consultan) y trails (entregan los eventos a un bucket de S3)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-4-tarjeta-01",
+      "title": "Tarjeta: qué es CloudTrail",
+      "statement": "¿Qué registra AWS CloudTrail y cuáles son sus tres formas de registrar eventos?",
+      "concepts": [
+        "CloudTrail",
+        "Event history",
+        "trail"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Un trail entrega y almacena eventos en un bucket de S3, con entrega opcional a CloudWatch Logs y EventBridge, y puede registrar eventos Insights (tasas anómalas de llamadas y errores). CloudTrail Lake agrupa eventos en almacenes inmutables que se consultan. Para un registro continuo más allá de 90 días hay que crear uno de los dos; ambos admiten varias cuentas con Organizations."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-4-tarjeta-02",
+      "title": "Tarjeta: trails frente a Lake",
+      "statement": "¿Qué diferencia hay entre un trail y CloudTrail Lake, y cuándo se necesitan?",
+      "concepts": [
+        "trail",
+        "CloudTrail Lake",
+        "Insights"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una vista detallada de la configuración de los recursos, de sus relaciones y de su historial, y avisos cuando se crean, modifican o eliminan. Necesita un bucket de S3, un tema de SNS y un rol de IAM. Una regla representa la configuración ideal: si un recurso la incumple, Config lo marca como no conforme y envía una notificación; evalúa de forma continua."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-4-tarjeta-03",
+      "title": "Tarjeta: qué es AWS Config",
+      "statement": "¿Qué ofrece AWS Config y qué hace una regla de Config?",
+      "concepts": [
+        "AWS Config",
+        "regla",
+        "no conforme"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio de detección de amenazas que monitoriza y analiza de forma continua datos y registros de AWS con inteligencia de amenazas (IP y dominios maliciosos, hashes) y aprendizaje automático. Al habilitarlo ingiere automáticamente los eventos de administración de CloudTrail, los registros de flujo de VPC y los registros de DNS, sin habilitar nada más."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-4-tarjeta-04",
+      "title": "Tarjeta: qué es GuardDuty",
+      "statement": "¿Qué es Amazon GuardDuty y qué fuentes de datos analiza por defecto?",
+      "concepts": [
+        "GuardDuty",
+        "fuentes de datos fundamentales",
+        "amenazas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio de seguridad de datos que descubre datos sensibles en Amazon S3 con aprendizaje automático y coincidencia de patrones (información personal, financiera y credenciales). Da un inventario de los buckets de S3 y evalúa su seguridad y control de acceso. Descubre con un análisis automático por muestreo o con trabajos dirigidos, y genera hallazgos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-4-tarjeta-05",
+      "title": "Tarjeta: qué es Macie",
+      "statement": "¿Qué es Amazon Macie y dónde descubre datos sensibles?",
+      "concepts": [
+        "Macie",
+        "datos sensibles",
+        "S3"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Da una vista única del estado de seguridad: recopila datos de varias cuentas, servicios y productos de terceros, ejecuta comprobaciones de controles de estándares y recibe hallazgos de GuardDuty, Inspector y Macie en el formato ASFF. Admite AWS FSBP, CIS, PCI DSS y NIST; calcula una puntuación por estándar y se recomienda la configuración central en varias cuentas y Regiones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-4-tarjeta-06",
+      "title": "Tarjeta: qué es Security Hub CSPM",
+      "statement": "¿Qué hace AWS Security Hub CSPM y qué estándares admite?",
+      "concepts": [
+        "Security Hub CSPM",
+        "estándares",
+        "hallazgos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Auditoría de las llamadas a la API con un registro continuo de más de 90 días. Corrige su defecto principal.\nexport const diseno = {\n  necesidad: \"auditar-acciones-de-api-mas-alla-de-90-dias\",\n  requisitos: { registroContinuo: true, retencionMayorDe90Dias: true },\n  mecanismo: \"event-history\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  necesidad: \"auditar-acciones-de-api-mas-alla-de-90-dias\",\n  requisitos: { registroContinuo: true, retencionMayorDe90Dias: true },\n  mecanismo: \"trail\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El requisito es un registro continuo de actividad que se conserve más de 90 días. Compara ese periodo con lo que conserva el mecanismo elegido."
+        },
+        {
+          "level": 2,
+          "text": "El Event history solo guarda los últimos 90 días de eventos de administración de una Región y no está conectado a los trails ni a los almacenes de datos de eventos. Para un registro continuo más allá de 90 días hay que crear un trail o un almacén de datos de eventos de CloudTrail Lake."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el mecanismo a \"trail\" (o \"event-data-store\"). No cambies la necesidad ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el mecanismo ya no es el Event history",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.mecanismo, \"event-history\", \"El Event history solo guarda 90 días de eventos de administración\");\nassert.ok([\"trail\", \"event-data-store\"].includes(diseno.mecanismo), \"Usa un trail o un almacén de datos de eventos\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.registroContinuo, true);\nassert.strictEqual(diseno.requisitos.retencionMayorDe90Dias, true);"
+          }
+        },
+        {
+          "name": "el nombre de la necesidad no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.necesidad, \"auditar-acciones-de-api-mas-alla-de-90-dias\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-7-4-debug-01",
+      "title": "El registro de actividad que no llega a 90 días",
+      "statement": "El objeto `diseno` modela la auditoría de las llamadas a la API de una cuenta, que exige un registro continuo con una conservación de más de 90 días. El diseño actual usa el mecanismo de CloudTrail que, según la página de cómo funciona CloudTrail, solo conserva 90 días de eventos de administración. Corrige el mecanismo sin cambiar la necesidad ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`).",
+      "concepts": [
+        "CloudTrail",
+        "Event history",
+        "trail"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tres necesidades de seguridad y el servicio elegido para cada una. Dos están mal asignadas: corrígelas.\nexport const diseno = {\n  casos: [\n    { necesidad: \"datos-personales-en-buckets-de-s3\", servicio: \"guardduty\" },\n    { necesidad: \"credenciales-comprometidas-y-criptomineria\", servicio: \"guardduty\" },\n    { necesidad: \"vista-unica-de-hallazgos-y-estandares-cis-pci\", servicio: \"macie\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  casos: [\n    { necesidad: \"datos-personales-en-buckets-de-s3\", servicio: \"macie\" },\n    { necesidad: \"credenciales-comprometidas-y-criptomineria\", servicio: \"guardduty\" },\n    { necesidad: \"vista-unica-de-hallazgos-y-estandares-cis-pci\", servicio: \"security-hub\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "los datos personales en S3 los descubre el servicio de datos sensibles",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const porNecesidad = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(porNecesidad[\"datos-personales-en-buckets-de-s3\"], \"macie\");"
+          }
+        },
+        {
+          "name": "la vista única y los estándares son de Security Hub",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const porNecesidad = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(porNecesidad[\"vista-unica-de-hallazgos-y-estandares-cis-pci\"], \"security-hub\");"
+          }
+        },
+        {
+          "name": "las credenciales comprometidas y la criptominería siguen en GuardDuty",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const porNecesidad = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(porNecesidad[\"credenciales-comprometidas-y-criptomineria\"], \"guardduty\");"
+          }
+        },
+        {
+          "name": "las tres necesidades se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.casos.length, 3);\nconst nombres = diseno.casos.map((caso) => caso.necesidad).sort();\nassert.deepStrictEqual(nombres, [\"credenciales-comprometidas-y-criptomineria\", \"datos-personales-en-buckets-de-s3\", \"vista-unica-de-hallazgos-y-estandares-cis-pci\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-7-4-debug-02",
+      "title": "Tres necesidades de detección, dos servicios mal elegidos",
+      "statement": "El objeto `diseno` asigna un servicio a cada una de tres necesidades: descubrir datos personales en buckets de S3, detectar credenciales comprometidas y criptominería, y tener una vista única de hallazgos con comprobación de estándares como CIS y PCI DSS. Dos de las tres asignaciones son incorrectas según las páginas de GuardDuty, Macie y Security Hub CSPM. Corrígelas sin cambiar el nombre de las necesidades, y mantén la forma del valor exportado (`export const diseno = { … }`). Los servicios se escriben así: cloudtrail, config, guardduty, macie, security-hub.",
+      "concepts": [
+        "GuardDuty",
+        "Macie",
+        "Security Hub CSPM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de detección y auditoría (borrador generado por un asistente)\nEscenario: una organización con varias cuentas que debe auditar acciones, detectar amenazas y proteger datos sensibles.\n1. El Event history de CloudTrail ofrece un registro de los últimos 90 días de eventos de administración de una Región, sin cargo por consultarlo.\n2. El Event history de CloudTrail conserva los eventos durante un año completo.\n3. AWS Config puede mostrar cómo estaba configurado un recurso en el pasado y marcar como no conforme el que incumple una regla.\n4. GuardDuty exige habilitar por separado los registros de flujo de VPC y los registros de DNS antes de poder analizarlos.\n5. Security Hub CSPM recibe hallazgos de servicios como GuardDuty, Inspector y Macie.\n6. Amazon Macie descubre datos sensibles en los volúmenes de Amazon EBS de las instancias.\n7. Security Hub CSPM solo admite el estándar desarrollado por AWS y ningún marco externo."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Event history",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el Event history es un registro de los últimos 90 días de eventos de administración de una Región y no se cobra por consultarlo."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Conservación del Event history",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: el Event history solo conserva los últimos 90 días; para un registro continuo más allá hay que crear un trail o un almacén de datos de eventos."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "AWS Config",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Config muestra cómo estaban configurados los recursos en el pasado y marca como no conforme el que incumple una regla, enviando una notificación."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Fuentes de datos de GuardDuty",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: al habilitar GuardDuty se ingieren automáticamente las fuentes fundamentales (eventos de administración de CloudTrail, registros de flujo de VPC y de DNS) sin habilitar nada más."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Hallazgos en Security Hub CSPM",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: Security Hub CSPM recibe hallazgos de GuardDuty, Inspector y Macie y de productos de terceros compatibles."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Macie y EBS",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Macie descubre datos sensibles en objetos de Amazon S3 y evalúa los buckets de S3; no analiza volúmenes de EBS."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Estándares de Security Hub CSPM",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: además del estándar AWS FSBP, admite marcos externos como CIS, PCI DSS y NIST."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-7-4-auditoria-01",
+      "title": "Auditar un informe de detección y auditoría generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre detección y auditoría en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "CloudTrail",
+        "AWS Config",
+        "GuardDuty",
+        "Macie",
+        "Security Hub CSPM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon GuardDuty, que usa fuentes de inteligencia de amenazas",
+            "explanation": "Descartada: GuardDuty detecta actividad sospechosa o maliciosa; el registro de las acciones de usuarios, roles y servicios es de CloudTrail."
+          },
+          {
+            "id": "b",
+            "text": "AWS CloudTrail, que registra las acciones como eventos",
+            "explanation": "Es la correcta: las acciones de un usuario, un rol o un servicio de AWS se registran como eventos."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Macie, que evalúa el control de acceso de los buckets",
+            "explanation": "Descartada: Macie descubre datos sensibles en S3; no registra quién ejecutó una llamada a la API."
+          },
+          {
+            "id": "d",
+            "text": "AWS Security Hub CSPM, que ejecuta comprobaciones de controles",
+            "explanation": "Descartada: reúne hallazgos y evalúa estándares; no es el registro de las llamadas a la API."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-4-quiz-01",
+      "title": "Quién eliminó un recurso",
+      "statement": "Un equipo debe averiguar qué rol realizó una llamada a la API que eliminó un recurso de la cuenta. ¿Qué servicio es el MEJOR ajuste?",
+      "concepts": [
+        "CloudTrail",
+        "auditoría"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon GuardDuty, que analiza registros de DNS y de flujo de VPC",
+            "explanation": "Descartada: GuardDuty detecta amenazas; no registra el historial de configuración de los recursos ni evalúa reglas."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Macie, que inventaría los buckets de S3",
+            "explanation": "Descartada: Macie se centra en datos sensibles y en la seguridad de los buckets de S3, no en la configuración de todos los recursos."
+          },
+          {
+            "id": "c",
+            "text": "El Event history de CloudTrail, que guarda 90 días de eventos",
+            "explanation": "Descartada: registra eventos de administración de 90 días; no muestra el historial de configuración ni las relaciones entre recursos."
+          },
+          {
+            "id": "d",
+            "text": "AWS Config, con una regla que represente la configuración ideal",
+            "explanation": "Es la correcta: muestra la configuración y el historial, las relaciones, y marca como no conforme el recurso que incumple la regla."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-4-quiz-02",
+      "title": "Configuración pasada y regla incumplida",
+      "statement": "Un equipo necesita ver cómo estaba configurado un recurso en el pasado, cómo se relaciona con otros recursos y recibir un aviso cuando incumpla una regla de configuración. ¿Qué servicio encaja MÁS?",
+      "concepts": [
+        "AWS Config",
+        "reglas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Habilitar Amazon GuardDuty, que ingiere automáticamente las fuentes de datos fundamentales",
+            "explanation": "Es la correcta: analiza eventos de administración de CloudTrail, registros de flujo de VPC y de DNS sin habilitar nada más."
+          },
+          {
+            "id": "b",
+            "text": "Habilitar los registros de flujo de VPC y de DNS a mano y analizarlos con consultas propias",
+            "explanation": "Descartada: es justo la configuración manual que el equipo quiere evitar."
+          },
+          {
+            "id": "c",
+            "text": "Habilitar Amazon Macie para inspeccionar las instancias de EC2",
+            "explanation": "Descartada: Macie descubre datos sensibles en S3; no detecta credenciales comprometidas ni criptominería."
+          },
+          {
+            "id": "d",
+            "text": "Crear reglas de AWS Config para vigilar las instancias",
+            "explanation": "Descartada: las reglas de Config evalúan la configuración de los recursos; no detectan actividad maliciosa."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-4-quiz-03",
+      "title": "Amenazas sin habilitar fuentes de registros a mano",
+      "statement": "Un equipo quiere detectar credenciales de AWS comprometidas y minería de criptomonedas en sus instancias de EC2 con la MENOS configuración posible: no quiere habilitar manualmente ninguna fuente de registros. ¿Qué opción elige?",
+      "concepts": [
+        "GuardDuty",
+        "fuentes de datos fundamentales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS CloudTrail, que registra las acciones de los usuarios",
+            "explanation": "Descartada: registra quién hizo qué, no inspecciona el contenido de los objetos de S3 en busca de datos personales."
+          },
+          {
+            "id": "b",
+            "text": "AWS Config, que registra la configuración de los recursos",
+            "explanation": "Descartada: registra y evalúa la configuración de los recursos; no analiza el contenido de los objetos."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Macie, con descubrimiento de datos sensibles",
+            "explanation": "Es la correcta: descubre datos sensibles en S3 con aprendizaje automático y coincidencia de patrones y genera hallazgos."
+          },
+          {
+            "id": "d",
+            "text": "Amazon GuardDuty, con la detección de malware en S3",
+            "explanation": "Descartada: GuardDuty detecta amenazas, como malware en archivos nuevos; no inventaría dónde hay datos personales."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-4-quiz-04",
+      "title": "Datos personales en S3",
+      "statement": "Una empresa quiere descubrir en qué buckets y objetos de Amazon S3 hay datos personales, usando aprendizaje automático y coincidencia de patrones. ¿Qué servicio ofrece la MAYOR visibilidad sobre dónde residen esos datos?",
+      "concepts": [
+        "Macie",
+        "datos sensibles"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Security Hub CSPM, que recibe hallazgos y ejecuta controles de estándares",
+            "explanation": "Es la correcta: reúne hallazgos de varios servicios y evalúa estándares como CIS, PCI DSS, NIST y AWS FSBP."
+          },
+          {
+            "id": "b",
+            "text": "AWS CloudTrail, con un trail en varias cuentas",
+            "explanation": "Descartada: reúne eventos de actividad de la API, no hallazgos de otros servicios ni controles de estándares."
+          },
+          {
+            "id": "c",
+            "text": "AWS Config, con reglas administradas",
+            "explanation": "Descartada: evalúa la configuración de los recursos con reglas; no consolida los hallazgos de GuardDuty, Inspector y Macie."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Macie, que genera hallazgos de datos sensibles",
+            "explanation": "Descartada: genera sus propios hallazgos, pero no consolida los de otros servicios ni evalúa estándares."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-4-quiz-05",
+      "title": "Vista única y estándares de seguridad",
+      "statement": "Un equipo quiere una vista única de los hallazgos de GuardDuty, Amazon Inspector y Macie y comprobar el cumplimiento de estándares como CIS y PCI DSS. ¿Qué servicio ofrece el MÁXIMO nivel de consolidación?",
+      "concepts": [
+        "Security Hub CSPM",
+        "estándares"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Confiar en el Event history, que conserva los eventos más de un año",
+            "explanation": "Descartada: el Event history solo guarda los últimos 90 días de eventos de administración de una Región."
+          },
+          {
+            "id": "b",
+            "text": "Crear un trail o un almacén de datos de eventos de CloudTrail Lake",
+            "explanation": "Es la correcta: es lo que exige un registro continuo más allá de 90 días."
+          },
+          {
+            "id": "c",
+            "text": "Habilitar Amazon GuardDuty para que conserve los eventos",
+            "explanation": "Descartada: GuardDuty analiza fuentes de datos para detectar amenazas; no es un registro de actividad conservable."
+          },
+          {
+            "id": "d",
+            "text": "Crear una regla de AWS Config para cada llamada a la API",
+            "explanation": "Descartada: las reglas de Config evalúan configuraciones; no registran las llamadas a la API."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-4-quiz-06",
+      "title": "Registro de actividad de más de 90 días",
+      "statement": "Un equipo necesita un registro continuo de la actividad de la API que se conserve más de 90 días. ¿Qué debe hacer PRIMERO?",
+      "concepts": [
+        "CloudTrail",
+        "trail",
+        "Event history"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "El Event history muestra los últimos 90 días de eventos de administración de una Región y no se cobra por consultarlo",
+            "explanation": "Cumple: es el registro que tienes automáticamente al crear la cuenta."
+          },
+          {
+            "id": "b",
+            "text": "El Event history conserva los eventos de datos de Amazon S3 durante 90 días",
+            "explanation": "No cumple: el Event history muestra eventos de administración, no eventos de datos."
+          },
+          {
+            "id": "c",
+            "text": "Un trail solo puede crearse para una única cuenta de AWS",
+            "explanation": "No cumple: los trails pueden crearse para una cuenta o para varias cuentas mediante AWS Organizations."
+          },
+          {
+            "id": "d",
+            "text": "Un trail entrega los eventos a un bucket de S3, con entrega opcional a CloudWatch Logs y a EventBridge",
+            "explanation": "Cumple: es como los trails capturan, entregan y almacenan los eventos."
+          },
+          {
+            "id": "e",
+            "text": "La clave de KMS de un almacén de datos de eventos puede cambiarse libremente después",
+            "explanation": "No cumple: una vez asociada, la clave de KMS no se puede quitar ni cambiar."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-4-quiz-07",
+      "title": "Qué es cierto de CloudTrail",
+      "statement": "Un equipo repasa cómo funciona CloudTrail. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "CloudTrail",
+        "Event history",
+        "trail"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "b",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "GuardDuty exige habilitar por separado sus fuentes de datos fundamentales antes de analizarlas",
+            "explanation": "No cumple: al habilitarlo ingiere automáticamente esas fuentes sin que haya que habilitar nada más."
+          },
+          {
+            "id": "b",
+            "text": "GuardDuty analiza por defecto eventos de administración de CloudTrail, registros de flujo de VPC y registros de DNS",
+            "explanation": "Cumple: son las fuentes de datos fundamentales que ingiere al habilitarlo."
+          },
+          {
+            "id": "c",
+            "text": "AWS Config marca como no conforme el recurso que incumple una regla y envía una notificación",
+            "explanation": "Cumple: evalúa continuamente los recursos a medida que se crean, cambian o se eliminan."
+          },
+          {
+            "id": "d",
+            "text": "Macie analiza los volúmenes de Amazon EBS en busca de datos sensibles",
+            "explanation": "No cumple: Macie descubre datos sensibles en objetos de Amazon S3."
+          },
+          {
+            "id": "e",
+            "text": "Security Hub CSPM admite estándares como AWS FSBP, CIS, PCI DSS y NIST",
+            "explanation": "Cumple: cada estándar incluye varios controles de seguridad que representan buenas prácticas."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-4-quiz-08",
+      "title": "Qué es cierto de la detección y la auditoría",
+      "statement": "Un equipo repasa los servicios de detección y auditoría. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "GuardDuty",
+        "AWS Config",
+        "Security Hub CSPM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "ct",
+            "term": "AWS CloudTrail",
+            "definition": "Quién realizó qué llamada a la API, cuándo y desde dónde: el registro de actividad"
+          },
+          {
+            "id": "eh",
+            "term": "Event history de CloudTrail",
+            "definition": "Los últimos 90 días de eventos de administración de una Región, sin cargo por consultarlos"
+          },
+          {
+            "id": "lake",
+            "term": "CloudTrail Lake",
+            "definition": "Consultar y analizar la actividad de usuarios y de API en almacenes de datos de eventos"
+          },
+          {
+            "id": "cfg",
+            "term": "AWS Config",
+            "definition": "Cómo estaba configurado un recurso en el pasado y cómo se relaciona con otros"
+          },
+          {
+            "id": "rule",
+            "term": "Regla de AWS Config",
+            "definition": "Marcar como no conforme y avisar cuando un recurso incumple la configuración ideal"
+          },
+          {
+            "id": "gd",
+            "term": "Amazon GuardDuty",
+            "definition": "Credenciales comprometidas o criptominería detectadas con inteligencia de amenazas y aprendizaje automático"
+          },
+          {
+            "id": "mc",
+            "term": "Amazon Macie",
+            "definition": "Datos sensibles, como información personal, descubiertos en buckets de S3"
+          },
+          {
+            "id": "sh",
+            "term": "AWS Security Hub CSPM",
+            "definition": "Vista única de hallazgos de varios servicios y comprobación de estándares como CIS o PCI DSS"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio de detección o auditoría con la señal que resuelve. Si dudas, pregúntate si buscas una acción, una configuración, una amenaza, un dato sensible o el cumplimiento de un estándar.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Registro de acciones: CloudTrail, Event history y CloudTrail Lake",
+              "Configuración y cumplimiento: AWS Config y sus reglas",
+              "Amenazas y datos sensibles: GuardDuty y Macie",
+              "Vista única: Security Hub CSPM"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-7-4-memoria-01",
+      "title": "Servicio de detección o auditoría y señal que resuelve",
+      "statement": "Empareja cada servicio de detección o auditoría con la señal que resuelve.",
+      "concepts": [
+        "CloudTrail",
+        "AWS Config",
+        "GuardDuty",
+        "Macie",
+        "Security Hub CSPM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-7-4-reflexion-01",
+      "title": "Reflexión: qué servicio de detección o auditoría y por qué",
+      "statement": "Elige una organización que conozcas (por ejemplo, una tienda con varias cuentas de AWS) y escribe un registro breve de decisión sobre cómo auditarías y detectarías problemas de seguridad, en 5 a 7 líneas:\n\n1) Decisión: qué servicio usarías para cada señal (CloudTrail, AWS Config, GuardDuty, Macie o Security Hub CSPM), cuánto tiempo conservarías el registro de actividad y qué dato de la organización lo decide (periodo de conservación, número de cuentas, tipo de datos).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, el Event history para un registro de un año, o GuardDuty para descubrir datos personales) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (trails o almacenes de datos de eventos, reglas de AWS Config, la revisión de hallazgos).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad) y por qué.\n\n5) Evidencia: qué página oficial (CloudTrail, AWS Config, GuardDuty, Macie o Security Hub CSPM) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la organización, el servicio y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "detección",
+        "auditoría",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+        "https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html",
+        "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+        "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+        "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html"
+      ],
+      "order": 19
+    }
+  ]
+}
