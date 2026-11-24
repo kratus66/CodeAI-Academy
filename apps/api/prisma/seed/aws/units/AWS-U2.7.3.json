@@ -1,0 +1,1341 @@
+{
+  "code": "AWS-U2.7.3",
+  "lessons": [
+    {
+      "slug": "aws-u2-7-3-proteccion-perimetral-waf-shield-cloudfront-con-oac-y-firewall-manager",
+      "title": "Protección perimetral: WAF, Shield, CloudFront con OAC y Firewall Manager",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-waf-que-es",
+          "order": 0,
+          "note": "Fuente previa de AWS WAF: qué es, qué recursos protege y cómo responde el servicio protegido."
+        },
+        {
+          "resourceSlug": "aws-waf-reglas",
+          "order": 1,
+          "note": "Fuente de las reglas de AWS WAF: nombre, sentencia, criterios de inspección y sentencias lógicas."
+        },
+        {
+          "resourceSlug": "aws-shield-que-es",
+          "order": 2,
+          "note": "Fuente previa de AWS Shield: protección DDoS incluida y capacidades adicionales de Shield Advanced."
+        },
+        {
+          "resourceSlug": "aws-shield-como-funciona",
+          "order": 3,
+          "note": "Fuente de cómo funcionan Shield Standard y Shield Advanced y de las clases de ataque que detectan."
+        },
+        {
+          "resourceSlug": "aws-cloudfront-que-es",
+          "order": 4,
+          "note": "Fuente previa de CloudFront: ubicaciones de borde, orígenes y entrega de contenido."
+        },
+        {
+          "resourceSlug": "aws-cloudfront-oac",
+          "order": 5,
+          "note": "Fuente del control de acceso al origen (OAC) frente a la identidad de acceso al origen (OAI) para un origen de S3."
+        },
+        {
+          "resourceSlug": "aws-firewall-manager-que-es",
+          "order": 6,
+          "note": "Fuente de AWS Firewall Manager: protecciones centralizadas entre cuentas y recursos."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 7,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "La protección perimetral reparte el trabajo entre cuatro piezas. AWS WAF es un cortafuegos de aplicaciones web que te permite supervisar y controlar las peticiones HTTP(S) que llegan a tus recursos protegidos. AWS Shield protege contra ataques de denegación de servicio distribuido (DDoS). Amazon CloudFront entrega tu contenido desde ubicaciones de borde, y el control de acceso al origen (OAC) hace que un bucket de S3 solo se lea a través de CloudFront. AWS Firewall Manager aplica esas protecciones de forma centralizada en muchas cuentas. En el dominio 1 de SAA-C03, «Diseñar arquitecturas seguras», en la parte de cargas de trabajo y aplicaciones seguras, el enunciado describe la amenaza (peticiones maliciosas, inundaciones de tráfico, acceso directo a un bucket, muchas cuentas) y tú eliges la pieza que la resuelve. Los datos de abajo son de las páginas oficiales de AWS WAF, AWS Shield, CloudFront y Firewall Manager leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Las cuatro piezas frente a frente",
+          "items": [
+            "AWS WAF: inspecciona peticiones HTTP(S) y el servicio protegido responde con el contenido, con un código HTTP 403 (Forbidden) o con una respuesta personalizada. Protege, entre otros recursos, distribuciones de Amazon CloudFront, API REST de Amazon API Gateway, Application Load Balancers, API GraphQL de AWS AppSync y grupos de usuarios de Amazon Cognito.",
+            "Reglas de AWS WAF: una regla define cómo inspeccionar las peticiones y qué acción tomar; solo existe dentro de un grupo de reglas o de una web ACL (que la consola actual llama protection pack) y no es un recurso de AWS, así que no tiene ARN. Puede inspeccionar scripts maliciosos (XSS), direcciones IP, país de origen, longitud de una parte de la petición, código SQL malicioso (inyección SQL), cadenas (como el valor de User-Agent) y etiquetas, y combinar condiciones con AND, OR y NOT.",
+            "AWS Shield: protege contra DDoS en las capas de red y transporte (3 y 4) y en la capa de aplicación (7). Shield Standard se aplica automáticamente y sin cargo adicional al usar AWS; Shield Advanced se contrata para un nivel de protección mayor, con detección, mitigación y respuesta adicionales.",
+            "CloudFront con OAC: CloudFront entrega el contenido desde ubicaciones de borde con baja latencia. Para que un origen de S3 solo se lea a través de CloudFront, la guía recomienda el control de acceso al origen (OAC) en lugar de la identidad de acceso al origen (OAI), que es la opción heredada.",
+            "AWS Firewall Manager: administra de forma centralizada, en varias cuentas y recursos, protecciones como AWS WAF, AWS Shield Advanced, grupos de seguridad y ACL de red de Amazon VPC, AWS Network Firewall y Amazon Route 53 Resolver DNS Firewall; las configuras una vez y se aplican a las cuentas y recursos, incluidos los nuevos."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "AWS WAF: inspeccionar peticiones y decidir qué hacer",
+          "text": "AWS WAF controla el acceso a tu contenido según criterios que especificas, como las direcciones IP de origen de las peticiones o los valores de las cadenas de consulta: el servicio asociado al recurso protegido responde a cada petición con el contenido pedido, con un HTTP 403 o con una respuesta personalizada. Una regla de AWS WAF tiene un nombre y una sentencia de regla que define cómo inspecciona las peticiones; la sentencia puede contener otras sentencias anidadas a cualquier profundidad, y algunas toman conjuntos de criterios (por ejemplo, un conjunto de IP admite hasta 10.000 direcciones o rangos). Las reglas solo existen dentro de un grupo de reglas o de una web ACL, no son recursos de AWS y no tienen ARN; se pueden gestionar y copiar a otras web ACL mediante la vista JSON del grupo o de la web ACL que las contiene. La página da un ejemplo de regla con un AND lógico: si las peticiones vienen de 192.0.2.44, contienen el valor BadBot en la cabecera User-Agent y parecen incluir código SQL en la cadena de consulta, la petición debe cumplir todas las condiciones para coincidir con la regla de nivel superior. También se puede proteger una aplicación alojada en contenedores de Amazon ECS: se configura ECS para usar un Application Load Balancer con AWS WAF habilitado, que enruta y protege el tráfico HTTP(S) de capa 7 hacia las tareas del servicio."
+        },
+        {
+          "type": "paragraph",
+          "title": "AWS Shield: Standard frente a Advanced, y qué ataques detecta",
+          "text": "Un ataque DDoS es un ataque en el que varios sistemas comprometidos intentan inundar un objetivo con tráfico, con lo que los usuarios legítimos no pueden acceder y el objetivo puede caerse por el volumen. AWS Shield Standard y AWS Shield Advanced protegen los recursos de AWS contra ataques DDoS en las capas de red y transporte (3 y 4) y en la capa de aplicación (7), frente a una amplia gama de vectores de ataque conocidos y de día cero. Shield Standard se aplica automáticamente y sin cargo adicional cuando usas AWS (por ejemplo, ofrece protección automática contra vectores volumétricos comunes como los ataques de reflexión UDP y las inundaciones TCP SYN); para niveles de protección más altos, te suscribes a Shield Advanced, pensado para aplicaciones críticas para las que has garantizado un nivel de disponibilidad a tus clientes y que requieren soporte operativo de AWS durante los eventos DDoS. La página distingue tres clases de ataque: volumétricos de red (capa 3), que intentan saturar la capacidad de la red o del recurso; de protocolo de red (capa 4), como una inundación TCP SYN, que puede agotar el estado de conexión de servidores, balanceadores de carga o cortafuegos; y de capa de aplicación (capa 7), que inundan una aplicación con consultas válidas para el objetivo, como las inundaciones de peticiones web."
+        },
+        {
+          "type": "paragraph",
+          "title": "CloudFront y el control de acceso al origen (OAC)",
+          "text": "Amazon CloudFront acelera la distribución de contenido estático y dinámico a través de una red mundial de centros de datos llamados ubicaciones de borde: la petición se encamina a la ubicación de borde con menor latencia y, si el contenido no está allí, CloudFront lo recupera del origen que hayas definido (un bucket de S3, un canal de MediaPackage o un servidor HTTP). Para que solo CloudFront lea un origen de S3, CloudFront ofrece dos formas de enviar peticiones autenticadas: el control de acceso al origen (OAC) y la identidad de acceso al origen (OAI). La guía recomienda OAC porque admite todos los buckets de S3 en todas las Regiones (incluidas las de suscripción posteriores a diciembre de 2022), el cifrado del lado del servidor con AWS KMS (SSE-KMS) y las peticiones dinámicas (PUT y DELETE) a S3; la OAI no admite estas funciones o exige soluciones alternativas. Para configurarlo hay que conceder permiso a CloudFront con una política de bucket que permita al principal de servicio cloudfront.amazonaws.com acceder al bucket, con un elemento Condition que lo limite a las peticiones hechas en nombre de la distribución que contiene el origen de S3 (con la condición AWS:SourceArn). Si los objetos usan SSE-KMS, la distribución también necesita permiso para usar la clave de AWS KMS, y eso se concede añadiendo una sentencia a la política de clave. Tres límites que cita la página: el origen debe ser un bucket de S3 normal, no un bucket configurado como punto de enlace de sitio web (en ese caso se configura como origen personalizado y no se puede usar OAC ni OAI); S3 Object Ownership debe ser «Bucket owner enforced», el valor predeterminado de los buckets nuevos (si se necesitan ACL, se usa «Bucket owner preferred»); y OAC no admite la redirección de origen con Lambda@Edge. Además, la comunicación entre CloudFront y S3 es siempre por HTTPS, pero solo si eliges firmar siempre las peticiones."
+        },
+        {
+          "type": "paragraph",
+          "title": "AWS Firewall Manager: protecciones de una vez para toda la organización",
+          "text": "AWS Firewall Manager simplifica las tareas de administración y mantenimiento entre varias cuentas y recursos: configuras las protecciones una sola vez y el servicio las aplica automáticamente a tus cuentas y recursos, incluso cuando añades cuentas y recursos nuevos. Entre sus ventajas, la página enumera proteger los recursos de varias cuentas, proteger todos los recursos de un tipo concreto (por ejemplo, todas las distribuciones de CloudFront), proteger todos los recursos con determinadas etiquetas, añadir protección automáticamente a los recursos nuevos, suscribir a AWS Shield Advanced a todas las cuentas miembro de una organización de AWS Organizations (y a las nuevas cuentas que se incorporen), aplicar reglas de grupos de seguridad a todas las cuentas miembro o a un subconjunto, y usar reglas propias o reglas administradas compradas en AWS Marketplace. Es especialmente útil cuando quieres proteger toda la organización y no unas pocas cuentas y recursos, o cuando añades recursos con frecuencia, y ofrece supervisión centralizada de ataques DDoS. Una nota de costo: los cargos de Firewall Manager son los de los servicios subyacentes, como AWS WAF y AWS Config."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Una aplicación detrás de un Application Load Balancer recibe peticiones con código SQL malicioso en la cadena de consulta. (2) Una aplicación crítica, con disponibilidad garantizada a sus clientes, necesita soporte operativo de AWS durante los ataques DDoS. (3) Un sitio estático en un bucket de S3 con SSE-KMS debe leerse únicamente a través de CloudFront. (4) Una organización con decenas de cuentas quiere aplicar la misma protección de AWS WAF a todas las distribuciones de CloudFront, incluidas las nuevas. Paso 1: para (1), la clave es «inspeccionar el contenido de las peticiones», así que va AWS WAF con una regla que detecte código SQL malicioso. Paso 2: para (2), la clave es «disponibilidad garantizada y soporte operativo durante DDoS», así que va AWS Shield Advanced, no solo Shield Standard. Paso 3: para (3), va CloudFront con OAC, con una política de bucket para el principal de servicio de CloudFront limitada a la distribución, y con una sentencia en la política de la clave de KMS porque el bucket usa SSE-KMS. Paso 4: para (4), va AWS Firewall Manager, que aplica la protección a todas las distribuciones de todas las cuentas, incluso a las nuevas. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una política de bucket para OAC como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const politicaDeBucket = {\n  Effect: \"Allow\",\n  Principal: { Service: \"cloudfront.amazonaws.com\" },\n  Action: \"s3:GetObject\",\n  Resource: \"arn:aws:s3:::sitio-de-ejemplo/*\",\n  Condition: {\n    StringEquals: { \"AWS:SourceArn\": \"arn:aws:cloudfront::111122223333:distribution/EJEMPLO\" },\n  },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la amenaza a la pieza de protección",
+          "code": "flowchart TB\n  N{\"Qué amenaza describe el enunciado\"} -->|\"Peticiones HTTP(S) con SQL, scripts o IP maliciosas\"| W[\"AWS WAF\"]\n  N -->|\"Inundaciones de tráfico DDoS\"| S{\"Qué nivel se exige\"}\n  S -->|\"Automático y sin cargo\"| SS[\"Shield Standard\"]\n  S -->|\"Disponibilidad garantizada y soporte de AWS\"| SA[\"Shield Advanced\"]\n  N -->|\"Un bucket de S3 solo debe leerse a través de CloudFront\"| O[\"CloudFront con OAC\"]\n  O --> B[\"Política de bucket con SourceArn y, con SSE-KMS, sentencia en la política de clave\"]\n  N -->|\"La misma protección en todas las cuentas, también las nuevas\"| F[\"AWS Firewall Manager\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: pedirle a Shield que inspeccione contenido, o usar OAI y website endpoint con OAC",
+          "text": "El enunciado mezcla señales: «código SQL malicioso en la petición», «inundación de tráfico», «disponibilidad garantizada», «el bucket tiene SSE-KMS», «el bucket está configurado como sitio web», «muchas cuentas». Shield protege contra DDoS y no sustituye a una regla de AWS WAF que inspeccione el contenido de las peticiones; OAC admite SSE-KMS y peticiones PUT y DELETE, pero no un bucket configurado como punto de enlace de sitio web; y Firewall Manager administra protecciones centralmente, pero los cargos son los de los servicios subyacentes. Subraya la amenaza, el tipo de recurso y el número de cuentas antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: elegir Shield para bloquear inyección SQL o scripts maliciosos",
+          "text": "Causa: ver «ataque web» y escoger Shield porque protege la capa de aplicación. Consecuencia: Shield protege contra ataques DDoS, y una inyección SQL o un script malicioso (XSS) en una petición se detecta con reglas de AWS WAF que inspeccionan los criterios de la petición. Solución: usa AWS WAF, con una regla cuya sentencia detecte código SQL o scripts maliciosos, y reserva Shield para los ataques de inundación (capas 3, 4 y 7)."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: dejar un bucket de S3 accesible a todo el mundo para que CloudFront lo lea",
+          "text": "Causa: hacer público el bucket o usar un principal comodín para que CloudFront pueda leer los objetos. Consecuencia: cualquiera que conozca la URL del bucket puede saltarse CloudFront y sus protecciones. Solución: usa OAC, con una política de bucket que permita solo al principal de servicio cloudfront.amazonaws.com y con una condición que limite el acceso a la distribución concreta; si el bucket usa SSE-KMS, añade también a la política de la clave una sentencia para CloudFront."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: aplicar OAC a un bucket configurado como sitio web o con el Object Ownership equivocado",
+          "text": "Causa: suponer que OAC funciona con cualquier origen de S3. Consecuencia: un bucket configurado como punto de enlace de sitio web debe configurarse como origen personalizado y no admite OAC (ni OAI), y con OAC el Object Ownership debe ser «Bucket owner enforced» (o «Bucket owner preferred» si se necesitan ACL); si no, CloudFront no podrá leer los objetos como se espera. Solución: usa un bucket de S3 normal como origen, comprueba el Object Ownership y concede el permiso con la política de bucket antes de añadir el OAC al origen."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la pieza de protección perimetral (AWS WAF, AWS Shield Standard o Advanced, CloudFront con OAC, AWS Firewall Manager) que resuelve una amenaza descrita en un enunciado, escribir la política de bucket de un OAC con su condición y explicar qué añade OAC frente a OAI. Esta unidad prepara el examen SAA-C03, dominio 1 «Diseñar arquitecturas seguras», en la parte de cargas de trabajo y aplicaciones seguras. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la pieza, el dato del enunciado que la decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra la pieza y el dato que la decide. Explica con tus palabras el diagrama «De la amenaza a la pieza de protección». Después responde: si un bucket de S3 con SSE-KMS se lee a través de CloudFront con OAC y los objetos no se pueden leer, ¿qué dos permisos compruebas y dónde se configura cada uno?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El bucket que solo debe leer CloudFront». Una configuración escrita como objeto protege un bucket de S3 con SSE-KMS con el mecanismo heredado. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas el origen y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «La política de bucket de un OAC sin condición». Una política de bucket deja leer los objetos a un principal demasiado amplio y sin limitar la distribución. Decide qué cambias sin alterar la acción ni el recurso. Criterio de paso: las pruebas pasan y justificas por escrito el ajuste con la página de control de acceso al origen de CloudFront."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre protección perimetral. Audítalo en «Auditar un informe de protección perimetral generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de AWS WAF, AWS Shield, CloudFront y Firewall Manager (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué hace AWS WAF y dónde viven sus reglas; qué diferencia hay entre Shield Standard y Shield Advanced y qué clases de ataque detecta; qué ventajas tiene OAC frente a OAI y qué dos permisos exige con SSE-KMS; y qué ventajas da Firewall Manager. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe la amenaza y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa con varias cuentas sirve su tienda por CloudFront desde un bucket de S3 con SSE-KMS, recibe peticiones con código SQL malicioso y teme inundaciones de tráfico. Decide qué pieza usas para cada amenaza y cómo aplicas la protección de WAF a todas las cuentas. Pregunta de cierre: un compañero dice «Shield Standard ya bloquea la inyección SQL»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cortafuegos de aplicaciones web que supervisa las peticiones HTTP(S) enviadas a tus recursos protegidos y controla el acceso según criterios como la IP de origen o la cadena de consulta. Protege, entre otros, distribuciones de CloudFront, API REST de API Gateway, Application Load Balancers y grupos de usuarios de Cognito. El recurso responde con el contenido, un 403 o una respuesta personalizada."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-3-tarjeta-01",
+      "title": "Tarjeta: qué es AWS WAF",
+      "statement": "¿Qué es AWS WAF y qué recursos puede proteger?",
+      "concepts": [
+        "AWS WAF",
+        "peticiones HTTP(S)",
+        "recursos protegidos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Define cómo inspeccionar las peticiones y qué acción tomar. Solo existe dentro de un grupo de reglas o de una web ACL; no es un recurso de AWS ni tiene ARN. Inspecciona IP, país, longitud, cadenas, scripts (XSS), código SQL y etiquetas, y combina condiciones con AND, OR y NOT. Un conjunto de IP admite hasta 10.000 direcciones o rangos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-3-tarjeta-02",
+      "title": "Tarjeta: reglas de AWS WAF",
+      "statement": "¿Qué es una regla de AWS WAF y dónde existe?",
+      "concepts": [
+        "regla de WAF",
+        "web ACL",
+        "sentencia lógica"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rules.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ambos protegen contra DDoS en las capas 3 y 4 y en la capa 7. Standard se aplica automáticamente y sin cargo al usar AWS; Advanced se contrata para más protección en aplicaciones críticas con soporte operativo de AWS durante los ataques. Detectan ataques volumétricos (capa 3), de protocolo como la inundación SYN (capa 4) y de aplicación (capa 7)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-3-tarjeta-03",
+      "title": "Tarjeta: Shield Standard y Advanced",
+      "statement": "¿En qué se diferencian Shield Standard y Shield Advanced y qué ataques detectan?",
+      "concepts": [
+        "Shield Standard",
+        "Shield Advanced",
+        "DDoS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "OAC admite todos los buckets de S3 en todas las Regiones (también las de suscripción posteriores a diciembre de 2022), el cifrado SSE-KMS y las peticiones dinámicas PUT y DELETE; la OAI no admite estas funciones o necesita soluciones alternativas. La OAI es la opción heredada que no se recomienda."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-3-tarjeta-04",
+      "title": "Tarjeta: OAC frente a OAI",
+      "statement": "¿Por qué recomienda la guía el control de acceso al origen (OAC) frente a la identidad de acceso al origen (OAI)?",
+      "concepts": [
+        "OAC",
+        "OAI",
+        "SSE-KMS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una política de bucket que permita al principal de servicio cloudfront.amazonaws.com, con una condición AWS:SourceArn que limite el acceso a la distribución. Con SSE-KMS, una sentencia en la política de clave para CloudFront. El origen debe ser un bucket normal (no un punto de enlace de sitio web) y el Object Ownership, «Bucket owner enforced» por defecto."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-3-tarjeta-05",
+      "title": "Tarjeta: requisitos de OAC",
+      "statement": "¿Qué hay que configurar para usar OAC con un origen de S3?",
+      "concepts": [
+        "política de bucket",
+        "SourceArn",
+        "bucket de sitio web"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Administra protecciones (AWS WAF, Shield Advanced, grupos de seguridad y ACL de red de VPC, Network Firewall y Route 53 Resolver DNS Firewall) en varias cuentas y recursos: se configuran una vez y se aplican, también a los recursos y cuentas nuevos. Puede suscribir a Shield Advanced a las cuentas miembro de una organización. Los cargos son los de los servicios subyacentes, como WAF y Config."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-3-tarjeta-06",
+      "title": "Tarjeta: AWS Firewall Manager",
+      "statement": "¿Qué hace AWS Firewall Manager y cómo se cobra?",
+      "concepts": [
+        "Firewall Manager",
+        "AWS Organizations",
+        "protección centralizada"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/fms-chapter.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Bucket de S3 con SSE-KMS que solo debe leerse a través de CloudFront. Corrige su defecto principal.\nexport const diseno = {\n  origen: \"bucket-s3-privado\",\n  requisitos: { soloCloudFront: true, cifradoSseKms: true, peticionesDinamicas: true },\n  controlDeAcceso: \"oai\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  origen: \"bucket-s3-privado\",\n  requisitos: { soloCloudFront: true, cifradoSseKms: true, peticionesDinamicas: true },\n  controlDeAcceso: \"oac\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El bucket usa SSE-KMS y debe admitir peticiones dinámicas (PUT y DELETE) a través de CloudFront. Compara esas exigencias con lo que admite el mecanismo elegido."
+        },
+        {
+          "level": 2,
+          "text": "La página de CloudFront indica que la OAI no admite SSE-KMS ni las peticiones dinámicas o necesita soluciones alternativas, y que recomienda el control de acceso al origen (OAC), que sí las admite."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el control de acceso a \"oac\". No cambies el origen ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el control de acceso ya no es la OAI",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.controlDeAcceso, \"oai\", \"La OAI no admite SSE-KMS ni las peticiones dinámicas sin soluciones alternativas\");\nassert.strictEqual(diseno.controlDeAcceso, \"oac\");"
+          }
+        },
+        {
+          "name": "los requisitos del bucket se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.soloCloudFront, true);\nassert.strictEqual(diseno.requisitos.cifradoSseKms, true);\nassert.strictEqual(diseno.requisitos.peticionesDinamicas, true);"
+          }
+        },
+        {
+          "name": "el origen no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.origen, \"bucket-s3-privado\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-7-3-debug-01",
+      "title": "El bucket que solo debe leer CloudFront",
+      "statement": "El objeto `diseno` modela un bucket de S3 con cifrado SSE-KMS que solo debe leerse a través de CloudFront y que debe admitir peticiones dinámicas (PUT y DELETE). El diseño actual usa el mecanismo de acceso al origen que, según la página de CloudFront, no admite esas funciones sin soluciones alternativas. Corrige el control de acceso sin cambiar el origen ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`).",
+      "concepts": [
+        "OAC",
+        "OAI",
+        "SSE-KMS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Política de bucket para que una distribución de CloudFront lea objetos de un bucket con OAC. Corrige su defecto principal.\nexport const politica = {\n  Effect: \"Allow\",\n  Principal: \"*\",\n  Action: \"s3:GetObject\",\n  Resource: \"arn:aws:s3:::sitio-de-ejemplo/*\",\n};\n",
+      "solution": {
+        "code": "export const politica = {\n  Effect: \"Allow\",\n  Principal: { Service: \"cloudfront.amazonaws.com\" },\n  Action: \"s3:GetObject\",\n  Resource: \"arn:aws:s3:::sitio-de-ejemplo/*\",\n  Condition: {\n    StringEquals: { \"AWS:SourceArn\": \"arn:aws:cloudfront::111122223333:distribution/EJEMPLO\" },\n  },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el principal ya no es un comodín",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.notStrictEqual(politica.Principal, \"*\", \"Un principal comodín deja leer los objetos a cualquiera\");"
+          }
+        },
+        {
+          "name": "el principal es el servicio de CloudFront",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.deepStrictEqual(politica.Principal, { Service: \"cloudfront.amazonaws.com\" });"
+          }
+        },
+        {
+          "name": "una condición limita el acceso a la distribución concreta",
+          "isHidden": true,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(politica.Condition, \"Falta la condición que limita el acceso a la distribución\");\nassert.deepStrictEqual(politica.Condition.StringEquals, { \"AWS:SourceArn\": \"arn:aws:cloudfront::111122223333:distribution/EJEMPLO\" });"
+          }
+        },
+        {
+          "name": "la acción y el recurso se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(politica.Effect, \"Allow\");\nassert.strictEqual(politica.Action, \"s3:GetObject\");\nassert.strictEqual(politica.Resource, \"arn:aws:s3:::sitio-de-ejemplo/*\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-7-3-debug-02",
+      "title": "La política de bucket de un OAC sin condición",
+      "statement": "El objeto `politica` modela la sentencia de una política de bucket que debe permitir a una distribución de CloudFront concreta (arn:aws:cloudfront::111122223333:distribution/EJEMPLO) leer los objetos de un bucket de S3 con OAC. La sentencia actual usa un principal demasiado amplio y no limita el acceso a esa distribución. Corrígela según la página de control de acceso al origen de CloudFront sin cambiar el efecto, la acción ni el recurso, y mantén la forma del valor exportado (`export const politica = { … }`).",
+      "concepts": [
+        "OAC",
+        "política de bucket",
+        "AWS:SourceArn"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de protección perimetral (borrador generado por un asistente)\nEscenario: una aplicación web con un balanceador de carga, un sitio en S3 servido por CloudFront y varias cuentas de una organización.\n1. AWS WAF puede proteger distribuciones de CloudFront, API REST de API Gateway y Application Load Balancers.\n2. Cada regla de AWS WAF es un recurso independiente de AWS con su propio ARN.\n3. Shield Standard se aplica automáticamente y sin cargo adicional al usar AWS.\n4. Shield Advanced no protege contra ataques de la capa de aplicación (capa 7).\n5. El control de acceso al origen (OAC) admite SSE-KMS en el origen de S3, y la OAI no lo admite sin soluciones alternativas.\n6. Un bucket de S3 configurado como punto de enlace de sitio web se puede proteger con OAC.\n7. AWS Firewall Manager cobra una tarifa propia, independiente de AWS WAF y de AWS Config."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Recursos que protege AWS WAF",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página enumera, entre otros, las distribuciones de CloudFront, las API REST de API Gateway y los Application Load Balancers."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Reglas de AWS WAF",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: las reglas solo existen dentro de un grupo de reglas o de una web ACL, no son recursos de AWS y no tienen ARN."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Shield Standard",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Shield Standard se proporciona automáticamente y sin cargo adicional cuando usas AWS."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Shield Advanced y la capa 7",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Shield Standard y Shield Advanced protegen contra DDoS en las capas 3 y 4 y en la capa de aplicación (capa 7)."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "OAC y SSE-KMS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: OAC admite SSE-KMS y la OAI no lo admite o necesita soluciones alternativas."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "OAC con punto de enlace de sitio web",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: un bucket configurado como punto de enlace de sitio web debe configurarse como origen personalizado y no se puede usar OAC (ni OAI)."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Cargos de Firewall Manager",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: los cargos de Firewall Manager son los de los servicios subyacentes, como AWS WAF y AWS Config."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-7-3-auditoria-01",
+      "title": "Auditar un informe de protección perimetral generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre protección perimetral en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "AWS WAF",
+        "Shield",
+        "OAC",
+        "Firewall Manager"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rules.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/fms-chapter.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Shield Standard, porque protege la capa de aplicación",
+            "explanation": "Descartada: Shield protege contra ataques DDoS, no inspecciona el código SQL de las peticiones."
+          },
+          {
+            "id": "b",
+            "text": "AWS WAF, con una regla que inspeccione la cadena de consulta",
+            "explanation": "Es la correcta: las reglas de AWS WAF pueden inspeccionar código SQL malicioso y bloquear la petición."
+          },
+          {
+            "id": "c",
+            "text": "CloudFront con OAC, para restringir el acceso al origen",
+            "explanation": "Descartada: OAC restringe quién lee un origen de S3; no inspecciona el contenido de las peticiones."
+          },
+          {
+            "id": "d",
+            "text": "AWS Firewall Manager, que cobra por los servicios subyacentes",
+            "explanation": "Descartada: administra protecciones en varias cuentas, pero la inspección la hace una regla de AWS WAF."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-3-quiz-01",
+      "title": "Inyección SQL en una aplicación web",
+      "statement": "Una aplicación web detrás de un Application Load Balancer recibe peticiones con código SQL malicioso en la cadena de consulta. ¿Qué servicio es el MEJOR ajuste para inspeccionar y bloquear esas peticiones?",
+      "concepts": [
+        "AWS WAF",
+        "inyección SQL"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rules.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Suscribirse a AWS Shield Advanced para todas las cuentas",
+            "explanation": "Descartada: Shield Advanced es una suscripción de pago; el requisito es no suscribirse a nada."
+          },
+          {
+            "id": "b",
+            "text": "Crear reglas de AWS WAF para cada vector de ataque conocido",
+            "explanation": "Descartada: es trabajo y costo de AWS WAF que Shield Standard ya cubre de forma automática."
+          },
+          {
+            "id": "c",
+            "text": "Usar AWS Firewall Manager para aplicar Shield Advanced a la organización",
+            "explanation": "Descartada: aplica protecciones y los cargos son los de los servicios subyacentes; no es la opción sin suscripción."
+          },
+          {
+            "id": "d",
+            "text": "Aprovechar AWS Shield Standard, que se aplica automáticamente al usar AWS",
+            "explanation": "Es la correcta: se proporciona automáticamente y sin cargo adicional, con protección contra vectores volumétricos comunes."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-3-quiz-02",
+      "title": "DDoS volumétrico sin suscripciones",
+      "statement": "Un equipo quiere protección frente a ataques DDoS volumétricos comunes, como las inundaciones TCP SYN y la reflexión UDP, con el MENOR costo y sin suscribirse a ningún servicio. ¿Qué opción cumple?",
+      "concepts": [
+        "Shield Standard",
+        "DDoS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Shield Advanced, con una suscripción para esa aplicación",
+            "explanation": "Es la correcta: está pensado para aplicaciones críticas con disponibilidad garantizada que requieren soporte operativo de AWS en eventos DDoS."
+          },
+          {
+            "id": "b",
+            "text": "AWS Shield Standard, que ya incluye ese soporte operativo",
+            "explanation": "Descartada: Standard se aplica automáticamente, pero la protección y el soporte adicionales son de Shield Advanced."
+          },
+          {
+            "id": "c",
+            "text": "AWS WAF, con una regla que limite las peticiones por origen",
+            "explanation": "Descartada: AWS WAF inspecciona peticiones HTTP(S); no ofrece soporte operativo de AWS durante los ataques DDoS."
+          },
+          {
+            "id": "d",
+            "text": "Amazon CloudFront, que entrega el contenido desde ubicaciones de borde",
+            "explanation": "Descartada: CloudFront acelera la entrega de contenido, pero no es el servicio de protección DDoS con soporte operativo."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-3-quiz-03",
+      "title": "Aplicación crítica y soporte de AWS",
+      "statement": "Una aplicación crítica tiene una disponibilidad garantizada a sus clientes y necesita soporte operativo de AWS durante los eventos DDoS. ¿Qué servicio encaja MÁS?",
+      "concepts": [
+        "Shield Advanced",
+        "disponibilidad garantizada"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "La identidad de acceso al origen (OAI), el mecanismo heredado",
+            "explanation": "Descartada: la OAI no admite SSE-KMS ni las peticiones dinámicas, o exige soluciones alternativas."
+          },
+          {
+            "id": "b",
+            "text": "Un bucket público al que cualquiera pueda acceder directamente",
+            "explanation": "Descartada: un bucket público no limita el acceso a CloudFront y lo expone a cualquiera que conozca su URL."
+          },
+          {
+            "id": "c",
+            "text": "El control de acceso al origen (OAC), con una política de bucket",
+            "explanation": "Es la correcta: admite SSE-KMS y las peticiones dinámicas a S3, y es lo que recomienda la guía."
+          },
+          {
+            "id": "d",
+            "text": "Un punto de enlace de sitio web de S3 como origen con OAC",
+            "explanation": "Descartada: un bucket configurado como punto de enlace de sitio web no admite OAC ni OAI."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-3-quiz-04",
+      "title": "Mecanismo de acceso al origen de S3",
+      "statement": "Un bucket de S3 con cifrado SSE-KMS debe leerse únicamente a través de CloudFront y admitir peticiones PUT y DELETE. ¿Qué mecanismo ofrece el MAYOR soporte de esas funciones?",
+      "concepts": [
+        "OAC",
+        "SSE-KMS",
+        "PUT y DELETE"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Conceder permiso con una política de bucket para el principal de servicio de CloudFront limitada a la distribución",
+            "explanation": "Es la correcta: se hace después de crear la distribución y antes de añadir el OAC al origen."
+          },
+          {
+            "id": "b",
+            "text": "Configurar el bucket como punto de enlace de sitio web para que CloudFront lo lea",
+            "explanation": "Descartada: un bucket configurado como punto de enlace de sitio web no admite OAC."
+          },
+          {
+            "id": "c",
+            "text": "Abrir el bucket al público con una política con un principal comodín",
+            "explanation": "Descartada: eso anula la restricción de acceso que se busca con OAC."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar S3 Object Ownership a ObjectWriter para el bucket",
+            "explanation": "Descartada: con OAC debe usarse «Bucket owner enforced», o «Bucket owner preferred» si se necesitan ACL."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-3-quiz-05",
+      "title": "Permiso previo para usar OAC",
+      "statement": "Un equipo va a asociar un control de acceso al origen (OAC) a un origen de S3 de una distribución de CloudFront. ¿Qué debe hacer PRIMERO?",
+      "concepts": [
+        "política de bucket",
+        "OAC"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear una web ACL en cada cuenta y copiarla cuando aparezca una distribución nueva",
+            "explanation": "Descartada: exige repetir el trabajo en cada cuenta y en cada recurso nuevo."
+          },
+          {
+            "id": "b",
+            "text": "Suscribir cada cuenta a AWS Shield Advanced una por una",
+            "explanation": "Descartada: Shield Advanced protege contra DDoS; no aplica una protección de AWS WAF entre cuentas."
+          },
+          {
+            "id": "c",
+            "text": "Usar AWS Shield Standard, que se aplica a todas las cuentas por igual",
+            "explanation": "Descartada: Shield Standard protege contra DDoS, no aplica reglas de AWS WAF a las distribuciones de CloudFront."
+          },
+          {
+            "id": "d",
+            "text": "Usar AWS Firewall Manager para configurar la protección una vez y aplicarla a todas",
+            "explanation": "Es la correcta: la aplica a las cuentas y recursos, también a los nuevos, y puede proteger todos los recursos de un tipo."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-3-quiz-06",
+      "title": "La misma protección en todas las cuentas",
+      "statement": "Una organización con muchas cuentas quiere aplicar la misma protección de AWS WAF a todas las distribuciones de CloudFront de todas las cuentas, incluidas las nuevas, con el MENOR esfuerzo de administración. ¿Qué opción elige?",
+      "concepts": [
+        "Firewall Manager",
+        "protección centralizada"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/fms-chapter.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo puede proteger distribuciones de Amazon CloudFront",
+            "explanation": "No cumple: también protege API REST de API Gateway, Application Load Balancers, AppSync y grupos de usuarios de Cognito, entre otros."
+          },
+          {
+            "id": "b",
+            "text": "Una regla solo existe dentro de un grupo de reglas o de una web ACL y no tiene ARN",
+            "explanation": "Cumple: las reglas no son recursos de AWS y se acceden por nombre dentro del grupo o de la web ACL."
+          },
+          {
+            "id": "c",
+            "text": "Un conjunto de IP admite como máximo 100 direcciones o rangos",
+            "explanation": "No cumple: un conjunto de IP admite hasta 10.000 direcciones o rangos de IP."
+          },
+          {
+            "id": "d",
+            "text": "Puede combinar condiciones en una regla con las sentencias lógicas AND, OR y NOT",
+            "explanation": "Cumple: las sentencias lógicas combinan otras sentencias; con un AND, la petición debe cumplirlas todas."
+          },
+          {
+            "id": "e",
+            "text": "Siempre responde con un 403 y no admite respuestas personalizadas",
+            "explanation": "No cumple: el servicio protegido puede responder con el contenido, con un 403 o con una respuesta personalizada."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-3-quiz-07",
+      "title": "Qué es cierto de AWS WAF",
+      "statement": "Un equipo repasa cómo funciona AWS WAF. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "AWS WAF",
+        "reglas",
+        "sentencias lógicas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rules.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Shield Standard se proporciona automáticamente y sin cargo adicional al usar AWS",
+            "explanation": "Cumple: es la protección DDoS básica incluida; para más protección se contrata Shield Advanced."
+          },
+          {
+            "id": "b",
+            "text": "Shield Standard exige una suscripción previa para activarse",
+            "explanation": "No cumple: Standard se aplica automáticamente; la suscripción es la de Shield Advanced."
+          },
+          {
+            "id": "c",
+            "text": "Shield detecta ataques volumétricos de red, de protocolo y de capa de aplicación",
+            "explanation": "Cumple: son las clases de capa 3, capa 4 (como la inundación TCP SYN) y capa 7."
+          },
+          {
+            "id": "d",
+            "text": "Firewall Manager cobra una tarifa fija propia en lugar de los servicios subyacentes",
+            "explanation": "No cumple: los cargos de Firewall Manager son los de los servicios subyacentes, como AWS WAF y AWS Config."
+          },
+          {
+            "id": "e",
+            "text": "Firewall Manager puede suscribir a Shield Advanced a las cuentas miembro de una organización",
+            "explanation": "Cumple: también suscribe automáticamente a las cuentas nuevas que se incorporen a la organización."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-3-quiz-08",
+      "title": "Qué es cierto de Shield y de Firewall Manager",
+      "statement": "Un equipo repasa Shield y Firewall Manager. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "Shield",
+        "Firewall Manager",
+        "clases de ataque"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/fms-chapter.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "waf",
+            "term": "AWS WAF",
+            "definition": "Inyección SQL y scripts entre sitios en las peticiones HTTP(S) a un balanceador de carga"
+          },
+          {
+            "id": "ipset",
+            "term": "Conjunto de IP de AWS WAF",
+            "definition": "Permitir o bloquear hasta 10.000 direcciones IP o rangos en una regla"
+          },
+          {
+            "id": "std",
+            "term": "AWS Shield Standard",
+            "definition": "Protección automática y sin cargo contra inundaciones TCP SYN y reflexión UDP"
+          },
+          {
+            "id": "adv",
+            "term": "AWS Shield Advanced",
+            "definition": "Aplicación crítica con disponibilidad garantizada y soporte operativo de AWS ante un DDoS"
+          },
+          {
+            "id": "cf",
+            "term": "Amazon CloudFront",
+            "definition": "Entregar contenido estático y dinámico desde ubicaciones de borde de baja latencia"
+          },
+          {
+            "id": "oac",
+            "term": "Control de acceso al origen (OAC)",
+            "definition": "Que solo CloudFront lea un bucket de S3 con SSE-KMS y peticiones PUT y DELETE"
+          },
+          {
+            "id": "oai",
+            "term": "Identidad de acceso al origen (OAI)",
+            "definition": "Mecanismo heredado y no recomendado que no admite SSE-KMS sin soluciones alternativas"
+          },
+          {
+            "id": "fms",
+            "term": "AWS Firewall Manager",
+            "definition": "Aplicar una vez la misma protección a todas las cuentas de una organización, también a las nuevas"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio o mecanismo de protección perimetral con la amenaza o el caso que resuelve. Si dudas, pregúntate si el ataque es de contenido o de inundación, quién debe leer el origen y a cuántas cuentas afecta.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Peticiones maliciosas: AWS WAF y sus reglas",
+              "Inundaciones de tráfico: Shield Standard frente a Shield Advanced",
+              "Acceso al origen: OAC frente a OAI",
+              "Muchas cuentas: AWS Firewall Manager"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-7-3-memoria-01",
+      "title": "Servicio de protección y amenaza que resuelve",
+      "statement": "Empareja cada servicio o mecanismo de protección perimetral con la amenaza o el caso que resuelve.",
+      "concepts": [
+        "AWS WAF",
+        "Shield",
+        "OAC",
+        "Firewall Manager"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rules.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/fms-chapter.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-7-3-reflexion-01",
+      "title": "Reflexión: qué protección perimetral y por qué",
+      "statement": "Elige una aplicación web que conozcas (por ejemplo, una tienda servida por CloudFront con una API detrás de un balanceador) y escribe un registro breve de decisión sobre cómo protegerías su perímetro, en 5 a 7 líneas:\n\n1) Decisión: qué pieza usarías para cada amenaza (AWS WAF, Shield Standard o Advanced, CloudFront con OAC, Firewall Manager) y qué dato de la aplicación lo decide (tipo de petición, criticidad, dónde está el origen, número de cuentas).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, Shield para bloquear una inyección SQL, o abrir el bucket al público en lugar de usar OAC) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (las reglas de AWS WAF, la política de bucket y la de clave del OAC, la suscripción a Shield Advanced si la hay).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad o Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial (AWS WAF, AWS Shield, control de acceso al origen de CloudFront o Firewall Manager) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la aplicación, la pieza y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "protección perimetral",
+        "AWS WAF",
+        "Shield",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html",
+        "https://docs.aws.amazon.com/waf/latest/developerguide/fms-chapter.html"
+      ],
+      "order": 19
+    }
+  ]
+}
