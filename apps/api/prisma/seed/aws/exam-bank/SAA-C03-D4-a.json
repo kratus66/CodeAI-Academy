@@ -1,0 +1,1423 @@
+{
+  "certification": "SAA-C03",
+  "domain": 4,
+  "questions": [
+    {
+      "unitCode": "AWS-U2.4.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "S3 Intelligent-Tiering",
+              "explanation": "Es la correcta: mueve los objetos entre niveles según el acceso, sin cargos de recuperación."
+            },
+            {
+              "id": "b",
+              "text": "S3 Glacier Deep Archive para todo",
+              "explanation": "Descartada: es de recuperación lenta y no sirve para accesos frecuentes."
+            },
+            {
+              "id": "c",
+              "text": "S3 One Zone-IA para todo",
+              "explanation": "Descartada: reduce la durabilidad y tiene cargos de recuperación."
+            },
+            {
+              "id": "d",
+              "text": "S3 Standard con eliminación manual",
+              "explanation": "Descartada: no optimiza el costo de datos poco usados."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-01",
+        "title": "Patrón de acceso desconocido en S3",
+        "statement": "Una empresa guarda datos en S3 cuyo patrón de acceso cambia y es impredecible, y quiere optimizar el costo sin trabajo operativo ni cargos por recuperación. ¿Qué clase es la MEJOR?",
+        "concepts": [
+          "S3 Intelligent-Tiering"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2201
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "S3 Standard",
+              "explanation": "Descartada: tiene un costo de almacenamiento mayor para datos poco usados."
+            },
+            {
+              "id": "b",
+              "text": "S3 Glacier Deep Archive",
+              "explanation": "Descartada: su recuperación tarda horas y no es inmediata."
+            },
+            {
+              "id": "c",
+              "text": "Un volumen de EBS",
+              "explanation": "Descartada: no es almacenamiento de objetos de bajo costo."
+            },
+            {
+              "id": "d",
+              "text": "S3 Standard-IA",
+              "explanation": "Es la correcta: cuesta menos de almacenar y permite acceso inmediato con cargo por recuperación."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-02",
+        "title": "Datos poco consultados que deben estar disponibles al instante",
+        "statement": "Unos datos se consultan una o dos veces al mes, pero cuando se necesitan deben estar disponibles de inmediato, y se busca un menor costo de almacenamiento. ¿Qué clase es la MÁS adecuada?",
+        "concepts": [
+          "S3 Standard-IA"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2202
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Desactivar el ciclo de vida del bucket",
+              "explanation": "No cumple: elimina el ahorro automático."
+            },
+            {
+              "id": "b",
+              "text": "Mantener todo en S3 Standard para siempre",
+              "explanation": "No cumple: paga la clase más cara sin necesidad."
+            },
+            {
+              "id": "c",
+              "text": "Expirar los objetos pasado un año",
+              "explanation": "Cumple: deja de pagar por datos que ya no aportan valor."
+            },
+            {
+              "id": "d",
+              "text": "Pasar los objetos a una clase más barata a los 30 días",
+              "explanation": "Cumple: reduce el costo del dato que se lee poco."
+            },
+            {
+              "id": "e",
+              "text": "Duplicar los objetos en otra región sin necesidad",
+              "explanation": "No cumple: añade costo de almacenamiento y transferencia."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-03",
+        "title": "Dos reglas de ciclo de vida para ahorrar",
+        "statement": "Una empresa guarda registros en S3 que tras 30 días casi no se leen y tras un año ya no hacen falta. Selecciona DOS reglas de ciclo de vida que reducen el costo.",
+        "concepts": [
+          "ciclo de vida de S3"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2203
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "S3 Standard",
+              "explanation": "Descartada: cuesta más y no se necesita acceso inmediato."
+            },
+            {
+              "id": "b",
+              "text": "S3 Glacier Deep Archive",
+              "explanation": "Es la correcta: es la clase de menor costo para archivado de largo plazo."
+            },
+            {
+              "id": "c",
+              "text": "S3 Intelligent-Tiering con acceso frecuente",
+              "explanation": "Descartada: no es la opción más barata para archivado."
+            },
+            {
+              "id": "d",
+              "text": "Un volumen de EBS grande",
+              "explanation": "Descartada: es más caro que el archivado en S3."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-04",
+        "title": "Archivar durante años al menor costo",
+        "statement": "Una empresa debe conservar copias de cumplimiento durante diez años, las consulta casi nunca y acepta esperar horas para recuperarlas. ¿Qué clase da el MENOR costo?",
+        "concepts": [
+          "S3 Glacier Deep Archive"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2204
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Crear un snapshot y eliminar los volúmenes sin uso",
+              "explanation": "Es la correcta: conserva los datos y deja de pagar los volúmenes."
+            },
+            {
+              "id": "b",
+              "text": "Mantenerlos por si acaso, sin revisión",
+              "explanation": "Descartada: sigue generando costo sin valor."
+            },
+            {
+              "id": "c",
+              "text": "Aumentar su tamaño",
+              "explanation": "Descartada: incrementa el costo."
+            },
+            {
+              "id": "d",
+              "text": "Adjuntarlos a instancias nuevas sin necesidad",
+              "explanation": "Descartada: añade costo de cómputo."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-05",
+        "title": "Volúmenes de EBS sin uso",
+        "statement": "Una revisión de costos muestra volúmenes de EBS sin adjuntar a ninguna instancia desde hace meses. ¿Qué acción reduce el costo con el MENOR riesgo?",
+        "concepts": [
+          "volúmenes huérfanos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/ebs/latest/userguide/what-is-ebs.html",
+          "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2205
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Migrar a volúmenes io2 de IOPS provisionadas",
+              "explanation": "Descartada: cuesta más y no se necesita ese rendimiento."
+            },
+            {
+              "id": "b",
+              "text": "Migrar a HDD de almacenamiento en frío sin medir el uso",
+              "explanation": "Descartada: puede degradar el rendimiento."
+            },
+            {
+              "id": "c",
+              "text": "Mantener gp2 y sobredimensionar los volúmenes",
+              "explanation": "Descartada: aumenta el costo."
+            },
+            {
+              "id": "d",
+              "text": "Migrar a volúmenes gp3",
+              "explanation": "Es la correcta: ofrece un precio por GB menor y rendimiento configurable por separado."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-06",
+        "title": "Tipo de volumen con mejor precio por GB",
+        "statement": "Una flota usa volúmenes gp2 de uso general y se busca el MENOR costo manteniendo un rendimiento similar. ¿Qué cambio es el MÁS adecuado?",
+        "concepts": [
+          "gp3"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2206
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Instancias bajo demanda para todo",
+              "explanation": "Descartada: tienen el precio más alto para uso estable."
+            },
+            {
+              "id": "b",
+              "text": "Instancias de Spot para una base de datos crítica",
+              "explanation": "Descartada: pueden interrumpirse."
+            },
+            {
+              "id": "c",
+              "text": "Compute Savings Plans con un compromiso de uno o tres años",
+              "explanation": "Es la correcta: ofrecen descuento y flexibilidad entre familias y regiones."
+            },
+            {
+              "id": "d",
+              "text": "Hosts dedicados sin necesidad de licencia",
+              "explanation": "Descartada: cuestan más sin necesidad."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-07",
+        "title": "Carga estable de larga duración",
+        "statement": "Una empresa ejecuta durante años un uso de cómputo estable y predecible en distintas familias de instancia y regiones, y quiere el MENOR costo con flexibilidad. ¿Qué opción es la MEJOR?",
+        "concepts": [
+          "Savings Plans"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+          "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2207
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Instancias bajo demanda siempre",
+              "explanation": "Descartada: no aprovechan el descuento disponible."
+            },
+            {
+              "id": "b",
+              "text": "Instancias de Spot",
+              "explanation": "Es la correcta: ofrecen grandes descuentos a cambio de posibles interrupciones."
+            },
+            {
+              "id": "c",
+              "text": "Una instancia dedicada permanente",
+              "explanation": "Descartada: es la opción más cara."
+            },
+            {
+              "id": "d",
+              "text": "Una instancia sobredimensionada encendida siempre",
+              "explanation": "Descartada: paga capacidad sin usar."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-08",
+        "title": "Trabajo tolerante a interrupciones",
+        "statement": "Un trabajo de procesamiento de imágenes puede interrumpirse y reanudarse sin problema, y se busca el MENOR costo de cómputo. ¿Qué opción es la MEJOR?",
+        "concepts": [
+          "instancias de Spot"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2208
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Las instancias bajo demanda exigen un compromiso de tres años",
+              "explanation": "No cumple: no exigen compromiso."
+            },
+            {
+              "id": "b",
+              "text": "Los Savings Plans exigen un compromiso de uso por hora durante uno o tres años",
+              "explanation": "Cumple: a cambio ofrecen descuento."
+            },
+            {
+              "id": "c",
+              "text": "Las instancias de Spot garantizan que nunca se interrumpen",
+              "explanation": "No cumple: pueden interrumpirse."
+            },
+            {
+              "id": "d",
+              "text": "Los Savings Plans no ofrecen ningún descuento",
+              "explanation": "No cumple: su objetivo es reducir el costo."
+            },
+            {
+              "id": "e",
+              "text": "Las instancias de Spot pueden interrumpirse con poco aviso",
+              "explanation": "Cumple: por eso encajan en cargas tolerantes."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-09",
+        "title": "Dos hechos sobre las opciones de compra de EC2",
+        "statement": "Un equipo compara opciones de compra de EC2. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "opciones de compra"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html",
+          "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2209
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon Route 53",
+              "explanation": "Descartada: es un servicio de DNS."
+            },
+            {
+              "id": "b",
+              "text": "AWS Shield",
+              "explanation": "Descartada: protege contra DDoS."
+            },
+            {
+              "id": "c",
+              "text": "Amazon SNS",
+              "explanation": "Descartada: envía notificaciones y no dimensiona recursos."
+            },
+            {
+              "id": "d",
+              "text": "AWS Compute Optimizer",
+              "explanation": "Es la correcta: analiza el uso y recomienda tamaños de recursos más adecuados."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-10",
+        "title": "Ajustar el tamaño de instancias sobredimensionadas",
+        "statement": "Muchas instancias de EC2 tienen un uso de CPU muy bajo durante semanas. ¿Qué servicio ofrece recomendaciones basadas en el uso para elegir un tamaño MÁS adecuado?",
+        "concepts": [
+          "Compute Optimizer"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2210
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Instancias con GPU para una carga sin gráficos",
+              "explanation": "Descartada: cuestan más sin aportar beneficio."
+            },
+            {
+              "id": "b",
+              "text": "Instancias dedicadas sin necesidad de licencia",
+              "explanation": "Descartada: cuestan más sin necesidad."
+            },
+            {
+              "id": "c",
+              "text": "Instancias basadas en procesadores AWS Graviton",
+              "explanation": "Es la correcta: ofrecen buena relación precio-rendimiento para cargas compatibles."
+            },
+            {
+              "id": "d",
+              "text": "Servidores propios en el centro de datos",
+              "explanation": "Descartada: no son una opción de cómputo de AWS."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-11",
+        "title": "Mejor relación precio-rendimiento con procesadores propios",
+        "statement": "Una aplicación en Linux puede ejecutarse en arquitectura Arm y se busca la MEJOR relación precio-rendimiento. ¿Qué opción de cómputo es la MÁS adecuada?",
+        "concepts": [
+          "Graviton"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2211
+      }
+    },
+    {
+      "unitCode": "AWS-U2.3.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "c"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Una política de seguimiento de objetivo sobre una métrica de uso",
+              "explanation": "Cumple: mantiene la capacidad en línea con la demanda."
+            },
+            {
+              "id": "b",
+              "text": "Usar siempre el tamaño de instancia mayor",
+              "explanation": "No cumple: aumenta el costo."
+            },
+            {
+              "id": "c",
+              "text": "Un grupo de Auto Scaling que reduzca instancias cuando baja la demanda",
+              "explanation": "Cumple: ajusta la capacidad a la carga real."
+            },
+            {
+              "id": "d",
+              "text": "Desactivar cualquier política de escalado",
+              "explanation": "No cumple: impide ajustar la capacidad."
+            },
+            {
+              "id": "e",
+              "text": "Instancias fijas dimensionadas para el pico del día",
+              "explanation": "No cumple: pagan capacidad ociosa de noche."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C4"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-12",
+        "title": "Dos medidas para ajustar la capacidad a la demanda",
+        "statement": "Una aplicación tiene mucho tráfico de día y casi ninguno de noche. Selecciona DOS medidas que evitan pagar capacidad sin usar.",
+        "concepts": [
+          "Auto Scaling",
+          "costo"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html",
+          "https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-scaling-target-tracking.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2212
+      }
+    },
+    {
+      "unitCode": "AWS-U2.3.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Lambda",
+              "explanation": "Es la correcta: cobra por solicitud y duración, sin costo en inactividad."
+            },
+            {
+              "id": "b",
+              "text": "Una instancia de EC2 encendida siempre",
+              "explanation": "Descartada: paga la capacidad aunque no se use."
+            },
+            {
+              "id": "c",
+              "text": "Un host dedicado reservado",
+              "explanation": "Descartada: es la opción más cara para uso esporádico."
+            },
+            {
+              "id": "d",
+              "text": "Un clúster de contenedores siempre activo",
+              "explanation": "Descartada: paga capacidad inactiva."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C4"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-13",
+        "title": "Cargas con uso esporádico",
+        "statement": "Una tarea se ejecuta unas pocas veces al día durante segundos y se busca el MENOR costo sin pagar por capacidad inactiva. ¿Qué opción es la MEJOR?",
+        "concepts": [
+          "Lambda",
+          "pago por uso"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/lambda/latest/dg/welcome.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2213
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "La capacidad aprovisionada no admite ningún escalado automático",
+              "explanation": "No cumple: admite escalado automático."
+            },
+            {
+              "id": "b",
+              "text": "El modo bajo demanda se adapta al tráfico impredecible sin planificar capacidad",
+              "explanation": "Cumple: paga por solicitud realizada."
+            },
+            {
+              "id": "c",
+              "text": "El modo bajo demanda es siempre el más barato con tráfico constante",
+              "explanation": "No cumple: con tráfico estable suele costar más."
+            },
+            {
+              "id": "d",
+              "text": "El modo de capacidad no afecta al costo",
+              "explanation": "No cumple: afecta directamente al costo."
+            },
+            {
+              "id": "e",
+              "text": "La capacidad aprovisionada con escalado automático suele costar menos con tráfico predecible",
+              "explanation": "Cumple: ajusta la capacidad a un patrón conocido."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-14",
+        "title": "Dos hechos sobre los modos de capacidad de DynamoDB",
+        "statement": "Un equipo elige el modo de capacidad de una tabla de DynamoDB. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "capacidad aprovisionada",
+          "bajo demanda"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/capacity-mode.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2214
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una instancia fija grande siempre encendida",
+              "explanation": "Descartada: paga capacidad ociosa."
+            },
+            {
+              "id": "b",
+              "text": "Una instancia dedicada con capacidad reservada para el pico",
+              "explanation": "Descartada: es más cara para uso variable."
+            },
+            {
+              "id": "c",
+              "text": "Amazon Aurora Serverless v2",
+              "explanation": "Es la correcta: ajusta la capacidad a la demanda y reduce el costo en baja carga."
+            },
+            {
+              "id": "d",
+              "text": "Un servidor propio sin administración",
+              "explanation": "Descartada: no es un servicio administrado."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-15",
+        "title": "Base relacional con uso variable y costo mínimo",
+        "statement": "Una base relacional se usa con intensidad solo algunas horas al día y se busca el MENOR costo sin administrar el escalado. ¿Qué opción es la MÁS adecuada?",
+        "concepts": [
+          "Aurora Serverless v2"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2215
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Subir el tamaño de la puerta de enlace NAT",
+              "explanation": "Descartada: no reduce el cargo por datos."
+            },
+            {
+              "id": "b",
+              "text": "Un punto de enlace de VPC de tipo gateway para S3",
+              "explanation": "Es la correcta: el tráfico a S3 deja de pasar por la puerta de enlace NAT."
+            },
+            {
+              "id": "c",
+              "text": "Añadir más puertas de enlace NAT",
+              "explanation": "Descartada: añade costo fijo."
+            },
+            {
+              "id": "d",
+              "text": "Cambiar el bucket de región",
+              "explanation": "Descartada: añade transferencia entre regiones."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-16",
+        "title": "Tráfico a S3 por una puerta de enlace NAT",
+        "statement": "Instancias en subredes privadas envían grandes volúmenes a S3 por una puerta de enlace NAT y el cargo por datos procesados es alto. ¿Qué cambio reduce MÁS el costo?",
+        "concepts": [
+          "NAT Gateway",
+          "endpoint de gateway"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+          "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2216
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Servir el contenido a través de Amazon CloudFront",
+              "explanation": "Es la correcta: almacena en caché en el borde y reduce las solicitudes al origen."
+            },
+            {
+              "id": "b",
+              "text": "Aumentar el tamaño de los archivos",
+              "explanation": "Descartada: aumenta el volumen transferido."
+            },
+            {
+              "id": "c",
+              "text": "Desactivar la compresión",
+              "explanation": "Descartada: aumenta los datos transferidos."
+            },
+            {
+              "id": "d",
+              "text": "Mover el bucket a otra región lejana",
+              "explanation": "Descartada: no reduce la transferencia."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-17",
+        "title": "Reducir la transferencia de datos hacia internet",
+        "statement": "Un sitio sirve muchos archivos estáticos directamente desde S3 y paga mucha transferencia de datos hacia internet. ¿Qué es lo MÁS adecuado para reducir el costo y mejorar la latencia?",
+        "concepts": [
+          "CloudFront",
+          "transferencia de datos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2217
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Comprimir las respuestas aumenta el costo de transferencia",
+              "explanation": "No cumple: reduce el volumen transferido."
+            },
+            {
+              "id": "b",
+              "text": "Toda la transferencia entre zonas de disponibilidad es gratuita",
+              "explanation": "No cumple: puede tener cargo."
+            },
+            {
+              "id": "c",
+              "text": "Una puerta de enlace NAT cobra por hora y por datos procesados",
+              "explanation": "Cumple: ambos componentes forman su costo."
+            },
+            {
+              "id": "d",
+              "text": "La transferencia de datos hacia internet desde AWS suele tener un cargo",
+              "explanation": "Cumple: conviene reducirla con caché o compresión."
+            },
+            {
+              "id": "e",
+              "text": "Una puerta de enlace NAT no tiene ningún costo",
+              "explanation": "No cumple: tiene cargo por hora y por datos procesados."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-18",
+        "title": "Dos hechos sobre la transferencia de datos",
+        "statement": "Un equipo analiza los costos de transferencia de datos. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "transferencia de datos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+          "https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2218
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Mantener todo en la clase de acceso frecuente",
+              "explanation": "No cumple: paga de más por datos poco usados."
+            },
+            {
+              "id": "b",
+              "text": "Eliminar datos y versiones que ya no se necesitan",
+              "explanation": "Cumple: deja de pagar por almacenamiento sin valor."
+            },
+            {
+              "id": "c",
+              "text": "Guardar copias duplicadas de todo sin política",
+              "explanation": "No cumple: multiplica el almacenamiento facturado."
+            },
+            {
+              "id": "d",
+              "text": "Desactivar toda revisión de costos",
+              "explanation": "No cumple: impide detectar desperdicios."
+            },
+            {
+              "id": "e",
+              "text": "Mover datos poco usados a una clase de menor costo",
+              "explanation": "Cumple: ajusta el costo al patrón de acceso."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-19",
+        "title": "Dos acciones para reducir el costo de almacenamiento",
+        "statement": "Una empresa revisa su factura de almacenamiento. Selecciona DOS acciones que reducen el costo.",
+        "concepts": [
+          "costo de almacenamiento"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html",
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2219
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Pricing Calculator permite estimar el costo de una arquitectura antes de desplegarla",
+              "explanation": "Cumple: ayuda a comparar opciones de diseño."
+            },
+            {
+              "id": "b",
+              "text": "Ambas sustituyen al etiquetado de recursos",
+              "explanation": "No cumple: el etiquetado es complementario."
+            },
+            {
+              "id": "c",
+              "text": "AWS Budgets bloquea siempre cualquier gasto sin configuración",
+              "explanation": "No cumple: avisa, y las acciones deben configurarse."
+            },
+            {
+              "id": "d",
+              "text": "AWS Pricing Calculator crea los recursos en la cuenta",
+              "explanation": "No cumple: solo estima el costo."
+            },
+            {
+              "id": "e",
+              "text": "AWS Budgets permite fijar presupuestos y recibir alertas",
+              "explanation": "Cumple: avisa cuando el gasto se acerca al límite."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 4,
+          "task": "4.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d4-a-20",
+        "title": "Dos herramientas para estimar y vigilar el costo",
+        "statement": "Un equipo quiere estimar y controlar costos. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "Pricing Calculator",
+          "Budgets"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/pricing-calculator/latest/userguide/what-is-pricing-calculator.html",
+          "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 2220
+      }
+    }
+  ]
+}
