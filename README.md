@@ -51,7 +51,7 @@ S14 está cerrado. Dos revisiones humanas quedan diferidas ([ficha](docs/04-plan
 - panel «listo para presentar»;
 - vista de cohorte para instructores.
 
-S17 (contenido de A0 y A1 para CLF-C02) está construido y sin publicar: las 35 unidades con su paquete de ejercicios, el banco reservado de 195 preguntas, las tres formas del simulacro y los proyectos de etapa, todo pendiente de revisión humana antes de publicar. Antes, S16 (laboratorios AWS) también está cerrado:
+S18 (contenido de A2 para SAA-C03) está construido y sin publicar: las 45 unidades, el banco reservado de 195 preguntas, las tres formas del simulacro y el proyecto de etapa; quedan la defensa técnica, la revisión humana y la publicación. Antes, S17 (contenido de A0 y A1 para CLF-C02) está construido y sin publicar: las 35 unidades con su paquete de ejercicios, el banco reservado de 195 preguntas, las tres formas del simulacro y los proyectos de etapa, todo pendiente de revisión humana antes de publicar. Antes, S16 (laboratorios AWS) también está cerrado:
 - el arnés `@codeai/aws-harness`, con nueve evaluadores fieles a la documentación oficial, montado en el sandbox `docker` y protegido contra manipulaciones;
 - laboratorios con arnés;
 - `CLOUD_LAB`, con evidencia de solo lectura;

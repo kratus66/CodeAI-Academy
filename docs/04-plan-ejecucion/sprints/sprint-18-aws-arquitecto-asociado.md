@@ -1,6 +1,6 @@
 # Sprint 18 — Contenido AWS: A2, Arquitectura de soluciones asociado (SAA-C03)
 
-> **Estado:** 📝 redactada en detalle (2026-11-15), lista para construir · **Duración prevista:** ≈ 85 sesiones (en dos lotes) · **Depende de:** S17 (molde, guardas, proyectos por ruta), S16 (arnés `iam`, `network`, `cidr`, `cfn`, `dynamodb`, `s3access`, `events`, `asl`, `cost`), S15 (formas).
+> **Estado:** 🔄 construido 2026-11-24 (45 unidades + banco de 195 + tres formas + proyecto, sin publicar); pendientes la defensa técnica, las revisiones humanas y la publicación · **Duración prevista:** ≈ 85 sesiones (en dos lotes) · **Depende de:** S17 (molde, guardas, proyectos por ruta), S16 (arnés `iam`, `network`, `cidr`, `cfn`, `dynamodb`, `s3access`, `events`, `asl`, `cost`), S15 (formas).
 > **Ámbito:** contenido. Una unidad por sesión; las unidades con `LAB` de arnés usan una segunda sesión para los laboratorios.
 
 ---
@@ -165,3 +165,30 @@ S18-T0a → S18-T1 → S18-T2 → **S18-T2b (persona)** → T3…T27 → **T28 (
 - [`../../01-curriculo/curriculo-aws.md`](../../01-curriculo/curriculo-aws.md) (A2)
 - [`../../02-contenido/metodo-aws.md`](../../02-contenido/metodo-aws.md)
 - [`sprint-17-aws-fundamentos.md`](sprint-17-aws-fundamentos.md) (molde, guardas y registro de construcción de A0–A1)
+
+## 8. Registro de construcción (Orquestador, 2026-11-24)
+
+Las unidades M2.1–M2.5 las construyeron subagentes de Claude Sonnet 5.5 (una tarea por agente); DeepSeek no llegó a intervenir en A2 por agotarse sus créditos. Al llegar Sonnet a su límite semanal, el Orquestador construyó directamente U2.6.5 (Opus 4.8) y de M2.7 a M2.10, el banco, las formas y el proyecto (sesión Sonnet 5.5), por indicación del responsable. Cada unidad pasó la guarda `seed-course-quality` (53 pruebas) con prueba negativa de los `DEBUG` y `LAB` (solución pasa y código inicial falla, ejecutados en proceso), y la semilla en la base de trabajo 5442.
+
+**Unidades:** 45 de 45 en A2 (M2.1–M2.10), todas `isPublished: false`. Arneses usados: `iam`, `network`, `cidr`, `cfn` (U2.3.3, U2.7.1), `s3access` (U2.4.2), `dynamodb` (U2.5.3), `events` (U2.6.2), `asl` (U2.6.3), `cost` (U2.9.2). M2.10 (U2.10.1 y U2.10.2) es de preparación: 8 `QUIZ` de cuatro dominios, 6 `FLASHCARD` y 1 `REFLECT`.
+
+**Banco reservado (T48–T58):** 195 preguntas en 11 archivos `aws/exam-bank/SAA-C03-D<n>-<lote>.json` (D1 60, D2 51, D3 45, D4 39), cada una enlazada a la unidad que enseña el concepto, con al menos un tercio de respuesta múltiple por lote, y la guarda en verde (letras, longitud de opciones, calificadores, similitud con el banco de unidad). El `order` de cada pregunta es único por unidad (`1000 + (dominio − 1)·400 + lote·100 + n`).
+
+**Formas (T59):** `aws/exam-forms/SAA-C03.json`, tres formas disjuntas de 65 con el reparto 20/17/15/13, repartidas por turnos dentro de cada dominio y barajadas; la semilla las valida con `examFormViolations`.
+
+**Proyecto (T60):** «Aplicación web de tres capas altamente disponible» (`aws/projects.seed.json`, etapa 102, sin publicar).
+
+**No hecho (decisión del responsable):**
+- **Defensa técnica de A2 (T61):** el catálogo de entrevistas solo admite los roles `backend`, `frontend`, `fullstack`, `data` y `qa` y los lenguajes `ts`, `py`, `java` y `go`; un escenario de arquitecto asociado exige ampliar el contrato compartido (y, si procede, la interfaz) o declarar un rol nuevo. Es un cambio de plataforma, no de contenido, y queda diferido.
+- **`LAB` en el sandbox `docker` y simulacro A jugable de punta a punta:** la guarda ejecuta los laboratorios en proceso; no se ha repetido la comprobación en el sandbox `docker` ni se ha jugado el simulacro A en la interfaz.
+
+**Puntos señalados para las revisiones humanas (T28, T62):**
+- los números de tarea de la guía (`exam.task`) los dedujeron los autores del dominio y de la unidad, porque la guía oficial no expone el texto de las tareas por `curl`; hay que verificarlos todos, también los de las 195 preguntas del banco;
+- el banco se redactó a partir de las fuentes de las unidades y de conocimiento general de los servicios; no cada afirmación se contrastó con una página oficial concreta (p. ej. tarifa de Direct Connect, precio de gp3 frente a gp2, instancias reservadas de RDS, requisito de versionado de la replicación); conviene confirmarlas con su fuente antes de publicar, como pide T62;
+- Snowball Edge (U2.4.5) y AWS Application Discovery Service (U2.9.5) avisan en su página de que ya no están abiertos a clientes nuevos; decidir si se conservan como contenido de examen;
+- los evaluadores `events` (rechazo de `$or` junto a otros campos) y `cfn` (valida la forma de la plantilla, no las propiedades) simplifican la realidad; los LAB lo declaran como convención del arnés;
+- competencias: M2.6 usa `AWS-C6` y M2.7 usa `AWS-C10` por coherencia temática, aunque el currículo las marca como secundarias en A2; unificar o mantener es decisión pendiente;
+- URL de recursos registrados por subagentes en M2.4–M2.6 sin barrer: un `200` no basta, hay que comprobar que la página tenga texto (se corrigió una en M2.8);
+- nombres vigentes que cambiaron: QuickSight figura como «AWS Quick Sight», Application Migration Service como «AWS Transform MGN».
+
+**Lo que queda, todo de una persona:** las revisiones del molde y del lote 1 (T28), la del lote 2 y del 100 % del banco (T62), la decisión sobre la defensa técnica y la decisión de publicar A2.

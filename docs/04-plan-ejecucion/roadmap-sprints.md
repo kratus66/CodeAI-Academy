@@ -39,7 +39,7 @@
 | **S15** | Simulador de examen y preparación por certificación | A1–A11 | `exams` (nuevo) | ✅ 26/26 tareas (2026-11-10); verificación HTTP con dos usuarios (T13) |
 | **S16** | Laboratorios AWS: arnés en el sandbox y laboratorio en tu cuenta | A0–A11 | `sandbox`, `exercises` | ✅ 28/28 tareas (2026-11-11); revisión humana de los evaluadores (T8) diferida; pilotos sin publicar |
 | **S17** | Contenido A0–A1 (CLF-C02) | A0–A1 | — | 🔄 construido 2026-11-14 (35 unidades + banco + formas + proyectos, sin publicar); pendiente la revisión humana y la publicación |
-| **S18** | Contenido A2 (SAA-C03) | A2 | — | ⬜ |
+| **S18** | Contenido A2 (SAA-C03) | A2 | — | 🔄 construido 2026-11-24 (45 unidades + banco de 195 + tres formas + proyecto, sin publicar); pendientes la defensa, la revisión humana y la publicación |
 | **S19** | Contenido A3 (DVA-C03) | A3 | — | ⬜ |
 | **S20** | Contenido A4 (SOA-C03) | A4 | — | ⬜ |
 | **S21** | Contenido A5 (DOP-C02) | A5 | — | ⬜ |
