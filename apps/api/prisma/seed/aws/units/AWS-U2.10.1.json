@@ -1,0 +1,920 @@
+{
+  "code": "AWS-U2.10.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-10-1-tecnica-descartar-distractores-por-la-restriccion-del-enunciado",
+      "title": "Técnica: descartar distractores por la restricción del enunciado",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 0,
+          "note": "Guía de SAA-C03: tipos de pregunta, distractores, puntuación y dominios con sus pesos."
+        },
+        {
+          "resourceSlug": "aws-iam-perfiles-de-instancia",
+          "order": 1,
+          "note": "Ejemplo de la técnica en el dominio 1: un rol para una instancia en lugar de claves de acceso."
+        },
+        {
+          "resourceSlug": "aws-rds-multi-az",
+          "order": 2,
+          "note": "Ejemplo de la técnica en el dominio 2: Multi-AZ para conmutación por error."
+        },
+        {
+          "resourceSlug": "aws-elasticache-que-es",
+          "order": 3,
+          "note": "Ejemplo de la técnica en el dominio 3: caché en memoria para lecturas repetidas."
+        },
+        {
+          "resourceSlug": "aws-ec2-instancias-spot",
+          "order": 4,
+          "note": "Ejemplo de la técnica en el dominio 4: instancias de Spot para cargas que toleran interrupciones."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "En SAA-C03 casi todas las preguntas son de escenario: describen una carga de trabajo y una restricción, y piden elegir la mejor solución. La guía del examen explica que hay dos tipos de pregunta, de opción múltiple (una respuesta correcta y tres distractores) y de respuesta múltiple (dos o más correctas entre cinco o más opciones), y que los distractores son respuestas plausibles que elegiría alguien con un conocimiento incompleto. Por eso la técnica no consiste en recordar la respuesta, sino en descartar opciones: lees la restricción del enunciado (la palabra que decide, como «menor coste», «mayor disponibilidad», «mínima administración» o «sin cambiar la aplicación»), buscas en cada opción lo que la incumple y eliminas hasta que queda una. Las preguntas sin responder se puntúan como incorrectas y no hay penalización por adivinar, así que siempre conviene responder. Los datos de abajo son de la guía oficial de SAA-C03 leída el 2026-11-24 y de las páginas de servicios que cita; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Los cinco pasos de la técnica",
+          "items": [
+            "1. Lee el final del enunciado primero: ahí está la pregunta y su calificador (MENOR, MÁS, MEJOR, MÍNIMO, PRIMERO, DOS, TRES).",
+            "2. Subraya la restricción: qué debe cumplirse (alta disponibilidad, bajo coste, sin servidores, sin cambiar el código, cifrado, acceso mínimo).",
+            "3. Elimina las opciones que incumplen la restricción o que no resuelven el problema planteado; cada eliminación debe tener una razón concreta, no una intuición.",
+            "4. Si quedan dos, compara el calificador: la que cumple la restricción con menos administración, menos coste o menos cambios suele ser la correcta.",
+            "5. En respuesta múltiple, comprueba cuántas piden (DOS, TRES) y que cada una cumpla por sí misma; el examen se corrige todo o nada en esta plataforma."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Cuatro ejemplos, uno por dominio",
+          "text": "Dominio 1 (diseñar arquitecturas seguras): una aplicación en una instancia de Amazon EC2 necesita leer de un bucket de S3. Las claves de acceso de larga duración dentro del código son un distractor: el servicio de IAM ofrece roles con perfiles de instancia que entregan credenciales temporales. Dominio 2 (resilientes): una base de datos debe sobrevivir a la caída de una zona de disponibilidad con conmutación por error automática; Amazon RDS Multi-AZ mantiene una réplica en espera en otra zona, y una copia de seguridad manual o una réplica de lectura no están pensadas para ese fin. Dominio 3 (alto rendimiento): una aplicación repite las mismas lecturas costosas sobre la base de datos; una caché en memoria con Amazon ElastiCache reduce esa carga, mientras que aumentar el almacenamiento no cambia la latencia de las lecturas. Dominio 4 (costo optimizado): un trabajo por lotes que tolera interrupciones es candidato a instancias de Spot, que ofrecen capacidad de EC2 sin usar con descuento, a costa de poder ser interrumpidas con aviso. En los cuatro casos la restricción eliminó dos o tres opciones antes de mirar el servicio ganador."
+        },
+        {
+          "type": "code",
+          "title": "Una pregunta analizada como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const analisis = {\n  restriccion: \"menor-coste-en-cargas-que-toleran-interrupciones\",\n  opciones: [\n    { id: \"a\", veredicto: \"descartada\", razon: \"bajo-demanda-sin-descuento\" },\n    { id: \"b\", veredicto: \"correcta\", razon: \"spot-con-descuento-y-tolerancia\" },\n    { id: \"c\", veredicto: \"descartada\", razon: \"capacidad-reservada-no-pedida\" },\n    { id: \"d\", veredicto: \"descartada\", razon: \"hardware-dedicado-mas-caro\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "El embudo de eliminación",
+          "code": "flowchart TB\n  Q[\"Leer el final del enunciado\"] --> R[\"Subrayar la restricción y el calificador\"]\n  R --> E[\"Eliminar opciones que la incumplen\"]\n  E --> C{\"Quedan dos o más\"}\n  C -->|\"Sí\"| K[\"Comparar con el calificador\"]\n  C -->|\"No\"| F[\"Responder\"]\n  K --> F"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el distractor plausible",
+          "text": "Los distractores no son absurdos: nombran servicios reales que sirven para otra cosa o cumplen solo una parte de la restricción. La señal es que resuelven algo que el enunciado no pregunta (por ejemplo, almacenamiento duradero cuando se pide baja latencia) o incumplen una palabra concreta (sin servidores, sin cambios, menor coste). Antes de aceptar una opción, comprueba que cumple cada palabra de la restricción."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: elegir el servicio que mejor conoces",
+          "text": "Causa: reconocer un nombre familiar y detenerse. Consecuencia: eliges una opción que cumple parte de la necesidad pero incumple la restricción que decidía la pregunta. Solución: aplica los cinco pasos aunque la primera opción parezca buena y justifica por escrito por qué cada una de las otras no cumple."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: ignorar el calificador del enunciado",
+          "text": "Causa: leer solo el escenario y no el final de la pregunta. Consecuencia: respondes «una solución válida» cuando se pedía la de MENOR coste, la de MÁS disponibilidad o la que se hace PRIMERO. Solución: lee primero la última frase, subraya el calificador y compara las opciones que quedan según él."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: dejar preguntas sin responder",
+          "text": "Causa: dudar entre dos opciones y pasar de largo. Consecuencia: la guía indica que las preguntas sin responder se puntúan como incorrectas y que no hay penalización por adivinar, así que una pregunta en blanco solo puede perder puntos. Solución: marca la pregunta para revisarla, responde con la mejor opción tras eliminar y vuelve si te queda tiempo."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Resolver preguntas de escenario de los cuatro dominios de SAA-C03 descartando distractores a partir de la restricción del enunciado, y justificar por escrito por qué cada opción descartada no cumple. Criterio: al menos 6 de las 8 preguntas de la unidad y, en cada una, la razón de cada eliminación sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, los cuatro ejemplos: para cada uno, escribe la restricción, las opciones eliminadas y la razón. Explica con tus palabras el diagrama «El embudo de eliminación»."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve las dos primeras preguntas de la unidad con los cinco pasos escritos: calificador, restricción, opciones eliminadas con su razón y opción final. Después lee la explicación de cada opción y compárala con la tuya."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Resuelve las otras seis preguntas sin ayuda y con cronómetro: unos dos minutos por pregunta. Antes de elegir, escribe el calificador y la restricción de cada una."
+        },
+        {
+          "kind": "debug",
+          "title": "Revisión de errores",
+          "body": "En cada pregunta que falles, no te quedes con la respuesta correcta: escribe qué palabra del enunciado descartaba tu opción y qué señal te la hizo parecer válida. Ese patrón es tu distractor habitual."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde de memoria: cuáles son los cinco pasos, qué dice la guía sobre las preguntas sin responder y qué diferencia hay entre opción múltiple y respuesta múltiple. Criterio de paso: al menos 6 de las 8 preguntas y cuatro de cinco respuestas de memoria."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Elige una pregunta de otra unidad que fallaste y rehazla con los cinco pasos. Pregunta de cierre: ¿qué palabra del enunciado te habría evitado el error y cómo la subrayarías la próxima vez?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Opción múltiple: una respuesta correcta y tres incorrectas (distractores). Respuesta múltiple: dos o más respuestas correctas entre cinco o más opciones. El enunciado indica cuántas elegir (por ejemplo DOS o TRES). En esta plataforma la respuesta múltiple se corrige todo o nada."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-1-tarjeta-01",
+      "title": "Tarjeta: tipos de pregunta",
+      "statement": "¿Qué dos tipos de pregunta tiene SAA-C03?",
+      "concepts": [
+        "opción múltiple",
+        "respuesta múltiple"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una respuesta incorrecta pero plausible, que elegiría quien tiene un conocimiento incompleto. Suele nombrar un servicio real que sirve para otra cosa o que cumple solo una parte de la restricción. Se reconoce porque incumple una palabra concreta del enunciado o resuelve algo que no se pregunta."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-1-tarjeta-02",
+      "title": "Tarjeta: qué es un distractor",
+      "statement": "¿Qué es un distractor y cómo se reconoce?",
+      "concepts": [
+        "distractor"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Las preguntas sin responder se puntúan como incorrectas y no hay penalización por adivinar. Por eso conviene responder siempre: marca la dudosa para revisarla, elige la mejor opción tras eliminar y vuelve si te queda tiempo."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-1-tarjeta-03",
+      "title": "Tarjeta: sin responder",
+      "statement": "¿Qué pasa con una pregunta sin responder y con adivinar?",
+      "concepts": [
+        "sin responder",
+        "adivinar"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "1) Leer el final del enunciado. 2) Subrayar la restricción. 3) Eliminar las opciones que la incumplen, con una razón concreta. 4) Si quedan dos, comparar con el calificador. 5) En respuesta múltiple, comprobar cuántas piden y que cada una cumpla por sí misma."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-1-tarjeta-04",
+      "title": "Tarjeta: los cinco pasos",
+      "statement": "¿Cuáles son los cinco pasos de la técnica de descarte?",
+      "concepts": [
+        "técnica",
+        "eliminación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es la palabra del enunciado que fija el criterio de comparación: MENOR coste, MÁS disponibilidad, MÍNIMO esfuerzo, PRIMERO, ÚNICAMENTE, DOS o TRES. Varias opciones pueden ser válidas; el calificador indica cuál es la mejor, así que se lee antes de mirar las opciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-1-tarjeta-05",
+      "title": "Tarjeta: el calificador",
+      "statement": "¿Qué es el calificador y por qué decide la pregunta?",
+      "concepts": [
+        "calificador"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Resultado de aprobado o no aprobado, con puntuación escalada de 100 a 1000 y mínimo de 720; el modelo es compensatorio (basta aprobar el examen en conjunto). Pesos: D1 seguridad 30 %, D2 resiliencia 26 %, D3 alto rendimiento 24 %, D4 costo 20 %. Hay 50 preguntas puntuadas y 15 sin puntuar."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-1-tarjeta-06",
+      "title": "Tarjeta: puntuación y pesos",
+      "statement": "¿Cómo se puntúa SAA-C03 y qué pesan los dominios?",
+      "concepts": [
+        "puntuación",
+        "dominios"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Guardar claves de acceso de larga duración en el código",
+            "explanation": "Descartada: son credenciales permanentes que pueden filtrarse con el código."
+          },
+          {
+            "id": "b",
+            "text": "Hacer público el bucket para que la aplicación lo lea",
+            "explanation": "Descartada: abre los datos a cualquiera, más allá de la aplicación."
+          },
+          {
+            "id": "c",
+            "text": "Asociar un rol de IAM a la instancia mediante un perfil de instancia",
+            "explanation": "Es la correcta: la instancia obtiene credenciales temporales sin guardarlas en el código."
+          },
+          {
+            "id": "d",
+            "text": "Compartir las claves del usuario raíz con el equipo",
+            "explanation": "Descartada: el usuario raíz no debe usarse para tareas de aplicaciones."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-1-quiz-01",
+      "title": "Acceso de una aplicación a S3 sin claves en el código",
+      "statement": "Una aplicación que se ejecuta en una instancia de Amazon EC2 debe leer objetos de un bucket de S3. ¿Qué solución es la MÁS segura?",
+      "concepts": [
+        "rol de IAM",
+        "perfil de instancia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una copia de seguridad manual cada noche",
+            "explanation": "Descartada: permite restaurar, pero no hay conmutación por error automática."
+          },
+          {
+            "id": "b",
+            "text": "Amazon RDS con despliegue Multi-AZ",
+            "explanation": "Es la correcta: mantiene una réplica en espera en otra zona y conmuta de forma automática."
+          },
+          {
+            "id": "c",
+            "text": "Una instancia más grande en la misma zona",
+            "explanation": "Descartada: sigue dependiendo de una sola zona de disponibilidad."
+          },
+          {
+            "id": "d",
+            "text": "Una réplica de lectura solo para consultas de informes",
+            "explanation": "Descartada: está pensada para escalar lecturas, no para la conmutación por error automática."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-1-quiz-02",
+      "title": "Conmutación por error de la base de datos",
+      "statement": "Una base de datos relacional de producción debe seguir disponible, con conmutación por error automática, si falla una zona de disponibilidad. ¿Qué configuración ofrece la MAYOR disponibilidad con la MENOR administración?",
+      "concepts": [
+        "RDS Multi-AZ",
+        "alta disponibilidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una caché en memoria con Amazon ElastiCache delante de la base de datos",
+            "explanation": "Es la correcta: sirve las lecturas repetidas desde memoria y alivia la carga de la base de datos."
+          },
+          {
+            "id": "b",
+            "text": "Más almacenamiento en la base de datos",
+            "explanation": "Descartada: más espacio no reduce la latencia de lecturas repetidas."
+          },
+          {
+            "id": "c",
+            "text": "Una copia de seguridad más frecuente",
+            "explanation": "Descartada: mejora la recuperación, no la latencia."
+          },
+          {
+            "id": "d",
+            "text": "Mover las lecturas a un archivo de registro",
+            "explanation": "Descartada: no sirve consultas y empeora el acceso a los datos."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-1-quiz-03",
+      "title": "Reducir lecturas repetidas sobre la base de datos",
+      "statement": "Una aplicación hace las mismas lecturas costosas a la base de datos miles de veces por minuto y se busca la MENOR latencia posible con el MÍNIMO cambio de arquitectura. ¿Qué elige?",
+      "concepts": [
+        "ElastiCache",
+        "caché"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Instancias de Amazon EC2 de Spot",
+            "explanation": "Es la correcta: aprovechan capacidad sin usar con descuento, a cambio de posibles interrupciones que el trabajo tolera."
+          },
+          {
+            "id": "b",
+            "text": "Instancias bajo demanda sin descuento",
+            "explanation": "Descartada: no ofrecen ahorro y el enunciado pide el menor coste."
+          },
+          {
+            "id": "c",
+            "text": "Hosts dedicados para el trabajo",
+            "explanation": "Descartada: son más caros y no aportan nada que pida el enunciado."
+          },
+          {
+            "id": "d",
+            "text": "Una instancia siempre encendida y sobredimensionada",
+            "explanation": "Descartada: paga capacidad que casi nunca se usa."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-1-quiz-04",
+      "title": "Carga por lotes que tolera interrupciones",
+      "statement": "Un trabajo de procesamiento por lotes puede reanudarse tras una interrupción y se busca el MENOR coste de cómputo. ¿Qué opción elige?",
+      "concepts": [
+        "EC2 Spot",
+        "costo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Llamar al procesamiento de forma síncrona desde la web",
+            "explanation": "Descartada: un pico satura el procesamiento y los pedidos fallan."
+          },
+          {
+            "id": "b",
+            "text": "Enviar los pedidos a una cola de Amazon SQS y procesarlos desde ella",
+            "explanation": "Es la correcta: la cola desacopla y retiene los mensajes hasta que el consumidor puede atenderlos."
+          },
+          {
+            "id": "c",
+            "text": "Reducir el tamaño de la instancia web",
+            "explanation": "Descartada: no ayuda a absorber los picos ni a conservar los pedidos."
+          },
+          {
+            "id": "d",
+            "text": "Desactivar los reintentos de las peticiones",
+            "explanation": "Descartada: aumenta la pérdida de pedidos durante los picos."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-1-quiz-05",
+      "title": "Desacoplar productores y consumidores",
+      "statement": "Una aplicación web recibe picos de pedidos que un servicio de procesamiento no siempre puede atender a tiempo. ¿Qué cambio es el MÁS adecuado para absorber los picos sin perder pedidos?",
+      "concepts": [
+        "SQS",
+        "desacoplamiento"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una clave de AWS KMS administrada por el cliente",
+            "explanation": "Es la correcta: permite definir la política de la clave y auditar su uso."
+          },
+          {
+            "id": "b",
+            "text": "Guardar la clave de cifrado en un archivo del repositorio",
+            "explanation": "Descartada: expone la clave y no permite controlar ni auditar su uso."
+          },
+          {
+            "id": "c",
+            "text": "Dejar los datos sin cifrar y limitar el acceso por red",
+            "explanation": "Descartada: no cumple el requisito de cifrar en reposo."
+          },
+          {
+            "id": "d",
+            "text": "Cifrar con una clave compartida por correo electrónico",
+            "explanation": "Descartada: la distribución de la clave es insegura y no es auditable."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-1-quiz-06",
+      "title": "Cifrado con claves administradas por el cliente",
+      "statement": "Una empresa debe cifrar datos en reposo y poder controlar y auditar el uso de la clave de cifrado. ¿Qué solución cumple MEJOR?",
+      "concepts": [
+        "KMS",
+        "clave administrada por el cliente"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Servir el contenido estático desde Amazon CloudFront",
+            "explanation": "Cumple: lo entrega desde ubicaciones de borde cercanas a los usuarios."
+          },
+          {
+            "id": "b",
+            "text": "Aumentar la retención de los registros de acceso",
+            "explanation": "No cumple: no cambia la latencia de las respuestas."
+          },
+          {
+            "id": "c",
+            "text": "Cambiar el tipo de volumen a uno más lento",
+            "explanation": "No cumple: empeora el rendimiento en lugar de mejorarlo."
+          },
+          {
+            "id": "d",
+            "text": "Añadir una caché en memoria para las lecturas repetidas",
+            "explanation": "Cumple: sirve las lecturas repetidas sin acudir a la base de datos."
+          },
+          {
+            "id": "e",
+            "text": "Desactivar la compresión de las respuestas",
+            "explanation": "No cumple: aumenta el tamaño transferido y la latencia."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-1-quiz-07",
+      "title": "Dos medidas para reducir la latencia global",
+      "statement": "Una web con usuarios en varios continentes tiene mucho contenido estático y lecturas repetidas. Selecciona DOS medidas que reducen la latencia.",
+      "concepts": [
+        "CloudFront",
+        "caché"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Definir una regla de ciclo de vida que pase los objetos a una clase más barata",
+            "explanation": "Cumple: reduce el costo de los datos que casi no se leen."
+          },
+          {
+            "id": "b",
+            "text": "Mantener todos los objetos en la clase más cara para evitar errores",
+            "explanation": "No cumple: eleva el costo sin necesidad."
+          },
+          {
+            "id": "c",
+            "text": "Expirar los objetos temporales que ya no se necesitan",
+            "explanation": "Cumple: deja de pagar por datos que no aportan valor."
+          },
+          {
+            "id": "d",
+            "text": "Duplicar los datos en otra región sin que el negocio lo pida",
+            "explanation": "No cumple: añade costo que el enunciado no justifica."
+          },
+          {
+            "id": "e",
+            "text": "Eliminar las versiones antiguas que ya no hacen falta",
+            "explanation": "Cumple: reduce el almacenamiento que se factura."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-1-quiz-08",
+      "title": "Tres ahorros de almacenamiento sin perder datos",
+      "statement": "Una empresa guarda en S3 datos que casi nunca se consultan después de 90 días y quiere reducir el costo. Selecciona TRES acciones que lo logran.",
+      "concepts": [
+        "S3 ciclo de vida",
+        "costo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-10-1-reflexion-01",
+      "title": "Reflexión: mi distractor habitual",
+      "statement": "Repasa las 8 preguntas de la unidad y escribe un registro breve de decisión sobre cómo eliminarás distractores, en 5 a 7 líneas:\n\n1) Decisión: qué paso de los cinco usarás primero en el examen y por qué.\n\n2) Alternativa descartada: qué hábito tenías antes (por ejemplo, elegir el servicio que mejor conoces) y por qué lo dejas.\n\n3) Consecuencia: qué palabra del enunciado vas a subrayar siempre.\n\n4) Pilar de Well-Architected: qué dominio te cuesta más descartar (seguridad, resiliencia, rendimiento o costo) y por qué.\n\n5) Evidencia: qué pregunta fallada o dudada de esta unidad te enseñó el patrón.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre una pregunta concreta, el distractor que te atrajo y la palabra que lo descartaba. Escríbelo con tus palabras.",
+      "concepts": [
+        "técnica de descarte",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    }
+  ]
+}
