@@ -1,0 +1,937 @@
+{
+  "code": "AWS-U2.10.2",
+  "lessons": [
+    {
+      "slug": "aws-u2-10-2-simulacros-saa-c03-y-plan-de-refuerzo-por-dominio",
+      "title": "Simulacros SAA-C03 y plan de refuerzo por dominio",
+      "estimatedMin": 45,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 0,
+          "note": "Guía de SAA-C03: dominios con sus pesos, tipos de pregunta, puntuación compensatoria y servicios en alcance."
+        },
+        {
+          "resourceSlug": "aws-well-architected-fiabilidad",
+          "order": 1,
+          "note": "Pilar de fiabilidad: referencia para reforzar el dominio 2 cuando el informe lo marque como débil."
+        },
+        {
+          "resourceSlug": "aws-dr-opciones",
+          "order": 2,
+          "note": "Opciones de recuperación ante desastres: ejemplo de contenido de refuerzo del dominio 2."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "Para qué sirven los simulacros",
+          "text": "Un simulacro no es solo una nota: es una medición por dominio que te dice dónde reforzar. SAA-C03 evalúa cuatro dominios con pesos distintos: diseñar arquitecturas seguras (30 % del contenido puntuado), resilientes (26 %), de alto rendimiento (24 %) y de costo optimizado (20 %). Como el modelo de puntuación es compensatorio, no necesitas superar cada sección, solo el examen en conjunto, pero una debilidad grande en un dominio pesado te cuesta muchos puntos. El desglose por sección, además, es una pista de fortalezas y debilidades que la guía pide interpretar con cautela. Los datos de abajo son de la guía oficial leída el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Cómo es el examen real según la guía",
+          "items": [
+            "Hay dos tipos de pregunta: de opción múltiple (una respuesta correcta y tres distractores) y de respuesta múltiple (dos o más correctas entre cinco o más opciones).",
+            "Los distractores son respuestas plausibles que elegiría alguien con un conocimiento incompleto.",
+            "Las preguntas sin responder se puntúan como incorrectas y no hay penalización por adivinar.",
+            "El examen incluye 50 preguntas puntuadas y 15 sin puntuar, que no se identifican y con las que AWS evalúa preguntas futuras.",
+            "El resultado es aprobado o no aprobado, con puntuación escalada de 100 a 1.000 y un mínimo de 720.",
+            "El modelo es compensatorio: no hace falta superar cada sección, solo el examen en conjunto."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "El simulador de la plataforma",
+          "text": "El simulador está en /learn/exams/SAA-C03 y ofrece varias formas de practicar. Las formas A, B y C son simulacros completos fijos de 65 preguntas, con preguntas que no aparecen en las unidades. El simulacro aleatorio arma un examen con preguntas del banco reservado que no viste en tus últimos intentos. El bloque por dominio es una serie de 20 preguntas de un solo dominio (si el dominio tiene entre 15 y 19, salen todas), útil para reforzar donde fallas. En todos los casos el cronómetro corre en el servidor, no recibes retroalimentación hasta entregar, puedes marcar preguntas para revisarlas, ves una pantalla de revisión antes de entregar y puedes activar los 30 minutos adicionales opcionales. Las formas y el banco se publican con el curso; hasta entonces el simulador no tiene preguntas de SAA-C03."
+        },
+        {
+          "type": "mermaid",
+          "title": "El ciclo de preparación",
+          "code": "flowchart TB\n  A[\"Simulacro completo\"] --> B[\"Informe por dominio\"]\n  B --> C{\"Dominio más débil\"}\n  C --> D[\"Repasar unidades del dominio\"]\n  D --> E[\"Bloque por dominio\"]\n  E --> F[\"Otra forma distinta\"]\n  F --> B"
+        },
+        {
+          "type": "list",
+          "title": "Cómo leer el informe y el plan de refuerzo",
+          "items": [
+            "El informe por dominio muestra el porcentaje de aciertos global y por dominio; la respuesta múltiple se corrige todo o nada.",
+            "Cada pregunta fallada muestra la explicación de cada opción y enlaza a la unidad del concepto.",
+            "Prioriza el dominio con menos aciertos, ponderando su peso: un 50 % en seguridad (30 % del examen) pesa más que un 50 % en costo (20 %).",
+            "Después del repaso, practica con un bloque por dominio y luego con otra forma distinta; repetir la misma forma solo entrena a recordar respuestas.",
+            "Anota para cada fallo la palabra del enunciado que te descartaba la opción y qué distractor te atrajo."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: de un informe a un plan",
+          "text": "Un informe de una forma muestra 70 % en seguridad, 45 % en resiliencia, 62 % en rendimiento y 80 % en costo. Paso 1: la peor nota es resiliencia (45 %) y pesa 26 %, así que es el primer dominio de refuerzo. Paso 2: miras las preguntas falladas y ves que tres son de recuperación ante desastres. Paso 3: repasas la unidad de opciones de recuperación y haces un bloque por dominio de resiliencia. Paso 4: haces otra forma distinta y comparas. Paso 5: tu segundo dominio es rendimiento (62 %). Resultado: el plan sale del informe, no de una impresión."
+        },
+        {
+          "type": "paragraph",
+          "title": "Qué cubre y qué no cubre el examen",
+          "text": "La guía de SAA-C03 incluye una lista de servicios en alcance y otra fuera de alcance, y aclara que no es una lista exhaustiva del contenido. Consulta ambas antes de decidir qué estudiar y no des por seguro que un servicio que no aparece en una de las listas no se preguntará en su ámbito conceptual."
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: el distractor plausible",
+          "text": "En un simulacro se nota más: la opción que menciona un servicio real pero resuelve otra cosa. Antes de marcarla, comprueba que cumple la restricción del enunciado y el calificador; si no puedes decir por qué las otras no valen, aún no has respondido."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: dar por perdido un dominio por un solo mal resultado",
+          "text": "Causa: un simulacro con mala nota en un dominio. Consecuencia: abandonas ese dominio o, al revés, crees que ya no importa. Solución: el desglose por sección es una pista que la guía pide interpretar con cautela; confirma con un bloque por dominio y otra forma distinta antes de decidir."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: repetir la misma forma hasta recordar las respuestas",
+          "text": "Causa: buscar una nota alta. Consecuencia: memorizas preguntas y no mides lo que sabes. Solución: alterna formas distintas, el simulacro aleatorio y el bloque por dominio, y deja pasar días entre intentos."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: dejar preguntas sin responder",
+          "text": "Causa: dudar y pasar de largo. Consecuencia: las preguntas sin responder se puntúan como incorrectas y no hay penalización por adivinar. Solución: marca la pregunta para revisarla, responde con la mejor opción y vuelve al final."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Leer el informe por dominio de un simulacro de SAA-C03 y convertirlo en un plan de refuerzo con el dominio prioritario, las unidades a repasar y el siguiente modo del simulador. Criterio: al menos 6 de las 8 preguntas mixtas de la unidad y un plan escrito que nombre el dominio, el peso y la evidencia."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz el ejemplo «de un informe a un plan» con otros porcentajes inventados por ti. Explica con tus palabras el diagrama «El ciclo de preparación»."
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve las dos primeras preguntas mixtas de la unidad y, para cada una, di a qué dominio pertenece y cuánto pesa en el examen."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Resuelve las otras seis preguntas con cronómetro, unos dos minutos cada una, y anota tu confianza (alta, media, baja) antes de ver la corrección."
+        },
+        {
+          "kind": "debug",
+          "title": "Revisión de errores",
+          "body": "Para cada pregunta fallada, escribe el dominio, la unidad que habría que repasar y la palabra del enunciado que te descartaba tu opción. Agrupa tus fallos por dominio."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde de memoria: cuáles son los cuatro dominios y sus pesos, qué es el modo compensatorio, qué significa que las preguntas sin responder cuentan como incorrectas y qué modo del simulador sirve para reforzar un dominio. Criterio de paso: cuatro de cinco respuestas de memoria y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Con el informe de tu último simulacro (o con uno imaginado), redacta el plan de las próximas dos semanas: qué dominio, qué unidades, qué modo del simulador y cuándo repites una forma distinta. Pregunta de cierre: ¿qué evidencia te diría que estás listo para presentarte?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "D1 Diseñar arquitecturas seguras, 30 %. D2 Diseñar arquitecturas resilientes, 26 %. D3 Diseñar arquitecturas de alto rendimiento, 24 %. D4 Diseñar arquitecturas de costo optimizado, 20 %. Los pesos son sobre el contenido puntuado."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-2-tarjeta-01",
+      "title": "Tarjeta: los cuatro dominios",
+      "statement": "¿Cuáles son los cuatro dominios de SAA-C03 y sus pesos?",
+      "concepts": [
+        "dominios",
+        "pesos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "No necesitas superar cada sección: solo el examen en conjunto. El resultado es aprobado o no aprobado, con puntuación escalada de 100 a 1.000 y mínimo de 720. El desglose por sección es una pista de fortalezas y debilidades que se interpreta con cautela."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-2-tarjeta-02",
+      "title": "Tarjeta: puntuación compensatoria",
+      "statement": "¿Qué significa que SAA-C03 sea compensatorio?",
+      "concepts": [
+        "compensatorio",
+        "puntuación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El examen incluye 50 preguntas que afectan a la puntuación y 15 sin puntuar. Las sin puntuar no se identifican: AWS recoge cómo se responden para evaluarlas como futuras preguntas puntuadas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-2-tarjeta-03",
+      "title": "Tarjeta: puntuadas y sin puntuar",
+      "statement": "¿Cuántas preguntas puntúan y qué son las preguntas sin puntuar?",
+      "concepts": [
+        "preguntas puntuadas",
+        "sin puntuar"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Formas A, B y C: simulacros completos fijos. Aleatorio: examen con preguntas del banco reservado que no viste en tus últimos intentos. Bloque por dominio: 20 preguntas de un solo dominio (todas si hay entre 15 y 19), para reforzar donde fallas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-2-tarjeta-04",
+      "title": "Tarjeta: modos del simulador",
+      "statement": "¿Qué modos tiene el simulador y para qué sirve cada uno?",
+      "concepts": [
+        "simulador",
+        "modos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Mira el porcentaje de aciertos por dominio y su peso: un mal resultado en un dominio pesado cuesta más. Confirma con un bloque por dominio y otra forma distinta antes de decidir, porque el desglose por sección es solo una pista."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-2-tarjeta-05",
+      "title": "Tarjeta: leer el informe",
+      "statement": "¿Cómo se prioriza un dominio de refuerzo?",
+      "concepts": [
+        "plan de refuerzo",
+        "prioridad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Responder siempre: las preguntas sin responder cuentan como incorrectas y no hay penalización por adivinar. Marcar las dudosas para revisarlas, usar la pantalla de revisión antes de entregar y descartar opciones con una razón concreta antes de elegir."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-10-2-tarjeta-06",
+      "title": "Tarjeta: hábitos de examen",
+      "statement": "¿Qué hábitos recomiendan las reglas del examen?",
+      "concepts": [
+        "hábitos",
+        "revisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo políticas de bucket de S3",
+            "explanation": "Descartada: no distinguen columnas ni filas dentro de los datos."
+          },
+          {
+            "id": "b",
+            "text": "AWS Lake Formation con permisos de columna y fila",
+            "explanation": "Es la correcta: aplica permisos granulares sobre el lago de datos en los servicios de analítica."
+          },
+          {
+            "id": "c",
+            "text": "Un grupo de seguridad en la subred de Athena",
+            "explanation": "Descartada: controla tráfico de red, no el acceso a columnas."
+          },
+          {
+            "id": "d",
+            "text": "Copiar los datos a un bucket por equipo sin control",
+            "explanation": "Descartada: multiplica copias y no resuelve el acceso por fila ni por columna."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-2-quiz-01",
+      "title": "Permisos de columna sobre un lago de datos",
+      "statement": "Una empresa comparte un lago de datos de S3 y quiere que cada equipo consulte con Athena solo las columnas y filas que le corresponden. ¿Qué servicio ofrece el MEJOR control centralizado?",
+      "concepts": [
+        "Lake Formation",
+        "permisos granulares"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Permite compartir datos entre varias cuentas de AWS y organizaciones",
+            "explanation": "Cumple: con acceso detallado a los metadatos y a los datos subyacentes."
+          },
+          {
+            "id": "b",
+            "text": "Sustituye a IAM y no puede usarse con sus políticas",
+            "explanation": "No cumple: su modelo de permisos complementa al de IAM."
+          },
+          {
+            "id": "c",
+            "text": "Aplica permisos a nivel de columna, fila y celda en servicios como Athena",
+            "explanation": "Cumple: los controles granulares se aplican en los servicios de analítica."
+          },
+          {
+            "id": "d",
+            "text": "Solo gestiona datos que no están en Amazon S3",
+            "explanation": "No cumple: gestiona el acceso a los datos del lago en S3 y a sus metadatos."
+          },
+          {
+            "id": "e",
+            "text": "Obliga a cifrar con una sola clave para todas las cuentas",
+            "explanation": "No cumple: no impone ese esquema de cifrado."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-2-quiz-02",
+      "title": "Compartir datos entre cuentas con control",
+      "statement": "Una empresa quiere compartir datos de su lago entre varias cuentas de AWS sin perder el control del acceso. Selecciona DOS afirmaciones correctas sobre AWS Lake Formation.",
+      "concepts": [
+        "Lake Formation",
+        "compartir datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo copias de seguridad y restauración",
+            "explanation": "Descartada: es la más barata pero la recuperación tarda mucho más."
+          },
+          {
+            "id": "b",
+            "text": "Multisitio activo-activo en dos regiones",
+            "explanation": "Descartada: ofrece la menor recuperación pero con el mayor costo, algo que se quiere evitar."
+          },
+          {
+            "id": "c",
+            "text": "Ejecutar un único servidor en la región de producción",
+            "explanation": "Descartada: no hay recuperación en otra región."
+          },
+          {
+            "id": "d",
+            "text": "Luz piloto o espera templada con el núcleo ya desplegado",
+            "explanation": "Es la correcta: mantiene lo esencial listo y escala al declarar el desastre, con un costo intermedio."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-2-quiz-03",
+      "title": "Recuperación ante desastres con costo contenido",
+      "statement": "Una empresa necesita recuperar una aplicación en otra región tras un desastre en minutos, sin pagar un entorno completo ya activo. ¿Qué estrategia de recuperación elige PRIMERO?",
+      "concepts": [
+        "pilot light",
+        "warm standby",
+        "RTO"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Copia de seguridad y restauración tiene el RTO más corto de todas",
+            "explanation": "No cumple: es la opción de recuperación más lenta."
+          },
+          {
+            "id": "b",
+            "text": "Multisitio activo-activo es la opción de menor RTO y de mayor costo",
+            "explanation": "Cumple: mantiene la carga en más de un sitio a la vez."
+          },
+          {
+            "id": "c",
+            "text": "Luz piloto mantiene una copia completa a plena escala todo el tiempo",
+            "explanation": "No cumple: mantiene solo el núcleo y escala al necesitarlo."
+          },
+          {
+            "id": "d",
+            "text": "Espera templada mantiene una copia reducida pero funcional del entorno",
+            "explanation": "Cumple: se escala al declarar el desastre."
+          },
+          {
+            "id": "e",
+            "text": "Todas las estrategias cuestan lo mismo",
+            "explanation": "No cumple: a menor RTO, mayor costo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-2-quiz-04",
+      "title": "Dos afirmaciones sobre las opciones de recuperación",
+      "statement": "Un equipo repasa las estrategias de recuperación ante desastres. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "opciones de recuperación",
+        "RTO"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Global Accelerator",
+            "explanation": "Es la correcta: ofrece direcciones IP estáticas anycast y dirige el tráfico por la red global de AWS."
+          },
+          {
+            "id": "b",
+            "text": "Un grupo de seguridad más abierto",
+            "explanation": "Descartada: controla el acceso, no mejora el rendimiento."
+          },
+          {
+            "id": "c",
+            "text": "Más espacio en el volumen de la instancia",
+            "explanation": "Descartada: no afecta al rendimiento de la red global."
+          },
+          {
+            "id": "d",
+            "text": "Una copia de seguridad entre regiones",
+            "explanation": "Descartada: no mejora el rendimiento hacia los usuarios."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-2-quiz-05",
+      "title": "Usuarios globales con direcciones IP estáticas",
+      "statement": "Una aplicación TCP y UDP tiene usuarios en varios continentes y necesita direcciones IP estáticas de entrada y MÁS rendimiento hacia las regiones. ¿Qué servicio encaja MEJOR?",
+      "concepts": [
+        "Global Accelerator",
+        "IP estáticas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un clúster permanente de servidores de análisis",
+            "explanation": "Descartada: hay que aprovisionarlo y administrarlo, y se paga aunque esté inactivo."
+          },
+          {
+            "id": "b",
+            "text": "Cargar los datos primero en una base de datos relacional",
+            "explanation": "Descartada: añade carga, administración y costo que el enunciado evita."
+          },
+          {
+            "id": "c",
+            "text": "Un servidor de archivos con scripts propios",
+            "explanation": "Descartada: exige construir y mantener la solución."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Athena sobre los datos de S3",
+            "explanation": "Es la correcta: consulta con SQL estándar directamente en S3, sin servidores y con pago por consulta."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-2-quiz-06",
+      "title": "Consultas SQL ad hoc sin administrar servidores",
+      "statement": "Unos analistas deben ejecutar consultas SQL ocasionales sobre grandes volúmenes de datos de S3, pagando solo por consulta y sin administrar infraestructura. ¿Qué opción es la MEJOR?",
+      "concepts": [
+        "Athena",
+        "sin servidores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Subir la capacidad de la puerta de enlace NAT",
+            "explanation": "Descartada: no reduce el cargo por datos procesados."
+          },
+          {
+            "id": "b",
+            "text": "Añadir otra puerta de enlace NAT en cada zona",
+            "explanation": "Descartada: añade costos fijos y no quita el cargo por procesamiento."
+          },
+          {
+            "id": "c",
+            "text": "Crear un punto de enlace de tipo gateway para S3",
+            "explanation": "Es la correcta: el tráfico a S3 deja de pasar por la puerta de enlace NAT y de pagar su procesamiento de datos."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar a un bucket en otra región",
+            "explanation": "Descartada: no reduce el cargo y añade transferencia entre regiones."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-2-quiz-07",
+      "title": "Tráfico a S3 desde subredes privadas con menor costo",
+      "statement": "Las instancias de una subred privada envían grandes volúmenes a S3 a través de una puerta de enlace NAT y el costo de procesamiento de datos es alto. ¿Qué cambio reduce MÁS el costo sin cambiar la aplicación?",
+      "concepts": [
+        "VPC endpoint de gateway",
+        "NAT Gateway"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Revisar las recomendaciones de AWS Compute Optimizer para ajustar el tamaño",
+            "explanation": "Cumple: analiza el uso y recomienda tamaños de recursos más adecuados."
+          },
+          {
+            "id": "b",
+            "text": "Dejar todas las instancias en el tamaño máximo por seguridad",
+            "explanation": "No cumple: aumenta el costo sin evidencia de necesidad."
+          },
+          {
+            "id": "c",
+            "text": "Apagar el monitoreo para ahorrar",
+            "explanation": "No cumple: sin datos no se puede ajustar nada."
+          },
+          {
+            "id": "d",
+            "text": "Comprar compromisos sin mirar el uso real",
+            "explanation": "No cumple: puede pagar capacidad que no se usa."
+          },
+          {
+            "id": "e",
+            "text": "Comparar un compromiso como Savings Plans con el uso estable observado",
+            "explanation": "Cumple: reduce el costo de la parte estable del uso."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-10-2-quiz-08",
+      "title": "Dos acciones para ajustar el costo del cómputo",
+      "statement": "Una empresa quiere reducir el costo de su cómputo sin cambiar de arquitectura. Selecciona DOS acciones correctas.",
+      "concepts": [
+        "Compute Optimizer",
+        "Savings Plans"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/compute-optimizer/latest/ug/what-is-compute-optimizer.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C13"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-10-2-reflexion-01",
+      "title": "Reflexión: mi plan de refuerzo por dominio",
+      "statement": "Con el informe por dominio de tu último simulacro de SAA-C03 (o con las 8 preguntas de esta unidad si aún no has hecho uno), escribe tu plan de refuerzo como un registro breve de decisión, en 4 a 6 líneas:\n\n1) Decisión: qué dominio refuerzas primero, qué unidades repasas y qué modo del simulador usarás después (bloque por dominio, otra forma distinta o simulacro aleatorio).\n\n2) Alternativa descartada: qué otro dominio podías priorizar y por qué lo dejas para después, teniendo en cuenta su peso.\n\n3) Consecuencia: qué dejas de estudiar esta semana y cuándo comprobarás el resultado.\n\n4) Evidencia: qué cifra del informe sostiene la decisión.\n\nNo hay una única respuesta correcta: cuenta que el plan nombre un dominio, su peso y una prueba concreta. Escríbelo con tus palabras y guárdalo para compararlo con tu siguiente simulacro.",
+      "concepts": [
+        "plan de refuerzo",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    }
+  ]
+}
