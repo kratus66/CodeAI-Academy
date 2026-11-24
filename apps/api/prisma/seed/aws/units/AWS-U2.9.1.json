@@ -1,0 +1,1323 @@
+{
+  "code": "AWS-U2.9.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-9-1-cloudfront-y-global-accelerator-rendimiento-en-el-borde",
+      "title": "CloudFront y Global Accelerator: rendimiento en el borde",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-cloudfront-que-es",
+          "order": 0,
+          "note": "Fuente previa de CloudFront: ubicaciones de borde, orígenes, caducidad por defecto y precios."
+        },
+        {
+          "resourceSlug": "aws-global-accelerator-que-es",
+          "order": 1,
+          "note": "Fuente de AWS Global Accelerator: aceleradores estándar y personalizados, direcciones IP estáticas y puntos de enlace."
+        },
+        {
+          "resourceSlug": "aws-s3-transfer-acceleration",
+          "order": 2,
+          "note": "Fuente previa de S3 Transfer Acceleration: subidas rápidas a un bucket desde largas distancias y sus requisitos."
+        },
+        {
+          "resourceSlug": "aws-route53-politicas-de-enrutamiento",
+          "order": 3,
+          "note": "Fuente previa de las políticas de enrutamiento de Route 53: simple, conmutación por error, geolocalización, latencia, ponderada y otras."
+        },
+        {
+          "resourceSlug": "aws-dr-opciones",
+          "order": 4,
+          "note": "Fuente de la comparación entre Global Accelerator y la conmutación de DNS: evita los problemas de caché de DNS."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 5,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Cuando los usuarios están lejos de tu aplicación, el rendimiento se resuelve en el borde de la red. Amazon CloudFront acelera la distribución de contenido estático y dinámico desde una red mundial de ubicaciones de borde. AWS Global Accelerator mejora el rendimiento y la disponibilidad de tus aplicaciones para usuarios locales y globales, dirigiendo el tráfico por la red global de AWS al mejor punto de enlace y con direcciones IP estáticas. Amazon S3 Transfer Acceleration acelera las subidas de ficheros a un bucket desde largas distancias. Y las políticas de enrutamiento de Amazon Route 53 deciden, a nivel de DNS, a qué recurso se envía cada consulta. En el dominio 3 de SAA-C03, «Diseñar arquitecturas de alto rendimiento», en la parte de redes, el enunciado describe quién accede, desde dónde, qué se transfiere y qué se exige (caché, direcciones IP fijas, conmutación rápida, subidas), y tú eliges la pieza. Los datos de abajo son de las páginas oficiales de AWS leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas frente a frente",
+          "items": [
+            "Amazon CloudFront: entrega contenido estático y dinámico a través de ubicaciones de borde; la petición se encamina a la ubicación con menor latencia y, si el contenido no está allí, CloudFront lo recupera del origen (un bucket de S3, un canal de MediaPackage o un servidor HTTP). Cada archivo permanece por defecto 24 horas en una ubicación de borde; el tiempo mínimo de caducidad es de 0 segundos y no hay máximo.",
+            "AWS Global Accelerator: servicio en el que creas aceleradores para mejorar el rendimiento de tus aplicaciones para usuarios locales y globales. Un acelerador estándar mejora la disponibilidad de aplicaciones de internet y dirige el tráfico por la red global de AWS a puntos de enlace de la Región más cercana al cliente; un acelerador de enrutamiento personalizado asigna uno o varios usuarios a un destino concreto entre muchos.",
+            "Direcciones IP estáticas de Global Accelerator: por defecto, dos direcciones IPv4 estáticas anycast desde la red de borde de AWS (cuatro con doble pila: dos IPv4 y dos IPv6); puedes usar tus propias direcciones IPv4 (BYOIP). Los puntos de enlace de un acelerador estándar pueden ser Network Load Balancers, Application Load Balancers, instancias de Amazon EC2 o direcciones IP elásticas, en una o varias Regiones.",
+            "Amazon S3 Transfer Acceleration: característica de nivel de bucket para transferir ficheros de forma rápida y segura a largas distancias entre un cliente y un bucket de S3 de propósito general; aprovecha las ubicaciones de borde de CloudFront y enruta los datos a S3 por una ruta de red optimizada.",
+            "Políticas de enrutamiento de Route 53: simple (un solo recurso), de conmutación por error (activo-pasivo), de geolocalización (según la ubicación de los usuarios), de geoproximidad (según la ubicación de los recursos), de latencia (la Región con mejor latencia), basada en IP, de respuesta con varios valores (hasta ocho registros sanos al azar), ponderada (proporciones que especificas) y de afinidad de AZ."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "CloudFront: acercar el contenido al usuario",
+          "text": "CloudFront acelera la distribución de contenido estático y dinámico (archivos .html, .css, .js e imágenes) a tus usuarios a través de una red mundial de centros de datos llamados ubicaciones de borde. Cuando un usuario pide contenido servido con CloudFront, la petición se encamina a la ubicación de borde que ofrece la menor latencia; si el contenido ya está allí, CloudFront lo entrega de inmediato, y si no, lo recupera del origen que has definido. CloudFront acelera la entrega al encaminar cada petición por la red troncal de AWS hasta la ubicación de borde que mejor puede servir el contenido, lo que reduce el número de redes por las que pasa la petición, y además da más fiabilidad y disponibilidad porque las copias de los objetos se guardan en caché en varias ubicaciones de borde del mundo. Para configurarlo creas una distribución, que le dice a CloudFront de qué orígenes obtener los archivos y qué detalles aplicar. CloudFront envía la configuración de la distribución (pero no el contenido) a todas sus ubicaciones de borde, colecciones de servidores en centros de datos geográficamente dispersos donde guarda copias de tus archivos. Opcionalmente, puedes configurar tu origen para añadir cabeceras que indiquen cuánto tiempo deben permanecer los archivos en la caché de las ubicaciones de borde; por defecto, cada archivo permanece 24 horas antes de caducar, con un mínimo de 0 segundos y sin máximo. Si el origen es un bucket de S3 puedes dejar los objetos públicos o mantenerlos privados y controlar quién accede (con URL firmadas y cookies firmadas, o con OAC como en la unidad de protección perimetral). En cuanto al costo, CloudFront cobra por las transferencias de datos de salida desde sus ubicaciones de borde y por las peticiones HTTP o HTTPS; la transferencia de datos desde el origen hasta CloudFront es siempre gratuita cuando se usan orígenes de AWS como Amazon S3, Elastic Load Balancing o Amazon API Gateway, y solo se factura la transferencia de salida de CloudFront al visor."
+        },
+        {
+          "type": "paragraph",
+          "title": "Global Accelerator: direcciones IP estáticas y el mejor punto de enlace",
+          "text": "Global Accelerator es un servicio global que admite puntos de enlace en varias Regiones de AWS. Con un acelerador estándar, Global Accelerator usa la red global de AWS para dirigir el tráfico al punto de enlace regional óptimo según la salud, la ubicación del cliente y las políticas que configures, lo que aumenta la disponibilidad de tus aplicaciones; reacciona al instante a los cambios de salud o de configuración para asegurar que el tráfico de internet de los clientes se dirija siempre a puntos de enlace sanos. Por defecto proporciona direcciones IP estáticas que asocias al acelerador; son direcciones anycast desde la red de borde de AWS. Las direcciones permanecen asignadas al acelerador mientras exista, aunque lo deshabilites y deje de aceptar o enrutar tráfico, pero al eliminar el acelerador pierdes las direcciones. Puedes limitar con políticas de IAM quién puede eliminar un acelerador. Global Accelerator también respeta la redirección de tráfico de Application Recovery Controller (ARC) para los puntos de enlace compatibles, con un cambio zonal o un cambio zonal automático. Con un acelerador de enrutamiento personalizado, que solo admite puntos de enlace de subredes de VPC y enruta el tráfico a direcciones IP privadas de esa subred, puedes asignar uno o varios usuarios a un destino específico entre muchos. El whitepaper de recuperación ante desastres añade una comparación útil: Global Accelerator comprueba la salud de los puntos de enlace, evita los problemas de caché que pueden darse con los sistemas DNS (como Route 53) y ofrece menores latencias porque usa la amplia red de borde de AWS para poner el tráfico en la red troncal de AWS lo antes posible; ajustar los traffic dials para una conmutación manual es, eso sí, una operación del plano de control."
+        },
+        {
+          "type": "paragraph",
+          "title": "S3 Transfer Acceleration: subidas desde lejos",
+          "text": "S3 Transfer Acceleration es una característica de nivel de bucket que permite transferencias rápidas, fáciles y seguras de ficheros a largas distancias entre tu cliente y un bucket de S3 de propósito general; está diseñada para optimizar las velocidades de transferencia desde cualquier lugar del mundo hacia los buckets de S3. Aprovecha las ubicaciones de borde distribuidas globalmente de Amazon CloudFront: a medida que los datos llegan a una ubicación de borde, se enrutan a Amazon S3 por una ruta de red optimizada. La página sugiere usarla cuando tus clientes suben a un bucket centralizado desde todo el mundo, cuando transfieres de gigabytes a terabytes con regularidad entre continentes o cuando no puedes aprovechar todo tu ancho de banda de internet al subir a S3. Requisitos: solo admite solicitudes de estilo alojado virtual; el nombre del bucket debe ser compatible con DNS y no puede contener puntos; y hay que habilitarla en el bucket; tras habilitarla, puede tardar hasta 20 minutos en aumentar la velocidad. Para acceder al bucket hay que usar el punto de enlace de aceleración (nombre-del-bucket.s3-accelerate.amazonaws.com), y se pueden seguir usando los puntos de enlace normales para la transferencia estándar. Puede aplicarse un cargo adicional por transferencia de datos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Route 53: elegir la política de enrutamiento",
+          "text": "Cuando creas un registro en Route 53, eliges una política de enrutamiento que determina cómo responde el servicio a las consultas. La política simple se usa para un único recurso que cumple una función para tu dominio. La de conmutación por error se usa para configurar un esquema activo-pasivo. La de geolocalización enruta según la ubicación de los usuarios y la de geoproximidad, según la ubicación de los recursos (con la opción de desplazar tráfico de unos recursos a otros). La de latencia se usa cuando tienes recursos en varias Regiones de AWS y quieres enrutar el tráfico a la Región que ofrezca la mejor latencia. La basada en IP enruta según la ubicación de los usuarios cuando conoces las direcciones IP de origen del tráfico. La de respuesta con varios valores hace que Route 53 responda a las consultas DNS con hasta ocho registros sanos elegidos al azar. La ponderada enruta el tráfico a varios recursos en las proporciones que especificas. La de afinidad de AZ enruta a los recursos de la misma zona de disponibilidad, grupo de zonas o Región de la que viene la consulta, con retorno automático a una ubicación menos específica. La decisión del examen es, por tanto, qué criterio manda en el enunciado: la ubicación del usuario, la ubicación del recurso, la latencia, la salud o las proporciones."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Un sitio con imágenes y archivos estáticos debe cargar rápido para usuarios de todo el mundo, con copias cerca de ellos. (2) Una aplicación en dos Regiones debe ofrecer a sus clientes dos direcciones IP fijas para sus listas de permitidos y dirigirlos al punto de enlace sano más cercano. (3) Clientes de todo el mundo suben archivos grandes a un bucket de S3 centralizado y no aprovechan todo su ancho de banda. (4) Una aplicación con recursos en varias Regiones quiere enviar a cada usuario a la Región con mejor latencia mediante DNS. Paso 1: para (1), la clave es «copias cerca del usuario», así que va CloudFront. Paso 2: para (2), la clave es «direcciones IP fijas y punto de enlace sano más cercano», así que va Global Accelerator con un acelerador estándar. Paso 3: para (3), la clave es «subidas desde todo el mundo a un bucket centralizado», así que va S3 Transfer Acceleration. Paso 4: para (4), la clave es «mejor latencia mediante DNS», así que va la política de latencia de Route 53. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una decisión de entrega y enrutamiento como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const decisiones = {\n  casos: [\n    { necesidad: \"contenido-estatico-cerca-del-usuario\", servicio: \"cloudfront\" },\n    { necesidad: \"ip-estaticas-y-punto-de-enlace-sano-mas-cercano\", servicio: \"global-accelerator\" },\n    { necesidad: \"subidas-desde-todo-el-mundo-a-un-bucket\", servicio: \"s3-transfer-acceleration\" },\n    { necesidad: \"mejor-latencia-mediante-dns\", servicio: \"route53-latencia\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la necesidad del enunciado a la pieza de borde",
+          "code": "flowchart TB\n  N{\"Qué exige el enunciado\"} -->|\"Servir contenido desde copias cercanas al usuario\"| C[\"Amazon CloudFront\"]\n  N -->|\"Direcciones IP estáticas y punto de enlace sano en varias Regiones\"| G[\"Global Accelerator: acelerador estándar\"]\n  N -->|\"Asignar usuarios concretos a un destino\"| P[\"Global Accelerator: enrutamiento personalizado\"]\n  N -->|\"Subir ficheros a un bucket desde lejos\"| T[\"S3 Transfer Acceleration\"]\n  N -->|\"Decidir mediante DNS\"| R{\"Qué criterio manda\"}\n  R -->|\"La Región con mejor latencia\"| L[\"Política de latencia\"]\n  R -->|\"La ubicación del usuario\"| O[\"Política de geolocalización\"]\n  R -->|\"Activo-pasivo\"| F[\"Política de conmutación por error\"]\n  R -->|\"Proporciones\"| W[\"Política ponderada\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir por el nombre y no por el criterio que manda",
+          "text": "El enunciado mezcla señales: «copias en caché», «direcciones IP estáticas», «subidas desde todo el mundo», «la Región con mejor latencia», «según la ubicación del usuario», «activo-pasivo». CloudFront entrega contenido desde ubicaciones de borde; Global Accelerator da IP estáticas anycast y dirige al mejor punto de enlace; S3 Transfer Acceleration acelera las subidas a un bucket; y Route 53 decide por DNS con el criterio de la política (latencia, ubicación del usuario, conmutación por error o proporciones). Subraya qué criterio manda y qué se transfiere antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar una política de latencia cuando se pide ubicación del usuario, o viceversa",
+          "text": "Causa: pensar que todas las políticas «dirigen al usuario al mejor sitio». Consecuencia: la política de latencia envía a la Región con la mejor latencia, que no tiene por qué ser la del país del usuario, y la de geolocalización enruta según la ubicación del usuario aunque otra Región tenga menor latencia; elegir mal incumple el requisito. Solución: lee el criterio del enunciado: mejor latencia, ubicación del usuario, ubicación del recurso, activo-pasivo o proporciones, y elige la política que lo implementa."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: pedir direcciones IP estáticas a DNS o a CloudFront",
+          "text": "Causa: ver «dirigir el tráfico al mejor punto de enlace» y elegir una política de Route 53, o un servicio de caché, cuando el enunciado exige direcciones IP fijas. Consecuencia: las políticas de Route 53 responden consultas DNS y CloudFront asigna un nombre de dominio a la distribución; las direcciones IP estáticas anycast son una característica de Global Accelerator. Solución: si el enunciado exige direcciones IP estáticas para listas de permitidos y puntos de enlace en varias Regiones, elige Global Accelerator con un acelerador estándar."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: habilitar Transfer Acceleration en un bucket con puntos en el nombre o no usar su punto de enlace",
+          "text": "Causa: habilitar la aceleración y esperar mejora inmediata con los puntos de enlace normales. Consecuencia: el nombre del bucket debe ser compatible con DNS y no contener puntos, hay que usar el punto de enlace de aceleración, y la mejora puede tardar hasta 20 minutos; si no, la velocidad no cambia. Solución: comprueba el nombre del bucket, habilita la característica, usa el punto de enlace nombre-del-bucket.s3-accelerate.amazonaws.com y espera hasta 20 minutos."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre CloudFront, Global Accelerator, S3 Transfer Acceleration y una política de enrutamiento de Route 53 según lo que pide el enunciado (caché en el borde, direcciones IP estáticas, subidas desde lejos o un criterio de enrutamiento por DNS), y aplicar los requisitos de Transfer Acceleration. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar arquitecturas de alto rendimiento», en la parte de redes. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la pieza, el dato del enunciado que la decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra la pieza y el dato que la decide. Explica con tus palabras el diagrama «De la necesidad del enunciado a la pieza de borde». Después responde: si una aplicación debe dar a sus clientes dos direcciones IP fijas y conmutar al punto de enlace sano más cercano, ¿qué servicio eliges y por qué no una política de Route 53?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Las direcciones IP fijas que una caché no da». Una configuración escrita como objeto elige CloudFront para un caso que exige direcciones IP estáticas y puntos de enlace en varias Regiones. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la necesidad y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Tres necesidades de entrega, dos servicios mal elegidos». Decide qué servicio corresponde a cada necesidad sin alterar el nombre de las necesidades. Criterio de paso: las pruebas pasan y justificas por escrito cada cambio con las páginas de S3 Transfer Acceleration y de las políticas de enrutamiento de Route 53."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre entrega de contenido y enrutamiento. Audítalo en «Auditar un informe de rendimiento en el borde generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de CloudFront, Global Accelerator, S3 y Route 53 (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué hace CloudFront y cuánto tiempo guarda por defecto un archivo en una ubicación de borde; qué ofrece Global Accelerator y qué tipos de punto de enlace admite; cuándo usas S3 Transfer Acceleration y qué requisitos tiene; y qué criterio implementa cada política de enrutamiento de Route 53. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa tiene una aplicación web con contenido estático, una API en dos Regiones que sus clientes empresariales quieren llamar desde direcciones IP fijas, y usuarios de todo el mundo que suben vídeos a un bucket. Decide qué pieza usas para cada parte. Pregunta de cierre: un compañero dice «con una política de latencia de Route 53 ya tenemos direcciones IP estáticas»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Acelera la distribución de contenido estático y dinámico a través de una red mundial de ubicaciones de borde. La petición va a la ubicación con menor latencia: si el contenido está en caché, lo entrega de inmediato; si no, lo recupera del origen (S3, MediaPackage o un servidor HTTP). Reduce latencia y aumenta fiabilidad porque guarda copias en varias ubicaciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-1-tarjeta-01",
+      "title": "Tarjeta: qué es CloudFront",
+      "statement": "¿Qué hace Amazon CloudFront y cómo entrega el contenido?",
+      "concepts": [
+        "CloudFront",
+        "ubicaciones de borde",
+        "origen"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Por defecto, cada archivo permanece 24 horas en una ubicación de borde; el mínimo es 0 segundos y no hay máximo (el origen puede indicarlo con cabeceras). CloudFront cobra la transferencia de salida desde sus ubicaciones de borde y las peticiones HTTP o HTTPS; la transferencia desde un origen de AWS (S3, ELB, API Gateway) a CloudFront es gratuita."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-1-tarjeta-02",
+      "title": "Tarjeta: caducidad y precios de CloudFront",
+      "statement": "¿Cuánto permanece un archivo en caché y qué cobra CloudFront?",
+      "concepts": [
+        "caducidad",
+        "caché",
+        "precios"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Mejora la disponibilidad de aplicaciones de internet para audiencias globales: dirige el tráfico por la red global de AWS al punto de enlace óptimo según salud, ubicación del cliente y políticas. Ofrece por defecto dos IPv4 estáticas anycast (BYOIP posible). Puntos de enlace: Network Load Balancers, Application Load Balancers, instancias EC2 o IP elásticas en una o varias Regiones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-1-tarjeta-03",
+      "title": "Tarjeta: acelerador estándar",
+      "statement": "¿Qué es un acelerador estándar de Global Accelerator y qué direcciones IP ofrece?",
+      "concepts": [
+        "Global Accelerator",
+        "IP estáticas",
+        "punto de enlace"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Asigna uno o varios usuarios a un destino específico entre muchos; solo admite subredes de VPC como puntos de enlace y enruta a IP privadas. Las IP estáticas permanecen asignadas al acelerador mientras exista, aunque lo deshabilites, pero al eliminarlo se pierden. Global Accelerator respeta la redirección de tráfico de ARC."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-1-tarjeta-04",
+      "title": "Tarjeta: enrutamiento personalizado y direcciones IP",
+      "statement": "¿Qué hace un acelerador de enrutamiento personalizado y cuándo se pierden las IP estáticas?",
+      "concepts": [
+        "enrutamiento personalizado",
+        "IP estáticas",
+        "ARC"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para subidas rápidas a un bucket de propósito general desde largas distancias (clientes de todo el mundo, gigabytes a terabytes entre continentes). Usa las ubicaciones de borde de CloudFront. Requisitos: solicitudes de estilo alojado virtual, nombre de bucket compatible con DNS y sin puntos, habilitarla y usar el punto de enlace s3-accelerate; puede tardar hasta 20 minutos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-1-tarjeta-05",
+      "title": "Tarjeta: S3 Transfer Acceleration",
+      "statement": "¿Cuándo se usa S3 Transfer Acceleration y qué requisitos tiene?",
+      "concepts": [
+        "Transfer Acceleration",
+        "punto de enlace de aceleración",
+        "bucket"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Simple: un solo recurso. Conmutación por error: activo-pasivo. Geolocalización: ubicación del usuario. Geoproximidad: ubicación de los recursos. Latencia: la Región con mejor latencia. Ponderada: proporciones que especificas. Respuesta con varios valores: hasta ocho registros sanos al azar. También hay políticas basada en IP y de afinidad de AZ."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-1-tarjeta-06",
+      "title": "Tarjeta: políticas de enrutamiento de Route 53",
+      "statement": "¿Qué criterio implementa cada política de enrutamiento de Route 53?",
+      "concepts": [
+        "Route 53",
+        "política de latencia",
+        "geolocalización"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Aplicación en dos Regiones que debe ofrecer direcciones IP fijas a sus clientes y dirigirlos al punto de enlace sano más cercano. Corrige su defecto principal.\nexport const diseno = {\n  necesidad: \"ip-estaticas-y-punto-de-enlace-sano-mas-cercano\",\n  requisitos: { ipEstaticas: true, variasRegiones: true, puntoDeEnlaceSano: true },\n  servicio: \"cloudfront\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  necesidad: \"ip-estaticas-y-punto-de-enlace-sano-mas-cercano\",\n  requisitos: { ipEstaticas: true, variasRegiones: true, puntoDeEnlaceSano: true },\n  servicio: \"global-accelerator\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El caso exige direcciones IP estáticas y puntos de enlace sanos en varias Regiones. Compara esas exigencias con lo que ofrece el servicio elegido."
+        },
+        {
+          "level": 2,
+          "text": "Global Accelerator ofrece por defecto dos direcciones IPv4 estáticas anycast y dirige el tráfico al punto de enlace óptimo según salud, ubicación del cliente y políticas, con puntos de enlace en una o varias Regiones; CloudFront entrega contenido desde ubicaciones de borde."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el servicio a \"global-accelerator\". No cambies la necesidad ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el servicio ya no es CloudFront",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.servicio, \"cloudfront\", \"CloudFront entrega contenido desde ubicaciones de borde; las IP estáticas anycast son de Global Accelerator\");\nassert.strictEqual(diseno.servicio, \"global-accelerator\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.ipEstaticas, true);\nassert.strictEqual(diseno.requisitos.variasRegiones, true);\nassert.strictEqual(diseno.requisitos.puntoDeEnlaceSano, true);"
+          }
+        },
+        {
+          "name": "el nombre de la necesidad no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.necesidad, \"ip-estaticas-y-punto-de-enlace-sano-mas-cercano\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-9-1-debug-01",
+      "title": "Las direcciones IP fijas que una caché no da",
+      "statement": "El objeto `diseno` modela una aplicación desplegada en dos Regiones que debe ofrecer a sus clientes direcciones IP fijas para sus listas de permitidos y dirigirlos siempre al punto de enlace sano más cercano. El diseño actual elige un servicio de entrega de contenido en caché. Corrige el servicio sin cambiar la necesidad ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`). Los servicios se escriben así: cloudfront, global-accelerator, s3-transfer-acceleration, route53-latencia.",
+      "concepts": [
+        "Global Accelerator",
+        "IP estáticas",
+        "CloudFront"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tres necesidades de rendimiento y el servicio elegido para cada una. Dos están mal asignadas: corrígelas.\nexport const diseno = {\n  casos: [\n    { necesidad: \"subidas-de-ficheros-desde-todo-el-mundo-a-un-bucket-centralizado\", servicio: \"cloudfront\" },\n    { necesidad: \"dirigir-por-dns-al-recurso-de-la-region-con-mejor-latencia\", servicio: \"route53-conmutacion-por-error\" },\n    { necesidad: \"entregar-contenido-estatico-desde-ubicaciones-de-borde\", servicio: \"cloudfront\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  casos: [\n    { necesidad: \"subidas-de-ficheros-desde-todo-el-mundo-a-un-bucket-centralizado\", servicio: \"s3-transfer-acceleration\" },\n    { necesidad: \"dirigir-por-dns-al-recurso-de-la-region-con-mejor-latencia\", servicio: \"route53-latencia\" },\n    { necesidad: \"entregar-contenido-estatico-desde-ubicaciones-de-borde\", servicio: \"cloudfront\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "las subidas a un bucket desde todo el mundo usan Transfer Acceleration",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"subidas-de-ficheros-desde-todo-el-mundo-a-un-bucket-centralizado\"], \"s3-transfer-acceleration\");"
+          }
+        },
+        {
+          "name": "la mejor latencia mediante DNS es la política de latencia",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"dirigir-por-dns-al-recurso-de-la-region-con-mejor-latencia\"], \"route53-latencia\");"
+          }
+        },
+        {
+          "name": "el contenido estático desde el borde sigue siendo CloudFront",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"entregar-contenido-estatico-desde-ubicaciones-de-borde\"], \"cloudfront\");"
+          }
+        },
+        {
+          "name": "las tres necesidades se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.casos.length, 3);\nconst nombres = diseno.casos.map((caso) => caso.necesidad).sort();\nassert.deepStrictEqual(nombres, [\"dirigir-por-dns-al-recurso-de-la-region-con-mejor-latencia\", \"entregar-contenido-estatico-desde-ubicaciones-de-borde\", \"subidas-de-ficheros-desde-todo-el-mundo-a-un-bucket-centralizado\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-9-1-debug-02",
+      "title": "Tres necesidades de entrega, dos servicios mal elegidos",
+      "statement": "El objeto `diseno` asigna un servicio a cada una de tres necesidades de rendimiento: subidas de ficheros desde todo el mundo a un bucket centralizado, dirigir por DNS al recurso de la Región con mejor latencia y entregar contenido estático desde ubicaciones de borde. Dos asignaciones son incorrectas según las páginas de S3 Transfer Acceleration y de las políticas de enrutamiento de Route 53. Corrígelas sin cambiar el nombre de las necesidades, y mantén la forma del valor exportado (`export const diseno = { … }`). Los servicios se escriben así: cloudfront, global-accelerator, s3-transfer-acceleration, route53-latencia, route53-conmutacion-por-error.",
+      "concepts": [
+        "S3 Transfer Acceleration",
+        "Route 53",
+        "CloudFront"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de rendimiento en el borde (borrador generado por un asistente)\nEscenario: contenido estático global, una aplicación en varias Regiones y subidas a un bucket de S3.\n1. CloudFront entrega el contenido desde la ubicación de borde de menor latencia y, si no está allí, lo recupera del origen.\n2. En CloudFront, el tiempo mínimo de caducidad es de 24 horas y existe un máximo de una semana.\n3. Global Accelerator proporciona por defecto dos direcciones IPv4 estáticas anycast desde la red de borde de AWS.\n4. Las direcciones IP estáticas de un acelerador se conservan después de eliminar el acelerador.\n5. Un acelerador estándar dirige el tráfico al punto de enlace óptimo según la salud, la ubicación del cliente y las políticas configuradas.\n6. S3 Transfer Acceleration puede usarse con buckets cuyo nombre contenga puntos.\n7. La política de enrutamiento de conmutación por error de Route 53 reparte el tráfico en las proporciones que especifica el cliente."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Entrega de CloudFront",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la petición se encamina a la ubicación de borde de menor latencia y, si el contenido no está allí, CloudFront lo recupera del origen."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Caducidad en CloudFront",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: por defecto un archivo permanece 24 horas en la ubicación de borde; el tiempo mínimo de caducidad es de 0 segundos y no hay un máximo."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "IP estáticas de Global Accelerator",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: por defecto proporciona dos direcciones IPv4 estáticas anycast desde la red de borde de AWS."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "IP estáticas tras eliminar el acelerador",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: las direcciones permanecen asignadas mientras el acelerador exista, aunque lo deshabilites, pero al eliminarlo se pierden."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Acelerador estándar",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: un acelerador estándar enruta al punto de enlace regional óptimo según la salud, la ubicación del cliente y las políticas que configures."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Transfer Acceleration y los puntos en el nombre",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: el nombre del bucket debe ser compatible con DNS y no puede contener puntos."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Política de conmutación por error",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: la política de conmutación por error configura un esquema activo-pasivo; repartir el tráfico en proporciones es la política ponderada."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-9-1-auditoria-01",
+      "title": "Auditar un informe de rendimiento en el borde generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre rendimiento en el borde en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "CloudFront",
+        "Global Accelerator",
+        "Transfer Acceleration",
+        "Route 53"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon CloudFront, con un bucket de S3 como origen",
+            "explanation": "Es la correcta: entrega el contenido desde ubicaciones de borde y guarda copias en caché cerca de los usuarios."
+          },
+          {
+            "id": "b",
+            "text": "Una política de latencia de Route 53 entre dos Regiones",
+            "explanation": "Descartada: decide a qué recurso responde el DNS; no guarda copias del contenido cerca de los usuarios."
+          },
+          {
+            "id": "c",
+            "text": "S3 Transfer Acceleration en el bucket",
+            "explanation": "Descartada: acelera las subidas al bucket, no la entrega de contenido a los visores."
+          },
+          {
+            "id": "d",
+            "text": "Más instancias de EC2 en una sola Región",
+            "explanation": "Descartada: no acerca el contenido a los usuarios de todo el mundo."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-1-quiz-01",
+      "title": "Contenido estático cerca del usuario",
+      "statement": "Un sitio sirve imágenes y archivos estáticos a usuarios de todo el mundo y quiere reducir la latencia con copias cerca de ellos. ¿Qué servicio es el MEJOR ajuste?",
+      "concepts": [
+        "CloudFront",
+        "caché en el borde"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una política de latencia de Route 53",
+            "explanation": "Descartada: responde consultas DNS con el recurso de mejor latencia; las direcciones IP estáticas anycast son de Global Accelerator."
+          },
+          {
+            "id": "b",
+            "text": "Global Accelerator, con un acelerador estándar",
+            "explanation": "Es la correcta: ofrece dos IPv4 estáticas anycast y dirige al punto de enlace óptimo según salud y ubicación, en una o varias Regiones."
+          },
+          {
+            "id": "c",
+            "text": "Una distribución de CloudFront con dos orígenes",
+            "explanation": "Descartada: CloudFront asigna un nombre de dominio a la distribución y está pensado para entregar contenido desde ubicaciones de borde."
+          },
+          {
+            "id": "d",
+            "text": "Una dirección IP elástica en una instancia de una Región",
+            "explanation": "Descartada: es una dirección de una sola Región; no dirige al punto de enlace sano más cercano en varias Regiones."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-1-quiz-02",
+      "title": "IP estáticas y varias Regiones",
+      "statement": "Una aplicación en dos Regiones debe ofrecer a sus clientes direcciones IP fijas para sus listas de permitidos y dirigirlos al punto de enlace sano más cercano. ¿Qué servicio encaja MÁS?",
+      "concepts": [
+        "Global Accelerator",
+        "IP estáticas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una política de geolocalización de Route 53",
+            "explanation": "Descartada: enruta consultas DNS según la ubicación del usuario; no optimiza la ruta de transferencia hacia S3."
+          },
+          {
+            "id": "b",
+            "text": "Una distribución de CloudFront solo para descargas",
+            "explanation": "Descartada: acelera la entrega de contenido a los visores, no las subidas a un bucket."
+          },
+          {
+            "id": "c",
+            "text": "Un acelerador de enrutamiento personalizado",
+            "explanation": "Descartada: asigna usuarios a un destino específico de una subred de VPC; no es la característica de aceleración de S3."
+          },
+          {
+            "id": "d",
+            "text": "S3 Transfer Acceleration, con el punto de enlace de aceleración",
+            "explanation": "Es la correcta: optimiza las transferencias a largas distancias hacia un bucket usando las ubicaciones de borde de CloudFront."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-1-quiz-03",
+      "title": "Subidas desde todo el mundo a un bucket",
+      "statement": "Clientes de todo el mundo suben archivos grandes a un bucket de S3 centralizado y no aprovechan todo su ancho de banda. ¿Qué opción mejora MÁS directamente la velocidad de subida?",
+      "concepts": [
+        "S3 Transfer Acceleration",
+        "subidas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Conmutación por error, con una Región pasiva",
+            "explanation": "Descartada: configura un esquema activo-pasivo, no elige la Región de mejor latencia."
+          },
+          {
+            "id": "b",
+            "text": "Ponderada, con pesos iguales en todas las Regiones",
+            "explanation": "Descartada: reparte el tráfico en las proporciones que especificas, sin tener en cuenta la latencia."
+          },
+          {
+            "id": "c",
+            "text": "De latencia, con un registro por Región",
+            "explanation": "Es la correcta: se usa cuando hay recursos en varias Regiones y se quiere enrutar a la que da la mejor latencia."
+          },
+          {
+            "id": "d",
+            "text": "Simple, con un único registro para el dominio",
+            "explanation": "Descartada: se usa para un único recurso que cumple una función; no elige entre Regiones."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-1-quiz-04",
+      "title": "Mejor latencia mediante DNS",
+      "statement": "Una aplicación tiene recursos en varias Regiones de AWS y quiere enviar a cada usuario, mediante DNS, a la Región con la MEJOR latencia. ¿Qué política de Route 53 elige?",
+      "concepts": [
+        "política de latencia",
+        "Route 53"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "De geolocalización, que enruta según la ubicación de los usuarios",
+            "explanation": "Es la correcta: se usa para enrutar el tráfico según la ubicación de los usuarios."
+          },
+          {
+            "id": "b",
+            "text": "De latencia, que busca la Región más rápida para cada usuario",
+            "explanation": "Descartada: la Región de mejor latencia no tiene por qué ser la del país del usuario."
+          },
+          {
+            "id": "c",
+            "text": "De respuesta con varios valores, con hasta ocho registros al azar",
+            "explanation": "Descartada: devuelve registros sanos elegidos al azar, sin tener en cuenta el país del usuario."
+          },
+          {
+            "id": "d",
+            "text": "Ponderada, con un peso por país",
+            "explanation": "Descartada: reparte el tráfico en proporciones, no por la ubicación del usuario."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-1-quiz-05",
+      "title": "Enrutar por la ubicación del usuario",
+      "statement": "Una empresa debe enviar a los usuarios de cada país a los recursos de su propio país por requisitos de la normativa. ¿Qué política de Route 53 encaja MÁS?",
+      "concepts": [
+        "política de geolocalización"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que los clientes usen el punto de enlace de aceleración y que hayan pasado hasta 20 minutos",
+            "explanation": "Es la correcta: hay que usar el punto de enlace s3-accelerate y la mejora puede tardar hasta 20 minutos."
+          },
+          {
+            "id": "b",
+            "text": "Que el nombre del bucket contenga puntos para ser compatible con DNS",
+            "explanation": "Descartada: el nombre debe ser compatible con DNS y no puede contener puntos."
+          },
+          {
+            "id": "c",
+            "text": "Que las solicitudes usen el estilo de ruta en lugar del alojado virtual",
+            "explanation": "Descartada: solo se admiten solicitudes de estilo alojado virtual."
+          },
+          {
+            "id": "d",
+            "text": "Que se cambie a un acelerador de enrutamiento personalizado",
+            "explanation": "Descartada: no es la característica de aceleración de S3."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-1-quiz-06",
+      "title": "Transfer Acceleration sin mejora aparente",
+      "statement": "Un equipo acaba de habilitar S3 Transfer Acceleration en un bucket y no nota mejora. ¿Qué debe comprobar PRIMERO?",
+      "concepts": [
+        "Transfer Acceleration",
+        "requisitos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Solo admite puntos de enlace de una única Región",
+            "explanation": "No cumple: es un servicio global que admite puntos de enlace en varias Regiones de AWS."
+          },
+          {
+            "id": "b",
+            "text": "Ofrece por defecto dos direcciones IPv4 estáticas anycast desde la red de borde de AWS",
+            "explanation": "Cumple: con doble pila son cuatro direcciones, dos IPv4 y dos IPv6."
+          },
+          {
+            "id": "c",
+            "text": "Las IP estáticas se conservan aunque se elimine el acelerador",
+            "explanation": "No cumple: al eliminar el acelerador se pierden las direcciones IP estáticas que tenía asignadas."
+          },
+          {
+            "id": "d",
+            "text": "Los puntos de enlace de un acelerador estándar pueden ser NLB, ALB, instancias de EC2 o IP elásticas",
+            "explanation": "Cumple: pueden estar en una Región o en varias."
+          },
+          {
+            "id": "e",
+            "text": "Un acelerador de enrutamiento personalizado dirige siempre al punto de enlace más cercano",
+            "explanation": "No cumple: asigna uno o varios usuarios a un destino específico entre muchos."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-1-quiz-07",
+      "title": "Qué es cierto de Global Accelerator",
+      "statement": "Un equipo repasa Global Accelerator. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Global Accelerator",
+        "puntos de enlace",
+        "IP estáticas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Cada archivo permanece por defecto 24 horas en una ubicación de borde antes de caducar",
+            "explanation": "Cumple: el origen puede indicar otra duración con cabeceras."
+          },
+          {
+            "id": "b",
+            "text": "El tiempo mínimo de caducidad es de una hora",
+            "explanation": "No cumple: el mínimo es de 0 segundos y no hay un tiempo máximo."
+          },
+          {
+            "id": "c",
+            "text": "Envía la configuración de la distribución, pero no el contenido, a todas sus ubicaciones de borde",
+            "explanation": "Cumple: las ubicaciones de borde guardan después copias en caché de los archivos."
+          },
+          {
+            "id": "d",
+            "text": "Cobra solo las peticiones y no la transferencia de datos de salida",
+            "explanation": "No cumple: cobra las transferencias de datos de salida desde las ubicaciones de borde y las peticiones HTTP o HTTPS."
+          },
+          {
+            "id": "e",
+            "text": "La transferencia desde un origen de AWS como S3 a CloudFront es gratuita",
+            "explanation": "Cumple: solo se factura la transferencia de salida de CloudFront al visor."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-1-quiz-08",
+      "title": "Qué es cierto de CloudFront",
+      "statement": "Un equipo repasa CloudFront. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "CloudFront",
+        "caducidad",
+        "precios"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "cf",
+            "term": "Amazon CloudFront",
+            "definition": "Entregar contenido estático y dinámico desde copias en caché de ubicaciones de borde"
+          },
+          {
+            "id": "ga",
+            "term": "Global Accelerator: acelerador estándar",
+            "definition": "Dos IP estáticas anycast y tráfico dirigido al punto de enlace sano más cercano en varias Regiones"
+          },
+          {
+            "id": "custom",
+            "term": "Global Accelerator: enrutamiento personalizado",
+            "definition": "Asignar usuarios concretos a un destino específico entre muchos en una subred de VPC"
+          },
+          {
+            "id": "ta",
+            "term": "S3 Transfer Acceleration",
+            "definition": "Subidas rápidas a un bucket de S3 desde largas distancias mediante el punto de enlace de aceleración"
+          },
+          {
+            "id": "lat",
+            "term": "Política de latencia",
+            "definition": "Dirigir por DNS al recurso de la Región con la mejor latencia"
+          },
+          {
+            "id": "geo",
+            "term": "Política de geolocalización",
+            "definition": "Dirigir por DNS según la ubicación de los usuarios"
+          },
+          {
+            "id": "fail",
+            "term": "Política de conmutación por error",
+            "definition": "Configurar un esquema activo-pasivo"
+          },
+          {
+            "id": "wei",
+            "term": "Política ponderada",
+            "definition": "Repartir el tráfico entre recursos en las proporciones que especificas"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio de borde o política de enrutamiento con el caso que resuelve. Si dudas, pregúntate qué criterio manda: copias en caché, direcciones IP fijas, subidas desde lejos o el criterio de enrutamiento por DNS.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Contenido en el borde: CloudFront",
+              "Direcciones IP estáticas: Global Accelerator",
+              "Subidas a un bucket: S3 Transfer Acceleration",
+              "Criterios de DNS: latencia, ubicación, activo-pasivo y proporciones"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-9-1-memoria-01",
+      "title": "Servicio de borde o política de enrutamiento y caso que resuelve",
+      "statement": "Empareja cada servicio de borde o política de enrutamiento con el caso que resuelve.",
+      "concepts": [
+        "CloudFront",
+        "Global Accelerator",
+        "Route 53"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C3"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-9-1-reflexion-01",
+      "title": "Reflexión: qué pieza de borde y por qué",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una tienda global con una API en varias Regiones y subidas de ficheros) y escribe un registro breve de decisión sobre cómo mejorarías su rendimiento en el borde, en 5 a 7 líneas:\n\n1) Decisión: qué pieza usarías para cada necesidad (CloudFront, Global Accelerator, S3 Transfer Acceleration o una política de Route 53) y qué dato de la aplicación lo decide (caché, direcciones IP fijas, subidas desde lejos o el criterio de enrutamiento).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, una política de latencia cuando se exigen direcciones IP estáticas, o CloudFront para acelerar subidas) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (la caducidad de la caché, los puntos de enlace del acelerador, el punto de enlace de aceleración, los registros de Route 53).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento) y por qué.\n\n5) Evidencia: qué página oficial (CloudFront, Global Accelerator, S3 Transfer Acceleration o las políticas de enrutamiento de Route 53) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la aplicación, la pieza y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "rendimiento en el borde",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+        "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/transfer-acceleration.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"
+      ],
+      "order": 19
+    }
+  ]
+}
