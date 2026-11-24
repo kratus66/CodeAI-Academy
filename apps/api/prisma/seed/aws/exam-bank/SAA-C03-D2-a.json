@@ -1,0 +1,1210 @@
+{
+  "certification": "SAA-C03",
+  "domain": 2,
+  "questions": [
+    {
+      "unitCode": "AWS-U2.6.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una cola FIFO de Amazon SQS con grupos de mensajes",
+              "explanation": "Es la correcta: conserva el orden por grupo y evita duplicados."
+            },
+            {
+              "id": "b",
+              "text": "Una cola estándar de Amazon SQS",
+              "explanation": "Descartada: ofrece orden aproximado y entrega al menos una vez."
+            },
+            {
+              "id": "c",
+              "text": "Un tema de Amazon SNS sin colas",
+              "explanation": "Descartada: no conserva mensajes ni garantiza orden por cliente."
+            },
+            {
+              "id": "d",
+              "text": "Un archivo de texto compartido entre servidores",
+              "explanation": "Descartada: no ofrece entrega ordenada ni control de duplicados."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-01",
+        "title": "Orden estricto y sin duplicados en una cola",
+        "statement": "Un sistema de pedidos debe procesar los mensajes de cada cliente en el orden exacto en que llegan y sin procesar ninguno dos veces. ¿Qué tipo de cola es el MÁS adecuado?",
+        "concepts": [
+          "SQS FIFO"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html",
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1001
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "c"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Ofrece orden de entrega por mejor esfuerzo y no garantizado",
+              "explanation": "Cumple: el orden puede variar."
+            },
+            {
+              "id": "b",
+              "text": "Elimina los mensajes en cuanto un consumidor los recibe",
+              "explanation": "No cumple: permanecen hasta que se eliminan tras procesarse."
+            },
+            {
+              "id": "c",
+              "text": "Entrega cada mensaje al menos una vez, por lo que el consumidor debe tolerar duplicados",
+              "explanation": "Cumple: puede entregar un mensaje más de una vez."
+            },
+            {
+              "id": "d",
+              "text": "Requiere que el productor y el consumidor estén activos a la vez",
+              "explanation": "No cumple: desacopla a ambos en el tiempo."
+            },
+            {
+              "id": "e",
+              "text": "Garantiza el orden estricto de todos los mensajes",
+              "explanation": "No cumple: esa garantía es de las colas FIFO."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-02",
+        "title": "Dos propiedades de la cola estándar de SQS",
+        "statement": "Un equipo diseña un procesamiento asíncrono con una cola estándar de Amazon SQS. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "SQS estándar"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1002
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Reducir el tiempo de visibilidad a un segundo",
+              "explanation": "Descartada: haría reaparecer el mensaje aún antes."
+            },
+            {
+              "id": "b",
+              "text": "Desactivar la cola y llamar al servicio de forma síncrona",
+              "explanation": "Descartada: elimina el desacoplamiento."
+            },
+            {
+              "id": "c",
+              "text": "Aumentar el tiempo de visibilidad por encima del tiempo de procesamiento",
+              "explanation": "Es la correcta: el mensaje sigue oculto mientras se procesa."
+            },
+            {
+              "id": "d",
+              "text": "Aumentar el número de consumidores sin cambiar nada más",
+              "explanation": "Descartada: no evita las recepciones duplicadas."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-03",
+        "title": "Evitar procesar dos veces el mismo mensaje",
+        "statement": "Un consumidor tarda unos 90 segundos en procesar cada mensaje y otro consumidor recibe el mismo mensaje antes de que termine. ¿Qué ajuste es el MÁS adecuado?",
+        "concepts": [
+          "tiempo de visibilidad"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1003
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Reintentar sin límite hasta que algún día funcione",
+              "explanation": "Descartada: mantiene el bloqueo y consume recursos."
+            },
+            {
+              "id": "b",
+              "text": "Una cola de mensajes fallidos con un número máximo de recepciones",
+              "explanation": "Es la correcta: mueve los mensajes problemáticos a otra cola para analizarlos."
+            },
+            {
+              "id": "c",
+              "text": "Eliminar la cola cada noche",
+              "explanation": "Descartada: pierde también los mensajes sanos."
+            },
+            {
+              "id": "d",
+              "text": "Aumentar la retención a cero segundos",
+              "explanation": "Descartada: no aísla los mensajes problemáticos."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-04",
+        "title": "Aislar los mensajes que siempre fallan",
+        "statement": "Algunos mensajes provocan un error cada vez que un consumidor los procesa y bloquean la cola con reintentos. ¿Qué configuración es la MEJOR para aislarlos?",
+        "concepts": [
+          "cola de mensajes fallidos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1004
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un tema de SNS con una cola de SQS suscrita por cada servicio",
+              "explanation": "Es la correcta: el fan-out entrega a cada cola y cada servicio procesa a su ritmo."
+            },
+            {
+              "id": "b",
+              "text": "Una única cola SQS que leen los tres servicios",
+              "explanation": "Descartada: cada mensaje lo recibiría solo un consumidor."
+            },
+            {
+              "id": "c",
+              "text": "Llamadas síncronas del productor a cada servicio",
+              "explanation": "Descartada: acopla al productor y falla si un servicio cae."
+            },
+            {
+              "id": "d",
+              "text": "Una tabla compartida que los tres consultan constantemente",
+              "explanation": "Descartada: añade sondeo y acoplamiento."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-05",
+        "title": "Un evento para varios consumidores independientes",
+        "statement": "Un servicio publica un evento de pedido que deben recibir, de forma independiente y duradera, los servicios de facturación, inventario y envío. ¿Qué patrón es el MÁS adecuado?",
+        "concepts": [
+          "SNS",
+          "fan-out"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1005
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Solo admite eventos generados por humanos",
+              "explanation": "No cumple: recibe eventos de servicios y aplicaciones."
+            },
+            {
+              "id": "b",
+              "text": "Las reglas comparan los eventos con un patrón y los envían a destinos",
+              "explanation": "Cumple: enrutan eventos según su contenido."
+            },
+            {
+              "id": "c",
+              "text": "Sustituye a una base de datos relacional",
+              "explanation": "No cumple: no es un almacén de datos."
+            },
+            {
+              "id": "d",
+              "text": "Puede recibir eventos de servicios de AWS y de aplicaciones propias",
+              "explanation": "Cumple: centraliza el enrutamiento de eventos."
+            },
+            {
+              "id": "e",
+              "text": "Exige que cada productor conozca a cada consumidor",
+              "explanation": "No cumple: desacopla productores y consumidores."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-06",
+        "title": "Dos hechos sobre EventBridge",
+        "statement": "Un equipo diseña una arquitectura dirigida por eventos con Amazon EventBridge. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "EventBridge"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rules.html",
+          "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1006
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una instancia de EC2 con un cron propio",
+              "explanation": "Descartada: obliga a administrar y mantener un servidor."
+            },
+            {
+              "id": "b",
+              "text": "Un balanceador de carga de aplicaciones",
+              "explanation": "Descartada: reparte tráfico y no programa tareas."
+            },
+            {
+              "id": "c",
+              "text": "Una programación de Amazon EventBridge Scheduler",
+              "explanation": "Es la correcta: invoca el destino según la programación definida."
+            },
+            {
+              "id": "d",
+              "text": "Un volumen de EBS con un script",
+              "explanation": "Descartada: no ejecuta ni programa tareas."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-07",
+        "title": "Ejecutar una tarea cada noche sin servidores",
+        "statement": "Una empresa debe invocar una función de Lambda cada noche a la misma hora, sin administrar servidores. ¿Qué es lo MÁS adecuado?",
+        "concepts": [
+          "EventBridge Scheduler"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/eventbridge/latest/userguide/using-eventbridge-scheduler.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1007
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una instancia de EC2 que sondee la cola y llame al destino",
+              "explanation": "Descartada: añade código y servidores que mantener."
+            },
+            {
+              "id": "b",
+              "text": "Amazon EventBridge Pipes con la cola como origen y Step Functions como destino",
+              "explanation": "Es la correcta: conecta origen y destino con filtrado y sin código de integración."
+            },
+            {
+              "id": "c",
+              "text": "Un grupo de seguridad entre la cola y el destino",
+              "explanation": "Descartada: controla red y no integra servicios."
+            },
+            {
+              "id": "d",
+              "text": "Un punto de enlace de VPC de gateway",
+              "explanation": "Descartada: solo aplica a S3 y DynamoDB."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-08",
+        "title": "Conectar una cola con un destino sin código",
+        "statement": "Se quieren leer mensajes de una cola de SQS, filtrarlos y enviarlos a una máquina de estados de Step Functions con el MÍNIMO código propio. ¿Qué elige?",
+        "concepts": [
+          "EventBridge Pipes"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1008
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Step Functions con una máquina de estados",
+              "explanation": "Es la correcta: orquesta pasos con reintentos, errores y ramas."
+            },
+            {
+              "id": "b",
+              "text": "Cinco funciones que se llamen en cadena entre sí",
+              "explanation": "Descartada: dispersa la lógica de control y los errores."
+            },
+            {
+              "id": "c",
+              "text": "Amazon SNS con un único tema",
+              "explanation": "Descartada: difunde mensajes y no orquesta pasos."
+            },
+            {
+              "id": "d",
+              "text": "Un balanceador de carga de red",
+              "explanation": "Descartada: reparte conexiones y no coordina flujos."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-09",
+        "title": "Coordinar pasos con reintentos y errores",
+        "statement": "Un proceso de alta de clientes encadena cinco funciones de Lambda, con reintentos, ramas condicionales y compensación si un paso falla. ¿Qué servicio es el MÁS adecuado para orquestarlo?",
+        "concepts": [
+          "Step Functions"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html",
+          "https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1009
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Estándar es adecuado para flujos de larga duración y auditables",
+              "explanation": "Cumple: admite ejecuciones largas con historial."
+            },
+            {
+              "id": "b",
+              "text": "Ambos tipos son idénticos en duración y volumen",
+              "explanation": "No cumple: difieren en ambos aspectos."
+            },
+            {
+              "id": "c",
+              "text": "Estándar no admite ninguna integración con servicios de AWS",
+              "explanation": "No cumple: sí admite integraciones."
+            },
+            {
+              "id": "d",
+              "text": "Express es el mejor para procesos de varios días",
+              "explanation": "No cumple: los flujos largos corresponden a Estándar."
+            },
+            {
+              "id": "e",
+              "text": "Express es adecuado para cargas de alto volumen y corta duración",
+              "explanation": "Cumple: está pensado para ejecuciones breves y numerosas."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-10",
+        "title": "Dos diferencias entre flujos Estándar y Express",
+        "statement": "Un equipo elige el tipo de flujo de Step Functions. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "flujos Estándar y Express"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1010
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una API REST con todas las funciones avanzadas activadas",
+              "explanation": "Descartada: cuesta más y no se necesitan sus funciones."
+            },
+            {
+              "id": "b",
+              "text": "Un servidor de EC2 con un proxy propio",
+              "explanation": "Descartada: añade administración y costo."
+            },
+            {
+              "id": "c",
+              "text": "Una API HTTP de Amazon API Gateway",
+              "explanation": "Es la correcta: es más económica y de menor latencia para casos sencillos."
+            },
+            {
+              "id": "d",
+              "text": "Un bucket de S3 con la API en un archivo",
+              "explanation": "Descartada: no ejecuta funciones de Lambda."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-11",
+        "title": "Elegir el tipo de API para un proxy sencillo",
+        "statement": "Una empresa necesita exponer funciones de Lambda mediante una API sencilla, con el MENOR costo y la menor latencia, sin necesidad de funciones avanzadas de REST. ¿Qué elige?",
+        "concepts": [
+          "API HTTP",
+          "API REST"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1011
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Aumentar el tamaño del backend indefinidamente",
+              "explanation": "Descartada: es costoso y no protege frente a abusos."
+            },
+            {
+              "id": "b",
+              "text": "Limitar la tasa y las ráfagas con la limitación de API Gateway",
+              "explanation": "Es la correcta: rechaza el exceso de peticiones antes de llegar al backend."
+            },
+            {
+              "id": "c",
+              "text": "Quitar la autenticación para acelerar las respuestas",
+              "explanation": "Descartada: aumenta el riesgo y no limita el tráfico."
+            },
+            {
+              "id": "d",
+              "text": "Reintentar todas las peticiones fallidas sin límite",
+              "explanation": "Descartada: agrava la saturación."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-12",
+        "title": "Proteger el backend de picos de peticiones",
+        "statement": "El backend de una API se satura cuando un cliente envía ráfagas de peticiones. ¿Qué configuración de API Gateway protege MEJOR al backend?",
+        "concepts": [
+          "limitación de peticiones"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1012
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Solo puede integrarse con instancias de EC2",
+              "explanation": "No cumple: admite otras integraciones, como Lambda."
+            },
+            {
+              "id": "b",
+              "text": "Obliga a que cada petición llegue siempre al backend",
+              "explanation": "No cumple: la caché evita llegar al backend en algunos casos."
+            },
+            {
+              "id": "c",
+              "text": "Puede limitar las peticiones con la limitación de la API",
+              "explanation": "Cumple: protege el backend frente a ráfagas."
+            },
+            {
+              "id": "d",
+              "text": "Puede almacenar en caché las respuestas para reducir llamadas al backend",
+              "explanation": "Cumple: mejora la latencia y reduce la carga."
+            },
+            {
+              "id": "e",
+              "text": "No admite ningún mecanismo de autorización",
+              "explanation": "No cumple: admite varios autorizadores."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-13",
+        "title": "Dos funciones de las API REST de API Gateway",
+        "statement": "Un equipo diseña una API REST con Amazon API Gateway. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "caché",
+          "plan de uso"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html",
+          "https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1013
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un clúster de EC2 con consumidores propios",
+              "explanation": "Descartada: obliga a administrar servidores y código."
+            },
+            {
+              "id": "b",
+              "text": "Una tabla de DynamoDB con lecturas periódicas",
+              "explanation": "Descartada: no es un servicio de entrega de flujos."
+            },
+            {
+              "id": "c",
+              "text": "Un grupo de seguridad con reglas de entrada",
+              "explanation": "Descartada: controla tráfico de red y no entrega datos."
+            },
+            {
+              "id": "d",
+              "text": "Amazon Data Firehose",
+              "explanation": "Es la correcta: captura, transforma y entrega datos en streaming a destinos como S3."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-14",
+        "title": "Entregar un flujo de datos a S3 sin gestionar consumidores",
+        "statement": "Una empresa recibe un flujo continuo de eventos y quiere entregarlos a S3 con el MÍNIMO código y sin administrar consumidores. ¿Qué servicio es el MEJOR?",
+        "concepts": [
+          "Firehose"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1014
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "El orden se conserva dentro de un fragmento para la misma clave de partición",
+              "explanation": "Cumple: los registros con la misma clave van al mismo fragmento."
+            },
+            {
+              "id": "b",
+              "text": "Es un servicio de bases de datos relacionales",
+              "explanation": "No cumple: es un servicio de flujos de datos."
+            },
+            {
+              "id": "c",
+              "text": "Los datos se eliminan al leerlos una vez",
+              "explanation": "No cumple: permanecen durante el periodo de retención."
+            },
+            {
+              "id": "d",
+              "text": "El orden global está garantizado entre todos los fragmentos",
+              "explanation": "No cumple: solo se garantiza dentro de cada fragmento."
+            },
+            {
+              "id": "e",
+              "text": "Varios consumidores pueden leer el mismo flujo",
+              "explanation": "Cumple: los consumidores leen de forma independiente."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-15",
+        "title": "Dos hechos sobre Kinesis Data Streams",
+        "statement": "Un equipo procesa datos en tiempo real con Amazon Kinesis Data Streams. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "Kinesis Data Streams"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html",
+          "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1015
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon SQS estándar",
+              "explanation": "Descartada: tiene otra API y obligaría a reescribir las aplicaciones."
+            },
+            {
+              "id": "b",
+              "text": "Amazon MSK",
+              "explanation": "Es la correcta: es un servicio administrado compatible con Apache Kafka."
+            },
+            {
+              "id": "c",
+              "text": "Amazon Route 53",
+              "explanation": "Descartada: es un servicio de DNS y no de mensajería."
+            },
+            {
+              "id": "d",
+              "text": "AWS Backup",
+              "explanation": "Descartada: protege datos y no ofrece mensajería."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-16",
+        "title": "Migrar una aplicación Kafka con pocos cambios",
+        "statement": "Una empresa tiene aplicaciones que ya usan Apache Kafka y quiere pasarlas a AWS con el MÍNIMO cambio de código y sin administrar los brókers. ¿Qué servicio elige?",
+        "concepts": [
+          "Amazon MSK"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/msk/latest/developerguide/what-is-msk.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1016
+      }
+    },
+    {
+      "unitCode": "AWS-U2.3.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "c"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Colocar una cola de SQS delante de la función para absorber la ráfaga",
+              "explanation": "Cumple: los mensajes esperan y se procesan a un ritmo controlado."
+            },
+            {
+              "id": "b",
+              "text": "Aumentar el tiempo de espera de la función a cero",
+              "explanation": "No cumple: no limita las ejecuciones simultáneas."
+            },
+            {
+              "id": "c",
+              "text": "Limitar la concurrencia reservada de la función",
+              "explanation": "Cumple: fija un máximo de ejecuciones simultáneas."
+            },
+            {
+              "id": "d",
+              "text": "Desactivar el registro de la función",
+              "explanation": "No cumple: no reduce las conexiones a la base de datos."
+            },
+            {
+              "id": "e",
+              "text": "Quitar cualquier límite de concurrencia de la función",
+              "explanation": "No cumple: permite aún más conexiones simultáneas."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C4"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-a-17",
+        "title": "Dos formas de proteger una base de datos de picos de Lambda",
+        "statement": "Una función de Lambda escala con una ráfaga de eventos y satura las conexiones de una base de datos. Selecciona DOS medidas que lo evitan.",
+        "concepts": [
+          "concurrencia reservada",
+          "SQS"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html",
+          "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1017
+      }
+    }
+  ]
+}
