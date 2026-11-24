@@ -1,0 +1,1435 @@
+{
+  "certification": "SAA-C03",
+  "domain": 1,
+  "questions": [
+    {
+      "unitCode": "AWS-U2.1.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una política de IAM distinta en cada usuario de cada cuenta",
+              "explanation": "Descartada: exige mantenerla identidad por identidad."
+            },
+            {
+              "id": "b",
+              "text": "Pedir por correo al equipo que no use otras regiones",
+              "explanation": "Descartada: no impide técnicamente el uso."
+            },
+            {
+              "id": "c",
+              "text": "Un SCP que deniegue las acciones cuando la región solicitada no sea una de las aprobadas",
+              "explanation": "Es la correcta: se aplica de forma central a las cuentas miembro."
+            },
+            {
+              "id": "d",
+              "text": "Un grupo de seguridad con reglas por región",
+              "explanation": "Descartada: controla tráfico de red, no la creación de recursos."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-01",
+        "title": "Impedir el uso de regiones no autorizadas",
+        "statement": "Una organización quiere impedir que cualquier cuenta miembro cree recursos fuera de dos regiones aprobadas, con el MENOR esfuerzo de administración. ¿Qué elige?",
+        "concepts": [
+          "SCP",
+          "región"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
+          "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1201
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Compartir su contraseña con todo el equipo de operaciones",
+              "explanation": "No cumple: multiplica el riesgo de uso indebido."
+            },
+            {
+              "id": "b",
+              "text": "Activar la autenticación multifactor en el usuario raíz",
+              "explanation": "Cumple: añade una segunda barrera al usuario con más privilegios."
+            },
+            {
+              "id": "c",
+              "text": "Crear claves de acceso del usuario raíz para las aplicaciones",
+              "explanation": "No cumple: las aplicaciones no deben usar credenciales del usuario raíz."
+            },
+            {
+              "id": "d",
+              "text": "Usarlo para el trabajo diario de los desarrolladores",
+              "explanation": "No cumple: debe evitarse para tareas cotidianas."
+            },
+            {
+              "id": "e",
+              "text": "Usarlo solo para las tareas que exigen el usuario raíz",
+              "explanation": "Cumple: las tareas diarias deben hacerse con otras identidades."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-02",
+        "title": "Dos buenas prácticas con el usuario raíz",
+        "statement": "Una empresa recién crea su cuenta de AWS. Selecciona DOS buenas prácticas para el usuario raíz.",
+        "concepts": [
+          "usuario raíz",
+          "MFA"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html",
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/enable-mfa-for-root.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1202
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Usar roles de IAM con credenciales temporales",
+              "explanation": "Cumple: se rotan automáticamente y no se guardan en el código."
+            },
+            {
+              "id": "b",
+              "text": "Enviar las claves por correo al equipo de desarrollo",
+              "explanation": "No cumple: es un canal inseguro."
+            },
+            {
+              "id": "c",
+              "text": "Reutilizar una única clave en todas las aplicaciones",
+              "explanation": "No cumple: amplía el alcance de una posible filtración."
+            },
+            {
+              "id": "d",
+              "text": "Guardar claves de acceso de larga duración en el repositorio",
+              "explanation": "No cumple: es una mala práctica que expone credenciales."
+            },
+            {
+              "id": "e",
+              "text": "Asignar a la función de Lambda un rol de ejecución con permisos mínimos",
+              "explanation": "Cumple: así obtiene credenciales temporales sin claves."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-03",
+        "title": "Dos formas de entregar credenciales a una aplicación",
+        "statement": "Un equipo diseña cómo obtienen credenciales las cargas de trabajo en AWS. Selecciona DOS prácticas recomendadas.",
+        "concepts": [
+          "roles",
+          "credenciales temporales"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html",
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1203
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una política que permita todo y confiar en que los clientes usen HTTPS",
+              "explanation": "Descartada: no obliga a usarlo."
+            },
+            {
+              "id": "b",
+              "text": "Cifrar los objetos con SSE-S3 únicamente",
+              "explanation": "Descartada: cifra en reposo y no obliga a HTTPS en tránsito."
+            },
+            {
+              "id": "c",
+              "text": "Activar el versionado del bucket",
+              "explanation": "Descartada: protege versiones, no el cifrado en tránsito."
+            },
+            {
+              "id": "d",
+              "text": "Una política de bucket que deniegue las solicitudes cuando aws:SecureTransport sea falso",
+              "explanation": "Es la correcta: rechaza cualquier solicitud que no use HTTPS."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-04",
+        "title": "Exigir HTTPS al acceder a un bucket",
+        "statement": "Una empresa quiere que las solicitudes a un bucket de S3 solo se acepten por conexiones cifradas. ¿Qué configuración es la MÁS adecuada?",
+        "concepts": [
+          "aws:SecureTransport"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html",
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1204
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Pedir a cada equipo que marque la casilla al crear volúmenes",
+              "explanation": "Descartada: depende de la disciplina de cada equipo."
+            },
+            {
+              "id": "b",
+              "text": "Cifrar solo los snapshots manualmente",
+              "explanation": "Descartada: no cifra los volúmenes nuevos de forma automática."
+            },
+            {
+              "id": "c",
+              "text": "Activar el cifrado de EBS por defecto en la región",
+              "explanation": "Es la correcta: los volúmenes nuevos se cifran automáticamente."
+            },
+            {
+              "id": "d",
+              "text": "Mover los volúmenes a un bucket de S3",
+              "explanation": "Descartada: no sustituye el cifrado de EBS."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-05",
+        "title": "Cifrar por defecto los volúmenes nuevos",
+        "statement": "Una empresa quiere que todos los volúmenes de EBS nuevos de una región se creen cifrados sin depender de cada equipo. ¿Qué es lo MÁS adecuado?",
+        "concepts": [
+          "cifrado de EBS"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/ebs/latest/userguide/what-is-ebs.html",
+          "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1205
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Activar el cifrado directamente en la instancia en ejecución",
+              "explanation": "Descartada: no se puede cifrar una instancia existente sin cifrar en el sitio."
+            },
+            {
+              "id": "b",
+              "text": "Crear un snapshot, copiarlo con cifrado y restaurar una instancia nueva desde la copia",
+              "explanation": "Es la correcta: es la vía para obtener una instancia cifrada a partir de una existente."
+            },
+            {
+              "id": "c",
+              "text": "Cifrar solo los registros de conexión",
+              "explanation": "Descartada: no cifra los datos almacenados."
+            },
+            {
+              "id": "d",
+              "text": "Mover la instancia a otra zona de disponibilidad",
+              "explanation": "Descartada: no cambia su cifrado."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-06",
+        "title": "Cifrar una base de datos que ya existe sin cifrar",
+        "statement": "Una instancia de RDS existente no está cifrada y debe pasar a estarlo. ¿Qué procedimiento es el MÁS adecuado?",
+        "concepts": [
+          "cifrado de RDS",
+          "snapshot"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html",
+          "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1206
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "El cifrado en reposo hace innecesaria cualquier política de red",
+              "explanation": "No cumple: no sustituye los controles de red."
+            },
+            {
+              "id": "b",
+              "text": "El cifrado se configura al crear la instancia y usa claves de KMS",
+              "explanation": "Cumple: los datos, copias y snapshots quedan cifrados."
+            },
+            {
+              "id": "c",
+              "text": "Se puede desactivar el cifrado de una instancia ya cifrada con un clic",
+              "explanation": "No cumple: no se puede quitar el cifrado de una instancia cifrada."
+            },
+            {
+              "id": "d",
+              "text": "Solo las réplicas están cifradas, no la instancia principal",
+              "explanation": "No cumple: la instancia principal también lo está."
+            },
+            {
+              "id": "e",
+              "text": "Los snapshots de una instancia cifrada también están cifrados",
+              "explanation": "Cumple: heredan el cifrado de la instancia."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-07",
+        "title": "Dos hechos sobre el cifrado en RDS",
+        "statement": "Un equipo revisa el cifrado en reposo de Amazon RDS. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "cifrado de RDS"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html",
+          "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1207
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Dejar la API abierta y validar el token solo en el cliente",
+              "explanation": "Descartada: cualquiera podría llamar a la API directamente."
+            },
+            {
+              "id": "b",
+              "text": "Un grupo de seguridad delante de API Gateway",
+              "explanation": "Descartada: controla tráfico de red y no valida tokens."
+            },
+            {
+              "id": "c",
+              "text": "Un bucket de S3 con la lista de tokens válidos",
+              "explanation": "Descartada: no valida tokens de forma segura."
+            },
+            {
+              "id": "d",
+              "text": "Un autorizador de Lambda que valide el token y devuelva una política",
+              "explanation": "Es la correcta: ejecuta la lógica de validación personalizada."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-08",
+        "title": "Validar un token propio en API Gateway",
+        "statement": "Una API de API Gateway debe validar un token de un sistema de autenticación propio antes de invocar el backend. ¿Qué mecanismo es el MÁS flexible?",
+        "concepts": [
+          "autorizador de Lambda"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1208
+      }
+    },
+    {
+      "unitCode": "AWS-U2.6.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un autorizador de Lambda escrito a medida",
+              "explanation": "Descartada: añade código que Cognito ya cubre."
+            },
+            {
+              "id": "b",
+              "text": "Una política de bucket que valide el token",
+              "explanation": "Descartada: las políticas de bucket no validan tokens de la API."
+            },
+            {
+              "id": "c",
+              "text": "Un autorizador de grupo de usuarios de Cognito en la API",
+              "explanation": "Es la correcta: valida los tokens del grupo sin escribir código."
+            },
+            {
+              "id": "d",
+              "text": "Un balanceador de carga de red delante de la API",
+              "explanation": "Descartada: balancea tráfico, no autentica usuarios."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C6"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-09",
+        "title": "Autorizar con un grupo de usuarios de Cognito",
+        "statement": "Los usuarios de una aplicación se registran en un grupo de usuarios de Cognito y la API REST debe aceptar solo a quienes tengan un token válido de ese grupo, con el MÍNIMO código propio. ¿Qué elige?",
+        "concepts": [
+          "autorizador de Cognito"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html",
+          "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1209
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "c"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Direct Connect usa una conexión dedicada que por sí sola no cifra el tráfico",
+              "explanation": "Cumple: el cifrado exige medidas adicionales."
+            },
+            {
+              "id": "b",
+              "text": "Site-to-Site VPN requiere un cable físico dedicado",
+              "explanation": "No cumple: viaja por internet y no necesita cable dedicado."
+            },
+            {
+              "id": "c",
+              "text": "Site-to-Site VPN cifra el tráfico con IPsec sobre internet",
+              "explanation": "Cumple: crea un túnel cifrado entre las redes."
+            },
+            {
+              "id": "d",
+              "text": "Ambos eliminan la necesidad de tablas de rutas",
+              "explanation": "No cumple: ambos requieren configurar el enrutamiento."
+            },
+            {
+              "id": "e",
+              "text": "Direct Connect cifra siempre todo el tráfico por defecto",
+              "explanation": "No cumple: no lo cifra por defecto."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-10",
+        "title": "Dos hechos sobre VPN y Direct Connect",
+        "statement": "Una empresa conecta su centro de datos con AWS. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "Site-to-Site VPN",
+          "Direct Connect"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+          "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1210
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Establecer una VPN Site-to-Site IPsec sobre la conexión de Direct Connect",
+              "explanation": "Es la correcta: añade cifrado en tránsito a la conexión dedicada."
+            },
+            {
+              "id": "b",
+              "text": "Confiar en que Direct Connect cifra siempre por sí mismo",
+              "explanation": "Descartada: no cifra por defecto."
+            },
+            {
+              "id": "c",
+              "text": "Desactivar el cifrado en las aplicaciones",
+              "explanation": "Descartada: reduce la protección."
+            },
+            {
+              "id": "d",
+              "text": "Mover los datos por correo electrónico",
+              "explanation": "Descartada: no es un canal seguro ni práctico."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-11",
+        "title": "Cifrar el tráfico sobre una conexión dedicada",
+        "statement": "Una empresa usa AWS Direct Connect y ahora debe cifrar el tráfico en tránsito entre su centro de datos y AWS. ¿Qué opción es la MÁS adecuada?",
+        "concepts": [
+          "Direct Connect",
+          "VPN"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/directconnect/latest/UserGuide/Welcome.html",
+          "https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1211
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una regla de entrada abierta a 0.0.0.0/0 en el puerto de la base de datos",
+              "explanation": "Descartada: expone la base de datos a todo internet."
+            },
+            {
+              "id": "b",
+              "text": "Una lista manual de IP de cada instancia de aplicación",
+              "explanation": "Descartada: exige actualizarla cada vez que cambian las instancias."
+            },
+            {
+              "id": "c",
+              "text": "Una regla de salida en el grupo de la aplicación únicamente",
+              "explanation": "Descartada: no autoriza la entrada en el grupo de la base de datos."
+            },
+            {
+              "id": "d",
+              "text": "Una regla de entrada en el grupo de la base de datos con el grupo de la aplicación como origen",
+              "explanation": "Es la correcta: autoriza por pertenencia al grupo, no por IP."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-12",
+        "title": "Permitir solo a la capa de aplicación hablar con la base de datos",
+        "statement": "Las instancias de base de datos solo deben aceptar conexiones de las instancias de aplicación, sin mantener listas de direcciones IP. ¿Qué configuración es la MEJOR?",
+        "concepts": [
+          "grupo de seguridad",
+          "referencia entre grupos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1212
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una regla de denegación en el grupo de seguridad",
+              "explanation": "Descartada: los grupos de seguridad no admiten reglas de denegación."
+            },
+            {
+              "id": "b",
+              "text": "Una regla de permiso adicional en el grupo de seguridad",
+              "explanation": "Descartada: no deniega el rango."
+            },
+            {
+              "id": "c",
+              "text": "Una regla de denegación en la ACL de red de la subred",
+              "explanation": "Es la correcta: la ACL de red admite reglas de denegación."
+            },
+            {
+              "id": "d",
+              "text": "Un punto de enlace de VPC de tipo gateway",
+              "explanation": "Descartada: no filtra direcciones IP de origen."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-13",
+        "title": "Bloquear un rango de direcciones hostiles",
+        "statement": "Se detecta tráfico hostil desde un rango de direcciones IP concreto contra una subred pública. ¿Qué control es el MEJOR para denegar ESE rango explícitamente?",
+        "concepts": [
+          "ACL de red",
+          "denegación"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1213
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Admiten reglas de denegación explícita",
+              "explanation": "No cumple: solo admiten reglas de permiso."
+            },
+            {
+              "id": "b",
+              "text": "Son con estado y admiten la respuesta sin regla de salida",
+              "explanation": "Cumple: el seguimiento de conexiones permite el retorno."
+            },
+            {
+              "id": "c",
+              "text": "Evalúan las reglas por número de menor a mayor",
+              "explanation": "No cumple: evalúan todas las reglas; la numeración es de la ACL de red."
+            },
+            {
+              "id": "d",
+              "text": "Una regla puede citar otro grupo de seguridad",
+              "explanation": "Cumple: así se autoriza por pertenencia al grupo."
+            },
+            {
+              "id": "e",
+              "text": "Se asocian a una subred completa",
+              "explanation": "No cumple: se asocian a interfaces de red."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-14",
+        "title": "Dos hechos sobre los grupos de seguridad",
+        "statement": "Un equipo repasa los grupos de seguridad de una VPC. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "grupo de seguridad"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1214
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Backup Vault Lock en modo cumplimiento",
+              "explanation": "Es la correcta: aplica un modelo WORM a las copias del almacén."
+            },
+            {
+              "id": "b",
+              "text": "Un plan de copias con una retención más larga únicamente",
+              "explanation": "Descartada: no impide que alguien con permisos las borre."
+            },
+            {
+              "id": "c",
+              "text": "Un bucket sin versionado",
+              "explanation": "Descartada: no protege las copias frente al borrado."
+            },
+            {
+              "id": "d",
+              "text": "Una etiqueta con la fecha de retención",
+              "explanation": "Descartada: es informativa y no impide el borrado."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-15",
+        "title": "Copias de seguridad que nadie puede borrar",
+        "statement": "Una empresa debe garantizar que las copias de seguridad no puedan eliminarse ni alterarse durante su periodo de retención, ni siquiera por un administrador. ¿Qué característica es la MÁS adecuada?",
+        "concepts": [
+          "Backup Vault Lock"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1215
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Cognito solo admite contraseñas sin ningún proveedor externo",
+              "explanation": "No cumple: admite proveedores externos."
+            },
+            {
+              "id": "b",
+              "text": "Un grupo de usuarios entrega credenciales de IAM de larga duración",
+              "explanation": "No cumple: no entrega credenciales de larga duración."
+            },
+            {
+              "id": "c",
+              "text": "Un grupo de identidades puede entregar credenciales temporales tras autenticar al usuario",
+              "explanation": "Cumple: así se accede a servicios de AWS."
+            },
+            {
+              "id": "d",
+              "text": "Un grupo de usuarios puede federar identidades de proveedores externos",
+              "explanation": "Cumple: permite el inicio de sesión con proveedores sociales o de empresa."
+            },
+            {
+              "id": "e",
+              "text": "La federación obliga a crear un usuario de IAM por persona",
+              "explanation": "No cumple: evita crear usuarios de IAM individuales."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-16",
+        "title": "Dos hechos sobre Cognito y la federación",
+        "statement": "Una aplicación debe admitir inicio de sesión con proveedores externos. Selecciona DOS afirmaciones correctas sobre Amazon Cognito.",
+        "concepts": [
+          "federación",
+          "Cognito"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+          "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1216
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Crear usuarios de IAM con la misma política en cada cuenta",
+              "explanation": "Descartada: duplica la administración en cada cuenta."
+            },
+            {
+              "id": "b",
+              "text": "Compartir las claves del usuario raíz entre cuentas",
+              "explanation": "Descartada: es inseguro y no es un mecanismo de asignación."
+            },
+            {
+              "id": "c",
+              "text": "Un conjunto de permisos de IAM Identity Center asignado al grupo y a las cuentas",
+              "explanation": "Es la correcta: se define una vez y se asigna a varias cuentas."
+            },
+            {
+              "id": "d",
+              "text": "Copiar manualmente las políticas por correo",
+              "explanation": "Descartada: no es un mecanismo de gestión central."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-17",
+        "title": "Asignar permisos a grupos en varias cuentas",
+        "statement": "Una empresa quiere asignar un mismo conjunto de permisos a un grupo de empleados en varias cuentas, de forma central. ¿Qué es lo MÁS adecuado?",
+        "concepts": [
+          "conjuntos de permisos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1217
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "El usuario tiene un Allow en IAM, pero un SCP de su cuenta deniega esa acción",
+              "explanation": "Cumple: el SCP fija el máximo y una denegación prevalece."
+            },
+            {
+              "id": "b",
+              "text": "El usuario tiene un Allow y un límite de permisos que también lo permite",
+              "explanation": "No cumple: se permite si ambos lo permiten."
+            },
+            {
+              "id": "c",
+              "text": "La política de bucket permite la acción al usuario y nada la deniega",
+              "explanation": "No cumple: se permite si no hay denegación explícita."
+            },
+            {
+              "id": "d",
+              "text": "El usuario tiene un Allow en IAM y ningún SCP la deniega",
+              "explanation": "No cumple: se permite si no hay denegaciones."
+            },
+            {
+              "id": "e",
+              "text": "La acción no está permitida por ninguna política aplicable",
+              "explanation": "Cumple: sin Allow explícito, la denegación es implícita."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-18",
+        "title": "Dos situaciones en las que se deniega la solicitud",
+        "statement": "Un equipo analiza solicitudes en una cuenta de una organización. Selecciona DOS situaciones en las que la solicitud se DENIEGA.",
+        "concepts": [
+          "evaluación de políticas",
+          "SCP"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html",
+          "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1218
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Guardar el secreto en Secrets Manager y dar al rol de la función permiso para leerlo",
+              "explanation": "Es la correcta: la función lo obtiene en ejecución con credenciales temporales."
+            },
+            {
+              "id": "b",
+              "text": "Escribir la contraseña en el código de la función",
+              "explanation": "Descartada: queda expuesta a quien vea el código."
+            },
+            {
+              "id": "c",
+              "text": "Guardarla en una variable de entorno en texto plano",
+              "explanation": "Descartada: queda visible en la configuración."
+            },
+            {
+              "id": "d",
+              "text": "Publicarla en un tema de SNS",
+              "explanation": "Descartada: difunde el secreto a los suscriptores."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-19",
+        "title": "Secretos para una función de Lambda",
+        "statement": "Una función de Lambda necesita la contraseña de una base de datos y NO debe guardarse en el código ni en la configuración en claro. ¿Qué diseño es el MEJOR?",
+        "concepts": [
+          "Secrets Manager",
+          "rol de ejecución"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html",
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1219
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un punto de enlace de gateway para Secrets Manager",
+              "explanation": "Descartada: los endpoints de gateway solo existen para S3 y DynamoDB."
+            },
+            {
+              "id": "b",
+              "text": "Una dirección IP elástica por instancia",
+              "explanation": "Descartada: exigiría salida a internet."
+            },
+            {
+              "id": "c",
+              "text": "Abrir todos los puertos del grupo de seguridad",
+              "explanation": "Descartada: no crea una ruta privada hacia el servicio."
+            },
+            {
+              "id": "d",
+              "text": "Un punto de enlace de VPC de interfaz para Secrets Manager",
+              "explanation": "Es la correcta: crea interfaces de red privadas hacia el servicio mediante PrivateLink."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-c-20",
+        "title": "Llegar a una API de AWS desde una subred privada sin internet",
+        "statement": "Instancias en una subred privada sin ruta a internet deben llamar a la API de AWS Secrets Manager sin que el tráfico salga de la red de AWS. ¿Qué es lo MÁS adecuado?",
+        "concepts": [
+          "endpoint de interfaz",
+          "PrivateLink"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+          "https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1220
+      }
+    }
+  ]
+}
