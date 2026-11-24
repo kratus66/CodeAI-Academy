@@ -1,0 +1,1315 @@
+{
+  "code": "AWS-U2.6.5",
+  "lessons": [
+    {
+      "slug": "aws-u2-6-5-streaming-kinesis-data-streams-amazon-data-firehose-y-msk",
+      "title": "Streaming: Kinesis Data Streams, Amazon Data Firehose y MSK",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-kinesis-data-streams-que-es",
+          "order": 0,
+          "note": "Fuente de qué es Kinesis Data Streams: ingesta y proceso en tiempo real, consumidores y latencia inferior a un segundo."
+        },
+        {
+          "resourceSlug": "aws-kinesis-data-streams-conceptos",
+          "order": 1,
+          "note": "Fuente de la terminología de KDS: shards, registro (sequence number, partition key, blob), modos de capacidad y tipos de consumidor."
+        },
+        {
+          "resourceSlug": "aws-firehose-que-es",
+          "order": 2,
+          "note": "Fuente de Amazon Data Firehose: entrega gestionada a destinos, tamaño de registro, buffering y transformación."
+        },
+        {
+          "resourceSlug": "aws-msk-que-es",
+          "order": 3,
+          "note": "Fuente de Amazon MSK: Apache Kafka gestionado, Provisioned frente a Serverless y arquitectura de brokers."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Las tres opciones de streaming de esta unidad resuelven necesidades distintas. Amazon Kinesis Data Streams (KDS) recoge y procesa grandes flujos de registros en tiempo real: tú escribes los consumidores que leen el flujo y hacen el trabajo (analítica en vivo, detección de anomalías, reparto de trabajo). Amazon Data Firehose es un servicio totalmente gestionado que entrega el flujo a destinos como Amazon S3, Amazon Redshift, Amazon OpenSearch Service o Splunk sin que escribas aplicaciones ni administres recursos. Amazon MSK es Apache Kafka gestionado: lo eliges cuando ya usas Kafka o necesitas su ecosistema de herramientas y complementos. En el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», el enunciado describe de dónde vienen los datos, qué hay que hacer con ellos (procesarlos tú o solo entregarlos a un almacén) y qué tolerancia o compatibilidad se exige, y tú eliges el servicio. Las cifras y los datos de abajo son de las páginas oficiales de KDS, Firehose y MSK leídas el 2026-11-23; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Los tres servicios, frente a frente",
+          "items": [
+            "Kinesis Data Streams: ingesta continua y en tiempo real; un flujo es un conjunto de shards y cada registro lleva un número de secuencia, una clave de partición y un blob (hasta 1 MB por defecto, ampliable a 10 MiB). Tú ejecutas los consumidores. Los registros están disponibles para el consumo normalmente en menos de un segundo desde que se escriben.",
+            "Consumidores de KDS: un consumidor de flujo (stream consumer) lee los shards directamente y conserva el orden dentro del shard, apto para proceso con estado; de este hay fan-out compartido (comparte el rendimiento de lectura del shard) y fan-out mejorado (se registra y obtiene su propio rendimiento). Un consumidor de cola (queue consumer) recibe cada registro de forma independiente, al menos una vez y sin garantía de orden, apto para proceso sin estado: se añaden instancias para procesar en paralelo.",
+            "Modos de capacidad de KDS: en bajo demanda (on-demand), KDS escala el número de shards automáticamente y pagas por el rendimiento usado; en aprovisionado (provisioned), tú especificas el número de shards y pagas por ellos por hora, aumentándolos o reduciéndolos según haga falta.",
+            "Amazon Data Firehose: servicio totalmente gestionado que entrega datos de streaming a destinos (S3, Redshift, OpenSearch, Splunk, tablas Apache Iceberg y endpoints HTTP). No escribes aplicaciones ni administras recursos; puede transformar los datos antes de entregarlos y puede leer de un flujo de KDS existente. Un registro puede ser de hasta 1.000 KB.",
+            "Buffering de Firehose: acumula los datos entrantes hasta un tamaño (en MB) o durante un intervalo (en segundos) antes de entregarlos, así que la entrega es casi en tiempo real, no por registro y al instante.",
+            "Amazon MSK: Apache Kafka totalmente gestionado; ejecuta versiones de código abierto de Kafka, por lo que las aplicaciones, herramientas y complementos existentes funcionan sin cambiar el código. Hay MSK Provisioned (con brokers Standard o Express, y eliges cuántos brokers por zona de disponibilidad) y MSK Serverless (MSK gestiona los brokers y tú solo aprovisionas a nivel de clúster)."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Kinesis Data Streams: tú procesas el flujo",
+          "text": "KDS sirve para la ingesta rápida y continua de datos y su agregación: registros de infraestructura y de aplicaciones, redes sociales, datos de mercado, clics de la web y eventos de negocio como pedidos, pagos y altas. Como los registros están disponibles para los consumidores normalmente en menos de un segundo, puedes procesarlos en tiempo real. Un flujo (stream) es un conjunto de shards, y cada shard tiene una secuencia de registros; el total de capacidad de un flujo aprovisionado es la suma de la de sus shards. Un mismo flujo admite varios consumidores a la vez, y un flujo y sus colas llevan los mismos registros, así que distintos consumidores pueden procesar los mismos datos al mismo tiempo (por ejemplo, un consumidor de flujo para analítica en vivo y un consumidor de cola para integración con microservicios). El consumidor de flujo lee cada shard en orden y un shard lo procesa una instancia a la vez, lo que preserva el orden; si necesitas que un consumidor no comparta el rendimiento de lectura, usa el fan-out mejorado, que registra al consumidor en el flujo y le da su propio rendimiento. KDS también puede entregar los datos por ti, sin ejecutar un consumidor, a tablas en Apache Iceberg o a Amazon S3."
+        },
+        {
+          "type": "paragraph",
+          "title": "Firehose: entrega gestionada, casi en tiempo real",
+          "text": "Amazon Data Firehose es un servicio totalmente gestionado para entregar datos de streaming a destinos. Con Firehose no escribes aplicaciones ni administras recursos: configuras a los productores para que envíen datos a un flujo de Firehose (Firehose stream) y el servicio los entrega automáticamente al destino que indicaste. Puedes además configurarlo para transformar los datos antes de entregarlos. Para destinos de Amazon S3, los datos de streaming se entregan al bucket; para Amazon Redshift, se entregan primero al bucket de S3 y luego Firehose emite un comando COPY de Redshift para cargarlos desde S3 al clúster; para OpenSearch Service y Splunk, se entregan al destino y, opcionalmente, se respaldan en S3 a la vez. Firehose acumula los datos entrantes hasta un tamaño de búfer (en MB) o durante un intervalo (en segundos) antes de entregarlos, por lo que su entrega es casi en tiempo real. Un dato clave de diseño: Firehose puede leer automáticamente de un flujo de Kinesis Data Streams existente y cargarlo en los destinos, así que KDS y Firehose a menudo se combinan: KDS para el proceso en tiempo real y Firehose para la entrega al almacén."
+        },
+        {
+          "type": "paragraph",
+          "title": "MSK: Apache Kafka gestionado",
+          "text": "Amazon Managed Streaming for Apache Kafka (Amazon MSK) es un servicio totalmente gestionado para crear y ejecutar aplicaciones que usan Apache Kafka para procesar datos de streaming. MSK se encarga de las operaciones del plano de control (crear, actualizar y borrar clústeres) y te deja usar las operaciones del plano de datos de Kafka (producir y consumir). Como ejecuta versiones de código abierto de Apache Kafka, las aplicaciones, herramientas y complementos existentes de la comunidad y de los socios funcionan sin cambios en el código: esa compatibilidad es la razón habitual para elegir MSK frente a KDS. En su arquitectura, al crear un clúster indicas cuántos brokers quieres por zona de disponibilidad (mínimo uno por zona); MSK Provisioned ofrece brokers Standard y Express. Con MSK Serverless, MSK gestiona los brokers y tú solo aprovisionas a nivel de clúster. MSK detecta y se recupera automáticamente de los fallos más comunes: cuando detecta el fallo de un broker, lo mitiga o lo sustituye por uno nuevo y, cuando puede, reutiliza el almacenamiento del anterior; tras la recuperación, los productores y consumidores siguen comunicándose con las mismas direcciones IP de broker que usaban antes."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Clics de la web que hay que procesar en tiempo real con varios consumidores en paralelo (analítica de uso y detección de anomalías), leyendo el mismo flujo, y conservando el orden dentro de cada partición. (2) Registros de aplicaciones que solo hay que depositar en Amazon S3 y cargar en Redshift para análisis posterior, con la menor administración posible y sin ejecutar ningún consumidor. (3) Un equipo que ya ejecuta Apache Kafka con sus propias herramientas y complementos y quiere llevarlo a AWS sin reescribir el código. (4) Un consumidor que no puede compartir el rendimiento de lectura de un shard con los demás. Paso 1: para (1), la clave es «procesar tú, en tiempo real, varios consumidores, orden por partición», así que va Kinesis Data Streams. Paso 2: para (2), la clave es «solo entregar a un almacén, mínima administración, sin consumidor», así que va Amazon Data Firehose. Paso 3: para (3), la clave es «compatibilidad con Kafka y sus herramientas», así que va Amazon MSK. Paso 4: para (4) va el fan-out mejorado de KDS, que da a cada consumidor su propio rendimiento. Resultado: cada decisión salió de un dato del enunciado (quién procesa, a dónde va el dato, qué compatibilidad y qué rendimiento), no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Un mapa de casos a servicios como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const decisiones = {\n  casos: [\n    { nombre: \"clics-tiempo-real\", servicio: \"kinesis-data-streams\", consumidores: \"multiples\", orden: \"por-shard\" },\n    { nombre: \"logs-a-s3-redshift\", servicio: \"firehose\", gestionado: true, consumidorPropio: false },\n    { nombre: \"migrar-kafka\", servicio: \"msk\", compatibleKafka: true },\n    { nombre: \"consumidor-dedicado\", servicio: \"kinesis-data-streams\", lectura: \"fan-out-mejorado\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del dato del enunciado al servicio de streaming",
+          "code": "flowchart TB\n  N{\"Qué pide el enunciado\"} -->|\"Procesar tú, en tiempo real, varios consumidores\"| K[\"Kinesis Data Streams\"]\n  N -->|\"Solo entregar a S3, Redshift, OpenSearch o Splunk, gestionado\"| F[\"Amazon Data Firehose\"]\n  N -->|\"Compatibilidad con Apache Kafka y su ecosistema\"| M[\"Amazon MSK\"]\n  K --> C{\"Qué consumidor\"}\n  C -->|\"Con estado, orden por shard\"| S[\"Consumidor de flujo\"]\n  C -->|\"Sin estado, al menos una vez, en paralelo\"| Q[\"Consumidor de cola\"]\n  S -->|\"Rendimiento propio\"| E[\"Fan-out mejorado\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir «procesar el flujo» con «solo entregarlo»",
+          "text": "El enunciado mezcla señales: «procesar en tiempo real con lógica propia», «varios consumidores leyendo el mismo flujo», «solo cargar en S3 o Redshift sin administrar nada», «ya usamos Kafka», «un consumidor con su propio rendimiento». Si hay que procesar con consumidores propios, es Kinesis Data Streams; si solo hay que entregar a un almacén con la mínima administración, es Firehose; si se exige compatibilidad con Kafka, es MSK. Firehose no ejecuta tu lógica de consumo por registro y entrega con buffering (casi en tiempo real), no por registro al instante. Subraya quién procesa, a dónde va el dato y qué compatibilidad se pide antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar Firehose para procesar el flujo con lógica propia y varios consumidores",
+          "text": "Causa: leer que Firehose es «gestionado para datos de streaming» y suponer que también ejecuta tu procesamiento en tiempo real. Consecuencia: Firehose entrega a destinos con buffering y no ejecuta consumidores que leen el flujo en paralelo con estado, así que el requisito de proceso en tiempo real por varios consumidores no se cumple. Solución: usa Kinesis Data Streams cuando tú ejecutes los consumidores y necesites proceso en tiempo real, varios consumidores sobre el mismo flujo u orden por shard; deja Firehose para la entrega gestionada a un almacén."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: elegir KDS cuando solo hay que entregar a un almacén",
+          "text": "Causa: ver «datos de streaming» y escoger Kinesis Data Streams por costumbre, aunque el enunciado solo pida depositar los datos en S3 o cargarlos en Redshift. Consecuencia: con KDS tienes que escribir y ejecutar un consumidor y administrar más piezas de las necesarias para un caso que es solo de entrega. Solución: si el requisito es entregar a S3, Redshift, OpenSearch o Splunk con la menor administración y sin ejecutar un consumidor, usa Amazon Data Firehose, que puede incluso leer de un flujo de KDS existente."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: elegir MSK sin que se exija compatibilidad con Kafka",
+          "text": "Causa: tratar MSK como «el Kinesis más potente» y elegirlo para cualquier caso de streaming. Consecuencia: asumes la operación y el modelo de Apache Kafka (brokers, temas) cuando el caso no necesita su ecosistema, lo que añade complejidad frente a KDS o Firehose. Solución: elige Amazon MSK cuando el enunciado diga que ya se usa Apache Kafka o que hacen falta sus herramientas, complementos y API sin cambiar el código; en los demás casos de streaming, compara primero KDS (procesar) y Firehose (entregar)."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre Amazon Kinesis Data Streams, Amazon Data Firehose y Amazon MSK según quién procesa los datos (tú con consumidores propios o solo una entrega gestionada), el destino, la tolerancia exigida y la compatibilidad con Apache Kafka, y distinguir dentro de KDS el consumidor de flujo del de cola y el fan-out compartido del mejorado. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes». Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el servicio, el dato del enunciado que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra el servicio y el dato que lo decide. Explica con tus palabras el diagrama «Del dato del enunciado al servicio de streaming». Después responde: si el requisito es «procesar el mismo flujo con dos consumidores a la vez, uno con estado y otro sin estado», ¿qué servicio y qué tipos de consumidor usas, y por qué Firehose no encaja?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El flujo que hay que procesar, no solo entregar». Una configuración escrita como objeto elige Firehose para un caso que exige procesar en tiempo real con varios consumidores propios. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas el caso y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Solo entregar a S3 y Redshift». Un diseño elige Kinesis Data Streams para un caso que solo pide entregar los datos a un almacén con la mínima administración y sin ejecutar un consumidor. Decide qué cambias sin alterar el nombre del caso ni sus requisitos. Criterio de paso: las pruebas pasan y justificas por escrito el ajuste con la página de qué es Amazon Data Firehose."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre los servicios de streaming de AWS. Audítalo en «Auditar un informe de streaming generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de KDS, Firehose y MSK (leídas el 2026-11-23) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: cuándo eliges KDS, cuándo Firehose y cuándo MSK; en qué se diferencia un consumidor de flujo de uno de cola; qué hace el fan-out mejorado frente al compartido; y qué diferencia hay entre el modo bajo demanda y el aprovisionado de KDS. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa recibe clics de la web que quiere analizar en tiempo real con varios consumidores y, además, archivar esos mismos clics en Amazon S3 para análisis posterior, con la mínima administración en la parte de archivado. Decide qué servicio pones para procesar y cuál para archivar, y cómo se conectan. Pregunta de cierre: un compañero dice «con Firehose procesamos los clics en tiempo real con nuestra propia lógica por registro»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio para recoger y procesar grandes flujos de registros en tiempo real; tú ejecutas los consumidores que leen el flujo. Un flujo es un conjunto de shards y cada registro lleva número de secuencia, clave de partición y un blob de hasta 1 MB (ampliable a 10 MiB). Los registros suelen estar disponibles para el consumo en menos de un segundo desde que se escriben."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-5-tarjeta-01",
+      "title": "Tarjeta: qué es Kinesis Data Streams",
+      "statement": "¿Qué es Amazon Kinesis Data Streams y cómo se estructura un flujo?",
+      "concepts": [
+        "Kinesis Data Streams",
+        "shard",
+        "registro"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Consumidor de flujo: lee los shards directamente y conserva el orden dentro del shard (proceso con estado); fan-out compartido comparte el rendimiento de lectura del shard, fan-out mejorado se registra y obtiene el suyo propio. Consumidor de cola: recibe cada registro de forma independiente, al menos una vez y sin garantía de orden (proceso sin estado), y escalas añadiendo instancias."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-5-tarjeta-02",
+      "title": "Tarjeta: consumidores de KDS",
+      "statement": "¿Qué tipos de consumidor tiene KDS y en qué se diferencian el fan-out compartido y el mejorado?",
+      "concepts": [
+        "consumidor de flujo",
+        "consumidor de cola",
+        "fan-out mejorado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Bajo demanda (on-demand): KDS escala el número de shards automáticamente y pagas por el rendimiento usado. Aprovisionado (provisioned): tú especificas el número de shards y pagas por ellos por hora, aumentándolos o reduciéndolos según haga falta; la capacidad total del flujo es la suma de la de sus shards. El blob de un registro es de hasta 1 MB por defecto, ampliable a 10 MiB."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-5-tarjeta-03",
+      "title": "Tarjeta: modos de capacidad de KDS",
+      "statement": "¿Qué modos de capacidad tiene KDS y qué tamaño puede tener el blob de un registro?",
+      "concepts": [
+        "bajo demanda",
+        "aprovisionado",
+        "shard"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio totalmente gestionado que entrega datos de streaming a destinos como S3, Redshift, OpenSearch, Splunk, tablas Apache Iceberg y endpoints HTTP. No escribes aplicaciones ni administras recursos; puede transformar los datos antes de entregarlos y leer de un flujo de KDS existente. Acumula los datos hasta un tamaño (MB) o un intervalo (segundos) antes de entregarlos: casi en tiempo real."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-5-tarjeta-04",
+      "title": "Tarjeta: qué es Amazon Data Firehose",
+      "statement": "¿Qué es Amazon Data Firehose, a qué destinos entrega y cómo es su entrega?",
+      "concepts": [
+        "Firehose",
+        "destinos",
+        "buffering"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Apache Kafka totalmente gestionado: ejecuta versiones de código abierto de Kafka, así que las aplicaciones y herramientas existentes funcionan sin cambiar el código. MSK Provisioned usa brokers Standard o Express y eliges cuántos por zona. MSK Serverless gestiona los brokers y tú solo aprovisionas a nivel de clúster. Se elige por compatibilidad con Kafka."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-5-tarjeta-05",
+      "title": "Tarjeta: qué es Amazon MSK",
+      "statement": "¿Qué es Amazon MSK y en qué se diferencian MSK Provisioned y MSK Serverless?",
+      "concepts": [
+        "MSK",
+        "Apache Kafka",
+        "Serverless"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/msk/latest/developerguide/what-is-msk.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "KDS: tú ejecutas consumidores para procesar el flujo en tiempo real, con varios consumidores sobre el mismo flujo y orden por shard. Firehose: servicio gestionado que solo entrega el flujo a un almacén (S3, Redshift, OpenSearch, Splunk) con buffering y sin que ejecutes un consumidor. A menudo se combinan: Firehose puede leer de un flujo de KDS y entregarlo al destino."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-6-5-tarjeta-06",
+      "title": "Tarjeta: KDS frente a Firehose",
+      "statement": "¿Cuándo eliges Kinesis Data Streams y cuándo Amazon Data Firehose?",
+      "concepts": [
+        "procesar",
+        "entregar",
+        "streaming"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Caso: procesar clics en tiempo real con varios consumidores propios y orden por partición. Corrige su defecto principal.\nexport const diseno = {\n  caso: \"clics-tiempo-real\",\n  requisitos: { consumidoresPropios: true, variosConsumidores: true, ordenPorShard: true },\n  servicio: \"firehose\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  caso: \"clics-tiempo-real\",\n  requisitos: { consumidoresPropios: true, variosConsumidores: true, ordenPorShard: true },\n  servicio: \"kinesis-data-streams\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El caso exige que tú ejecutes varios consumidores que procesen el flujo en tiempo real y conserven el orden dentro de cada partición. Compara eso con lo que hace el servicio elegido."
+        },
+        {
+          "level": 2,
+          "text": "Firehose es una entrega gestionada a destinos con buffering; no ejecuta tus consumidores ni procesa el flujo por registro. Kinesis Data Streams es el servicio en el que tú escribes y ejecutas los consumidores."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el servicio a \"kinesis-data-streams\". No cambies el caso ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el servicio ya no es Firehose",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.servicio, \"firehose\", \"Firehose solo entrega a destinos; no ejecuta tus consumidores en tiempo real\");\nassert.strictEqual(diseno.servicio, \"kinesis-data-streams\");"
+          }
+        },
+        {
+          "name": "los requisitos del caso se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.consumidoresPropios, true);\nassert.strictEqual(diseno.requisitos.variosConsumidores, true);\nassert.strictEqual(diseno.requisitos.ordenPorShard, true);"
+          }
+        },
+        {
+          "name": "el nombre del caso no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.caso, \"clics-tiempo-real\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-6-5-debug-01",
+      "title": "El flujo que hay que procesar, no solo entregar",
+      "statement": "El objeto `diseno` modela un caso en el que hay que procesar clics en tiempo real con varios consumidores propios y conservar el orden dentro de cada partición. El diseño actual elige un servicio que solo entrega datos de streaming a destinos y no ejecuta tus consumidores. Corrige el servicio sin cambiar el caso ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`).",
+      "concepts": [
+        "Kinesis Data Streams",
+        "Firehose",
+        "consumidores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Caso: solo entregar logs a S3 y Redshift, mínima administración, sin ejecutar un consumidor. Corrige su defecto principal.\nexport const diseno = {\n  caso: \"logs-a-s3-redshift\",\n  requisitos: { soloEntregar: true, minimaAdministracion: true, sinConsumidorPropio: true },\n  servicio: \"kinesis-data-streams\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  caso: \"logs-a-s3-redshift\",\n  requisitos: { soloEntregar: true, minimaAdministracion: true, sinConsumidorPropio: true },\n  servicio: \"firehose\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el servicio ya no es Kinesis Data Streams",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.servicio, \"kinesis-data-streams\", \"KDS exige escribir y ejecutar un consumidor; el caso solo pide entregar\");"
+          }
+        },
+        {
+          "name": "el servicio es el de entrega gestionada",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(diseno.servicio, \"firehose\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.soloEntregar, true);\nassert.strictEqual(diseno.requisitos.minimaAdministracion, true);\nassert.strictEqual(diseno.requisitos.sinConsumidorPropio, true);"
+          }
+        },
+        {
+          "name": "el nombre del caso se conserva",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.caso, \"logs-a-s3-redshift\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-6-5-debug-02",
+      "title": "Solo entregar a S3 y Redshift",
+      "statement": "El objeto `diseno` modela un caso que solo pide entregar registros a Amazon S3 y cargarlos en Amazon Redshift, con la mínima administración y sin ejecutar un consumidor propio. El diseño elige un servicio en el que tú escribes y ejecutas el consumidor. Corrige el servicio sin cambiar el caso ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`).",
+      "concepts": [
+        "Firehose",
+        "entrega",
+        "Redshift"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de streaming en AWS (borrador generado por un asistente)\nEscenario: elegir entre Kinesis Data Streams, Amazon Data Firehose y Amazon MSK.\n1. Con Kinesis Data Streams, los registros suelen estar disponibles para el consumo en menos de un segundo desde que se escriben.\n2. Amazon Data Firehose exige que escribas y ejecutes una aplicación de consumo para entregar los datos al destino.\n3. Amazon MSK ejecuta versiones de código abierto de Apache Kafka, así que las herramientas y los complementos existentes funcionan sin cambiar el código.\n4. Un flujo de Kinesis Data Streams es un conjunto de shards, y cada registro lleva un numero de secuencia y una clave de particion.\n5. Amazon Data Firehose entrega cada registro al instante, con latencia inferior a un milisegundo y sin ningun buffering.\n6. Con MSK Serverless, tu tienes que aprovisionar y administrar la capacidad de los brokers.\n7. Amazon Data Firehose puede leer de un flujo de Kinesis Data Streams existente y entregarlo a destinos como S3 o Redshift."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Latencia de KDS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: la página indica que el retardo entre escribir un registro y poder recuperarlo es normalmente de menos de un segundo."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Consumo en Firehose",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Firehose es totalmente gestionado y no exige escribir aplicaciones ni administrar recursos; configuras a los productores y entrega automáticamente al destino."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Compatibilidad de MSK",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: MSK ejecuta versiones de código abierto de Apache Kafka, por lo que las aplicaciones, herramientas y complementos existentes funcionan sin cambios en el código."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Estructura de un flujo de KDS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: un flujo es un conjunto de shards y cada registro se compone de un número de secuencia, una clave de partición y un blob de datos."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Entrega de Firehose",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Firehose acumula los datos hasta un tamaño de búfer (MB) o un intervalo (segundos) antes de entregar, así que su entrega es casi en tiempo real, no por registro al instante ni con latencia inferior a un milisegundo."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "MSK Serverless",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: con MSK Serverless es MSK quien gestiona los brokers y tú solo aprovisionas a nivel de clúster; elegir y administrar la capacidad de los brokers es propio de MSK Provisioned."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Firehose lee de KDS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Firehose puede configurarse para leer automáticamente de un flujo de Kinesis Data Streams existente y cargarlo en los destinos."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-6-5-auditoria-01",
+      "title": "Auditar un informe de streaming generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre los servicios de streaming de AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "Kinesis Data Streams",
+        "Firehose",
+        "MSK"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html",
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html",
+        "https://docs.aws.amazon.com/msk/latest/developerguide/what-is-msk.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Data Firehose, que entrega el flujo a un destino de almacenamiento",
+            "explanation": "Descartada: Firehose entrega a destinos con buffering y no ejecuta tus consumidores que procesan el flujo en paralelo."
+          },
+          {
+            "id": "b",
+            "text": "Amazon MSK, porque todo caso de streaming necesita Apache Kafka",
+            "explanation": "Descartada: MSK se elige por compatibilidad con Kafka; el enunciado no pide ese ecosistema, solo procesar en tiempo real."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Kinesis Data Streams, con varios consumidores sobre el mismo flujo",
+            "explanation": "Es la correcta: KDS admite que tú ejecutes varios consumidores en paralelo sobre el mismo flujo, con orden por shard."
+          },
+          {
+            "id": "d",
+            "text": "Amazon S3 con notificaciones de evento para cada clic recibido",
+            "explanation": "Descartada: S3 almacena objetos y no es un servicio de ingesta y proceso de flujos en tiempo real."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-5-quiz-01",
+      "title": "Procesar clics en tiempo real con varios consumidores",
+      "statement": "Una empresa recibe clics de la web y necesita procesarlos en tiempo real con varios consumidores que corren en paralelo (analítica y detección de anomalías), leyendo el mismo flujo y conservando el orden dentro de cada partición. ¿Qué servicio es el MEJOR ajuste?",
+      "concepts": [
+        "Kinesis Data Streams",
+        "consumidores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Data Firehose, que entrega a S3 y a Redshift sin que ejecutes un consumidor",
+            "explanation": "Es la correcta: Firehose es gestionado, entrega a S3 y carga en Redshift (vía S3 con COPY) y no exige escribir ni ejecutar un consumidor."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Kinesis Data Streams, escribiendo un consumidor que copie a S3 y a Redshift",
+            "explanation": "Descartada: obliga a escribir y ejecutar un consumidor, que es justo la administración que el caso quiere evitar."
+          },
+          {
+            "id": "c",
+            "text": "Amazon MSK, creando un clúster de Apache Kafka y sus brokers",
+            "explanation": "Descartada: MSK aporta Kafka y su operación de brokers; el caso no pide ese ecosistema ni esa administración."
+          },
+          {
+            "id": "d",
+            "text": "Amazon EC2 con un proceso propio que lea el flujo y escriba a los destinos",
+            "explanation": "Descartada: añade servidores que administrar, lo contrario de la mínima administración que pide el caso."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-5-quiz-02",
+      "title": "Solo entregar logs a un almacén",
+      "statement": "Un equipo solo necesita depositar registros de streaming en Amazon S3 y cargarlos en Amazon Redshift para análisis posterior, con la MENOR administración posible y sin ejecutar ningún consumidor. ¿Qué servicio encaja?",
+      "concepts": [
+        "Firehose",
+        "entrega",
+        "Redshift"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Kinesis Data Streams con un consumidor de cola para cada tema",
+            "explanation": "Descartada: KDS no expone la API ni el ecosistema de Apache Kafka, así que el equipo tendría que reescribir su código."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Data Firehose con transformación de datos activada",
+            "explanation": "Descartada: Firehose entrega a destinos; no ofrece la API de Apache Kafka que el equipo ya usa."
+          },
+          {
+            "id": "c",
+            "text": "Amazon SQS con colas FIFO para los mensajes de cada tema",
+            "explanation": "Descartada: SQS es una cola de mensajes, no Apache Kafka, y no conserva la compatibilidad con sus herramientas."
+          },
+          {
+            "id": "d",
+            "text": "Amazon MSK, que ejecuta Apache Kafka de código abierto compatible",
+            "explanation": "Es la correcta: MSK ejecuta versiones de código abierto de Kafka, así que las aplicaciones y herramientas existentes funcionan sin cambios."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-5-quiz-03",
+      "title": "Ya usan Apache Kafka",
+      "statement": "Un equipo ya ejecuta Apache Kafka con sus propias herramientas y complementos y quiere llevarlo a un servicio gestionado de AWS sin reescribir el código. ¿Qué opción conserva MEJOR su ecosistema?",
+      "concepts": [
+        "MSK",
+        "Apache Kafka"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/msk/latest/developerguide/what-is-msk.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un consumidor de cola, que recibe cada registro de forma independiente",
+            "explanation": "Descartada: el consumidor de cola reparte registros sin garantía de orden y no da un rendimiento de lectura dedicado del shard."
+          },
+          {
+            "id": "b",
+            "text": "Un consumidor de flujo con fan-out mejorado, con rendimiento propio",
+            "explanation": "Es la correcta: el fan-out mejorado registra al consumidor en el flujo y le da su propio rendimiento de lectura, sin compartirlo."
+          },
+          {
+            "id": "c",
+            "text": "Un consumidor de flujo con fan-out compartido entre consumidores",
+            "explanation": "Descartada: el fan-out compartido reparte el rendimiento de lectura del shard entre los consumidores, justo lo que se quiere evitar."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Data Firehose como consumidor con su propio búfer",
+            "explanation": "Descartada: Firehose es entrega a destinos, no un consumidor de flujo con rendimiento de lectura dedicado del shard."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-5-quiz-04",
+      "title": "Un consumidor con rendimiento de lectura propio",
+      "statement": "En un flujo de Kinesis Data Streams, un consumidor no puede compartir el rendimiento de lectura de un shard con los demás y necesita el suyo propio. ¿Qué opción ofrece el MAYOR aislamiento de rendimiento de lectura?",
+      "concepts": [
+        "fan-out mejorado",
+        "consumidor de flujo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un consumidor de flujo que lee cada shard en orden y mantiene estado",
+            "explanation": "Descartada: el consumidor de flujo conserva el orden por shard para proceso con estado, no el reparto independiente que pide el caso."
+          },
+          {
+            "id": "b",
+            "text": "Amazon MSK con un tema de Kafka por cada tipo de trabajo",
+            "explanation": "Descartada: introduce Apache Kafka y su operación; el caso no pide ese ecosistema, solo repartir registros a trabajadores."
+          },
+          {
+            "id": "c",
+            "text": "Un consumidor de cola, que entrega cada registro al menos una vez",
+            "explanation": "Es la correcta: el consumidor de cola reparte cada registro de forma independiente, al menos una vez, y escalas añadiendo instancias; diseña el consumidor idempotente."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Data Firehose con entrega a un endpoint HTTP por trabajador",
+            "explanation": "Descartada: Firehose entrega a destinos con buffering, no reparte registros como unidades de trabajo entre trabajadores."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-5-quiz-05",
+      "title": "Repartir registros como unidades de trabajo",
+      "statement": "Un flujo lleva registros que se procesan de forma independiente, sin que importe el orden, y hay que repartirlos entre muchos trabajadores que escalan según la carga, de modo que un registro que falla no detenga a los demás. ¿Qué consumidor de KDS encaja MEJOR?",
+      "concepts": [
+        "consumidor de cola",
+        "sin estado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "El modo aprovisionado, especificando tú el número de shards del flujo",
+            "explanation": "Descartada: en el modo aprovisionado tú especificas y ajustas el número de shards; no es la gestión automática que pide el caso."
+          },
+          {
+            "id": "b",
+            "text": "Amazon MSK Provisioned, eligiendo el número de brokers por zona",
+            "explanation": "Descartada: es otro servicio y te hace elegir brokers; no es el modo de KDS que escala shards automáticamente."
+          },
+          {
+            "id": "c",
+            "text": "Un flujo con un solo shard fijo para toda la carga",
+            "explanation": "Descartada: un único shard fijo no absorbe los picos ni escala con la demanda; limita el rendimiento del flujo."
+          },
+          {
+            "id": "d",
+            "text": "El modo bajo demanda, que escala los shards de forma automática",
+            "explanation": "Es la correcta: en bajo demanda KDS escala el número de shards automáticamente y pagas por el rendimiento usado."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-5-quiz-06",
+      "title": "Capacidad de KDS sin administrar shards",
+      "statement": "Un flujo de Kinesis Data Streams tiene una carga muy variable y el equipo no quiere planificar ni ajustar a mano el número de shards. ¿Qué modo de capacidad exige la MENOR administración de shards?",
+      "concepts": [
+        "bajo demanda",
+        "aprovisionado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Entrega datos de streaming a destinos como S3, Redshift, OpenSearch y Splunk",
+            "explanation": "Cumple: son destinos que la página de Firehose enumera para la entrega gestionada."
+          },
+          {
+            "id": "b",
+            "text": "Exige que escribas y ejecutes una aplicación de consumo propia",
+            "explanation": "No cumple: Firehose es gestionado y no exige escribir aplicaciones ni administrar recursos."
+          },
+          {
+            "id": "c",
+            "text": "Entrega cada registro al instante, con latencia inferior a un milisegundo",
+            "explanation": "No cumple: Firehose acumula por tamaño o intervalo antes de entregar, así que es casi en tiempo real."
+          },
+          {
+            "id": "d",
+            "text": "Puede leer de un flujo de Kinesis Data Streams existente y cargarlo en destinos",
+            "explanation": "Cumple: la página indica que Firehose puede leer automáticamente de un flujo de KDS y entregarlo a los destinos."
+          },
+          {
+            "id": "e",
+            "text": "Ejecuta Apache Kafka de código abierto para tus consumidores",
+            "explanation": "No cumple: eso describe a Amazon MSK, no a Amazon Data Firehose."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-5-quiz-07",
+      "title": "Qué es cierto de Amazon Data Firehose",
+      "statement": "Un equipo repasa qué hace Amazon Data Firehose. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Firehose",
+        "destinos",
+        "KDS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Un flujo es un conjunto de shards y cada registro lleva clave de partición y número de secuencia",
+            "explanation": "Cumple: es la terminología de la página de conceptos de Kinesis Data Streams."
+          },
+          {
+            "id": "b",
+            "text": "El consumidor de cola entrega cada registro al menos una vez y sin garantizar el orden",
+            "explanation": "Cumple: por eso conviene diseñar el consumidor de cola para que sea idempotente."
+          },
+          {
+            "id": "c",
+            "text": "El blob de un registro puede ser de hasta 10 GB por defecto",
+            "explanation": "No cumple: el blob es de hasta 1 MB por defecto, ampliable a 10 MiB, no 10 GB."
+          },
+          {
+            "id": "d",
+            "text": "Firehose es la única forma de leer un flujo de Kinesis Data Streams",
+            "explanation": "No cumple: puedes leer el flujo con un consumidor de flujo o de cola; Firehose es una opción de entrega, no la única lectura."
+          },
+          {
+            "id": "e",
+            "text": "Un consumidor de flujo lee los shards en orden y sirve para proceso con estado",
+            "explanation": "Cumple: conserva el orden dentro del shard, apto para proceso con estado como analítica en vivo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-6-5-quiz-08",
+      "title": "Qué es cierto de Kinesis Data Streams",
+      "statement": "Un equipo repasa los conceptos de Kinesis Data Streams. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "shard",
+        "consumidor de flujo",
+        "consumidor de cola"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "kds",
+            "term": "Kinesis Data Streams",
+            "definition": "Ingesta y proceso en tiempo real donde tú ejecutas los consumidores del flujo"
+          },
+          {
+            "id": "firehose",
+            "term": "Amazon Data Firehose",
+            "definition": "Entrega gestionada del flujo a S3, Redshift, OpenSearch o Splunk, sin consumidor propio"
+          },
+          {
+            "id": "msk",
+            "term": "Amazon MSK",
+            "definition": "Apache Kafka gestionado, para cuando ya usas Kafka y su ecosistema de herramientas"
+          },
+          {
+            "id": "flujo",
+            "term": "Consumidor de flujo",
+            "definition": "Lee los shards en orden y mantiene estado, apto para analítica en vivo"
+          },
+          {
+            "id": "cola",
+            "term": "Consumidor de cola",
+            "definition": "Recibe cada registro al menos una vez y sin orden, para proceso sin estado en paralelo"
+          },
+          {
+            "id": "mejorado",
+            "term": "Fan-out mejorado",
+            "definition": "Da a un consumidor su propio rendimiento de lectura, sin compartir el del shard"
+          },
+          {
+            "id": "ondemand",
+            "term": "Modo bajo demanda",
+            "definition": "KDS escala los shards automáticamente y pagas por el rendimiento usado"
+          },
+          {
+            "id": "provisioned",
+            "term": "Modo aprovisionado",
+            "definition": "Tú especificas el número de shards y pagas por ellos por hora"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio de streaming, consumidor o modo de capacidad con el caso que resuelve. Si dudas, pregúntate quién procesa los datos, a dónde van y qué rendimiento o compatibilidad se exige.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Servicios: Kinesis Data Streams, Amazon Data Firehose y Amazon MSK",
+              "Consumidores de KDS: de flujo frente a de cola",
+              "Rendimiento de lectura: fan-out mejorado",
+              "Modos de capacidad: bajo demanda frente a aprovisionado"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-6-5-memoria-01",
+      "title": "Servicio, consumidor o modo de streaming y caso que resuelve",
+      "statement": "Empareja cada servicio de streaming, tipo de consumidor o modo de capacidad con el caso que resuelve.",
+      "concepts": [
+        "Kinesis Data Streams",
+        "Firehose",
+        "MSK"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/streams/latest/dev/key-concepts.html",
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html",
+        "https://docs.aws.amazon.com/msk/latest/developerguide/what-is-msk.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C6"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-6-5-reflexion-01",
+      "title": "Reflexión: qué servicio de streaming y por qué",
+      "statement": "Elige un caso de streaming que conozcas o imagines (por ejemplo, clics de la web, telemetría de dispositivos o registros de aplicaciones) y escribe un registro breve de decisión en 5 a 7 líneas:\n\n1) Decisión: qué servicio usarías (Kinesis Data Streams, Amazon Data Firehose o Amazon MSK) y, si es KDS, qué consumidor (de flujo o de cola) y qué modo de capacidad; nombra el dato del caso que lo decide (quién procesa, a dónde va el dato, qué compatibilidad o rendimiento se exige).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, Firehose para procesar con lógica propia, o MSK sin que se pida Kafka) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (los consumidores si usas KDS, el búfer y el destino si usas Firehose, los brokers si usas MSK Provisioned).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad o Excelencia operativa) y por qué.\n\n5) Evidencia: qué página oficial (qué es KDS, conceptos de KDS, qué es Firehose o qué es MSK) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre el caso, el servicio y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "streaming",
+        "decisión",
+        "Kinesis"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/streams/latest/dev/introduction.html",
+        "https://docs.aws.amazon.com/firehose/latest/dev/what-is-this-service.html",
+        "https://docs.aws.amazon.com/msk/latest/developerguide/what-is-msk.html"
+      ],
+      "order": 19
+    }
+  ]
+}
