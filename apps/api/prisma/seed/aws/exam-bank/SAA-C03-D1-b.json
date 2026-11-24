@@ -1,0 +1,1434 @@
+{
+  "certification": "SAA-C03",
+  "domain": 1,
+  "questions": [
+    {
+      "unitCode": "AWS-U2.4.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Pedir a los desarrolladores que revisen cada política a mano",
+              "explanation": "Descartada: depende de la revisión humana y no impide el error."
+            },
+            {
+              "id": "b",
+              "text": "Activar S3 Block Public Access en la cuenta",
+              "explanation": "Es la correcta: bloquea el acceso público aunque una ACL o una política lo permitan."
+            },
+            {
+              "id": "c",
+              "text": "Cifrar todos los objetos con SSE-S3",
+              "explanation": "Descartada: protege el contenido en reposo pero no impide la exposición pública."
+            },
+            {
+              "id": "d",
+              "text": "Activar el versionado en cada bucket",
+              "explanation": "Descartada: conserva versiones pero no bloquea el acceso público."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-01",
+        "title": "Evitar la exposición pública accidental de buckets",
+        "statement": "Una empresa teme que un desarrollador exponga un bucket por error con una ACL o una política demasiado abierta. ¿Qué control es el MÁS eficaz para impedirlo a nivel de cuenta?",
+        "concepts": [
+          "Block Public Access"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1101
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Generar una URL prefirmada con caducidad de una hora",
+              "explanation": "Es la correcta: concede acceso temporal con los permisos de quien la firma."
+            },
+            {
+              "id": "b",
+              "text": "Hacer público el objeto y retirarlo después a mano",
+              "explanation": "Descartada: queda expuesto a cualquiera mientras tanto."
+            },
+            {
+              "id": "c",
+              "text": "Enviar al cliente las claves de acceso de un usuario de IAM",
+              "explanation": "Descartada: entrega credenciales de larga duración."
+            },
+            {
+              "id": "d",
+              "text": "Copiar el objeto a un sitio web público",
+              "explanation": "Descartada: expone el contenido sin límite de tiempo."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-02",
+        "title": "Compartir un objeto privado durante una hora",
+        "statement": "Una aplicación debe dar a un cliente acceso de descarga a un objeto privado de S3 solo durante una hora, sin hacer público el bucket. ¿Qué solución es la MÁS adecuada?",
+        "concepts": [
+          "URL prefirmada"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1102
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Funciona sin versionado en el bucket",
+              "explanation": "No cumple: requiere versionado en el bucket."
+            },
+            {
+              "id": "b",
+              "text": "Implementa un modelo de escribir una vez y leer muchas (WORM)",
+              "explanation": "Cumple: impide eliminar o sobrescribir los objetos durante la retención."
+            },
+            {
+              "id": "c",
+              "text": "En modo gobernanza, nadie puede saltarse nunca la retención",
+              "explanation": "No cumple: el modo gobernanza admite permisos especiales para saltársela."
+            },
+            {
+              "id": "d",
+              "text": "Solo protege los objetos hasta 24 horas",
+              "explanation": "No cumple: la retención se define por el periodo que se configure."
+            },
+            {
+              "id": "e",
+              "text": "En modo cumplimiento, ni el usuario raíz puede acortar la retención",
+              "explanation": "Cumple: es el modo para requisitos regulatorios estrictos."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-03",
+        "title": "Dos hechos sobre S3 Object Lock",
+        "statement": "Una entidad regulada debe conservar registros sin posibilidad de modificarlos. Selecciona DOS afirmaciones correctas sobre S3 Object Lock.",
+        "concepts": [
+          "Object Lock",
+          "WORM"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1103
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Dejar los objetos sin cifrar y proteger solo con ACL",
+              "explanation": "Descartada: no cumple el cifrado en reposo."
+            },
+            {
+              "id": "b",
+              "text": "Cifrar en el cliente y guardar la clave en el mismo bucket",
+              "explanation": "Descartada: deja la clave junto a los datos cifrados."
+            },
+            {
+              "id": "c",
+              "text": "SSE-KMS con una clave administrada por el cliente",
+              "explanation": "Es la correcta: permite política de clave propia y registro de cada uso en CloudTrail."
+            },
+            {
+              "id": "d",
+              "text": "Una contraseña compartida por correo con el equipo",
+              "explanation": "Descartada: no es auditable ni controla el uso de la clave."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-04",
+        "title": "Auditar el uso de la clave de cifrado de S3",
+        "statement": "Una empresa necesita cifrar objetos de S3 y poder auditar cada uso de la clave y controlar quién la usa mediante su propia política. ¿Qué opción de cifrado encaja MEJOR?",
+        "concepts": [
+          "SSE-KMS",
+          "auditoría"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingEncryption.html",
+          "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1104
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "La clave de datos se guarda en claro junto a los datos",
+              "explanation": "Descartada: dejaría la clave expuesta a quien acceda a los datos."
+            },
+            {
+              "id": "b",
+              "text": "La clave de datos se cifra con una clave de KMS y se guarda cifrada junto a los datos",
+              "explanation": "Es la correcta: la clave de KMS protege la clave de datos."
+            },
+            {
+              "id": "c",
+              "text": "Los archivos se envían a KMS para cifrarlos directamente",
+              "explanation": "Descartada: KMS cifra datos pequeños; los archivos grandes se cifran con claves de datos."
+            },
+            {
+              "id": "d",
+              "text": "La clave de datos se publica en el bucket para su rotación",
+              "explanation": "Descartada: no se publica y expondría la clave."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-05",
+        "title": "Qué protege el cifrado envolvente",
+        "statement": "Una aplicación cifra archivos grandes con una clave de datos. ¿Cómo describe MEJOR el cifrado envolvente la protección de esa clave de datos?",
+        "concepts": [
+          "cifrado envolvente",
+          "clave de datos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1105
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "c"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "La rotación automática cambia el material criptográfico y conserva el identificador de la clave",
+              "explanation": "Cumple: la aplicación sigue usando el mismo ID o ARN."
+            },
+            {
+              "id": "b",
+              "text": "Las políticas de IAM bastan siempre sin política de clave",
+              "explanation": "No cumple: la política de clave debe permitir el acceso, directamente o mediante IAM."
+            },
+            {
+              "id": "c",
+              "text": "Toda clave de KMS tiene una política de clave que controla su acceso",
+              "explanation": "Cumple: es la forma principal de controlar quién usa la clave."
+            },
+            {
+              "id": "d",
+              "text": "La rotación elimina el material criptográfico antiguo de inmediato",
+              "explanation": "No cumple: se conserva para descifrar datos cifrados antes."
+            },
+            {
+              "id": "e",
+              "text": "Rotar una clave obliga a cambiar el ARN en todas las aplicaciones",
+              "explanation": "No cumple: el ARN no cambia con la rotación automática."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-06",
+        "title": "Dos hechos sobre políticas de clave y rotación",
+        "statement": "Un equipo gestiona claves de AWS KMS. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "política de clave",
+          "rotación"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html",
+          "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1106
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Solo conceder permisos de IAM en la cuenta B",
+              "explanation": "Descartada: la política de la clave de A debe permitir el uso desde B."
+            },
+            {
+              "id": "b",
+              "text": "Copiar el material de la clave a la cuenta B",
+              "explanation": "Descartada: el material de la clave no puede exportarse."
+            },
+            {
+              "id": "c",
+              "text": "Compartir la contraseña de la cuenta A",
+              "explanation": "Descartada: es inseguro y no es el mecanismo de KMS."
+            },
+            {
+              "id": "d",
+              "text": "Permitir a la cuenta B en la política de la clave y conceder permisos de IAM en B",
+              "explanation": "Es la correcta: se necesitan ambas autorizaciones para el uso entre cuentas."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-07",
+        "title": "Compartir una clave de KMS con otra cuenta",
+        "statement": "Una cuenta B debe usar una clave de KMS de la cuenta A para descifrar datos. ¿Qué configuración es la MÁS adecuada?",
+        "concepts": [
+          "política de clave",
+          "acceso entre cuentas"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1107
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una variable de entorno fija en la instancia",
+              "explanation": "Descartada: no se rota y queda expuesta en la instancia."
+            },
+            {
+              "id": "b",
+              "text": "Un archivo de texto en un bucket de S3",
+              "explanation": "Descartada: no rota la contraseña ni la protege como un secreto."
+            },
+            {
+              "id": "c",
+              "text": "AWS Secrets Manager con rotación programada",
+              "explanation": "Es la correcta: puede rotar secretos automáticamente según una programación."
+            },
+            {
+              "id": "d",
+              "text": "Un comentario en el código fuente",
+              "explanation": "Descartada: expone la contraseña a quien vea el repositorio."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-08",
+        "title": "Rotación automática de credenciales de base de datos",
+        "statement": "Una aplicación usa una contraseña de base de datos que debe rotarse automáticamente cada 30 días sin intervención manual. ¿Qué servicio es el MEJOR ajuste?",
+        "concepts": [
+          "Secrets Manager",
+          "rotación"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html",
+          "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1108
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Secrets Manager ofrece rotación automática de secretos",
+              "explanation": "Cumple: es una de sus funciones principales."
+            },
+            {
+              "id": "b",
+              "text": "Ambos son servicios de redes privadas",
+              "explanation": "No cumple: no son servicios de redes."
+            },
+            {
+              "id": "c",
+              "text": "Secrets Manager no admite cifrado con KMS",
+              "explanation": "No cumple: los secretos se cifran con claves de KMS."
+            },
+            {
+              "id": "d",
+              "text": "Parameter Store rota automáticamente las contraseñas de bases de datos",
+              "explanation": "No cumple: no incluye esa rotación integrada."
+            },
+            {
+              "id": "e",
+              "text": "Parameter Store permite guardar valores como parámetros jerárquicos de configuración",
+              "explanation": "Cumple: sirve para configuración y valores cifrables."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-09",
+        "title": "Dos diferencias entre Secrets Manager y Parameter Store",
+        "statement": "Un equipo elige dónde guardar configuración y secretos. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "Secrets Manager",
+          "Parameter Store"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html",
+          "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1109
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Certificate Manager con un certificado público",
+              "explanation": "Es la correcta: aprovisiona, despliega y renueva certificados para servicios integrados."
+            },
+            {
+              "id": "b",
+              "text": "Generar el certificado a mano y renovarlo cada año",
+              "explanation": "Descartada: exige trabajo manual y riesgo de caducidad."
+            },
+            {
+              "id": "c",
+              "text": "Servir HTTP y cifrar solo la base de datos",
+              "explanation": "Descartada: no ofrece HTTPS al usuario."
+            },
+            {
+              "id": "d",
+              "text": "Guardar la clave privada en un bucket compartido",
+              "explanation": "Descartada: expone la clave privada."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-10",
+        "title": "Certificados TLS gestionados",
+        "statement": "Una empresa quiere HTTPS en un balanceador de carga con certificados que se aprovisionen y renueven automáticamente, con el MENOR esfuerzo operativo. ¿Qué elige?",
+        "concepts": [
+          "ACM",
+          "TLS"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1110
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un grupo de seguridad que bloquee el puerto 443",
+              "explanation": "Descartada: dejaría la aplicación inaccesible."
+            },
+            {
+              "id": "b",
+              "text": "Amazon Macie sobre los buckets",
+              "explanation": "Descartada: detecta datos sensibles en S3 y no filtra peticiones web."
+            },
+            {
+              "id": "c",
+              "text": "AWS Config con una regla de cumplimiento",
+              "explanation": "Descartada: evalúa configuraciones y no filtra peticiones."
+            },
+            {
+              "id": "d",
+              "text": "AWS WAF con una web ACL y reglas administradas",
+              "explanation": "Es la correcta: inspecciona peticiones HTTP y bloquea patrones como la inyección SQL."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-11",
+        "title": "Bloquear inyección SQL en una aplicación web",
+        "statement": "Una aplicación detrás de un Application Load Balancer sufre intentos de inyección SQL en las peticiones HTTP. ¿Qué servicio es el MÁS adecuado para filtrarlas?",
+        "concepts": [
+          "AWS WAF",
+          "reglas administradas"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rules.html",
+          "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1111
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Shield sustituye al cifrado en tránsito",
+              "explanation": "No cumple: no cifra el tráfico."
+            },
+            {
+              "id": "b",
+              "text": "Shield Standard filtra la inyección SQL en peticiones HTTP",
+              "explanation": "No cumple: eso lo hace AWS WAF."
+            },
+            {
+              "id": "c",
+              "text": "Shield Advanced es un servicio de pago con protecciones adicionales",
+              "explanation": "Cumple: añade detección y respuesta ampliadas sobre Standard."
+            },
+            {
+              "id": "d",
+              "text": "Shield Standard se aplica automáticamente a todos los clientes sin costo adicional",
+              "explanation": "Cumple: protege contra ataques de red y transporte comunes."
+            },
+            {
+              "id": "e",
+              "text": "Shield Advanced no requiere ninguna suscripción",
+              "explanation": "No cumple: es un servicio de pago que requiere suscripción."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-12",
+        "title": "Dos hechos sobre AWS Shield",
+        "statement": "Un equipo revisa la protección contra DDoS. Selecciona DOS afirmaciones correctas sobre AWS Shield.",
+        "concepts": [
+          "AWS Shield",
+          "DDoS"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html",
+          "https://docs.aws.amazon.com/waf/latest/developerguide/shield-chapter.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1112
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Hacer el bucket público y confiar en que nadie conoce la URL",
+              "explanation": "Descartada: cualquiera con la URL accede directamente."
+            },
+            {
+              "id": "b",
+              "text": "Un control de acceso de origen (OAC) y una política de bucket que permita a CloudFront",
+              "explanation": "Es la correcta: restringe la lectura del bucket a la distribución."
+            },
+            {
+              "id": "c",
+              "text": "Un usuario de IAM con claves en la distribución",
+              "explanation": "Descartada: usa credenciales de larga duración innecesarias."
+            },
+            {
+              "id": "d",
+              "text": "Desactivar el cifrado del bucket",
+              "explanation": "Descartada: no controla quién accede al contenido."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-13",
+        "title": "Que S3 solo sirva a través de CloudFront",
+        "statement": "Una empresa sirve contenido desde un bucket de S3 mediante CloudFront y quiere que SOLO CloudFront pueda leer el bucket, sin acceso directo. ¿Qué configuración es la MEJOR?",
+        "concepts": [
+          "OAC",
+          "CloudFront"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1113
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Permite configurar y aplicar reglas de AWS WAF de forma central en varias cuentas",
+              "explanation": "Cumple: es una de sus funciones principales."
+            },
+            {
+              "id": "b",
+              "text": "Cifra los datos en reposo de las bases de datos",
+              "explanation": "No cumple: no es una función de Firewall Manager."
+            },
+            {
+              "id": "c",
+              "text": "Solo funciona dentro de una única cuenta",
+              "explanation": "No cumple: su objetivo es gestionar varias cuentas."
+            },
+            {
+              "id": "d",
+              "text": "Sustituye a los grupos de seguridad de cada instancia",
+              "explanation": "No cumple: no los sustituye."
+            },
+            {
+              "id": "e",
+              "text": "Se integra con AWS Organizations para gestionar las cuentas",
+              "explanation": "Cumple: así se aplican las políticas a la organización."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-14",
+        "title": "Dos funciones de Firewall Manager",
+        "statement": "Una organización quiere administrar de forma central las reglas de firewall en muchas cuentas. Selecciona DOS afirmaciones correctas sobre AWS Firewall Manager.",
+        "concepts": [
+          "Firewall Manager"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/waf/latest/developerguide/fms-chapter.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1114
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon GuardDuty",
+              "explanation": "Descartada: detecta actividad sospechosa, no es el registro de auditoría."
+            },
+            {
+              "id": "b",
+              "text": "Amazon Route 53",
+              "explanation": "Descartada: resuelve nombres de dominio y no registra llamadas a la API."
+            },
+            {
+              "id": "c",
+              "text": "Amazon SQS",
+              "explanation": "Descartada: es un servicio de colas y no audita la cuenta."
+            },
+            {
+              "id": "d",
+              "text": "AWS CloudTrail",
+              "explanation": "Es la correcta: registra las llamadas a la API con identidad, hora y parámetros."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-15",
+        "title": "Saber quién eliminó un recurso",
+        "statement": "Alguien eliminó una tabla de DynamoDB y el equipo necesita saber quién fue y cuándo. ¿Qué servicio es el MEJOR para responder a eso porque registra las llamadas a la API?",
+        "concepts": [
+          "CloudTrail",
+          "auditoría"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/how-cloudtrail-works.html",
+          "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1115
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Budgets",
+              "explanation": "Descartada: avisa de gasto y no detecta amenazas."
+            },
+            {
+              "id": "b",
+              "text": "AWS Backup",
+              "explanation": "Descartada: protege copias de datos y no detecta amenazas."
+            },
+            {
+              "id": "c",
+              "text": "Amazon GuardDuty",
+              "explanation": "Es la correcta: analiza registros y eventos para detectar amenazas."
+            },
+            {
+              "id": "d",
+              "text": "Amazon Cognito",
+              "explanation": "Descartada: autentica usuarios de aplicaciones y no detecta amenazas."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-16",
+        "title": "Detectar actividad sospechosa en la cuenta",
+        "statement": "Una empresa quiere detectar de forma continua comportamientos sospechosos, como credenciales comprometidas o tráfico hacia direcciones maliciosas. ¿Qué servicio es el MEJOR ajuste?",
+        "concepts": [
+          "GuardDuty"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1116
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Ambos sustituyen a AWS CloudTrail",
+              "explanation": "No cumple: no sustituyen el registro de llamadas a la API."
+            },
+            {
+              "id": "b",
+              "text": "AWS Config bloquea el tráfico de red malicioso",
+              "explanation": "No cumple: no es un firewall."
+            },
+            {
+              "id": "c",
+              "text": "Amazon Macie descubre datos sensibles en Amazon S3",
+              "explanation": "Cumple: usa aprendizaje automático para identificar datos como los personales."
+            },
+            {
+              "id": "d",
+              "text": "AWS Config evalúa si la configuración de los recursos cumple reglas",
+              "explanation": "Cumple: registra la configuración y la compara con reglas definidas."
+            },
+            {
+              "id": "e",
+              "text": "Amazon Macie cifra los volúmenes de EBS",
+              "explanation": "No cumple: no cifra volúmenes."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-17",
+        "title": "Dos funciones de Config y Macie",
+        "statement": "Un equipo de cumplimiento repasa servicios de seguridad. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "AWS Config",
+          "Macie"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config.html",
+          "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1117
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Security Hub",
+              "explanation": "Es la correcta: agrega hallazgos y comprueba estándares de seguridad."
+            },
+            {
+              "id": "b",
+              "text": "Amazon CloudFront",
+              "explanation": "Descartada: entrega contenido y no agrega hallazgos de seguridad."
+            },
+            {
+              "id": "c",
+              "text": "Amazon SNS",
+              "explanation": "Descartada: envía notificaciones pero no evalúa estándares."
+            },
+            {
+              "id": "d",
+              "text": "AWS Step Functions",
+              "explanation": "Descartada: orquesta flujos de trabajo y no agrega hallazgos."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-18",
+        "title": "Vista central de hallazgos de seguridad",
+        "statement": "Un equipo de seguridad quiere ver en un solo lugar los hallazgos de varios servicios y comprobar el cumplimiento de estándares de seguridad. ¿Qué servicio es el MÁS adecuado?",
+        "concepts": [
+          "Security Hub"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html",
+          "https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1118
+      }
+    },
+    {
+      "unitCode": "AWS-U2.7.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Shield Advanced",
+              "explanation": "Descartada: protege contra DDoS y no clasifica datos."
+            },
+            {
+              "id": "b",
+              "text": "Amazon Route 53",
+              "explanation": "Descartada: gestiona DNS y no inspecciona datos."
+            },
+            {
+              "id": "c",
+              "text": "AWS Direct Connect",
+              "explanation": "Descartada: es una conexión de red y no clasifica datos."
+            },
+            {
+              "id": "d",
+              "text": "Amazon Macie",
+              "explanation": "Es la correcta: descubre y clasifica datos sensibles almacenados en S3."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C10"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-19",
+        "title": "Encontrar datos personales en S3",
+        "statement": "Una empresa quiere descubrir qué buckets de S3 contienen datos personales sin revisarlos manualmente. ¿Qué servicio es el MEJOR?",
+        "concepts": [
+          "Macie",
+          "datos sensibles"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1119
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Desactivar el registro de acceso del bucket",
+              "explanation": "No cumple: no evita el borrado y reduce la trazabilidad."
+            },
+            {
+              "id": "b",
+              "text": "Activar el versionado del bucket",
+              "explanation": "Cumple: conserva versiones anteriores al sobrescribir o eliminar."
+            },
+            {
+              "id": "c",
+              "text": "Mover los objetos a un bucket público",
+              "explanation": "No cumple: no protege contra el borrado y expone los datos."
+            },
+            {
+              "id": "d",
+              "text": "Usar S3 Object Lock con un periodo de retención",
+              "explanation": "Cumple: impide eliminar o sobrescribir durante la retención."
+            },
+            {
+              "id": "e",
+              "text": "Dar permisos de escritura a todos los usuarios",
+              "explanation": "No cumple: aumenta el riesgo de borrado accidental."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-b-20",
+        "title": "Dos medidas contra el borrado accidental en S3",
+        "statement": "Una empresa quiere evitar el borrado o la sobrescritura accidental de objetos en S3. Selecciona DOS medidas eficaces.",
+        "concepts": [
+          "versionado",
+          "Object Lock"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html",
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1120
+      }
+    }
+  ]
+}
