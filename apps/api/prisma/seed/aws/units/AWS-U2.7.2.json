@@ -1,0 +1,1317 @@
+{
+  "code": "AWS-U2.7.2",
+  "lessons": [
+    {
+      "slug": "aws-u2-7-2-secrets-manager-frente-a-parameter-store-acm-y-certificados",
+      "title": "Secrets Manager frente a Parameter Store; ACM y certificados",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-secrets-manager-que-es",
+          "order": 0,
+          "note": "Fuente previa de Secrets Manager: qué es, para qué sirve, qué recomienda para otros tipos de secreto y cómo se cobra."
+        },
+        {
+          "resourceSlug": "aws-secrets-manager-rotacion",
+          "order": 1,
+          "note": "Fuente de la rotación de secretos: rotación administrada, secretos externos administrados y rotación con función Lambda."
+        },
+        {
+          "resourceSlug": "aws-parameter-store-que-es",
+          "order": 2,
+          "note": "Fuente de Parameter Store: tipos de parámetro, niveles, versionado y la tabla que compara Parameter Store, AWS AppConfig y Secrets Manager."
+        },
+        {
+          "resourceSlug": "aws-acm-que-es",
+          "order": 3,
+          "note": "Fuente previa de ACM: qué hace, tipos de certificado, carácter regional y uso con CloudFront."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 1 (Diseñar arquitecturas seguras) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Esta unidad separa tres necesidades que el enunciado suele mezclar. AWS Secrets Manager ayuda a administrar, recuperar y rotar credenciales de bases de datos, credenciales de aplicaciones, tokens OAuth, claves de API y otros secretos durante todo su ciclo de vida. AWS Systems Manager Parameter Store es un almacén centralizado de datos de configuración en valores con nombre llamados parámetros. AWS Certificate Manager (ACM) crea, almacena y renueva certificados SSL/TLS X.509 públicos y privados. En el dominio 1 de SAA-C03, «Diseñar arquitecturas seguras», en la parte de controles de seguridad de los datos, el enunciado describe qué dato hay que guardar, si debe rotarse, si cambia a menudo y dónde se va a usar, y tú eliges el servicio. Los datos de abajo son de las páginas oficiales de Secrets Manager, Parameter Store y ACM leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Los servicios, frente a frente",
+          "items": [
+            "Secrets Manager: para credenciales y otros secretos. Sustituye las credenciales escritas en el código por una llamada en tiempo de ejecución al servicio, y permite configurar una rotación automática que cambia secretos de larga duración por otros de corta duración sin tener que actualizar ni volver a desplegar las aplicaciones.",
+            "Parameter Store: para configuración. Un parámetro puede ser un texto, una lista de nombres, un ID de AMI, una clave de licencia, etc. Tiene tres tipos: String (texto plano), StringList (lista separada por comas) y SecureString (valores que requieren cifrado con AWS KMS). Conserva las 100 versiones más recientes de cada parámetro y se controla con políticas IAM, incluso por ruta.",
+            "AWS AppConfig: para configuración que cambia con frecuencia y exige despliegues sin interrupción: despliega gradualmente, valida antes del despliegue y revierte automáticamente si una alarma de Amazon CloudWatch pasa a ALARM. La página de Parameter Store lo propone cuando un valor erróneo podría causar una caída.",
+            "AWS Certificate Manager: para certificados SSL/TLS de tus sitios y aplicaciones en AWS. Puedes emitirlos con ACM o importar certificados de terceros; protegen un dominio, varios dominios concretos o dominios comodín (que protegen un número ilimitado de subdominios). Los certificados de ACM son recursos regionales.",
+            "Rotación en Secrets Manager: rotación administrada (el servicio la configura y gestiona, sin función Lambda), rotación de secretos externos administrados (para secretos de socios, sin función Lambda) y rotación con una función Lambda para los demás tipos de secreto."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Secrets Manager: guardar, recuperar y rotar secretos",
+          "text": "Secrets Manager mejora la postura de seguridad porque ya no necesitas credenciales escritas en el código fuente de la aplicación: guardarlas en el servicio evita que las comprometa cualquiera que pueda inspeccionar la aplicación o sus componentes, y las recuperas dinámicamente cuando las necesitas con una llamada al servicio. Con la rotación automática puedes sustituir secretos de larga duración por otros de corta duración, lo que reduce de forma significativa el riesgo de compromiso, y como las credenciales ya no se guardan con la aplicación, rotarlas no obliga a actualizar la aplicación ni a desplegar cambios en sus clientes. La guía de rotación distingue tres formas: la rotación administrada, en la que el servicio configura y gestiona la rotación de la mayoría de los secretos administrados y no usa una función Lambda; la rotación de secretos externos administrados, para los secretos que tienen los socios de Secrets Manager y que actualiza el secreto en el sistema del socio sin función Lambda; y la rotación con una función Lambda, que actualiza el secreto y la base de datos o el servicio para los demás tipos de secreto. Un detalle de costo que cita la página: al activar la rotación automática (salvo la rotación administrada), Secrets Manager usa una función de AWS Lambda y se cobra la función de rotación a la tarifa de Lambda. Para otros tipos de secreto, la propia página recomienda otros servicios: IAM para las credenciales de AWS, AWS KMS para las claves de cifrado, Amazon EC2 Instance Connect para las claves SSH y AWS Certificate Manager para las claves privadas y los certificados."
+        },
+        {
+          "type": "paragraph",
+          "title": "Parameter Store: configuración centralizada, y cuándo no basta",
+          "text": "Parameter Store permite almacenar, organizar y recuperar datos de configuración a escala sin escribir los valores en el código. Los parámetros se pueden organizar en jerarquías (por ejemplo, /dev/webserver/linux/approved-ami), versionar (se conservan las 100 versiones más recientes) y proteger con políticas IAM, incluso por ruta: un rol puede leer los parámetros con el prefijo /myapp/prod/* y no los de /myapp/dev/*. Un parámetro SecureString se cifra con AWS KMS, pero la página es explícita: para secretos como credenciales de base de datos, claves de API o tokens, recomienda AWS Secrets Manager, que ofrece controles de seguridad hechos a medida, como la rotación automática y la replicación entre Regiones. La tabla comparativa de la página resume la elección: Parameter Store, para configuración estática (IDs de AMI aprobadas, variables de entorno, URL de puntos de enlace); AWS AppConfig, para configuración que cambia con frecuencia, despliegues sin interrupción y experimentos en tiempo de ejecución; y Secrets Manager, para credenciales u otros secretos y datos cifrados que requieren rotación automática, acceso entre cuentas o registro de auditoría detallado. En la fila de rotación de credenciales, Parameter Store figura sin rotación y Secrets Manager con rotación automática y con integraciones nativas con bases de datos. En cuanto al costo, el nivel estándar de Parameter Store es gratuito y el nivel avanzado y el mayor rendimiento se facturan; Secrets Manager se factura por secreto y mes y por llamada a la API. Y una advertencia sobre los cambios: una actualización de un parámetro surte efecto en la siguiente lectura; Parameter Store no la despliega gradualmente ni la revierte de forma automática, y solo valida el valor nuevo contra el tipo de dato del parámetro y el patrón permitido."
+        },
+        {
+          "type": "paragraph",
+          "title": "ACM: certificados SSL/TLS, regionales y sin cargo adicional",
+          "text": "ACM se encarga de la complejidad de crear, almacenar y renovar certificados SSL/TLS X.509 públicos y privados que protegen sitios web y aplicaciones en AWS. Puedes dar certificados a los servicios de AWS integrados emitiéndolos directamente con ACM o importando certificados de terceros al sistema de administración de ACM. Un certificado puede proteger un dominio único, varios dominios concretos, dominios comodín o combinaciones, y un certificado comodín de ACM puede proteger un número ilimitado de subdominios. También puedes exportar certificados de ACM firmados por AWS Private CA para usarlos en tu PKI interna. Tres reglas regionales que el examen explota, todas de la página: los certificados de ACM son recursos regionales; para usar un certificado con Elastic Load Balancing para el mismo FQDN en más de una Región hay que solicitar o importar un certificado por cada Región (y, si lo emite ACM, volver a validar cada nombre de dominio en cada Región), y no se puede copiar un certificado entre Regiones; y para usar un certificado de ACM con Amazon CloudFront hay que solicitarlo o importarlo en la Región US East (N. Virginia), desde donde se distribuye a todas las ubicaciones geográficas configuradas en la distribución. En cuanto al costo, no hay un cargo adicional por los certificados SSL/TLS que administras con ACM: solo pagas por los recursos de AWS que creas para ejecutar tu sitio o aplicación."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Las credenciales de una base de datos deben rotarse automáticamente sin cambiar la aplicación. (2) Una lista de IDs de AMI aprobadas y las URL de los puntos de enlace de cada entorno casi no cambian. (3) Una configuración cambia con frecuencia y un valor erróneo podría causar una caída, por lo que se quiere un despliegue gradual con reversión automática. (4) Un sitio servido por Amazon CloudFront necesita un certificado SSL/TLS. Paso 1: para (1), la clave es «credenciales y rotación automática», así que va Secrets Manager (con rotación administrada si el secreto la admite, o con una función Lambda). Paso 2: para (2), la clave es «configuración estática», así que va Parameter Store en el nivel estándar. Paso 3: para (3), la clave es «despliegue gradual y reversión por alarmas», así que va AWS AppConfig, porque Parameter Store no despliega gradualmente ni revierte. Paso 4: para (4), va un certificado de ACM solicitado o importado en la Región US East (N. Virginia), que es donde CloudFront lo toma. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una decisión de almacenamiento como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const decisiones = {\n  casos: [\n    { dato: \"credenciales-bd\", servicio: \"secrets-manager\", rotacion: \"automatica\" },\n    { dato: \"ids-de-ami-aprobadas\", servicio: \"parameter-store\", tipo: \"StringList\" },\n    { dato: \"configuracion-critica\", servicio: \"appconfig\", despliegue: \"gradual-con-reversion\" },\n    { dato: \"certificado-de-cloudfront\", servicio: \"acm\", region: \"us-east-1\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del dato del enunciado al servicio y a su región",
+          "code": "flowchart TB\n  N{\"Qué guardas o qué necesitas\"} -->|\"Credenciales o secretos con rotación\"| S[\"AWS Secrets Manager\"]\n  N -->|\"Configuración estática o valores de entorno\"| P[\"Parameter Store\"]\n  N -->|\"Configuración que cambia a menudo, despliegue gradual\"| C[\"AWS AppConfig\"]\n  N -->|\"Certificados SSL/TLS para servicios de AWS\"| A[\"AWS Certificate Manager\"]\n  S --> R{\"Cómo se rota\"}\n  R -->|\"Secreto administrado\"| M[\"Rotación administrada, sin Lambda\"]\n  R -->|\"Otros secretos\"| L[\"Rotación con función Lambda\"]\n  A --> G{\"Con qué servicio se usa\"}\n  G -->|\"CloudFront\"| U[\"Certificado en US East (N. Virginia)\"]\n  G -->|\"Balanceador en otra Región\"| E[\"Un certificado por cada Región\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: guardar un secreto como parámetro, o dar por hecho que un certificado viaja entre Regiones",
+          "text": "El enunciado mezcla señales: «credenciales de base de datos que deben rotarse», «valores que casi no cambian», «un error de configuración podría causar una caída», «certificado para CloudFront», «el mismo dominio en dos Regiones». Parameter Store cifra con KMS pero no rota credenciales; no despliega gradualmente ni revierte cambios; un certificado de ACM es regional, no se copia entre Regiones y el de CloudFront va en US East (N. Virginia). Subraya qué dato se guarda, si debe rotarse, con qué frecuencia cambia y dónde se usa antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: guardar las credenciales de una base de datos como parámetro SecureString y esperar rotación",
+          "text": "Causa: ver que un parámetro SecureString se cifra con AWS KMS y suponer que cubre también la rotación de las credenciales. Consecuencia: Parameter Store figura sin rotación de credenciales, así que la contraseña no cambia sola y el requisito de rotación automática no se cumple; la propia página recomienda Secrets Manager para credenciales y claves de API. Solución: guarda las credenciales en Secrets Manager con rotación automática (administrada si el secreto la admite, con una función Lambda en los demás casos) y reserva Parameter Store para configuración."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar Parameter Store para una configuración crítica que exige despliegue gradual y reversión",
+          "text": "Causa: tratar Parameter Store como servicio de despliegue de configuración, por sus versiones y su integración con IAM. Consecuencia: una actualización surte efecto en la siguiente lectura, no se despliega gradualmente ni se revierte de forma automática, y solo se valida contra el tipo de dato y el patrón del parámetro, así que un valor erróneo puede causar una caída. Solución: para configuración que cambia con frecuencia y donde un mal valor tiene un coste alto, usa AWS AppConfig, que valida el cambio, lo despliega gradualmente y lo revierte con las alarmas de CloudWatch."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: pedir el certificado de ACM en la Región del origen o copiarlo entre Regiones",
+          "text": "Causa: suponer que los certificados de ACM son globales o que se pueden mover entre Regiones. Consecuencia: un certificado de ACM es un recurso regional que no se puede copiar; para CloudFront debe solicitarse o importarse en la Región US East (N. Virginia), y un balanceador de otra Región necesita su propio certificado, con los dominios revalidados si lo emite ACM. Solución: solicita o importa un certificado por cada Región donde lo uses con Elastic Load Balancing y, para CloudFront, hazlo siempre en US East (N. Virginia)."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir entre AWS Secrets Manager, Parameter Store, AWS AppConfig y AWS Certificate Manager según el dato que se guarda, su necesidad de rotación, la frecuencia de cambio y el servicio donde se usa, distinguir las formas de rotación de Secrets Manager, y aplicar las reglas regionales de los certificados de ACM. Esta unidad prepara el examen SAA-C03, dominio 1 «Diseñar arquitecturas seguras», en la parte de controles de seguridad de los datos. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el servicio, el dato del enunciado que lo decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra el servicio y el dato que lo decide. Explica con tus palabras el diagrama «Del dato del enunciado al servicio y a su región». Después responde: si un equipo guarda la contraseña de una base de datos como parámetro SecureString y debe rotarla cada mes, ¿qué servicio cambias y por qué?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Las credenciales que deben rotarse solas». Una configuración escrita como objeto guarda las credenciales de una base de datos en un servicio que no las rota. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas el dato y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «El certificado de CloudFront en la Región equivocada». Un diseño solicita un certificado de ACM en una Región que no sirve para CloudFront. Decide qué cambias sin alterar el nombre del certificado ni sus requisitos. Criterio de paso: las pruebas pasan y justificas por escrito el ajuste con la página de qué es AWS Certificate Manager."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre secretos, parámetros y certificados. Audítalo en «Auditar un informe de secretos y certificados generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de Secrets Manager, Parameter Store y ACM (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: cuándo eliges Secrets Manager, cuándo Parameter Store y cuándo AWS AppConfig; qué formas de rotación tiene Secrets Manager y cuál usa una función Lambda; qué tipos de parámetro hay en Parameter Store; y qué reglas regionales tiene un certificado de ACM. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una tienda necesita guardar las credenciales de su base de datos con rotación automática, mantener una lista de puntos de enlace por entorno y servir su sitio con HTTPS por Amazon CloudFront y por un balanceador en otra Región. Decide qué servicio usas para cada parte y en qué Región solicitas cada certificado. Pregunta de cierre: un compañero dice «guardamos la contraseña como SecureString, así que se rota con KMS»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Ayuda a administrar, recuperar y rotar credenciales de bases de datos y de aplicaciones, tokens OAuth, claves de API y otros secretos durante su ciclo de vida. Evita las credenciales escritas en el código: la aplicación las recupera en tiempo de ejecución con una llamada al servicio. Con rotación automática, rotarlas no obliga a actualizar ni volver a desplegar la aplicación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-2-tarjeta-01",
+      "title": "Tarjeta: qué es Secrets Manager",
+      "statement": "¿Qué es AWS Secrets Manager y qué problema evita?",
+      "concepts": [
+        "Secrets Manager",
+        "credenciales",
+        "rotación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Rotación administrada: el servicio la configura y gestiona para la mayoría de los secretos administrados, sin función Lambda. Secretos externos administrados: para secretos de socios, sin función Lambda. Rotación con una función Lambda: para los demás tipos de secreto; esa función se cobra a la tarifa de Lambda."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-2-tarjeta-02",
+      "title": "Tarjeta: formas de rotación",
+      "statement": "¿Qué formas de rotación tiene Secrets Manager y cuál usa una función Lambda?",
+      "concepts": [
+        "rotación administrada",
+        "función Lambda",
+        "secretos externos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html",
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Almacén centralizado de datos de configuración en valores con nombre llamados parámetros. Tipos: String (texto plano), StringList (lista separada por comas) y SecureString (cifrado con AWS KMS). Admite jerarquías, conserva las 100 versiones más recientes de cada parámetro y se controla con políticas IAM, incluso por ruta."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-2-tarjeta-03",
+      "title": "Tarjeta: qué es Parameter Store",
+      "statement": "¿Qué es Parameter Store y qué tipos de parámetro tiene?",
+      "concepts": [
+        "Parameter Store",
+        "String",
+        "SecureString"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Parameter Store: configuración estática (IDs de AMI, URL, variables de entorno). AppConfig: configuración que cambia con frecuencia, con despliegue gradual y reversión por alarmas de CloudWatch. Secrets Manager: credenciales y datos cifrados que necesitan rotación automática, acceso entre cuentas o auditoría detallada. Parameter Store no rota credenciales."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-2-tarjeta-04",
+      "title": "Tarjeta: Parameter Store, AppConfig o Secrets Manager",
+      "statement": "¿Cuándo eliges Parameter Store, AWS AppConfig o Secrets Manager?",
+      "concepts": [
+        "Parameter Store",
+        "AppConfig",
+        "Secrets Manager"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Crea, almacena y renueva certificados SSL/TLS X.509 públicos y privados para sitios y aplicaciones en AWS. Puedes emitirlos con ACM o importar certificados de terceros. Protegen un dominio, varios dominios concretos o dominios comodín (un comodín cubre un número ilimitado de subdominios). No hay cargo adicional por los certificados que administras con ACM."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-2-tarjeta-05",
+      "title": "Tarjeta: qué es ACM",
+      "statement": "¿Qué hace AWS Certificate Manager y qué certificados admite?",
+      "concepts": [
+        "ACM",
+        "certificados SSL/TLS",
+        "comodín"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Son recursos regionales: para usar un certificado con Elastic Load Balancing en más de una Región hay que solicitar o importar uno por Región (y revalidar los dominios si los emite ACM), y no se pueden copiar entre Regiones. Para usarlo con Amazon CloudFront hay que solicitarlo o importarlo en la Región US East (N. Virginia)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-7-2-tarjeta-06",
+      "title": "Tarjeta: ACM y las Regiones",
+      "statement": "¿Qué reglas regionales tienen los certificados de ACM?",
+      "concepts": [
+        "certificado regional",
+        "CloudFront",
+        "US East (N. Virginia)"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Credenciales de una base de datos que deben rotarse automáticamente. Corrige su defecto principal.\nexport const diseno = {\n  dato: \"credenciales-bd\",\n  requisitos: { rotacionAutomatica: true, sinCredencialesEnElCodigo: true },\n  servicio: \"parameter-store\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  dato: \"credenciales-bd\",\n  requisitos: { rotacionAutomatica: true, sinCredencialesEnElCodigo: true },\n  servicio: \"secrets-manager\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El dato son credenciales de una base de datos y deben rotarse automáticamente. Compara ese requisito con lo que ofrece el servicio elegido en la fila de rotación de credenciales."
+        },
+        {
+          "level": 2,
+          "text": "La tabla de la página de Parameter Store marca la rotación de credenciales como inexistente en Parameter Store y automática en Secrets Manager, que además es el servicio que la página recomienda para credenciales."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el servicio a \"secrets-manager\". No cambies el dato ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el servicio ya no es Parameter Store",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.servicio, \"parameter-store\", \"Parameter Store no rota credenciales\");\nassert.strictEqual(diseno.servicio, \"secrets-manager\");"
+          }
+        },
+        {
+          "name": "los requisitos del dato se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.rotacionAutomatica, true);\nassert.strictEqual(diseno.requisitos.sinCredencialesEnElCodigo, true);"
+          }
+        },
+        {
+          "name": "el nombre del dato no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.dato, \"credenciales-bd\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-7-2-debug-01",
+      "title": "Las credenciales que deben rotarse solas",
+      "statement": "El objeto `diseno` modela las credenciales de una base de datos que deben rotarse automáticamente y que no pueden estar escritas en el código. El diseño actual las guarda en un servicio que, según la tabla comparativa de la página de Parameter Store, no rota credenciales. Corrige el servicio sin cambiar el dato ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`).",
+      "concepts": [
+        "Secrets Manager",
+        "Parameter Store",
+        "rotación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Certificado de ACM para una distribución de Amazon CloudFront. Corrige su defecto principal.\nexport const diseno = {\n  nombre: \"certificado-del-sitio\",\n  requisitos: { sitioConHttps: true, servicioDeDistribucion: \"cloudfront\" },\n  certificado: { origen: \"acm\", region: \"eu-west-1\" },\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  nombre: \"certificado-del-sitio\",\n  requisitos: { sitioConHttps: true, servicioDeDistribucion: \"cloudfront\" },\n  certificado: { origen: \"acm\", region: \"us-east-1\" },\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la Región ya no es la del origen",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.certificado.region, \"eu-west-1\", \"CloudFront no toma el certificado de esta Región\");"
+          }
+        },
+        {
+          "name": "el certificado está en la Región que usa CloudFront",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.strictEqual(diseno.certificado.region, \"us-east-1\", \"El certificado de CloudFront va en US East (N. Virginia)\");"
+          }
+        },
+        {
+          "name": "el origen y los requisitos se conservan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.certificado.origen, \"acm\");\nassert.strictEqual(diseno.requisitos.sitioConHttps, true);\nassert.strictEqual(diseno.requisitos.servicioDeDistribucion, \"cloudfront\");"
+          }
+        },
+        {
+          "name": "el nombre del certificado se conserva",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.nombre, \"certificado-del-sitio\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-7-2-debug-02",
+      "title": "El certificado de CloudFront en la Región equivocada",
+      "statement": "El objeto `diseno` modela un certificado de AWS Certificate Manager que debe asociarse con una distribución de Amazon CloudFront para servir un sitio por HTTPS. El diseño actual solicita el certificado en una Región que, según la página de qué es ACM, no es la que usa CloudFront. Corrige la Región sin cambiar el nombre, el origen ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`). La Región se escribe con su código (por ejemplo, eu-west-1).",
+      "concepts": [
+        "ACM",
+        "CloudFront",
+        "certificado regional"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de secretos, parámetros y certificados (borrador generado por un asistente)\nEscenario: credenciales de una base de datos, configuración de una aplicación y certificados de un sitio web.\n1. Un parámetro SecureString de Parameter Store se cifra con AWS KMS.\n2. Parameter Store rota automáticamente las credenciales de una base de datos.\n3. Un certificado de ACM para una distribución de CloudFront debe solicitarse o importarse en la Región US East (N. Virginia).\n4. Un certificado de ACM emitido en una Región se puede copiar a otra Región para usarlo con un balanceador de carga.\n5. Al activar la rotación automática de un secreto que no usa rotación administrada, Secrets Manager usa una función Lambda y se cobra a la tarifa de Lambda.\n6. ACM cobra una cuota adicional por cada certificado SSL/TLS que administra.\n7. Un certificado comodín de ACM solo puede proteger un número reducido de subdominios."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "SecureString",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Parameter Store cifra con AWS KMS los valores de tipo SecureString."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Rotación en Parameter Store",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la tabla comparativa de la página marca la rotación de credenciales como inexistente en Parameter Store; la rotación automática es de Secrets Manager."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Certificado para CloudFront",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: para usar un certificado de ACM con CloudFront hay que solicitarlo o importarlo en la Región US East (N. Virginia)."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Copia de certificados entre Regiones",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: un certificado de ACM es un recurso regional y no se puede copiar entre Regiones; hay que solicitar o importar uno por Región."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Rotación con función Lambda",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: al activar la rotación automática, salvo la rotación administrada, Secrets Manager usa una función Lambda y esa función se cobra a la tarifa de Lambda."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Costo de los certificados de ACM",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: no hay cargo adicional por los certificados SSL/TLS que administras con ACM; solo se pagan los recursos de AWS que se crean para ejecutar el sitio o la aplicación."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Certificado comodín",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: un certificado comodín de ACM puede proteger un número ilimitado de subdominios."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-7-2-auditoria-01",
+      "title": "Auditar un informe de secretos y certificados generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre secretos, parámetros y certificados en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "Parameter Store",
+        "ACM",
+        "rotación",
+        "certificado comodín"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html",
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Parameter Store, guardando las credenciales como parámetros de tipo SecureString",
+            "explanation": "Descartada: la tabla comparativa marca a Parameter Store sin rotación de credenciales, y la página recomienda Secrets Manager para credenciales."
+          },
+          {
+            "id": "b",
+            "text": "AWS Secrets Manager, con una programación de rotación automática",
+            "explanation": "Es la correcta: administra, recupera y rota credenciales, y rotarlas no obliga a actualizar ni volver a desplegar la aplicación."
+          },
+          {
+            "id": "c",
+            "text": "AWS AppConfig, con un despliegue gradual de las credenciales nuevas",
+            "explanation": "Descartada: AppConfig está pensado para configuración que cambia con frecuencia y no es un servicio de rotación de credenciales."
+          },
+          {
+            "id": "d",
+            "text": "AWS Certificate Manager, que renueva los certificados de la base de datos",
+            "explanation": "Descartada: ACM gestiona certificados SSL/TLS, no las credenciales de acceso a una base de datos."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-2-quiz-01",
+      "title": "Credenciales que se rotan solas",
+      "statement": "Una aplicación debe guardar las credenciales de una base de datos y rotarlas automáticamente, sin cambiar el código ni volver a desplegarla. ¿Qué servicio es el MEJOR ajuste?",
+      "concepts": [
+        "Secrets Manager",
+        "rotación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html",
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Secrets Manager, que se factura por secreto y mes y por llamada a la API",
+            "explanation": "Descartada: se factura por secreto y por mes, y está pensado para credenciales, no para configuración estática."
+          },
+          {
+            "id": "b",
+            "text": "AWS AppConfig, que se factura por cada petición de configuración",
+            "explanation": "Descartada: se factura por petición y está pensado para configuración que cambia con frecuencia."
+          },
+          {
+            "id": "c",
+            "text": "Parameter Store en el nivel avanzado, con el mayor rendimiento activado",
+            "explanation": "Descartada: el nivel avanzado y el mayor rendimiento se facturan; para configuración estática basta el nivel estándar."
+          },
+          {
+            "id": "d",
+            "text": "Parameter Store en el nivel estándar, con parámetros de tipo String",
+            "explanation": "Es la correcta: el nivel estándar es gratuito y Parameter Store es el servicio recomendado para configuración estática."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-2-quiz-02",
+      "title": "Configuración estática al menor costo",
+      "statement": "Un equipo guarda los puntos de enlace de cada entorno y las ID de las AMI aprobadas, valores que casi nunca cambian y que no son credenciales. ¿Qué servicio presenta el MENOR costo para ese uso?",
+      "concepts": [
+        "Parameter Store",
+        "nivel estándar"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS AppConfig, con una estrategia de despliegue gradual",
+            "explanation": "Es la correcta: valida el cambio, lo despliega gradualmente y lo revierte si una alarma de CloudWatch pasa a ALARM."
+          },
+          {
+            "id": "b",
+            "text": "Parameter Store, porque conserva las 100 versiones más recientes de cada parámetro",
+            "explanation": "Descartada: sus versiones permiten revisar valores, pero no despliega gradualmente ni revierte de forma automática."
+          },
+          {
+            "id": "c",
+            "text": "AWS Secrets Manager, con las etiquetas de preparación de las versiones",
+            "explanation": "Descartada: Secrets Manager es para credenciales y secretos, no para desplegar configuración con reversión por alarmas."
+          },
+          {
+            "id": "d",
+            "text": "AWS Certificate Manager, con una renovación programada",
+            "explanation": "Descartada: ACM gestiona certificados SSL/TLS y no despliega configuración de aplicaciones."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-2-quiz-03",
+      "title": "Configuración crítica con reversión automática",
+      "statement": "Una configuración de aplicación cambia con frecuencia y un valor erróneo podría causar una caída. Se quiere un despliegue gradual con reversión automática cuando salte una alarma de Amazon CloudWatch. ¿Qué servicio encaja MÁS?",
+      "concepts": [
+        "AWS AppConfig",
+        "despliegue gradual"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Solicitar el certificado en la misma Región donde está el origen de la distribución",
+            "explanation": "Descartada: CloudFront toma el certificado de la Región US East (N. Virginia), no de la Región del origen."
+          },
+          {
+            "id": "b",
+            "text": "Solicitar un certificado en cada Región donde la distribución tenga ubicaciones",
+            "explanation": "Descartada: basta uno en US East (N. Virginia), que se distribuye a todas las ubicaciones configuradas en la distribución."
+          },
+          {
+            "id": "c",
+            "text": "Solicitar o importar el certificado en la Región US East (N. Virginia)",
+            "explanation": "Es la correcta: es el requisito de la página de ACM para usar un certificado con CloudFront."
+          },
+          {
+            "id": "d",
+            "text": "Copiar con ACM un certificado existente desde otra Región a US East (N. Virginia)",
+            "explanation": "Descartada: los certificados de ACM no se pueden copiar entre Regiones; hay que solicitarlos o importarlos en cada una."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-2-quiz-04",
+      "title": "Certificado de ACM para CloudFront",
+      "statement": "Un equipo quiere usar un certificado de ACM con una distribución de Amazon CloudFront. ¿Qué debe hacer PRIMERO para poder asociarlo?",
+      "concepts": [
+        "ACM",
+        "CloudFront",
+        "US East (N. Virginia)"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un certificado para un único nombre de dominio",
+            "explanation": "Descartada: protege un solo nombre de dominio, así que cada subdominio nuevo necesitaría su propio certificado."
+          },
+          {
+            "id": "b",
+            "text": "Un certificado comodín para el dominio",
+            "explanation": "Es la correcta: un certificado comodín de ACM puede proteger un número ilimitado de subdominios."
+          },
+          {
+            "id": "c",
+            "text": "Un certificado con una lista fija de nombres de dominio concretos",
+            "explanation": "Descartada: protege los nombres que enumeras, pero no un número ilimitado de subdominios nuevos."
+          },
+          {
+            "id": "d",
+            "text": "Un certificado privado exportado desde AWS Private CA",
+            "explanation": "Descartada: sirve para una PKI interna y no es lo que amplía el alcance a un número ilimitado de subdominios."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-2-quiz-05",
+      "title": "Un certificado para muchos subdominios",
+      "statement": "Una empresa tiene un dominio con un número de subdominios que cambia a menudo y quiere el MÁXIMO alcance con un solo certificado de ACM. ¿Qué certificado debe solicitar?",
+      "concepts": [
+        "certificado comodín",
+        "ACM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Rotación con una función Lambda escrita y mantenida por el equipo",
+            "explanation": "Descartada: es la forma que se usa para los demás tipos de secreto y exige actualizar el secreto y la base de datos con una función propia."
+          },
+          {
+            "id": "b",
+            "text": "Rotación manual con un script que el equipo programa cada mes",
+            "explanation": "Descartada: el equipo escribe y mantiene el script, que es justo el trabajo que quiere evitar."
+          },
+          {
+            "id": "c",
+            "text": "Guardar el secreto en Parameter Store, que gestiona la rotación",
+            "explanation": "Descartada: Parameter Store no ofrece rotación de credenciales; la rotación automática es de Secrets Manager."
+          },
+          {
+            "id": "d",
+            "text": "Rotación administrada, que el servicio configura y gestiona sin función Lambda",
+            "explanation": "Es la correcta: para la mayoría de los secretos administrados el servicio configura y gestiona la rotación sin usar una función Lambda."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-2-quiz-06",
+      "title": "Rotación sin mantener una función",
+      "statement": "Un equipo quiere rotar automáticamente un secreto administrado y hacer las MENOS tareas posibles: no quiere escribir ni mantener una función de rotación. ¿Qué enfoque exige MENOS trabajo?",
+      "concepts": [
+        "rotación administrada",
+        "función Lambda"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html",
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Rota automáticamente las credenciales de las bases de datos",
+            "explanation": "No cumple: la tabla comparativa de la página marca la rotación de credenciales como inexistente en Parameter Store."
+          },
+          {
+            "id": "b",
+            "text": "Admite los tipos de parámetro String, StringList y SecureString",
+            "explanation": "Cumple: son los tres tipos de parámetro que describe la página."
+          },
+          {
+            "id": "c",
+            "text": "Despliega los cambios de forma gradual y los revierte con alarmas de CloudWatch",
+            "explanation": "No cumple: eso lo hace AWS AppConfig; en Parameter Store una actualización surte efecto en la siguiente lectura."
+          },
+          {
+            "id": "d",
+            "text": "Conserva las 100 versiones más recientes de cada parámetro",
+            "explanation": "Cumple: el versionado permite revisar y reconstruir valores anteriores al investigar problemas."
+          },
+          {
+            "id": "e",
+            "text": "Se factura siempre por parámetro, también en el nivel estándar",
+            "explanation": "No cumple: el nivel estándar es gratuito; se factura el nivel avanzado y el mayor rendimiento."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-2-quiz-07",
+      "title": "Qué es cierto de Parameter Store",
+      "statement": "Un equipo repasa qué ofrece Parameter Store. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Parameter Store",
+        "versionado",
+        "tipos de parámetro"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Los certificados de ACM son recursos regionales",
+            "explanation": "Cumple: para usar el mismo dominio con Elastic Load Balancing en varias Regiones hay que solicitar o importar uno por Región."
+          },
+          {
+            "id": "b",
+            "text": "Un certificado emitido en una Región sirve automáticamente en un balanceador de cualquier otra",
+            "explanation": "No cumple: no se puede copiar un certificado entre Regiones; cada Región necesita el suyo."
+          },
+          {
+            "id": "c",
+            "text": "No se puede copiar un certificado de una Región a otra",
+            "explanation": "Cumple: hay que solicitarlo o importarlo en cada Región donde se use."
+          },
+          {
+            "id": "d",
+            "text": "ACM cobra un cargo adicional por cada certificado SSL/TLS que administra",
+            "explanation": "No cumple: no hay cargo adicional por los certificados administrados con ACM; se pagan los recursos que se crean."
+          },
+          {
+            "id": "e",
+            "text": "ACM crea, almacena y renueva certificados SSL/TLS públicos y privados",
+            "explanation": "Cumple: es la función que describe la página de qué es AWS Certificate Manager."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 1,
+        "task": "1.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-7-2-quiz-08",
+      "title": "Qué es cierto de los certificados de ACM",
+      "statement": "Un equipo repasa las reglas de los certificados de ACM. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "ACM",
+        "certificado regional",
+        "renovación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "sm",
+            "term": "AWS Secrets Manager",
+            "definition": "Credenciales de una base de datos que se rotan solas y no están escritas en el código"
+          },
+          {
+            "id": "admin",
+            "term": "Rotación administrada",
+            "definition": "Rotar un secreto sin escribir ni mantener una función Lambda"
+          },
+          {
+            "id": "lambda",
+            "term": "Rotación con función Lambda",
+            "definition": "Rotar otros tipos de secreto con una función que actualiza el secreto y el servicio"
+          },
+          {
+            "id": "string",
+            "term": "Parameter Store, nivel estándar",
+            "definition": "Configuración estática, como puntos de enlace, IDs de AMI aprobadas o nombres de entorno"
+          },
+          {
+            "id": "secure",
+            "term": "Parámetro SecureString",
+            "definition": "Un valor de configuración cifrado con AWS KMS, sin rotación automática de credenciales"
+          },
+          {
+            "id": "appconfig",
+            "term": "AWS AppConfig",
+            "definition": "Configuración que cambia a menudo, con despliegue gradual y reversión por alarmas"
+          },
+          {
+            "id": "acm",
+            "term": "AWS Certificate Manager",
+            "definition": "Crear, almacenar y renovar certificados SSL/TLS para servicios de AWS integrados"
+          },
+          {
+            "id": "cf",
+            "term": "Certificado de ACM para CloudFront",
+            "definition": "Debe solicitarse o importarse en la Región US East (N. Virginia)"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio, forma de rotación o regla de certificados con el caso que resuelve. Si dudas, pregúntate qué dato se guarda, si debe rotarse, con qué frecuencia cambia y dónde se usa.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Secretos y rotación: Secrets Manager, rotación administrada y rotación con función Lambda",
+              "Configuración: Parameter Store frente a AWS AppConfig",
+              "Cifrado de un parámetro: SecureString y sus límites",
+              "Certificados: AWS Certificate Manager y la regla de CloudFront"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-7-2-memoria-01",
+      "title": "Servicio o forma de rotación y caso que resuelve",
+      "statement": "Empareja cada servicio, forma de rotación o regla de certificados con el caso que resuelve.",
+      "concepts": [
+        "Secrets Manager",
+        "Parameter Store",
+        "ACM"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html",
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html",
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C10"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-7-2-reflexion-01",
+      "title": "Reflexión: dónde guardar cada dato y qué certificado usar",
+      "statement": "Elige una aplicación que conozcas (por ejemplo, una tienda con base de datos y un sitio web) y escribe un registro breve de decisión sobre dónde guardarías sus credenciales, su configuración y sus certificados, en 5 a 7 líneas:\n\n1) Decisión: qué servicio usarías para cada dato (Secrets Manager, Parameter Store, AWS AppConfig o ACM), cómo rotarías los secretos y en qué Región solicitarías cada certificado, y qué dato lo decide (si debe rotarse, con qué frecuencia cambia, dónde se usa).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, guardar las credenciales como parámetro SecureString o copiar un certificado entre Regiones) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (la programación de rotación, las funciones de rotación si las usas, los parámetros y los certificados por Región).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Seguridad) y por qué.\n\n5) Evidencia: qué página oficial (qué es Secrets Manager, Parameter Store o qué es ACM) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la aplicación, el servicio y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "Secrets Manager",
+        "Parameter Store",
+        "ACM",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html",
+        "https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html",
+        "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html",
+        "https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html"
+      ],
+      "order": 19
+    }
+  ]
+}
