@@ -1,0 +1,1308 @@
+{
+  "code": "AWS-U2.9.5",
+  "lessons": [
+    {
+      "slug": "aws-u2-9-5-migracion-y-modernizacion-application-migration-service-dms-y-descubrimiento",
+      "title": "Migración y modernización: Application Migration Service, DMS y descubrimiento",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-migracion-estrategias",
+          "order": 0,
+          "note": "Fuente de las siete estrategias de migración (las 7 R) de AWS Prescriptive Guidance."
+        },
+        {
+          "resourceSlug": "aws-mgn-que-es",
+          "order": 1,
+          "note": "Fuente de AWS Transform MGN (antes Application Migration Service): migración de servidores con replicación continua."
+        },
+        {
+          "resourceSlug": "aws-dms-que-es",
+          "order": 2,
+          "note": "Fuente de AWS Database Migration Service: migración de bases de datos y almacenes de datos."
+        },
+        {
+          "resourceSlug": "aws-application-discovery-que-es",
+          "order": 3,
+          "note": "Fuente de AWS Application Discovery Service: recopila datos de servidores locales para planificar la migración."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 4,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Migrar a AWS empieza por elegir una estrategia y después un servicio. Una estrategia de migración es el enfoque con el que se lleva una carga de trabajo a la nube de AWS, y hay siete, conocidas como las 7 R: retire (retirar), retain (retener), rehost (alojar de nuevo, «lift and shift»), relocate (reubicar), repurchase (recomprar, «drop and shop»), replatform (cambiar de plataforma, «lift, tinker and shift») y refactor o re-architect (rediseñar). Sobre ellas se apoyan tres servicios: AWS Application Discovery Service recopila datos de uso y configuración de los servidores y bases de datos locales para planificar; AWS Transform MGN (el servicio que antes se llamaba Application Migration Service) automatiza la migración de servidores físicos, virtuales y en la nube con replicación continua a nivel de bloque; y AWS Database Migration Service (AWS DMS) migra bases de datos, almacenes de datos y otros almacenes de datos. En SAA-C03 el enunciado describe qué se migra (servidores, bases de datos, un inventario) y con qué restricción (mínima parada, cambio de motor, sin tocar la aplicación), y tú eliges la estrategia o el servicio. Los datos de abajo son de las páginas oficiales de AWS leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Las siete R y los tres servicios",
+          "items": [
+            "Retire: retirar las aplicaciones que quieres desmantelar o archivar, para apagar sus servidores; por ejemplo, las aplicaciones «zombi» (uso medio de CPU y memoria por debajo del 5 %) o sin conexiones entrantes en 90 días.",
+            "Retain: mantener en el entorno de origen las aplicaciones que no estás listo para migrar, por ejemplo por residencia de datos, alto riesgo, dependencias o hardware especializado sin equivalente en la nube.",
+            "Rehost («lift and shift»): mover la aplicación de tu entorno de origen a la nube de AWS sin cambios; se puede automatizar con AWS Transform MGN, AWS Cloud Migration Factory Solution y VM Import/Export.",
+            "Relocate: transferir de una vez muchos servidores de una plataforma local a su versión en la nube, o mover instancias a otra VPC, Región o cuenta, sin comprar hardware ni reescribir aplicaciones.",
+            "Repurchase («drop and shop»): sustituir la aplicación por otra versión o producto, por ejemplo pasar de una licencia tradicional a un SaaS.",
+            "Replatform («lift, tinker and shift»): mover la aplicación introduciendo cierta optimización, como pasar una base de datos Microsoft SQL Server a Amazon RDS para SQL Server o llevar máquinas virtuales a contenedores.",
+            "Refactor o re-architect: mover la aplicación y modificar su arquitectura para aprovechar al máximo las funciones nativas de la nube; es la estrategia más compleja y no se recomienda para migraciones grandes.",
+            "AWS Application Discovery Service: recopila datos de uso y configuración de servidores y bases de datos locales, con tres modos (recolector sin agente, agente y importación de archivos), y los guarda en la Región de origen de AWS Migration Hub.",
+            "AWS Transform MGN: migra servidores físicos, virtuales y en la nube con replicación continua a nivel de bloque y ventanas de transición normalmente de minutos.",
+            "AWS DMS: migra bases de datos relacionales, almacenes de datos y bases NoSQL, de forma única o replicando cambios continuos; DMS Schema Conversion convierte esquemas cuando cambia el motor."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Descubrir antes de migrar",
+          "text": "AWS Application Discovery Service ayuda a planificar la migración recopilando datos de uso y configuración de tus servidores y bases de datos locales. Está integrado con AWS Migration Hub, que agrupa el estado de las migraciones en una sola consola, y con DMS Fleet Advisor, que evalúa las opciones de migración de las bases de datos. Todos los datos descubiertos se almacenan en la Región de origen de AWS Migration Hub, así que esa Región debe configurarse antes de empezar. Los datos pueden exportarse para analizarlos en Microsoft Excel o en herramientas de AWS como Amazon Athena y AWS Quick, y sirven para calcular el coste de ejecutar esos servidores en AWS y para ver las dependencias de red entre servidores y agruparlos en aplicaciones. Ofrece tres formas de recopilar datos: la detección sin agente, con el Agentless Collector (un archivo OVA que se despliega en VMware vCenter) que identifica las máquinas virtuales y recoge configuración estática y utilización media y máxima de CPU, RAM y E/S de disco; la detección basada en agente, con el AWS Application Discovery Agent en cada máquina virtual o servidor físico (Windows y Linux), que recoge además series temporales de rendimiento, conexiones de red entrantes y salientes y procesos en ejecución; y la importación de archivos, que permite subir detalles del entorno local directamente a Migration Hub. Importante: la página advierte que AWS Application Discovery Service ya no está abierto a nuevos clientes y propone AWS Transform como alternativa con capacidades similares; trátalo como un dato que hay que verificar antes de recomendarlo a un cliente nuevo."
+        },
+        {
+          "type": "paragraph",
+          "title": "Migrar servidores con AWS Transform MGN y bases de datos con AWS DMS",
+          "text": "AWS Transform MGN automatiza la migración de servidores físicos, virtuales y en la nube a AWS con mínima parada, con ventanas de transición (cutover) normalmente de minutos. Realiza una replicación continua a nivel de bloque de los servidores de origen y los convierte para lanzarlos en AWS, de modo que se pueden migrar muchos servidores sin problemas de compatibilidad ni de rendimiento. Funciona con una amplia gama de sistemas operativos, entre ellos Windows Server y varias distribuciones de Linux, y se puede migrar a zonas de disponibilidad de una Región, a Local Zones y a AWS Outposts. Usa tres plantillas configurables (replicación, lanzamiento y posterior al lanzamiento) y permite agrupar servidores en aplicaciones y aplicaciones en oleadas, con acciones de lanzamiento, transición y archivado a nivel de servidor, aplicación u oleada. Después de migrar puedes replataformar o refactorizar, así que alojar de nuevo (rehost) es un primer paso rápido hacia la modernización. AWS Database Migration Service (AWS DMS), por su parte, permite migrar bases de datos relacionales, almacenes de datos, bases NoSQL y otros tipos de almacenes de datos hacia AWS o entre combinaciones de nube y entorno local. Con él puedes descubrir tus almacenes de datos de origen (DMS Fleet Advisor, que construye un inventario de servidores, bases de datos y esquemas), convertir los esquemas de origen (DMS Schema Conversion, o la herramienta AWS SCT que se descarga al PC local) y migrar los datos. Puedes hacer migraciones únicas o replicar los cambios continuos para mantener sincronizados origen y destino, y migrar a un motor distinto, por ejemplo hacia Amazon RDS o Amazon Aurora, hacia Amazon Redshift o hacia Amazon DynamoDB. Es un modelo de pago por uso, gestiona automáticamente la infraestructura que da soporte a la migración y ofrece conmutación por error automática si falla el servidor de replicación principal."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro migraciones, cuatro decisiones",
+          "text": "Una empresa tiene cuatro casos. (1) Cien servidores locales que deben pasar a AWS sin cambiar las aplicaciones y con una parada de minutos. (2) Una base de datos Microsoft SQL Server que se quiere llevar a Amazon RDS para SQL Server con algo de optimización. (3) Una aplicación que ya nadie usa: sin conexiones entrantes en 90 días. (4) Antes de nada, no se sabe qué hay en el centro de datos ni cómo se relacionan los servidores. Paso 1: para (1), «sin cambios» es rehost y el servicio es AWS Transform MGN, con replicación continua a nivel de bloque. Paso 2: para (2), pasar a un servicio administrado con cierta optimización es replatform, y los datos se mueven con AWS DMS. Paso 3: para (3), sin valor ni uso es retire, y se apagan sus servidores. Paso 4: para (4), hay que descubrir y planificar primero con Application Discovery Service, que recopila configuración, utilización y dependencias. Resultado: cada decisión salió de un dato del enunciado (sin cambios, optimización, sin uso, sin inventario), no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una decisión de migración como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const decisiones = {\n  casos: [\n    { necesidad: \"servidores-sin-cambios-y-parada-minima\", estrategia: \"rehost\", servicio: \"mgn\" },\n    { necesidad: \"sql-server-a-servicio-administrado\", estrategia: \"replatform\", servicio: \"dms\" },\n    { necesidad: \"aplicacion-sin-uso-en-90-dias\", estrategia: \"retire\", servicio: null },\n    { necesidad: \"inventario-y-dependencias-desconocidos\", estrategia: null, servicio: \"application-discovery\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del dato del enunciado a la estrategia o al servicio",
+          "code": "flowchart TB\n  N{\"Qué dice el enunciado\"} -->|\"No sabes qué hay ni cómo se relaciona\"| D[\"Application Discovery Service\"]\n  N -->|\"Servidores sin cambios y parada mínima\"| M[\"Rehost con AWS Transform MGN\"]\n  N -->|\"Base de datos, también a otro motor\"| B[\"AWS DMS y Schema Conversion\"]\n  N -->|\"Pasar a un servicio administrado con optimización\"| R[\"Replatform\"]\n  N -->|\"Sin uso ni valor\"| T[\"Retire\"]\n  N -->|\"No está lista o hay restricciones\"| E[\"Retain\"]\n  D --> M\n  D --> B"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir la estrategia con el servicio y el servidor con la base de datos",
+          "text": "El enunciado mezcla señales: «sin cambios», «cambio de motor», «sin uso», «inventario», «parada mínima». Rehost, replatform y retire son estrategias; AWS Transform MGN, AWS DMS y Application Discovery Service son servicios que ayudan a ejecutarlas. MGN mueve servidores; DMS mueve datos de bases; Discovery solo descubre. Subraya primero qué se migra (servidores, bases de datos o ninguno todavía) y qué restricción impone el enunciado antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: refactorizar dentro de una migración grande",
+          "text": "Causa: querer modernizar la aplicación a la vez que se migra. Consecuencia: refactor es la estrategia más compleja y es difícil de gestionar con muchas aplicaciones; la propia guía de AWS no la recomienda para migraciones grandes. Solución: rehost, relocate o replatform primero y moderniza después de la migración, cuando la aplicación ya corre en AWS y es más fácil integrarla con servicios de AWS."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar MGN para mover los datos de una base de datos a otro motor",
+          "text": "Causa: pensar que MGN sirve para todo lo que se migra. Consecuencia: MGN replica servidores a nivel de bloque y no convierte esquemas ni cambia de motor de base de datos. Solución: usa AWS DMS, con DMS Schema Conversion o AWS SCT para convertir esquemas cuando cambia el motor, y migraciones únicas o de replicación continua según la restricción de parada."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: migrar sin descubrir el entorno ni las dependencias",
+          "text": "Causa: empezar a mover servidores sin inventario. Consecuencia: se pasan por alto dependencias de red entre servidores y aplicaciones sin uso que se podrían retirar. Solución: recopila primero configuración, utilización y conexiones de red con Application Discovery Service (o con la alternativa que la página oficial indica, AWS Transform, si no está abierto a nuevos clientes), agrupa los servidores en aplicaciones y elige la estrategia de cada una."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la estrategia de migración (de las 7 R) y el servicio (Application Discovery Service, AWS Transform MGN o AWS DMS) que responden a lo que el enunciado migra y a su restricción. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar arquitecturas de alto rendimiento», en la parte de soluciones de migración. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la estrategia, el servicio, el dato del enunciado que lo decide y por qué las otras quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra la estrategia y el servicio y el dato que lo decide. Explica con tus palabras el diagrama «Del dato del enunciado a la estrategia o al servicio». Después responde: si una aplicación local usa una base de datos Oracle y la quieres en Amazon Aurora PostgreSQL, ¿qué servicios usas para el esquema y para los datos?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Los servidores que se mueven sin cambiarlos». Una configuración escrita como objeto elige rediseñar la aplicación para migrar cien servidores sin cambios y con una parada de minutos. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la necesidad y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Tres migraciones, dos decisiones erróneas». Decide la estrategia o el servicio que corresponde a cada necesidad sin alterar el nombre de las necesidades. Criterio de paso: las pruebas pasan y justificas por escrito cada cambio con las páginas de las 7 R, de DMS y de Application Discovery Service."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre migración. Audítalo en «Auditar un informe de migración y modernización generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: cuáles son las siete R y cuál se llama «lift and shift»; qué recopila Application Discovery Service y en qué Región guarda los datos; qué hace MGN y qué cutover típico ofrece; y qué hace DMS Schema Conversion. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa tiene 200 servidores locales, una base de datos Oracle y 30 aplicaciones que quizá ya no se usan, y quiere migrar en oleadas con la menor parada. Decide qué servicio y qué estrategia aplicas a cada parte y en qué orden. Pregunta de cierre: un compañero propone refactorizar todo durante la migración; ¿qué le respondes?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Retire, retain, rehost, relocate, repurchase, replatform y refactor o re-architect. Rehost es «lift and shift» (sin cambios), repurchase es «drop and shop» (sustituir por otro producto o SaaS) y replatform es «lift, tinker and shift» (con cierta optimización). Para migraciones grandes se recomiendan rehost, replatform, relocate y retire; refactor no."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-5-tarjeta-01",
+      "title": "Tarjeta: las siete R",
+      "statement": "¿Cuáles son las siete estrategias de migración (7 R)?",
+      "concepts": [
+        "7 R",
+        "estrategias de migración"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Rehost («lift and shift») mueve la aplicación a AWS sin ningún cambio y puede automatizarse con AWS Transform MGN. Replatform («lift, tinker and shift») la mueve introduciendo cierta optimización, por ejemplo pasar SQL Server a Amazon RDS para SQL Server o máquinas virtuales a contenedores, para operar con más eficiencia o menos coste."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-5-tarjeta-02",
+      "title": "Tarjeta: rehost y replatform",
+      "statement": "¿En qué se diferencian rehost y replatform?",
+      "concepts": [
+        "rehost",
+        "replatform"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Retire: aplicaciones que quieres desmantelar o archivar, para apagar sus servidores; por ejemplo las «zombi» (uso medio de CPU y memoria por debajo del 5 %) o sin conexiones entrantes en 90 días. Retain: aplicaciones que mantienes en el origen porque no estás listo, por residencia de datos, alto riesgo, dependencias o hardware especializado sin equivalente en la nube."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-5-tarjeta-03",
+      "title": "Tarjeta: retire y retain",
+      "statement": "¿Cuándo se elige retire y cuándo retain?",
+      "concepts": [
+        "retire",
+        "retain"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Automatiza la migración de servidores físicos, virtuales y en la nube a AWS con mínima parada, con ventanas de transición típicas de minutos. Hace replicación continua a nivel de bloque, usa plantillas de replicación, lanzamiento y posterior al lanzamiento, y agrupa servidores en aplicaciones y oleadas. Es el servicio que antes se llamaba Application Migration Service."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-5-tarjeta-04",
+      "title": "Tarjeta: AWS Transform MGN",
+      "statement": "¿Qué hace AWS Transform MGN?",
+      "concepts": [
+        "MGN",
+        "rehost",
+        "replicación continua"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "AWS DMS migra bases de datos relacionales, almacenes de datos, bases NoSQL y otros almacenes, hacia AWS o entre nube y local, con migración única o replicación continua. DMS Schema Conversion (o la herramienta AWS SCT) evalúa y convierte los esquemas cuando cambia el motor. Pago por uso y conmutación por error automática del servidor de replicación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-5-tarjeta-05",
+      "title": "Tarjeta: AWS DMS",
+      "statement": "¿Qué hace AWS Database Migration Service y qué es DMS Schema Conversion?",
+      "concepts": [
+        "DMS",
+        "Schema Conversion"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Recopila datos de uso y configuración de servidores y bases de datos locales para planificar la migración y los guarda en la Región de origen de AWS Migration Hub. Modos: Agentless Collector (sin agente, en VMware vCenter), Discovery Agent (en cada máquina o servidor) e importación de archivos. La página advierte que ya no está abierto a nuevos clientes; sugiere AWS Transform."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-5-tarjeta-06",
+      "title": "Tarjeta: Application Discovery Service",
+      "statement": "¿Qué hace AWS Application Discovery Service y cuáles son sus tres modos?",
+      "concepts": [
+        "Application Discovery Service",
+        "Migration Hub"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cien servidores locales que deben pasar a AWS sin cambiar las aplicaciones y con una parada de minutos. Corrige su defecto principal.\nexport const diseno = {\n  necesidad: \"cien-servidores-sin-cambios-y-parada-de-minutos\",\n  requisitos: { sinCambiosEnLaAplicacion: true, paradaDeMinutos: true },\n  estrategia: \"refactor\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  necesidad: \"cien-servidores-sin-cambios-y-parada-de-minutos\",\n  requisitos: { sinCambiosEnLaAplicacion: true, paradaDeMinutos: true },\n  estrategia: \"rehost\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El caso pide mover servidores sin cambiar las aplicaciones. Compara esa exigencia con lo que implica la estrategia elegida."
+        },
+        {
+          "level": 2,
+          "text": "Refactor modifica la arquitectura de la aplicación para aprovechar funciones nativas de la nube y es la estrategia más compleja. Rehost («lift and shift») mueve la aplicación sin cambios."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la estrategia a \"rehost\". No cambies la necesidad ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la estrategia ya no es refactor",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.estrategia, \"refactor\", \"refactor cambia la arquitectura; el caso pide no cambiar las aplicaciones\");\nassert.strictEqual(diseno.estrategia, \"rehost\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.sinCambiosEnLaAplicacion, true);\nassert.strictEqual(diseno.requisitos.paradaDeMinutos, true);"
+          }
+        },
+        {
+          "name": "el nombre de la necesidad no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.necesidad, \"cien-servidores-sin-cambios-y-parada-de-minutos\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-9-5-debug-01",
+      "title": "Los servidores que se mueven sin cambiarlos",
+      "statement": "El objeto `diseno` modela la migración de cien servidores locales a AWS sin cambiar las aplicaciones y con una parada de minutos. El diseño actual elige la estrategia que rediseña la aplicación para aprovechar funciones nativas de la nube. Corrige la estrategia sin cambiar la necesidad ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`). Las estrategias se escriben así: retire, retain, rehost, relocate, repurchase, replatform, refactor.",
+      "concepts": [
+        "rehost",
+        "refactor"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tres necesidades de migración y el servicio elegido para cada una. Dos están mal asignadas: corrígelas.\nexport const diseno = {\n  casos: [\n    { necesidad: \"migrar-una-base-de-datos-a-otro-motor\", servicio: \"mgn\" },\n    { necesidad: \"recopilar-configuracion-y-dependencias-de-servidores-locales\", servicio: \"dms\" },\n    { necesidad: \"migrar-servidores-con-replicacion-continua-a-nivel-de-bloque\", servicio: \"mgn\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  casos: [\n    { necesidad: \"migrar-una-base-de-datos-a-otro-motor\", servicio: \"dms\" },\n    { necesidad: \"recopilar-configuracion-y-dependencias-de-servidores-locales\", servicio: \"application-discovery\" },\n    { necesidad: \"migrar-servidores-con-replicacion-continua-a-nivel-de-bloque\", servicio: \"mgn\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "migrar una base de datos a otro motor es de AWS DMS",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"migrar-una-base-de-datos-a-otro-motor\"], \"dms\");"
+          }
+        },
+        {
+          "name": "recopilar configuración y dependencias es de Application Discovery Service",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"recopilar-configuracion-y-dependencias-de-servidores-locales\"], \"application-discovery\");"
+          }
+        },
+        {
+          "name": "la replicación de servidores sigue en MGN",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"migrar-servidores-con-replicacion-continua-a-nivel-de-bloque\"], \"mgn\");"
+          }
+        },
+        {
+          "name": "las tres necesidades se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.casos.length, 3);\nconst nombres = diseno.casos.map((caso) => caso.necesidad).sort();\nassert.deepStrictEqual(nombres, [\"migrar-servidores-con-replicacion-continua-a-nivel-de-bloque\", \"migrar-una-base-de-datos-a-otro-motor\", \"recopilar-configuracion-y-dependencias-de-servidores-locales\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-9-5-debug-02",
+      "title": "Tres migraciones, dos decisiones erróneas",
+      "statement": "El objeto `diseno` asigna un servicio a cada una de tres necesidades: migrar una base de datos a otro motor, recopilar la configuración y las dependencias de servidores locales y migrar servidores con replicación continua a nivel de bloque. Dos de las asignaciones son incorrectas según las páginas de AWS DMS y de AWS Application Discovery Service. Corrígelas sin cambiar el nombre de las necesidades, y mantén la forma del valor exportado (`export const diseno = { … }`). Los servicios se escriben así: mgn, dms, application-discovery.",
+      "concepts": [
+        "DMS",
+        "Application Discovery Service",
+        "MGN"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html",
+        "https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html",
+        "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de migración y modernización (borrador generado por un asistente)\nEscenario: una empresa con servidores y bases de datos locales que quiere migrar a AWS.\n1. Rehost, también llamado «lift and shift», mueve la aplicación a AWS sin cambios.\n2. AWS Transform MGN hace una copia única y no replica de forma continua los servidores de origen.\n3. AWS DMS puede migrar bases de datos a otro motor y replicar cambios continuos.\n4. Refactor es la estrategia más sencilla y la más recomendada para migraciones grandes.\n5. AWS Application Discovery Service almacena los datos descubiertos en la Región de origen de Migration Hub.\n6. AWS Application Discovery Service migra los servidores a AWS por sí mismo.\n7. Retire sirve para aplicaciones sin valor, de las que se pueden apagar los servidores."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Rehost",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: rehost, o «lift and shift», mueve la aplicación al entorno de AWS sin ningún cambio."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "MGN sin replicación continua",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: AWS Transform MGN realiza una replicación continua a nivel de bloque de los servidores de origen."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Capacidades de DMS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: DMS migra bases de datos hacia otro motor, con conversión de esquemas, y puede replicar cambios continuos."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Refactor recomendado",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: refactor es la estrategia más compleja y la guía de AWS no la recomienda para migraciones grandes; se prefieren rehost, replatform, relocate y retire."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Región de los datos descubiertos",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: todos los datos descubiertos se almacenan en la Región de origen de AWS Migration Hub."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Discovery migra servidores",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: Application Discovery Service recopila datos para planificar; la migración de servidores la hace un servicio como AWS Transform MGN."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Retire",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: retire es para aplicaciones que se quieren desmantelar o archivar, y permite apagar sus servidores."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-9-5-auditoria-01",
+      "title": "Auditar un informe de migración y modernización generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre migración a AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "7 R",
+        "MGN",
+        "DMS",
+        "Application Discovery Service"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html",
+        "https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html",
+        "https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Rehost con AWS Transform MGN y replicación continua a nivel de bloque",
+            "explanation": "Es la correcta: mueve los servidores sin cambios y permite ventanas de transición típicas de minutos."
+          },
+          {
+            "id": "b",
+            "text": "Refactor de cada aplicación hacia arquitectura nativa de la nube",
+            "explanation": "Descartada: modifica la arquitectura, justo lo que el enunciado excluye, y es la estrategia más compleja."
+          },
+          {
+            "id": "c",
+            "text": "AWS DMS con Schema Conversion",
+            "explanation": "Descartada: migra bases de datos y datos, no servidores completos."
+          },
+          {
+            "id": "d",
+            "text": "Application Discovery Service como herramienta de migración",
+            "explanation": "Descartada: recopila datos para planificar; no migra los servidores."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-5-quiz-01",
+      "title": "Servidores sin cambios y con parada mínima",
+      "statement": "Una empresa debe migrar un gran número de servidores locales a AWS sin modificar las aplicaciones y con una ventana de transición de minutos. ¿Qué opción es el MEJOR ajuste?",
+      "concepts": [
+        "rehost",
+        "MGN"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html",
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Transform MGN con replicación a nivel de bloque",
+            "explanation": "Descartada: replica servidores y no convierte el esquema ni cambia el motor de la base de datos."
+          },
+          {
+            "id": "b",
+            "text": "Application Discovery Service con el Agentless Collector",
+            "explanation": "Descartada: recopila datos de planificación; no migra bases de datos."
+          },
+          {
+            "id": "c",
+            "text": "VM Import/Export de la máquina virtual",
+            "explanation": "Descartada: importa imágenes de máquinas virtuales, no migra datos a otro motor."
+          },
+          {
+            "id": "d",
+            "text": "AWS DMS, con Schema Conversion para el esquema",
+            "explanation": "Es la correcta: convierte el esquema al nuevo motor y migra los datos, con replicación de cambios continuos."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-5-quiz-02",
+      "title": "Migrar la base de datos cambiando de motor",
+      "statement": "Una empresa quiere migrar una base de datos Oracle local a Amazon Aurora PostgreSQL y mantener sincronizados origen y destino durante la transición. ¿Qué servicio encaja MÁS?",
+      "concepts": [
+        "DMS",
+        "Schema Conversion"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Application Discovery Service, con recolector, agente o archivos",
+            "explanation": "Es la correcta: recopila configuración, utilización y conexiones de red de los servidores y bases de datos locales."
+          },
+          {
+            "id": "b",
+            "text": "AWS DMS, para migrar los datos",
+            "explanation": "Descartada: migra datos de bases de datos; no inventaría los servidores ni sus dependencias."
+          },
+          {
+            "id": "c",
+            "text": "AWS Transform MGN, para replicar los servidores",
+            "explanation": "Descartada: migra servidores que ya se han elegido; no es el paso de descubrimiento."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Athena sobre los registros de acceso",
+            "explanation": "Descartada: consulta datos existentes y no recopila la configuración de los servidores locales."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-5-quiz-03",
+      "title": "Inventario y dependencias antes de migrar",
+      "statement": "Una empresa no sabe qué servidores tiene en su centro de datos ni cómo se comunican, y quiere planificar la migración con datos de configuración y utilización. ¿Qué servicio ofrece el MÁXIMO soporte para el descubrimiento?",
+      "concepts": [
+        "Application Discovery Service"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Rehost, moviéndola sin cambios",
+            "explanation": "Descartada: gastaría tiempo y dinero en migrar algo que no se usa."
+          },
+          {
+            "id": "b",
+            "text": "Replatform a un servicio administrado",
+            "explanation": "Descartada: optimizaría una aplicación que no tiene valor."
+          },
+          {
+            "id": "c",
+            "text": "Retire, apagando sus servidores",
+            "explanation": "Es la correcta: es la estrategia de las aplicaciones que quieres desmantelar o archivar."
+          },
+          {
+            "id": "d",
+            "text": "Refactor con arquitectura nativa de la nube",
+            "explanation": "Descartada: es la estrategia más compleja y el enunciado no pide modernizar nada."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-5-quiz-04",
+      "title": "Aplicación sin uso en 90 días",
+      "statement": "Un análisis muestra que una aplicación local no recibe conexiones entrantes desde hace 90 días y no aporta valor. ¿Qué estrategia de migración corresponde MÁS?",
+      "concepts": [
+        "retire"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Replatform",
+            "explanation": "Es la correcta: mueve la aplicación a la nube con cierta optimización, como pasar a un servicio administrado."
+          },
+          {
+            "id": "b",
+            "text": "Retain",
+            "explanation": "Descartada: mantiene la aplicación en el entorno de origen y el enunciado la migra."
+          },
+          {
+            "id": "c",
+            "text": "Rehost",
+            "explanation": "Descartada: lo mueve sin cambios; aquí se pasa a un servicio administrado."
+          },
+          {
+            "id": "d",
+            "text": "Repurchase",
+            "explanation": "Descartada: sustituye la aplicación por otro producto o SaaS y aquí se conserva el motor."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-5-quiz-05",
+      "title": "SQL Server a un servicio administrado",
+      "statement": "Una empresa quiere mover una base de datos Microsoft SQL Server local a Amazon RDS para SQL Server para reducir la administración, con cierta optimización. ¿Qué estrategia describe MEJOR esto?",
+      "concepts": [
+        "replatform"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Retire",
+            "explanation": "Descartada: desmantelaría una aplicación que sí tiene valor."
+          },
+          {
+            "id": "b",
+            "text": "Relocate",
+            "explanation": "Descartada: transfiere servidores a la nube, y esta aplicación debe quedarse fuera."
+          },
+          {
+            "id": "c",
+            "text": "Repurchase",
+            "explanation": "Descartada: sustituiría la aplicación por otra y el enunciado no lo plantea."
+          },
+          {
+            "id": "d",
+            "text": "Retain",
+            "explanation": "Es la correcta: se mantiene en el origen, por ejemplo por residencia de datos, y puede migrarse en el futuro."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-5-quiz-06",
+      "title": "Mantener una aplicación por residencia de datos",
+      "statement": "Una aplicación debe quedarse en el entorno local por requisitos de residencia de datos y no está lista para migrarse. ¿Qué estrategia aplica PRIMERO?",
+      "concepts": [
+        "retain"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "c"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Transform MGN replica de forma continua a nivel de bloque los servidores de origen",
+            "explanation": "Cumple: permite ventanas de transición típicas de minutos."
+          },
+          {
+            "id": "b",
+            "text": "AWS Transform MGN convierte esquemas de bases de datos a otro motor",
+            "explanation": "No cumple: esa función es de DMS Schema Conversion o de AWS SCT."
+          },
+          {
+            "id": "c",
+            "text": "Rehost se conoce como «lift and shift»",
+            "explanation": "Cumple: mueve la aplicación a AWS sin ningún cambio."
+          },
+          {
+            "id": "d",
+            "text": "Refactor es la estrategia más sencilla y la que más se recomienda en migraciones grandes",
+            "explanation": "No cumple: es la más compleja y no se recomienda en migraciones grandes."
+          },
+          {
+            "id": "e",
+            "text": "Retain implica apagar de inmediato los servidores de la aplicación",
+            "explanation": "No cumple: retain mantiene la aplicación en el origen; apagarlos es retire."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-5-quiz-07",
+      "title": "Qué es cierto de MGN y de las 7 R",
+      "statement": "Un equipo repasa MGN y las estrategias. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "MGN",
+        "rehost",
+        "7 R"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html",
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS DMS permite migraciones únicas o replicar cambios continuos entre origen y destino",
+            "explanation": "Cumple: mantiene sincronizados origen y destino."
+          },
+          {
+            "id": "b",
+            "text": "Application Discovery Service guarda los datos descubiertos en la Región de origen de Migration Hub",
+            "explanation": "Cumple: por eso hay que configurarla antes de empezar."
+          },
+          {
+            "id": "c",
+            "text": "Application Discovery Service solo funciona si se instala un agente en cada servidor",
+            "explanation": "No cumple: también ofrece el Agentless Collector en VMware vCenter y la importación de archivos."
+          },
+          {
+            "id": "d",
+            "text": "AWS DMS solo migra bases de datos relacionales del mismo motor",
+            "explanation": "No cumple: migra también almacenes de datos y bases NoSQL, y permite cambiar de motor."
+          },
+          {
+            "id": "e",
+            "text": "Los datos descubiertos se pueden exportar a Excel o a Amazon Athena y AWS Quick para analizarlos",
+            "explanation": "Cumple: sirven para modelar costes y ver dependencias de red."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.3",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-5-quiz-08",
+      "title": "Qué es cierto de DMS y de Application Discovery Service",
+      "statement": "Un equipo repasa DMS y Application Discovery Service. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "DMS",
+        "Application Discovery Service",
+        "Migration Hub"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html",
+        "https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "rehost",
+            "term": "Rehost",
+            "definition": "Mover la aplicación a AWS sin ningún cambio (lift and shift)"
+          },
+          {
+            "id": "replatform",
+            "term": "Replatform",
+            "definition": "Mover con cierta optimización, p. ej. a un servicio administrado"
+          },
+          {
+            "id": "retire",
+            "term": "Retire",
+            "definition": "Desmantelar aplicaciones sin valor y apagar sus servidores"
+          },
+          {
+            "id": "retain",
+            "term": "Retain",
+            "definition": "Mantener en el origen lo que aún no está listo para migrar"
+          },
+          {
+            "id": "repurchase",
+            "term": "Repurchase",
+            "definition": "Sustituir la aplicación por otro producto o un SaaS (drop and shop)"
+          },
+          {
+            "id": "mgn",
+            "term": "AWS Transform MGN",
+            "definition": "Migrar servidores con replicación continua a nivel de bloque"
+          },
+          {
+            "id": "dms",
+            "term": "AWS DMS",
+            "definition": "Migrar bases de datos y almacenes de datos, incluso a otro motor"
+          },
+          {
+            "id": "ads",
+            "term": "Application Discovery Service",
+            "definition": "Recopilar datos de servidores locales para planificar la migración"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada estrategia o servicio de migración con el caso que resuelve. Si dudas, pregúntate qué se migra y qué restricción impone el enunciado.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Estrategias: rehost, replatform, retire, retain y repurchase",
+              "Servidores: AWS Transform MGN",
+              "Bases de datos: AWS DMS",
+              "Planificación: Application Discovery Service"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-9-5-memoria-01",
+      "title": "Estrategia o servicio de migración y caso que resuelve",
+      "statement": "Empareja cada estrategia o servicio de migración con el caso que resuelve.",
+      "concepts": [
+        "7 R",
+        "MGN",
+        "DMS",
+        "Application Discovery Service"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html",
+        "https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html",
+        "https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-9-5-reflexion-01",
+      "title": "Reflexión: qué estrategia y qué servicio de migración y por qué",
+      "statement": "Elige una organización que conozcas (por ejemplo, una tienda con servidores y una base de datos en un local) y escribe un registro breve de decisión sobre cómo la migrarías a AWS, en 5 a 7 líneas:\n\n1) Decisión: qué estrategia (de las 7 R) aplicarías a cada aplicación y qué servicio usarías (Application Discovery Service, AWS Transform MGN o AWS DMS), y qué dato de la organización lo decide.\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, refactor desde el primer día, o migrar sin descubrir antes) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo después (el inventario, las oleadas, la replicación, la conversión de esquemas).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Excelencia operativa o Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial (7 R, MGN, DMS o Application Discovery Service) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la organización, la estrategia y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "migración",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html",
+        "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html",
+        "https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html",
+        "https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html"
+      ],
+      "order": 19
+    }
+  ]
+}
