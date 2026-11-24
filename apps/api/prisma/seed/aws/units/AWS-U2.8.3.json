@@ -1,0 +1,1246 @@
+{
+  "code": "AWS-U2.8.3",
+  "lessons": [
+    {
+      "slug": "aws-u2-8-3-aws-backup-elastic-disaster-recovery-y-replicacion-entre-regiones",
+      "title": "AWS Backup, Elastic Disaster Recovery y replicación entre Regiones",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-backup-que-es",
+          "order": 0,
+          "note": "Fuente previa de AWS Backup: qué es, planes de copia, copias entre Regiones y cuentas, copias incrementales y monitorización."
+        },
+        {
+          "resourceSlug": "aws-backup-planes",
+          "order": 1,
+          "note": "Fuente de los planes de copia de AWS Backup: cuándo y cómo se hacen las copias, y copias incrementales."
+        },
+        {
+          "resourceSlug": "aws-backup-copias-entre-regiones",
+          "order": 2,
+          "note": "Fuente de las copias entre Regiones de AWS Backup: a petición o programadas, cifrado y limitaciones."
+        },
+        {
+          "resourceSlug": "aws-backup-vault-lock",
+          "order": 3,
+          "note": "Fuente de AWS Backup Vault Lock: configuración WORM y modos de gobernanza y de cumplimiento."
+        },
+        {
+          "resourceSlug": "aws-drs-que-es",
+          "order": 4,
+          "note": "Fuente de AWS Elastic Disaster Recovery: replicación, área de preparación, simulacros y recuperación."
+        },
+        {
+          "resourceSlug": "aws-s3-replicacion",
+          "order": 5,
+          "note": "Fuente previa de la replicación de S3: replicación en vivo y bajo demanda, CRR, SRR y S3 RTC."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 6,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Esta unidad da las herramientas con las que se ejecutan las estrategias de recuperación ante desastres. AWS Backup es un servicio totalmente administrado que centraliza y automatiza la protección de datos en servicios de AWS, en la nube y en local: configuras las políticas de copia y supervisas la actividad de tus recursos en un solo lugar, sin scripts personalizados ni procesos manuales. AWS Elastic Disaster Recovery minimiza el tiempo de inactividad y la pérdida de datos con una recuperación rápida y fiable de aplicaciones locales y en la nube, con almacenamiento asequible, cómputo mínimo y recuperación a un punto en el tiempo. La replicación de Amazon S3 copia objetos de forma automática y asíncrona entre buckets, también entre Regiones. En el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», en la parte de recuperación ante desastres, el enunciado describe qué hay que copiar, dónde, con qué garantías y con qué esfuerzo, y tú eliges la herramienta. Los datos de abajo son de las páginas oficiales de AWS Backup, AWS Elastic Disaster Recovery y Amazon S3 leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Las herramientas frente a frente",
+          "items": [
+            "AWS Backup: gestión centralizada de copias con planes de copia (políticas que definen cuándo y cómo se hacen), asignación de recursos mediante etiquetas, políticas de ciclo de vida a almacenamiento en frío, copias entre Regiones y entre cuentas, Backup Audit Manager y Vault Lock. No gobierna las copias que haces fuera de AWS Backup.",
+            "Plan de copia: expresión de política que define cuándo y cómo quieres hacer copias de tus recursos; se asignan recursos al plan y AWS Backup hace y conserva las copias según el plan. Almacena de forma incremental los tipos de recurso compatibles: la primera copia es completa y las siguientes solo guardan los cambios.",
+            "Copias entre Regiones: se pueden copiar copias de seguridad a otras Regiones a petición o automáticamente dentro de un plan programado; es especialmente útil si hay requisitos de continuidad del negocio o de cumplimiento de almacenar las copias a una distancia mínima de los datos de producción.",
+            "Vault Lock: característica opcional de una bóveda de copias que ofrece una configuración WORM (escritura única, lectura múltiple). Tiene dos modos: gobernanza (lo gestionan usuarios con permisos IAM suficientes, que pueden quitar el bloqueo) y cumplimiento (inmutable al terminar el periodo de gracia: nadie, ni AWS, puede alterarlo ni eliminarlo).",
+            "AWS Elastic Disaster Recovery: replica servidores y aplicaciones locales o de la nube a un área de preparación en una Región de AWS y los convierte para ejecutarse de forma nativa en AWS al lanzar simulacros o la recuperación; permite volver a producción (failback).",
+            "Replicación de S3: replicación en vivo (objetos nuevos y actualizados; Cross-Region Replication y Same-Region Replication) y replicación bajo demanda (S3 Batch Replication, para objetos que ya existían). S3 Replication Time Control (S3 RTC) ofrece un plazo predecible."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "AWS Backup: centralizar y automatizar las copias",
+          "text": "AWS Backup ofrece una consola centralizada, un conjunto de API y la AWS CLI para gestionar copias de los servicios de AWS que usan tus aplicaciones, con una vista consolidada de las copias y de los registros de actividad que facilita la auditoría y el cumplimiento. Con los planes de copia defines tus requisitos y los aplicas a los recursos que quieres proteger en distintos servicios; puedes crear planes distintos para cumplir requisitos de negocio y normativos concretos. Una forma de asignar recursos a un plan es mediante etiquetas, lo que permite aplicar un plan a un grupo de recursos de manera coherente. Con las políticas de ciclo de vida, AWS Backup permite cumplir requisitos de cumplimiento minimizando el costo de almacenamiento de las copias, porque transiciona automáticamente las copias del almacenamiento «cálido» al almacenamiento en frío de bajo costo según una programación que defines. Con la gestión entre cuentas puedes administrar las copias en todas las cuentas de la estructura de AWS Organizations y aplicar los planes automáticamente, y puedes copiar copias de seguridad a varias cuentas de la organización: «concentrar» las copias en una cuenta de repositorio y luego «distribuirlas» para mayor resiliencia (hace falta una estructura de organización ya configurada en AWS Organizations). AWS Backup Audit Manager aporta controles personalizables y genera informes diarios como evidencia de cumplimiento. Los planes almacenan las copias periódicas de forma incremental en los tipos de recurso compatibles (la primera copia es completa y después solo se guardan los cambios), pero no todos los tipos de recurso admiten copias incrementales: en los que no, cada copia es completa y puede costar más almacenamiento. Algunos tipos de recurso admiten la gestión completa de AWS Backup, con cifrado independiente (AWS Backup cifra las copias con la clave de KMS de la bóveda, no con la del recurso de origen), ARN propios de copias que empiezan por arn:aws:backup, y facturación centralizada."
+        },
+        {
+          "type": "paragraph",
+          "title": "Copias entre Regiones: qué copia, cómo se cifra y qué límites tiene",
+          "text": "Con AWS Backup puedes copiar copias de seguridad a varias Regiones a petición o automáticamente como parte de un plan de copia programado; es especialmente valioso si tienes requisitos de continuidad del negocio o de cumplimiento de almacenar las copias a una distancia mínima de tus datos de producción. La primera vez que copias una copia a una Región nueva, AWS Backup la copia completa; en general, si el servicio admite copias incrementales, las copias posteriores en la misma Región serán incrementales. AWS Backup vuelve a cifrar la copia con la clave administrada por el cliente de la bóveda de destino; la excepción es Amazon EBS, donde copiar una instantánea a una bóveda con otra clave de KMS da una copia completa (no incremental), y si copias siempre a la misma bóveda con la misma clave, las copias posteriores siguen siendo incrementales. La mayoría de los recursos y de las Regiones admiten las copias entre Regiones, pero AWS Backup no admite copias entre Regiones para almacenamiento en niveles fríos. Con Amazon RDS hay un matiz: AWS Backup no pasa el grupo de opciones personalizado en una copia entre Regiones, sino que copia el grupo de opciones predeterminado, y si el personalizado usa opciones persistentes, la copia falla a menos que la Región de destino tenga el mismo grupo de opciones, que hay que crear a mano. Al copiar a petición, la transición a frío debe permanecer al menos 90 días y el periodo de retención debe ser mayor de 90 días más allá del valor de transición a frío."
+        },
+        {
+          "type": "paragraph",
+          "title": "Vault Lock: copias que nadie puede borrar antes de tiempo",
+          "text": "AWS Backup Vault Lock es una característica opcional de una bóveda de copias que da seguridad y control adicionales: una configuración WORM (escritura única, lectura múltiple) para todas las copias que almacenas y creas en la bóveda, una capa adicional de defensa que protege las copias (puntos de recuperación) de borrados accidentales o maliciosos y la imposición de los periodos de retención del ciclo de vida, que impide los borrados anticipados incluso a usuarios con privilegios, como el usuario raíz de la cuenta. Hay dos modos. En el modo de gobernanza, la bóveda solo la pueden gestionar usuarios con permisos IAM suficientes, que pueden quitar el bloqueo; ayuda a cumplir requisitos de gobernanza para que solo el personal designado pueda cambiar la bóveda. El modo de cumplimiento está pensado para bóvedas cuyo contenido no debe eliminarse ni alterarse hasta que acabe el periodo de retención: tiene un periodo de gracia que tú fijas antes de que el bloqueo se active y, cuando vence, la bóveda y su bloqueo son inmutables, y ningún usuario ni AWS puede cambiarlos o eliminarlos mientras haya puntos de recuperación (la bóveda solo puede eliminarse si está vacía). Durante el periodo de gracia aún puedes quitar el bloqueo y cambiar su configuración. Cada bóveda puede tener un solo bloqueo. Vault Lock no tiene cargo adicional, pero las copias de una bóveda bloqueada no se pueden eliminar hasta que acabe su ciclo de vida, lo que puede generar costos de almacenamiento persistentes: la página avisa de no dejar puntos de recuperación con retención «Siempre», porque tras el periodo de gracia se conservarán para siempre."
+        },
+        {
+          "type": "paragraph",
+          "title": "AWS Elastic Disaster Recovery: replicar servidores y lanzar la recuperación",
+          "text": "AWS Elastic Disaster Recovery minimiza el tiempo de inactividad y la pérdida de datos con una recuperación rápida y fiable de aplicaciones locales y basadas en la nube, usando almacenamiento asequible, cómputo mínimo y recuperación a un punto en el tiempo. Configuras la replicación en tus servidores de origen y los datos se replican a una subred de área de preparación de tu cuenta de AWS, en la Región que elijas; el diseño del área de preparación reduce los costos porque mantiene la replicación continua con almacenamiento asequible y recursos de cómputo mínimos. Puedes hacer pruebas no disruptivas para confirmar que la implementación está completa y, en funcionamiento normal, mantener la preparación supervisando la replicación y haciendo periódicamente simulacros no disruptivos de recuperación y de failback. Al lanzar instancias para simulacros o para la recuperación, el servicio convierte automáticamente tus servidores para que arranquen y se ejecuten de forma nativa en AWS, y puedes lanzar las instancias de recuperación en cuestión de minutos con el estado más reciente del servidor o con un punto en el tiempo anterior. Una vez que las aplicaciones se ejecutan en AWS, puedes dejarlas allí o iniciar la replicación de vuelta al sitio principal cuando se resuelva el problema, y volver a él (failback) cuando estés listo."
+        },
+        {
+          "type": "paragraph",
+          "title": "Replicación de S3: en vivo, bajo demanda y con plazo predecible",
+          "text": "La replicación de S3 permite la copia automática y asíncrona de objetos entre buckets de S3; los buckets pueden pertenecer a la misma cuenta o a cuentas distintas, y puedes replicar a uno o a varios buckets de destino, en otras Regiones o en la misma. Hay dos tipos: la replicación en vivo, que replica automáticamente los objetos nuevos y actualizados a medida que se escriben en el bucket de origen (y no replica los objetos que ya existían antes de configurarla), y la replicación bajo demanda, para replicar objetos existentes con S3 Batch Replication. La replicación en vivo tiene dos formas: Cross-Region Replication (CRR), que copia objetos entre buckets de distintas Regiones, y Same-Region Replication (SRR), que los copia entre buckets de la misma Región. La página enumera usos de CRR: cumplir requisitos de cumplimiento (aunque S3 guarda los datos en varias zonas de disponibilidad geográficamente distantes por defecto, la normativa puede exigir mayores distancias) y minimizar la latencia. Entre las ventajas de la replicación están conservar los metadatos (como las fechas de creación y los identificadores de versión), replicar a otras clases de almacenamiento (como S3 Glacier Flexible Retrieval o S3 Glacier Deep Archive), mantener copias bajo distinta propiedad con la opción de anulación del propietario y mantener objetos en varias Regiones. S3 Replication Time Control (S3 RTC) replica el 99,99 % de los objetos nuevos en 15 minutos, respaldado por un acuerdo de nivel de servicio; no se aplica a Batch Replication. Para replicar y conmutar a un bucket de otra Región se usan reglas de replicación bidireccional antes de configurar los controles de failover de los puntos de acceso multi-Región de S3."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Quiere aplicar un único plan de copias, programado, a todos los recursos con una etiqueta de varios servicios, y mantener una copia en otra Región a distancia. (2) Un regulador exige que las copias no puedan eliminarse ni alterarse por nadie, ni siquiera por el usuario raíz ni por AWS, hasta el fin de su retención. (3) Tiene servidores locales y quiere usar una Región de AWS como destino de recuperación, con almacenamiento asequible, cómputo mínimo y simulacros no disruptivos. (4) Quiere replicar a otra Región los objetos que ya existían en un bucket antes de configurar la replicación. Paso 1: para (1), la clave es «plan, etiquetas y copia entre Regiones», así que va AWS Backup con un plan asignado por etiquetas y una regla de copia a otra Región. Paso 2: para (2), la clave es «nadie puede alterarlas, ni AWS», así que va Vault Lock en modo de cumplimiento. Paso 3: para (3), la clave es «servidores locales, área de preparación y simulacros», así que va AWS Elastic Disaster Recovery. Paso 4: para (4), la clave es «objetos que ya existían», así que va S3 Batch Replication, porque la replicación en vivo no los replica. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una configuración de copias como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const copias = {\n  plan: { programacion: \"diaria\", asignacionDeRecursos: \"por-etiqueta\", copiaAOtraRegion: true },\n  boveda: { bloqueo: \"modo-cumplimiento\", periodoDeGraciaEnDias: 3 },\n  servidoresLocales: { servicio: \"elastic-disaster-recovery\", simulacros: true },\n  objetosDeS3: { replicacionEnVivo: \"crr\", objetosExistentes: \"s3-batch-replication\" },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De la necesidad de copia o replicación a la herramienta",
+          "code": "flowchart TB\n  N{\"Qué hay que proteger\"} -->|\"Copias centralizadas de varios servicios, por plan y etiquetas\"| B[\"AWS Backup\"]\n  B --> L{\"Qué garantía se exige\"}\n  L -->|\"Solo personal con permisos IAM\"| G[\"Vault Lock: modo de gobernanza\"]\n  L -->|\"Inmutable hasta el fin de la retención\"| C[\"Vault Lock: modo de cumplimiento\"]\n  N -->|\"Servidores locales o de la nube, simulacros y failback\"| D[\"AWS Elastic Disaster Recovery\"]\n  N -->|\"Objetos de S3 entre buckets\"| S{\"Qué objetos\"}\n  S -->|\"Nuevos y actualizados\"| V[\"Replicación en vivo: CRR o SRR\"]\n  S -->|\"Los que ya existían\"| H[\"S3 Batch Replication\"]\n  V --> R[\"Plazo de 15 minutos: S3 RTC\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: dar por hecho que la replicación en vivo copia lo que ya existía, o que el modo de gobernanza es inmutable",
+          "text": "El enunciado mezcla señales: «objetos que ya existían», «plazo predecible de 15 minutos», «ni siquiera el usuario raíz», «copias en frío entre Regiones», «servidores locales». La replicación en vivo de S3 solo replica los objetos nuevos y actualizados; para los existentes hace falta S3 Batch Replication, y S3 RTC no se aplica a Batch Replication; el modo de gobernanza de Vault Lock puede quitarlo un usuario con permisos IAM suficientes, y solo el modo de cumplimiento es inmutable al vencer el periodo de gracia; y AWS Backup no admite copias entre Regiones del almacenamiento en frío. Subraya qué hay que copiar, qué garantía se exige y de dónde viene el dato antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: esperar que la replicación en vivo de S3 copie los objetos que ya existían",
+          "text": "Causa: configurar la replicación y suponer que el bucket de destino queda idéntico al de origen. Consecuencia: la replicación en vivo no replica los objetos que ya existían en el bucket antes de configurarla, así que el bucket de la Región de recuperación queda incompleto. Solución: usa S3 Batch Replication para los objetos existentes (y para los que fallaron al replicarse) y deja la replicación en vivo para los objetos nuevos y actualizados; si necesitas un plazo predecible para los nuevos, usa S3 RTC."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confundir los dos modos de Vault Lock o dejar retención «Siempre»",
+          "text": "Causa: pensar que cualquier Vault Lock impide que alguien con privilegios lo quite, o configurar puntos de recuperación con retención «Siempre» en una bóveda bloqueada. Consecuencia: en modo de gobernanza un usuario con permisos IAM suficientes puede quitar el bloqueo, así que no sirve para una exigencia de inmutabilidad total; y en modo de cumplimiento, tras el periodo de gracia, esos puntos de recuperación se conservarán para siempre y no se podrán alterar ni eliminar, con costos de almacenamiento persistentes. Solución: elige el modo de cumplimiento cuando se exija que nadie pueda alterar las copias hasta el fin de la retención, y revisa las retenciones antes de que venza el periodo de gracia."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: copiar a otra Región con almacenamiento en frío o esperar que AWS Backup gobierne todas las copias",
+          "text": "Causa: suponer que AWS Backup admite cualquier combinación de copias y que gestiona todas las copias de tu entorno. Consecuencia: AWS Backup no admite copias entre Regiones para almacenamiento en niveles fríos y no gobierna las copias que haces fuera de AWS Backup, así que parte de los datos puede quedar sin la protección o sin el control esperados. Solución: configura las copias entre Regiones con una regla de copia en el plan, comprueba qué recursos admiten cada función y centraliza en AWS Backup las copias que quieras gobernar."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la herramienta que implementa una necesidad de copia o de recuperación: AWS Backup (con planes, copias entre Regiones y cuentas y Vault Lock), AWS Elastic Disaster Recovery o la replicación de S3 (en vivo, bajo demanda, CRR, SRR y S3 RTC), y distinguir los modos de gobernanza y de cumplimiento de Vault Lock. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes», en la parte de recuperación ante desastres. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la herramienta, el dato del enunciado que la decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra la herramienta y el dato que la decide. Explica con tus palabras el diagrama «De la necesidad de copia o replicación a la herramienta». Después responde: si un bucket ya tiene millones de objetos y acabas de configurar la replicación en vivo, ¿qué queda sin replicar y qué usas para resolverlo?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La bóveda que alguien con permisos puede desbloquear». Una configuración escrita como objeto usa el modo de gobernanza de Vault Lock para unas copias que nadie debe poder alterar. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la necesidad y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Tres necesidades de replicación de S3, dos mecanismos mal elegidos». Decide qué mecanismo corresponde a cada necesidad sin alterar el nombre de las necesidades. Criterio de paso: las pruebas pasan y justificas por escrito cada cambio con la página de replicación de S3."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre copias y replicación. Audítalo en «Auditar un informe de copias y recuperación generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de AWS Backup, AWS Elastic Disaster Recovery y S3 (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué centraliza AWS Backup y cómo se asignan recursos a un plan; qué copia entre Regiones y qué no admite; en qué se diferencian los modos de Vault Lock; qué replica la replicación en vivo de S3 y qué usas para los objetos existentes; y qué hace AWS Elastic Disaster Recovery. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa con varias cuentas debe copiar a diario, a otra Región, los volúmenes, bases de datos y sistemas de archivos de todas sus cuentas, proteger esas copias contra borrados, recuperar servidores locales en AWS y replicar un bucket de S3 a otra Región con un plazo predecible. Decide qué herramienta usas para cada parte. Pregunta de cierre: un compañero dice «con la replicación en vivo ya tenemos todos los objetos del bucket en la otra Región»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio totalmente administrado que centraliza y automatiza la protección de datos en servicios de AWS, en la nube y en local: políticas y supervisión en un solo lugar, sin scripts personalizados. Ofrece planes, etiquetas, ciclo de vida a almacenamiento en frío, copias entre Regiones y cuentas, Audit Manager y Vault Lock. No gobierna las copias hechas fuera de AWS Backup."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-3-tarjeta-01",
+      "title": "Tarjeta: qué es AWS Backup",
+      "statement": "¿Qué es AWS Backup y qué evita?",
+      "concepts": [
+        "AWS Backup",
+        "protección centralizada",
+        "planes de copia"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Una política que define cuándo y cómo se hacen las copias de tus recursos; asignas recursos (por ejemplo, con etiquetas) y AWS Backup copia y conserva según el plan. Puedes tener varios planes. Almacena de forma incremental en los tipos de recurso compatibles (la primera copia es completa y las siguientes solo guardan los cambios); si no lo admiten, cada copia es completa."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-3-tarjeta-02",
+      "title": "Tarjeta: planes de copia",
+      "statement": "¿Qué es un plan de copia de AWS Backup y cómo almacena las copias?",
+      "concepts": [
+        "plan de copia",
+        "etiquetas",
+        "copias incrementales"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Copias a otras Regiones a petición o automáticamente en un plan programado, útil si hay que guardarlas a una distancia mínima de producción; la primera copia a una Región es completa y se vuelve a cifrar con la clave de la bóveda de destino. No admite copias entre Regiones de almacenamiento en frío. Entre cuentas de una organización: concentrar copias en una cuenta y distribuirlas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-3-tarjeta-03",
+      "title": "Tarjeta: copias entre Regiones y cuentas",
+      "statement": "¿Qué permite copiar AWS Backup entre Regiones y cuentas y qué límites tiene?",
+      "concepts": [
+        "copia entre Regiones",
+        "copia entre cuentas",
+        "almacenamiento en frío"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/cross-region-backup.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Característica opcional de una bóveda con configuración WORM que protege las copias de borrados accidentales o maliciosos e impone la retención, incluso al usuario raíz. Modo de gobernanza: usuarios con permisos IAM suficientes pueden quitar el bloqueo. Modo de cumplimiento: tras el periodo de gracia es inmutable y nadie, ni AWS, puede alterarlo mientras haya puntos de recuperación."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-3-tarjeta-04",
+      "title": "Tarjeta: Vault Lock",
+      "statement": "¿Qué es Vault Lock y en qué se diferencian sus dos modos?",
+      "concepts": [
+        "Vault Lock",
+        "WORM",
+        "modo de cumplimiento"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Minimiza el tiempo de inactividad y la pérdida de datos con una recuperación rápida de aplicaciones locales y en la nube. Replica los servidores a un área de preparación en la Región elegida con almacenamiento asequible y cómputo mínimo, permite simulacros no disruptivos, los convierte para ejecutarse de forma nativa en AWS, recupera al último estado o a un punto anterior y admite el failback."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-3-tarjeta-05",
+      "title": "Tarjeta: Elastic Disaster Recovery",
+      "statement": "¿Qué hace AWS Elastic Disaster Recovery?",
+      "concepts": [
+        "Elastic Disaster Recovery",
+        "área de preparación",
+        "failback"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/drs/latest/userguide/what-is-drs.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Copia automática y asíncrona de objetos entre buckets, de la misma cuenta o de distintas. Replicación en vivo: objetos nuevos y actualizados, entre Regiones (CRR) o en la misma (SRR); no replica los objetos que ya existían. Bajo demanda: S3 Batch Replication, para los existentes. S3 RTC replica el 99,99 % de los objetos nuevos en 15 minutos con SLA, salvo Batch Replication."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-3-tarjeta-06",
+      "title": "Tarjeta: replicación de S3",
+      "statement": "¿Qué tipos de replicación tiene S3 y qué cubre cada uno?",
+      "concepts": [
+        "CRR",
+        "SRR",
+        "S3 Batch Replication",
+        "S3 RTC"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Copias que, por exigencia de un regulador, nadie debe poder alterar ni eliminar hasta el fin de su retención. Corrige su defecto principal.\nexport const diseno = {\n  necesidad: \"copias-inmutables-hasta-el-fin-de-la-retencion\",\n  requisitos: { inmutables: true, nadiePuedeQuitarElBloqueo: true },\n  bloqueoDeLaBoveda: \"modo-gobernanza\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  necesidad: \"copias-inmutables-hasta-el-fin-de-la-retencion\",\n  requisitos: { inmutables: true, nadiePuedeQuitarElBloqueo: true },\n  bloqueoDeLaBoveda: \"modo-cumplimiento\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El requisito es que nadie pueda quitar el bloqueo ni alterar las copias hasta el fin de su retención. Compara eso con quién puede quitar el bloqueo en el modo elegido."
+        },
+        {
+          "level": 2,
+          "text": "En el modo de gobernanza, los usuarios con permisos IAM suficientes pueden quitar el bloqueo; solo en el modo de cumplimiento el bloqueo es inmutable cuando vence el periodo de gracia, y ni un usuario ni AWS pueden cambiarlo."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el bloqueo a \"modo-cumplimiento\". No cambies la necesidad ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el bloqueo ya no es el modo de gobernanza",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.bloqueoDeLaBoveda, \"modo-gobernanza\", \"En el modo de gobernanza un usuario con permisos IAM suficientes puede quitar el bloqueo\");\nassert.strictEqual(diseno.bloqueoDeLaBoveda, \"modo-cumplimiento\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.inmutables, true);\nassert.strictEqual(diseno.requisitos.nadiePuedeQuitarElBloqueo, true);"
+          }
+        },
+        {
+          "name": "el nombre de la necesidad no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.necesidad, \"copias-inmutables-hasta-el-fin-de-la-retencion\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-8-3-debug-01",
+      "title": "La bóveda que alguien con permisos puede desbloquear",
+      "statement": "El objeto `diseno` modela una bóveda de AWS Backup cuyas copias, por exigencia de un regulador, nadie debe poder alterar ni eliminar hasta el fin de su retención, ni siquiera quien tenga permisos de administración. El diseño actual usa el modo de Vault Lock que, según la página de Vault Lock, puede quitar un usuario con permisos IAM suficientes. Corrige el modo sin cambiar la necesidad ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`). Los modos se escriben así: modo-gobernanza, modo-cumplimiento.",
+      "concepts": [
+        "Vault Lock",
+        "modo de cumplimiento",
+        "modo de gobernanza"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tres necesidades de replicación de S3 y el mecanismo elegido para cada una. Dos están mal asignadas: corrígelas.\n// Mecanismos: \"replicacion-en-vivo\", \"s3-batch-replication\", \"s3-rtc\" y \"crr\".\nexport const diseno = {\n  casos: [\n    { necesidad: \"replicar-los-objetos-que-ya-existian-antes-de-configurar-la-replicacion\", mecanismo: \"replicacion-en-vivo\" },\n    { necesidad: \"replicar-los-objetos-nuevos-en-un-plazo-predecible-de-15-minutos-con-sla\", mecanismo: \"s3-batch-replication\" },\n    { necesidad: \"copiar-objetos-a-un-bucket-de-otra-region-distante-por-cumplimiento\", mecanismo: \"crr\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  casos: [\n    { necesidad: \"replicar-los-objetos-que-ya-existian-antes-de-configurar-la-replicacion\", mecanismo: \"s3-batch-replication\" },\n    { necesidad: \"replicar-los-objetos-nuevos-en-un-plazo-predecible-de-15-minutos-con-sla\", mecanismo: \"s3-rtc\" },\n    { necesidad: \"copiar-objetos-a-un-bucket-de-otra-region-distante-por-cumplimiento\", mecanismo: \"crr\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "los objetos existentes se replican con Batch Replication",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.mecanismo]));\nassert.strictEqual(por[\"replicar-los-objetos-que-ya-existian-antes-de-configurar-la-replicacion\"], \"s3-batch-replication\");"
+          }
+        },
+        {
+          "name": "el plazo predecible de 15 minutos lo da S3 RTC",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.mecanismo]));\nassert.strictEqual(por[\"replicar-los-objetos-nuevos-en-un-plazo-predecible-de-15-minutos-con-sla\"], \"s3-rtc\");"
+          }
+        },
+        {
+          "name": "la copia entre Regiones distantes sigue siendo CRR",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.mecanismo]));\nassert.strictEqual(por[\"copiar-objetos-a-un-bucket-de-otra-region-distante-por-cumplimiento\"], \"crr\");"
+          }
+        },
+        {
+          "name": "las tres necesidades se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.casos.length, 3);\nconst nombres = diseno.casos.map((caso) => caso.necesidad).sort();\nassert.deepStrictEqual(nombres, [\"copiar-objetos-a-un-bucket-de-otra-region-distante-por-cumplimiento\", \"replicar-los-objetos-nuevos-en-un-plazo-predecible-de-15-minutos-con-sla\", \"replicar-los-objetos-que-ya-existian-antes-de-configurar-la-replicacion\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-8-3-debug-02",
+      "title": "Tres necesidades de replicación de S3, dos mecanismos mal elegidos",
+      "statement": "El objeto `diseno` asigna un mecanismo de replicación de Amazon S3 a cada una de tres necesidades. Dos de las asignaciones son incorrectas según la página de replicación de S3. Corrígelas sin cambiar el nombre de las necesidades, y mantén la forma del valor exportado (`export const diseno = { … }`). Los mecanismos se escriben así: replicacion-en-vivo, s3-batch-replication, s3-rtc, crr.",
+      "concepts": [
+        "S3 Batch Replication",
+        "S3 RTC",
+        "CRR"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de copias y recuperación (borrador generado por un asistente)\nEscenario: copias de seguridad entre Regiones, bóvedas bloqueadas, servidores locales y replicación de objetos de S3.\n1. AWS Backup puede copiar copias de seguridad a otras Regiones, a petición o de forma automática dentro de un plan programado.\n2. AWS Backup admite copias entre Regiones de copias que están en el almacenamiento en frío.\n3. Una bóveda con Vault Lock en modo de cumplimiento no puede alterarse ni eliminarse por ningún usuario ni por AWS cuando vence el periodo de gracia, mientras contenga puntos de recuperación.\n4. La replicación en vivo de S3 también replica los objetos que ya existían antes de configurarla.\n5. S3 Replication Time Control replica el 99,99 % de los objetos nuevos en 15 minutos, con un acuerdo de nivel de servicio, y no se aplica a Batch Replication.\n6. AWS Elastic Disaster Recovery exige mantener en la Región de recuperación una copia completa de producción siempre encendida.\n7. AWS Backup gobierna también las copias de seguridad que se toman en el entorno fuera de AWS Backup."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Copias entre Regiones",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: AWS Backup copia a otras Regiones a petición o automáticamente como parte de un plan de copia programado."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Copias entre Regiones desde frío",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: AWS Backup no admite copias entre Regiones para almacenamiento en niveles fríos."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Vault Lock en modo de cumplimiento",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: al vencer el periodo de gracia, el bloqueo en modo de cumplimiento no puede alterarse ni eliminarse por ningún usuario ni por AWS mientras haya puntos de recuperación."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Replicación en vivo y objetos existentes",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la replicación en vivo no replica los objetos que existían antes de configurarla; para ellos se usa S3 Batch Replication."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "S3 RTC",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: S3 RTC replica el 99,99 % de los objetos nuevos en 15 minutos con un acuerdo de nivel de servicio y no se aplica a Batch Replication."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Copia completa siempre encendida en Elastic Disaster Recovery",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: el servicio replica a un área de preparación con almacenamiento asequible y cómputo mínimo y solo crea la capacidad completa al lanzar la recuperación."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Alcance de AWS Backup",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: AWS Backup no gobierna las copias que haces en tu entorno fuera de AWS Backup."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-8-3-auditoria-01",
+      "title": "Auditar un informe de copias y recuperación generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre copias y recuperación en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "AWS Backup",
+        "Vault Lock",
+        "S3 Batch Replication",
+        "Elastic Disaster Recovery"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/cross-region-backup.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html",
+        "https://docs.aws.amazon.com/drs/latest/userguide/what-is-drs.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Scripts programados que llamen a las API de cada servicio",
+            "explanation": "Descartada: es justo el enfoque servicio por servicio que AWS Backup permite evitar."
+          },
+          {
+            "id": "b",
+            "text": "AWS Backup, con planes de copia asignados a los recursos",
+            "explanation": "Es la correcta: centraliza y automatiza las copias entre servicios con políticas y una consola única."
+          },
+          {
+            "id": "c",
+            "text": "Replicación en vivo de Amazon S3 entre dos buckets",
+            "explanation": "Descartada: replica objetos de S3, no copia volúmenes, bases de datos y sistemas de archivos."
+          },
+          {
+            "id": "d",
+            "text": "AWS Elastic Disaster Recovery sobre cada servicio gestionado",
+            "explanation": "Descartada: replica servidores y sus bases de datos para la recuperación, no centraliza las copias de los servicios."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-3-quiz-01",
+      "title": "Copias centralizadas de varios servicios",
+      "statement": "Una empresa quiere centralizar y automatizar las copias de volúmenes, bases de datos y sistemas de archivos de varios servicios de AWS con políticas en un solo lugar, sin scripts personalizados. ¿Qué servicio es el MEJOR ajuste?",
+      "concepts": [
+        "AWS Backup",
+        "centralización"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Configurar a mano las copias en la consola de cada servicio",
+            "explanation": "Descartada: es el trabajo servicio por servicio que un plan central evita."
+          },
+          {
+            "id": "b",
+            "text": "Crear un plan nuevo por cada recurso y asignarlo uno a uno",
+            "explanation": "Descartada: no escala; los planes se asignan a grupos de recursos."
+          },
+          {
+            "id": "c",
+            "text": "Copiar los recursos a un bucket de S3 con una regla de replicación",
+            "explanation": "Descartada: la replicación de S3 copia objetos entre buckets, no aplica planes de copia a varios servicios."
+          },
+          {
+            "id": "d",
+            "text": "Asignar los recursos etiquetados al plan de copia de AWS Backup",
+            "explanation": "Es la correcta: la integración con etiquetas permite aplicar un plan a un grupo de recursos de forma coherente."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-3-quiz-02",
+      "title": "Un plan para todos los recursos etiquetados",
+      "statement": "Un equipo quiere aplicar el mismo plan de copia a todos los recursos de varios servicios que lleven una etiqueta concreta, con el MENOR esfuerzo. ¿Qué opción elige?",
+      "concepts": [
+        "plan de copia",
+        "etiquetas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una regla de copia a otra Región dentro de un plan de copia programado de AWS Backup",
+            "explanation": "Es la correcta: AWS Backup copia a otras Regiones automáticamente como parte de un plan programado."
+          },
+          {
+            "id": "b",
+            "text": "Copiar a mano cada copia desde la consola una vez por semana",
+            "explanation": "Descartada: la copia a petición existe, pero no es automática ni programada."
+          },
+          {
+            "id": "c",
+            "text": "Habilitar la replicación Multi-AZ en la Región principal",
+            "explanation": "Descartada: replica entre zonas de la misma Región, no a una distancia mínima."
+          },
+          {
+            "id": "d",
+            "text": "Transicionar las copias a frío y copiarlas a otra Región",
+            "explanation": "Descartada: AWS Backup no admite copias entre Regiones para almacenamiento en niveles fríos."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-3-quiz-03",
+      "title": "Copia automática a otra Región",
+      "statement": "El regulador exige guardar las copias a una distancia mínima de los datos de producción, de forma automática y programada. ¿Qué opción cumple MÁS directamente?",
+      "concepts": [
+        "copia entre Regiones",
+        "plan programado"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/cross-region-backup.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Vault Lock en modo de gobernanza",
+            "explanation": "Descartada: un usuario con permisos IAM suficientes puede quitar el bloqueo."
+          },
+          {
+            "id": "b",
+            "text": "Permisos IAM restrictivos sin Vault Lock",
+            "explanation": "Descartada: no impone la retención de forma inmutable; un administrador podría cambiar los permisos."
+          },
+          {
+            "id": "c",
+            "text": "Vault Lock en modo de cumplimiento, pasado el periodo de gracia",
+            "explanation": "Es la correcta: el bloqueo se vuelve inmutable y ni un usuario ni AWS pueden alterarlo o eliminarlo mientras haya puntos de recuperación."
+          },
+          {
+            "id": "d",
+            "text": "Copias entre cuentas sin bloqueo en la bóveda de destino",
+            "explanation": "Descartada: aíslan las copias, pero no impiden que se borren dentro de la bóveda de destino."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-3-quiz-04",
+      "title": "Inmutabilidad total de las copias",
+      "statement": "Un regulador exige que las copias de una bóveda no puedan alterarse ni eliminarse por nadie, ni por el usuario raíz ni por AWS, hasta el fin de su retención. ¿Qué configuración ofrece la MAYOR garantía de inmutabilidad?",
+      "concepts": [
+        "Vault Lock",
+        "modo de cumplimiento"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Replicación en vivo de S3 entre dos buckets",
+            "explanation": "Descartada: copia objetos de S3 entre buckets, no replica servidores locales ni los recupera."
+          },
+          {
+            "id": "b",
+            "text": "AWS Elastic Disaster Recovery, con un área de preparación",
+            "explanation": "Es la correcta: replica los servidores a un área de preparación con almacenamiento asequible y cómputo mínimo, y admite simulacros y failback."
+          },
+          {
+            "id": "c",
+            "text": "Una copia completa de producción siempre encendida en la Región de AWS",
+            "explanation": "Descartada: tiene un costo continuo alto, lo contrario del cómputo mínimo que se busca."
+          },
+          {
+            "id": "d",
+            "text": "Instantáneas de RDS copiadas a otra Región",
+            "explanation": "Descartada: cubren bases de datos RDS, no servidores locales."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-3-quiz-05",
+      "title": "Servidores locales con DR en AWS",
+      "statement": "Una empresa tiene servidores locales y quiere usar una Región de AWS como destino de recuperación, con el MENOR costo continuo (almacenamiento asequible y cómputo mínimo), simulacros no disruptivos y la posibilidad de volver al sitio principal. ¿Qué servicio elige?",
+      "concepts": [
+        "Elastic Disaster Recovery",
+        "área de preparación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/drs/latest/userguide/what-is-drs.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Esperar a que la replicación en vivo los copie con el tiempo",
+            "explanation": "Descartada: la replicación en vivo no replica los objetos que existían antes de configurarla."
+          },
+          {
+            "id": "b",
+            "text": "Cambiar a Same-Region Replication para que replique los existentes",
+            "explanation": "Descartada: SRR copia entre buckets de la misma Región y tampoco replica los objetos existentes."
+          },
+          {
+            "id": "c",
+            "text": "Activar S3 Replication Time Control para los objetos existentes",
+            "explanation": "Descartada: S3 RTC da un plazo predecible para los objetos nuevos y no se aplica a Batch Replication."
+          },
+          {
+            "id": "d",
+            "text": "Usar S3 Batch Replication como replicación bajo demanda",
+            "explanation": "Es la correcta: replica los objetos existentes del bucket de origen a los buckets de destino."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-3-quiz-06",
+      "title": "Replicar los objetos que ya existían",
+      "statement": "Un bucket de S3 ya contiene millones de objetos y el equipo acaba de configurar la replicación en vivo hacia otra Región. Necesita que también se repliquen los objetos que ya existían. ¿Qué opción es la MEJOR?",
+      "concepts": [
+        "S3 Batch Replication",
+        "replicación en vivo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Puede copiar copias a otras Regiones a petición o automáticamente dentro de un plan programado",
+            "explanation": "Cumple: es útil para requisitos de continuidad del negocio o de cumplimiento."
+          },
+          {
+            "id": "b",
+            "text": "Gobierna también las copias que haces fuera de AWS Backup",
+            "explanation": "No cumple: no gobierna las copias que tomas en tu entorno fuera de AWS Backup."
+          },
+          {
+            "id": "c",
+            "text": "Admite copias entre Regiones del almacenamiento en frío",
+            "explanation": "No cumple: no admite copias entre Regiones para almacenamiento en niveles fríos."
+          },
+          {
+            "id": "d",
+            "text": "Permite asignar recursos a un plan de copia mediante etiquetas",
+            "explanation": "Cumple: la integración con etiquetas aplica un plan a un grupo de recursos de forma coherente."
+          },
+          {
+            "id": "e",
+            "text": "Todos los tipos de recurso admiten copias incrementales",
+            "explanation": "No cumple: en los que no las admiten, cada copia es completa y puede costar más almacenamiento."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-3-quiz-07",
+      "title": "Qué es cierto de AWS Backup",
+      "statement": "Un equipo repasa AWS Backup. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "AWS Backup",
+        "etiquetas",
+        "copias entre Regiones"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/cross-region-backup.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Ofrece una configuración WORM (escritura única, lectura múltiple) para las copias de la bóveda",
+            "explanation": "Cumple: protege las copias de borrados accidentales o maliciosos."
+          },
+          {
+            "id": "b",
+            "text": "En el modo de gobernanza, los usuarios con permisos IAM suficientes pueden quitar el bloqueo",
+            "explanation": "Cumple: el modo de gobernanza permite gestionar la bóveda solo a usuarios con permisos suficientes."
+          },
+          {
+            "id": "c",
+            "text": "Tiene un cargo adicional por usar la característica",
+            "explanation": "No cumple: está disponible sin cargo adicional, aunque se aplican los cargos de almacenamiento de las copias."
+          },
+          {
+            "id": "d",
+            "text": "En el modo de cumplimiento, el bloqueo no puede quitarse cuando vence el periodo de gracia",
+            "explanation": "Cumple: pasa a ser inmutable y nadie, ni AWS, puede alterarlo o eliminarlo mientras haya puntos de recuperación."
+          },
+          {
+            "id": "e",
+            "text": "El usuario raíz puede quitar siempre el bloqueo en el modo de cumplimiento",
+            "explanation": "No cumple: en modo de cumplimiento no puede quitarlo ningún usuario ni AWS tras el periodo de gracia."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-3-quiz-08",
+      "title": "Qué es cierto de Vault Lock",
+      "statement": "Un equipo repasa Vault Lock. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "Vault Lock",
+        "WORM",
+        "modos de bloqueo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-8-3-reflexion-01",
+      "title": "Reflexión: qué herramienta de copia o replicación y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, una tienda con base de datos, volúmenes y un bucket de S3) y escribe un registro breve de decisión sobre cómo copiarla y replicarla para la recuperación ante desastres, en 5 a 7 líneas:\n\n1) Decisión: qué herramienta usarías para cada parte (AWS Backup con su plan, Vault Lock, AWS Elastic Disaster Recovery o la replicación de S3), a qué Región copiarías y qué dato de la carga lo decide (qué hay que proteger, qué garantía se exige, de dónde vienen los datos).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, el modo de gobernanza cuando se exige inmutabilidad total, o confiar en la replicación en vivo para los objetos existentes) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (el plan de copia, las retenciones, las pruebas de restauración y los simulacros).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial (qué es AWS Backup, Vault Lock, qué es Elastic Disaster Recovery o la replicación de S3) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la herramienta y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "AWS Backup",
+        "recuperación ante desastres",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html",
+        "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html",
+        "https://docs.aws.amazon.com/drs/latest/userguide/what-is-drs.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html"
+      ],
+      "order": 18
+    }
+  ]
+}
