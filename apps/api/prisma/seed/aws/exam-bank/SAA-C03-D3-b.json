@@ -1,0 +1,1066 @@
+{
+  "certification": "SAA-C03",
+  "domain": 3,
+  "questions": [
+    {
+      "unitCode": "AWS-U2.5.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Capacidad aprovisionada fija para el pico máximo",
+              "explanation": "Descartada: paga capacidad que casi nunca se usa."
+            },
+            {
+              "id": "b",
+              "text": "El modo de capacidad bajo demanda",
+              "explanation": "Es la correcta: se adapta al tráfico sin planificar capacidad."
+            },
+            {
+              "id": "c",
+              "text": "Capacidad aprovisionada fija muy baja",
+              "explanation": "Descartada: limitaría las peticiones en los picos."
+            },
+            {
+              "id": "d",
+              "text": "Desactivar la tabla fuera de horario a mano",
+              "explanation": "Descartada: exige intervención y deja la aplicación sin servicio."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-01",
+        "title": "Capacidad para tráfico impredecible en DynamoDB",
+        "statement": "Una tabla de DynamoDB recibe tráfico muy irregular e impredecible y se quiere evitar planificar la capacidad. ¿Qué modo es el MÁS adecuado?",
+        "concepts": [
+          "modo bajo demanda"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/capacity-mode.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1101
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon DynamoDB Accelerator (DAX)",
+              "explanation": "Es la correcta: es una caché en memoria compatible con la API de DynamoDB."
+            },
+            {
+              "id": "b",
+              "text": "Un índice secundario local nuevo",
+              "explanation": "Descartada: no actúa como caché en memoria."
+            },
+            {
+              "id": "c",
+              "text": "Un bucket de S3 con copias de los elementos",
+              "explanation": "Descartada: no ofrece latencias de microsegundos."
+            },
+            {
+              "id": "d",
+              "text": "Una réplica de lectura de RDS",
+              "explanation": "Descartada: pertenece a RDS, no a DynamoDB."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-02",
+        "title": "Lecturas en microsegundos sobre DynamoDB",
+        "statement": "Una aplicación hace muchas lecturas repetidas sobre DynamoDB y necesita latencias de microsegundos con el MÍNIMO cambio de código. ¿Qué es lo MEJOR?",
+        "concepts": [
+          "DAX"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1102
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Un índice secundario global comparte siempre la clave de la tabla",
+              "explanation": "No cumple: puede usar una clave distinta."
+            },
+            {
+              "id": "b",
+              "text": "Un índice secundario global permite consultar por una clave distinta de la de la tabla",
+              "explanation": "Cumple: habilita otros patrones de acceso."
+            },
+            {
+              "id": "c",
+              "text": "Una clave de partición con pocos valores distribuye mejor la carga",
+              "explanation": "No cumple: concentra el tráfico en pocas particiones."
+            },
+            {
+              "id": "d",
+              "text": "DynamoDB no admite consultas por ningún atributo",
+              "explanation": "No cumple: admite consultas por clave e índices."
+            },
+            {
+              "id": "e",
+              "text": "Una clave de partición de alta cardinalidad reparte mejor el tráfico",
+              "explanation": "Cumple: evita concentrar el acceso en pocas particiones."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-03",
+        "title": "Dos hechos sobre claves e índices de DynamoDB",
+        "statement": "Un equipo diseña el modelo de una tabla de DynamoDB. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "clave de partición",
+          "índice secundario global"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html",
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1103
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Mantener la fecha y aumentar la capacidad de lectura",
+              "explanation": "Descartada: no resuelve la concentración de escrituras."
+            },
+            {
+              "id": "b",
+              "text": "Usar una clave de partición con un único valor fijo",
+              "explanation": "Descartada: concentra todo en una partición."
+            },
+            {
+              "id": "c",
+              "text": "Elegir una clave de partición de alta cardinalidad, como el identificador del pedido",
+              "explanation": "Es la correcta: reparte las escrituras entre muchas particiones."
+            },
+            {
+              "id": "d",
+              "text": "Eliminar la clave de ordenación",
+              "explanation": "Descartada: no corrige la clave de partición."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-04",
+        "title": "Eliminar una partición caliente",
+        "statement": "Una tabla de pedidos usa la fecha del día como clave de partición y todas las escrituras del día caen en la misma partición. ¿Qué cambio es el MÁS adecuado?",
+        "concepts": [
+          "partición caliente"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1104
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un script que consulte toda la tabla cada minuto",
+              "explanation": "Descartada: añade carga y retraso."
+            },
+            {
+              "id": "b",
+              "text": "DynamoDB Streams como origen de un disparador de Lambda",
+              "explanation": "Es la correcta: entrega los cambios de la tabla a la función."
+            },
+            {
+              "id": "c",
+              "text": "Un balanceador de carga de red",
+              "explanation": "Descartada: no detecta cambios de la tabla."
+            },
+            {
+              "id": "d",
+              "text": "Un volumen de EBS compartido",
+              "explanation": "Descartada: no notifica cambios de la tabla."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.5",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-05",
+        "title": "Reaccionar a los cambios de una tabla",
+        "statement": "Cada vez que cambia un elemento de una tabla de DynamoDB debe ejecutarse una función de Lambda con el MÍNIMO de infraestructura propia. ¿Qué es lo MEJOR?",
+        "concepts": [
+          "DynamoDB Streams"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1105
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Amazon Aurora Serverless v2",
+              "explanation": "Es la correcta: ajusta la capacidad de forma fina según la demanda."
+            },
+            {
+              "id": "b",
+              "text": "Una instancia fija dimensionada para el pico",
+              "explanation": "Descartada: paga capacidad sin usar casi siempre."
+            },
+            {
+              "id": "c",
+              "text": "Una instancia fija dimensionada para la media",
+              "explanation": "Descartada: se quedará corta en los picos."
+            },
+            {
+              "id": "d",
+              "text": "Un archivo plano en S3",
+              "explanation": "Descartada: no es una base relacional."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-06",
+        "title": "Base relacional con carga muy variable",
+        "statement": "Una aplicación tiene una carga muy variable e impredecible sobre una base relacional y se busca ajustar la capacidad con el MÍNIMO esfuerzo y pagar por lo usado. ¿Qué elige?",
+        "concepts": [
+          "Aurora Serverless v2"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1106
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Una caché no necesita ninguna política de expiración",
+              "explanation": "No cumple: conviene definir TTL para limitar datos obsoletos."
+            },
+            {
+              "id": "b",
+              "text": "Con carga diferida, toda la base de datos se copia a la caché al arrancar",
+              "explanation": "No cumple: la carga ocurre bajo demanda."
+            },
+            {
+              "id": "c",
+              "text": "Con escritura simultánea, la caché se actualiza al escribir en la base de datos",
+              "explanation": "Cumple: mantiene la caché más fresca a costa de más escrituras."
+            },
+            {
+              "id": "d",
+              "text": "Con carga diferida, los datos se cargan en la caché cuando se solicitan y no están",
+              "explanation": "Cumple: solo se almacena lo que se lee."
+            },
+            {
+              "id": "e",
+              "text": "Con escritura simultánea, la caché nunca contiene datos de la base",
+              "explanation": "No cumple: se actualiza con las escrituras."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-07",
+        "title": "Dos estrategias de caché",
+        "statement": "Un equipo diseña la estrategia de caché con Amazon ElastiCache. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "carga diferida",
+          "escritura simultánea"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Strategies.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1107
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Memcached",
+              "explanation": "Descartada: es un almacén sencillo sin replicación nativa ni estructuras ricas."
+            },
+            {
+              "id": "b",
+              "text": "Ninguno, ElastiCache solo ofrece discos",
+              "explanation": "Descartada: es un servicio de caché en memoria."
+            },
+            {
+              "id": "c",
+              "text": "Valkey o Redis OSS",
+              "explanation": "Es la correcta: admiten estructuras ricas, replicación y persistencia."
+            },
+            {
+              "id": "d",
+              "text": "Un bucket de S3",
+              "explanation": "Descartada: no es una caché en memoria."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-08",
+        "title": "Elegir el motor de caché con replicación y persistencia",
+        "statement": "Una aplicación necesita una caché con estructuras de datos ricas, replicación y persistencia opcional. ¿Qué motor de ElastiCache es el MÁS adecuado?",
+        "concepts": [
+          "Valkey",
+          "Redis OSS",
+          "Memcached"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1108
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un almacén de clave-valor sin relaciones",
+              "explanation": "Descartada: no recorre relaciones de forma natural."
+            },
+            {
+              "id": "b",
+              "text": "Una base de datos de grafos, como Amazon Neptune",
+              "explanation": "Es la correcta: está diseñada para recorrer relaciones."
+            },
+            {
+              "id": "c",
+              "text": "Un almacén de series temporales",
+              "explanation": "Descartada: se orienta a datos con marca de tiempo."
+            },
+            {
+              "id": "d",
+              "text": "Un sistema de archivos compartido",
+              "explanation": "Descartada: no es una base de datos."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-09",
+        "title": "Relaciones complejas entre entidades",
+        "statement": "Una red social necesita consultar de forma eficiente relaciones de varios niveles entre personas, como amigos de amigos. ¿Qué tipo de base de datos es el MEJOR ajuste?",
+        "concepts": [
+          "base de datos de grafos"
+        ],
+        "sources": [
+          "https://aws.amazon.com/products/databases/",
+          "https://docs.aws.amazon.com/decision-guides/latest/decision-guides/databases-on-aws-how-to-choose.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1109
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Datos de series temporales con una base de grafos",
+              "explanation": "No cumple: los grafos modelan relaciones."
+            },
+            {
+              "id": "b",
+              "text": "Datos de series temporales con Amazon Timestream",
+              "explanation": "Cumple: está pensado para datos con marca de tiempo."
+            },
+            {
+              "id": "c",
+              "text": "Un almacén de datos analítico con una caché en memoria",
+              "explanation": "No cumple: las cachés no sustituyen un almacén analítico."
+            },
+            {
+              "id": "d",
+              "text": "Cargas compatibles con Apache Cassandra con Amazon Keyspaces",
+              "explanation": "Cumple: es un servicio administrado compatible con Cassandra."
+            },
+            {
+              "id": "e",
+              "text": "Cargas de Cassandra con un almacén de documentos de otro tipo",
+              "explanation": "No cumple: no es el servicio compatible con Cassandra."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-10",
+        "title": "Dos bases de datos de propósito específico",
+        "statement": "Un equipo hace corresponder necesidades con servicios de bases de datos. Selecciona DOS correspondencias correctas.",
+        "concepts": [
+          "series temporales",
+          "Cassandra"
+        ],
+        "sources": [
+          "https://aws.amazon.com/products/databases/",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1110
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Más espacio de almacenamiento en el origen",
+              "explanation": "Descartada: no reduce la latencia hacia usuarios lejanos."
+            },
+            {
+              "id": "b",
+              "text": "Un volumen de EBS más grande",
+              "explanation": "Descartada: no acerca el contenido a los usuarios."
+            },
+            {
+              "id": "c",
+              "text": "Una copia de seguridad semanal",
+              "explanation": "Descartada: no mejora la entrega."
+            },
+            {
+              "id": "d",
+              "text": "Amazon CloudFront",
+              "explanation": "Es la correcta: almacena en caché el contenido en ubicaciones de borde cercanas a los usuarios."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-11",
+        "title": "Servir contenido estático a usuarios de todo el mundo",
+        "statement": "Un sitio con imágenes y archivos estáticos tiene usuarios en varios continentes y se busca la MENOR latencia con el MÍNIMO cambio. ¿Qué servicio es el MEJOR?",
+        "concepts": [
+          "CloudFront"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1111
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Ambos eliminan la necesidad de un origen",
+              "explanation": "No cumple: ambos dependen de un origen o destino."
+            },
+            {
+              "id": "b",
+              "text": "Global Accelerator almacena en caché el contenido en el borde",
+              "explanation": "No cumple: no es una caché de contenido."
+            },
+            {
+              "id": "c",
+              "text": "Global Accelerator ofrece direcciones IP estáticas anycast",
+              "explanation": "Cumple: dirige el tráfico por la red global de AWS."
+            },
+            {
+              "id": "d",
+              "text": "CloudFront almacena en caché contenido en ubicaciones de borde",
+              "explanation": "Cumple: reduce la latencia del contenido que se puede cachear."
+            },
+            {
+              "id": "e",
+              "text": "CloudFront solo admite tráfico UDP",
+              "explanation": "No cumple: se usa sobre todo para HTTP y HTTPS."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-12",
+        "title": "Dos hechos sobre CloudFront y Global Accelerator",
+        "statement": "Un equipo mejora el rendimiento global de su aplicación. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "CloudFront",
+          "Global Accelerator"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html",
+          "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1112
+      }
+    },
+    {
+      "unitCode": "AWS-U2.9.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un registro simple de Route 53",
+              "explanation": "Descartada: resuelve nombres y no da IP estáticas anycast."
+            },
+            {
+              "id": "b",
+              "text": "AWS Global Accelerator",
+              "explanation": "Es la correcta: da IP estáticas anycast y enruta por la red global de AWS."
+            },
+            {
+              "id": "c",
+              "text": "Un grupo de seguridad con reglas abiertas",
+              "explanation": "Descartada: no mejora el rendimiento."
+            },
+            {
+              "id": "d",
+              "text": "Un punto de enlace de VPC de gateway",
+              "explanation": "Descartada: no sirve a usuarios externos."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C12"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-13",
+        "title": "IP estáticas para una aplicación en varias regiones",
+        "statement": "Un servicio TCP en varias regiones necesita direcciones IP de entrada estáticas y MEJOR rendimiento de red hacia los usuarios. ¿Qué servicio encaja?",
+        "concepts": [
+          "Global Accelerator"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1113
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.6",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Enrutamiento por latencia",
+              "explanation": "Es la correcta: dirige al recurso con la menor latencia para el usuario."
+            },
+            {
+              "id": "b",
+              "text": "Enrutamiento simple con un solo valor",
+              "explanation": "Descartada: no considera la latencia."
+            },
+            {
+              "id": "c",
+              "text": "Enrutamiento ponderado con pesos iguales",
+              "explanation": "Descartada: reparte sin considerar la latencia."
+            },
+            {
+              "id": "d",
+              "text": "Un registro sin ninguna política",
+              "explanation": "Descartada: no optimiza por latencia."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.4",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-14",
+        "title": "Dirigir a los usuarios a la región más rápida",
+        "statement": "Una aplicación está desplegada en dos regiones y se quiere que cada usuario llegue a la región con MENOR latencia. ¿Qué política de Route 53 elige?",
+        "concepts": [
+          "enrutamiento por latencia"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1114
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Cada réplica necesita su propia copia completa de los datos",
+              "explanation": "No cumple: comparten el almacenamiento del clúster."
+            },
+            {
+              "id": "b",
+              "text": "Las réplicas comparten el mismo volumen de almacenamiento del clúster",
+              "explanation": "Cumple: evitan copiar los datos a cada réplica."
+            },
+            {
+              "id": "c",
+              "text": "Aurora no admite ninguna réplica de lectura",
+              "explanation": "No cumple: admite réplicas de lectura."
+            },
+            {
+              "id": "d",
+              "text": "El punto de enlace de lectura reparte las conexiones entre las réplicas",
+              "explanation": "Cumple: facilita escalar las lecturas."
+            },
+            {
+              "id": "e",
+              "text": "Las réplicas solo sirven para escrituras",
+              "explanation": "No cumple: sirven lecturas."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 3,
+          "task": "3.3",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d3-b-15",
+        "title": "Dos hechos sobre las réplicas de Aurora",
+        "statement": "Un equipo escala las lecturas de Amazon Aurora. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "réplicas de Aurora"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html",
+          "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1115
+      }
+    }
+  ]
+}
