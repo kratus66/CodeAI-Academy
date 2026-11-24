@@ -1,0 +1,1340 @@
+{
+  "code": "AWS-U2.9.4",
+  "lessons": [
+    {
+      "slug": "aws-u2-9-4-analitica-a-escala-athena-glue-lake-formation-redshift-emr-y-quicksight-seleccion",
+      "title": "Analítica a escala: Athena, Glue, Lake Formation, Redshift, EMR y QuickSight (selección)",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-athena-que-es",
+          "order": 0,
+          "note": "Fuente previa de Amazon Athena: consultas SQL interactivas sobre datos de S3, sin servidores."
+        },
+        {
+          "resourceSlug": "aws-glue-que-es",
+          "order": 1,
+          "note": "Fuente previa de AWS Glue: integración de datos sin servidores, Data Catalog, rastreadores y ETL."
+        },
+        {
+          "resourceSlug": "aws-lake-formation-que-es",
+          "order": 2,
+          "note": "Fuente de AWS Lake Formation: gobierno y permisos granulares sobre el lago de datos."
+        },
+        {
+          "resourceSlug": "aws-redshift-que-es",
+          "order": 3,
+          "note": "Fuente previa de Amazon Redshift: almacén de datos totalmente administrado a escala de petabytes y modo sin servidor."
+        },
+        {
+          "resourceSlug": "aws-emr-que-es",
+          "order": 4,
+          "note": "Fuente de Amazon EMR: plataforma de clúster administrada para Apache Hadoop y Apache Spark."
+        },
+        {
+          "resourceSlug": "aws-quicksight-que-es",
+          "order": 5,
+          "note": "Fuente de Amazon QuickSight, hoy AWS Quick Sight dentro de AWS Quick: visualización de datos e inteligencia de negocio."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 6,
+          "note": "Guía de SAA-C03: el dominio 3 (Diseñar arquitecturas de alto rendimiento) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Una arquitectura de analítica a escala reparte el trabajo entre servicios especializados. Amazon Athena consulta datos directamente en Amazon S3 con SQL estándar y sin servidores. AWS Glue descubre, cataloga, prepara y mueve datos con ETL sin servidores. AWS Lake Formation gobierna el lago de datos con permisos granulares. Amazon Redshift es un almacén de datos totalmente administrado a escala de petabytes. Amazon EMR es una plataforma de clúster administrada para ejecutar Apache Hadoop y Apache Spark. Y Amazon QuickSight (hoy AWS Quick Sight, una característica dentro de AWS Quick) visualiza los datos y ofrece inteligencia de negocio. En el dominio 3 de SAA-C03, «Diseñar arquitecturas de alto rendimiento», en la parte de ingesta y transformación de datos, el enunciado describe qué se hace con los datos (consultar, catalogar, gobernar, almacenar a escala, procesar con un marco de big data o visualizar) y tú eliges el servicio. Los datos de abajo son de las páginas oficiales de AWS leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Los servicios frente a frente",
+          "items": [
+            "Amazon Athena: servicio de consultas interactivo que facilita analizar datos directamente en Amazon S3 con SQL estándar; apuntas Athena a tus datos y ejecutas consultas ad hoc con resultados en segundos. También ejecuta analítica interactiva con Apache Spark. Es sin servidores (no hay infraestructura que configurar o administrar), escala automáticamente ejecutando consultas en paralelo y pagas solo por las consultas que ejecutas.",
+            "AWS Glue: servicio de integración de datos sin servidores para descubrir, preparar, mover e integrar datos de varias fuentes. Se conecta a más de 70 fuentes de datos, gestiona los datos en un catálogo de datos centralizado (AWS Glue Data Catalog), tiene rastreadores (crawlers) que infieren el esquema, crea canalizaciones ETL (extraer, transformar y cargar) y admite ETL, ELT y streaming; lo consultan Athena, Amazon EMR y Amazon Redshift Spectrum.",
+            "AWS Lake Formation: ayuda a gobernar, proteger y compartir de forma centralizada los datos para analítica y aprendizaje automático. Gestiona el control de acceso detallado de los datos del lago de datos en S3 y de sus metadatos en el Data Catalog, con un modelo de permisos propio que complementa el de IAM.",
+            "Amazon Redshift: almacén de datos totalmente administrado a escala de petabytes en la nube; Redshift Serverless permite acceder a los datos y analizarlos sin las configuraciones de un almacén aprovisionado, y no se cobra cuando el almacén está inactivo.",
+            "Amazon EMR: plataforma de clúster administrada que simplifica la ejecución de marcos de big data, como Apache Hadoop y Apache Spark, para procesar y analizar grandes volúmenes de datos, con fines de analítica y de inteligencia de negocio.",
+            "Amazon QuickSight (hoy AWS Quick Sight): visualización interactiva de datos e inteligencia de negocio: te conectas a fuentes de datos, creas paneles e incrustas analítica en aplicaciones."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Athena y Glue: consultar sin servidores y catalogar",
+          "text": "Amazon Athena es un servicio de consultas interactivo que facilita analizar datos directamente en Amazon S3 con SQL estándar: con unas pocas acciones en la consola de administración, apuntas Athena a tus datos de S3 y empiezas a ejecutar consultas ad hoc con SQL estándar para obtener resultados en segundos. También permite ejecutar analítica de datos con Apache Spark de forma interactiva sin planificar, configurar ni administrar recursos: envías código de Spark y recibes los resultados directamente, con una experiencia de cuadernos en la consola. Athena SQL y Apache Spark en Athena son sin servidores, así que no hay infraestructura que configurar o administrar y pagas solo por las consultas que ejecutas; Athena escala automáticamente, ejecutando las consultas en paralelo, para que los resultados sean rápidos incluso con conjuntos de datos grandes y consultas complejas. AWS Glue complementa a Athena como servicio de integración de datos sin servidores: permite descubrir y conectarte a más de 70 fuentes de datos diversas y gestionar los datos en un catálogo de datos centralizado, crear, ejecutar y supervisar visualmente canalizaciones ETL para cargar datos en tus lagos de datos y buscar y consultar de inmediato los datos catalogados con Amazon Athena, Amazon EMR y Amazon Redshift Spectrum. Sus características se agrupan en descubrir y organizar los datos (catalogarlos, y usar rastreadores para inferir automáticamente la información de esquema e integrarla en el Data Catalog, y gestionar esquemas y permisos), transformar, preparar y limpiar los datos (con un editor visual de trabajos que genera automáticamente el código ETL) y construir y supervisar canalizaciones de datos (con trabajos programados, bajo demanda o basados en eventos). Ofrece alta disponibilidad integrada y facturación por uso, y AWS Glue Studio es la interfaz gráfica para crear, ejecutar y supervisar los trabajos sobre el motor ETL sin servidores basado en Apache Spark."
+        },
+        {
+          "type": "paragraph",
+          "title": "Lake Formation: gobernar el lago de datos",
+          "text": "AWS Lake Formation ayuda a gobernar, proteger y compartir globalmente los datos para analítica y aprendizaje automático. Con él puedes gestionar el control de acceso detallado de los datos de tu lago de datos en Amazon S3 y de sus metadatos en el AWS Glue Data Catalog. Ofrece su propio modelo de permisos, que complementa el modelo de permisos de IAM y que permite un acceso detallado a los datos almacenados en lagos de datos y también en fuentes externas (almacenes de datos de Amazon Redshift, bases de datos de Amazon DynamoDB y fuentes de terceros) mediante un mecanismo sencillo de conceder o revocar, muy parecido al de un sistema de gestión de bases de datos relacionales. Los permisos de Lake Formation se aplican con controles granulares a nivel de columna, de fila y de celda en los servicios de analítica y de aprendizaje automático de AWS, entre ellos Amazon Athena, AWS Quick, Amazon Redshift Spectrum, Amazon EMR y AWS Glue. Con el modo de acceso híbrido del Data Catalog puedes proteger y acceder a los datos catalogados con los permisos de Lake Formation y con las políticas de permisos de IAM para las acciones de Amazon S3 y de AWS Glue, de modo que los administradores de datos pueden incorporar los permisos de Lake Formation de forma selectiva e incremental, un caso de uso del lago de datos cada vez. Lake Formation permite también compartir datos de forma interna y externa entre varias cuentas de AWS, organizaciones de AWS o directamente con entidades principales de IAM de otra cuenta, con acceso detallado a los metadatos del Data Catalog y a los datos subyacentes. Ayuda a romper los silos de datos y a combinar distintos tipos de datos estructurados y no estructurados en un repositorio centralizado: identificas los almacenes de datos existentes en S3 o en bases de datos relacionales y NoSQL, mueves los datos al lago, los rastreas, catalogas y preparas para analítica y das a los usuarios un acceso seguro de autoservicio mediante los servicios de analítica que elijan. Puede importar datos de bases de datos MySQL, PostgreSQL, SQL Server, MariaDB y Oracle que se ejecutan en Amazon RDS o están alojadas en Amazon EC2, con carga masiva e incremental, y de bases de datos locales mediante JDBC; para otras bases se pueden crear trabajos ETL personalizados con AWS Glue."
+        },
+        {
+          "type": "paragraph",
+          "title": "Redshift, EMR y QuickSight: almacenar a escala, procesar con marcos y visualizar",
+          "text": "Amazon Redshift es un servicio de almacén de datos totalmente administrado y a escala de petabytes en la nube. Redshift Serverless permite acceder a los datos y analizarlos sin las configuraciones de un almacén de datos aprovisionado: los recursos se aprovisionan automáticamente y la capacidad se escala de forma inteligente para ofrecer un rendimiento rápido incluso con las cargas de trabajo más exigentes e impredecibles, y no se incurre en cargos cuando el almacén está inactivo, de modo que solo se paga por lo que se usa. Puedes cargar datos y empezar a consultar de inmediato con el editor de consultas v2 o con tu herramienta de inteligencia de negocio favorita, con las mismas herramientas basadas en SQL que ya usas; si prefieres administrar los recursos tú mismo, puedes crear clústeres aprovisionados. Amazon EMR, antes llamado Amazon Elastic MapReduce, es una plataforma de clúster administrada que simplifica la ejecución de marcos de big data, como Apache Hadoop y Apache Spark, en AWS, para procesar y analizar grandes volúmenes de datos con fines de analítica y de cargas de inteligencia de negocio; también permite transformar y mover grandes cantidades de datos hacia y desde otros almacenes y bases de datos de AWS, como Amazon S3 y Amazon DynamoDB. Amazon QuickSight es el servicio de visualización: la página de AWS Quick explica que AWS Quick evolucionó desde Amazon QuickSight, que continúa como AWS Quick Sight, una característica dentro de Quick, y que todas las API, SDK e integraciones de QuickSight siguen funcionando sin cambios; AWS Quick Sight ofrece visualización interactiva de datos e inteligencia de negocio, con conexión a fuentes de datos, creación de paneles e incrustación de analítica en aplicaciones."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cinco casos, cinco decisiones",
+          "text": "Un equipo tiene cinco casos. (1) Analistas que quieren lanzar consultas SQL ad hoc sobre datos que ya están en S3, sin administrar servidores y pagando solo por consulta. (2) Datos de varias fuentes que hay que descubrir, catalogar y transformar con trabajos ETL sin servidores. (3) Un lago de datos en S3 cuyo acceso debe controlarse a nivel de columna y de fila, de forma centralizada, para Athena, EMR y Redshift Spectrum. (4) Un almacén de datos a escala de petabytes para inteligencia de negocio con herramientas SQL. (5) Un trabajo de Apache Spark sobre un gran volumen de datos en un clúster administrado. Paso 1: para (1), la clave es «SQL ad hoc sobre S3, sin servidores y pago por consulta», así que va Athena. Paso 2: para (2), la clave es «descubrir, catalogar y ETL sin servidores», así que va AWS Glue. Paso 3: para (3), la clave es «permisos de columna y fila centralizados», así que va Lake Formation. Paso 4: para (4), la clave es «almacén de datos a escala de petabytes», así que va Amazon Redshift. Paso 5: para (5), la clave es «Spark en un clúster administrado», así que va Amazon EMR; y para mostrar los resultados en paneles se añadiría Amazon QuickSight. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una decisión de analítica como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const decisiones = {\n  casos: [\n    { necesidad: \"sql-ad-hoc-sobre-s3-sin-servidores\", servicio: \"athena\" },\n    { necesidad: \"catalogar-y-etl-sin-servidores\", servicio: \"glue\" },\n    { necesidad: \"permisos-de-columna-y-fila-del-lago\", servicio: \"lake-formation\" },\n    { necesidad: \"almacen-de-datos-a-escala-de-petabytes\", servicio: \"redshift\" },\n    { necesidad: \"spark-en-un-cluster-administrado\", servicio: \"emr\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De lo que se hace con los datos al servicio",
+          "code": "flowchart TB\n  N{\"Qué se hace con los datos\"} -->|\"Consultar con SQL en S3, sin servidores\"| A[\"Amazon Athena\"]\n  N -->|\"Descubrir, catalogar y transformar con ETL\"| G[\"AWS Glue\"]\n  N -->|\"Gobernar con permisos de columna, fila y celda\"| L[\"AWS Lake Formation\"]\n  N -->|\"Almacén de datos a escala de petabytes\"| R[\"Amazon Redshift\"]\n  N -->|\"Hadoop o Spark en un clúster administrado\"| E[\"Amazon EMR\"]\n  N -->|\"Paneles e inteligencia de negocio\"| Q[\"Amazon QuickSight\"]\n  G --> A\n  G --> E\n  L --> A\n  L --> R"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir quién consulta, quién cataloga, quién gobierna y quién visualiza",
+          "text": "El enunciado mezcla señales: «SQL ad hoc», «descubrir y catalogar», «permisos de columna y fila», «almacén de datos», «Spark», «paneles». Athena consulta, Glue cataloga y transforma, Lake Formation gobierna el acceso, Redshift almacena a escala de petabytes, EMR ejecuta marcos de big data en clústeres administrados y QuickSight visualiza; un servicio no sustituye a los demás, se combinan. Subraya el verbo del enunciado (consultar, catalogar, gobernar, almacenar, procesar, visualizar) antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: montar un clúster para consultas SQL ad hoc sobre S3",
+          "text": "Causa: pensar que cualquier análisis de datos grandes necesita un clúster o un almacén de datos. Consecuencia: con un clúster de EMR o un almacén de Redshift hay que aprovisionar y administrar capacidad (o cargar los datos), mientras que Athena consulta los datos directamente en S3 con SQL estándar, sin servidores y con pago por consulta. Solución: para consultas ad hoc sobre datos de S3, usa Athena; reserva EMR para marcos como Hadoop y Spark y Redshift para un almacén de datos a escala."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: usar solo permisos de IAM y de S3 para el control fino de un lago de datos",
+          "text": "Causa: dar acceso al lago con políticas de IAM y de S3, que no distinguen columnas, filas ni celdas. Consecuencia: no se puede conceder a un analista solo las columnas o filas que le corresponden. Solución: usa Lake Formation, cuyo modelo de permisos complementa al de IAM y aplica controles a nivel de columna, fila y celda en Athena, Redshift Spectrum, EMR y Glue; el modo de acceso híbrido permite incorporarlo de forma incremental."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: esperar que Glue consulte o que Athena catalogue",
+          "text": "Causa: mezclar los papeles de los servicios por su cercanía. Consecuencia: AWS Glue descubre, cataloga y transforma los datos (rastreadores, Data Catalog, ETL), y Athena es el servicio que los consulta con SQL; pedir a uno la función del otro deja la solución incompleta. Solución: usa Glue para catalogar y preparar y Athena (o EMR o Redshift Spectrum) para consultar los datos catalogados."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir el servicio de analítica (Athena, AWS Glue, Lake Formation, Redshift, EMR o QuickSight) que responde a lo que el enunciado hace con los datos, y explicar cómo se combinan. Esta unidad prepara el examen SAA-C03, dominio 3 «Diseñar arquitecturas de alto rendimiento», en la parte de ingesta y transformación de datos. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras el servicio, el dato del enunciado que lo decide y por qué los otros quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cinco decisiones del ejemplo: para cada caso, nombra el servicio y el dato que lo decide. Explica con tus palabras el diagrama «De lo que se hace con los datos al servicio». Después responde: si un equipo quiere consultar con SQL datos de S3 que antes hay que descubrir y catalogar, ¿qué dos servicios usa y qué hace cada uno?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «Las consultas ad hoc que no necesitan un clúster». Una configuración escrita como objeto elige un clúster administrado para consultas SQL ad hoc sobre datos de S3. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la necesidad y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Tres necesidades de analítica, dos servicios mal elegidos». Decide qué servicio corresponde a cada necesidad sin alterar el nombre de las necesidades. Criterio de paso: las pruebas pasan y justificas por escrito cada cambio con las páginas de Glue, Lake Formation y QuickSight."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre servicios de analítica. Audítalo en «Auditar un informe de analítica a escala generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de Athena, Glue, Lake Formation, Redshift, EMR y QuickSight (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué hace cada uno de los seis servicios y con qué verbo lo asocias; qué cobra Athena; qué hacen los rastreadores de Glue; qué granularidad de permisos ofrece Lake Formation; y qué ventaja tiene Redshift Serverless. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa tiene datos en S3 y en bases de datos, quiere catalogarlos, que los analistas los consulten con SQL sin administrar servidores, que cada equipo vea solo sus columnas y filas y que los directivos vean paneles. Decide qué servicio usas para cada necesidad. Pregunta de cierre: un compañero dice «con Athena ya controlamos el acceso por columna»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio de consultas interactivo para analizar datos directamente en Amazon S3 con SQL estándar: consultas ad hoc con resultados en segundos, y también analítica con Apache Spark. Es sin servidores (no hay infraestructura que configurar ni administrar), escala automáticamente ejecutando consultas en paralelo y pagas solo por las consultas que ejecutas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-4-tarjeta-01",
+      "title": "Tarjeta: Amazon Athena",
+      "statement": "¿Qué es Amazon Athena y cómo se cobra?",
+      "concepts": [
+        "Athena",
+        "SQL estándar",
+        "sin servidores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio de integración de datos sin servidores: descubre, prepara, mueve e integra datos de más de 70 fuentes, con ETL, ELT y streaming. Los rastreadores infieren automáticamente el esquema y lo integran en el Data Catalog, un catálogo de metadatos centralizado que consultan Athena, EMR y Redshift Spectrum. Facturación por uso."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-4-tarjeta-02",
+      "title": "Tarjeta: AWS Glue y el Data Catalog",
+      "statement": "¿Qué hace AWS Glue y qué son los rastreadores y el Data Catalog?",
+      "concepts": [
+        "Glue",
+        "rastreadores",
+        "Data Catalog",
+        "ETL"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Gobierna, protege y comparte de forma centralizada los datos del lago en S3 y los metadatos del Data Catalog. Su modelo de permisos complementa el de IAM, con conceder y revocar como en una base de datos relacional, y se aplica a nivel de columna, fila y celda en Athena, Quick, Redshift Spectrum, EMR y Glue. Permite compartir entre cuentas y organizaciones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-4-tarjeta-03",
+      "title": "Tarjeta: AWS Lake Formation",
+      "statement": "¿Qué aporta AWS Lake Formation al gobierno de un lago de datos?",
+      "concepts": [
+        "Lake Formation",
+        "permisos granulares",
+        "lago de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Almacén de datos totalmente administrado y a escala de petabytes en la nube, consultable con herramientas SQL y de inteligencia de negocio. Redshift Serverless permite acceder a los datos y analizarlos sin las configuraciones de un almacén aprovisionado, escala la capacidad automáticamente y no cobra cuando el almacén está inactivo. También hay clústeres aprovisionados."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-4-tarjeta-04",
+      "title": "Tarjeta: Amazon Redshift",
+      "statement": "¿Qué es Amazon Redshift y qué ofrece Redshift Serverless?",
+      "concepts": [
+        "Redshift",
+        "almacén de datos",
+        "Redshift Serverless"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Plataforma de clúster administrada (antes Amazon Elastic MapReduce) que simplifica la ejecución de marcos de big data, como Apache Hadoop y Apache Spark, en AWS para procesar y analizar grandes volúmenes de datos, con fines de analítica y de inteligencia de negocio. Permite transformar y mover datos hacia y desde otros almacenes de AWS, como Amazon S3 y Amazon DynamoDB."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-4-tarjeta-05",
+      "title": "Tarjeta: Amazon EMR",
+      "statement": "¿Qué es Amazon EMR y qué marcos ejecuta?",
+      "concepts": [
+        "EMR",
+        "Hadoop",
+        "Spark"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Servicio de visualización interactiva de datos e inteligencia de negocio: conecta con fuentes de datos, crea paneles e incrusta analítica en aplicaciones. AWS Quick evolucionó desde Amazon QuickSight, que continúa como AWS Quick Sight, una característica dentro de Quick; las API, los SDK y las integraciones de QuickSight siguen funcionando sin cambios."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-4-tarjeta-06",
+      "title": "Tarjeta: Amazon QuickSight",
+      "statement": "¿Qué es Amazon QuickSight y cómo se llama hoy?",
+      "concepts": [
+        "QuickSight",
+        "AWS Quick",
+        "paneles"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/quicksight/latest/user/welcome.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Consultas SQL ad hoc sobre datos que ya están en S3, sin infraestructura y pagando solo por consulta. Corrige su defecto principal.\nexport const diseno = {\n  necesidad: \"consultas-sql-ad-hoc-sobre-datos-en-s3\",\n  requisitos: { sinServidores: true, pagarSoloPorConsulta: true },\n  servicio: \"emr\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  necesidad: \"consultas-sql-ad-hoc-sobre-datos-en-s3\",\n  requisitos: { sinServidores: true, pagarSoloPorConsulta: true },\n  servicio: \"athena\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El caso pide SQL ad hoc directamente sobre datos de S3, sin servidores y con pago por consulta. Compara esas exigencias con lo que es el servicio elegido."
+        },
+        {
+          "level": 2,
+          "text": "Amazon EMR es una plataforma de clúster administrada para marcos de big data como Hadoop y Spark. Amazon Athena consulta datos directamente en S3 con SQL estándar, es sin servidores y se paga por las consultas ejecutadas."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el servicio a \"athena\". No cambies la necesidad ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el servicio ya no es EMR",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.servicio, \"emr\", \"EMR es una plataforma de clúster administrada; no es sin servidores ni de pago por consulta\");\nassert.strictEqual(diseno.servicio, \"athena\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.sinServidores, true);\nassert.strictEqual(diseno.requisitos.pagarSoloPorConsulta, true);"
+          }
+        },
+        {
+          "name": "el nombre de la necesidad no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.necesidad, \"consultas-sql-ad-hoc-sobre-datos-en-s3\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-9-4-debug-01",
+      "title": "Las consultas ad hoc que no necesitan un clúster",
+      "statement": "El objeto `diseno` modela unos analistas que quieren ejecutar consultas SQL ad hoc sobre datos que ya están en Amazon S3, sin administrar infraestructura y pagando solo por las consultas que ejecutan. El diseño actual elige una plataforma de clúster administrada para marcos de big data. Corrige el servicio sin cambiar la necesidad ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`). Los servicios se escriben así: athena, glue, lake-formation, redshift, emr, quicksight.",
+      "concepts": [
+        "Athena",
+        "EMR",
+        "SQL ad hoc"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tres necesidades de analítica y el servicio elegido para cada una. Dos están mal asignadas: corrígelas.\nexport const diseno = {\n  casos: [\n    { necesidad: \"catalogar-y-transformar-datos-con-etl-sin-servidores\", servicio: \"athena\" },\n    { necesidad: \"permisos-de-columna-y-fila-sobre-el-lago-de-datos\", servicio: \"glue\" },\n    { necesidad: \"paneles-interactivos-de-inteligencia-de-negocio\", servicio: \"quicksight\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  casos: [\n    { necesidad: \"catalogar-y-transformar-datos-con-etl-sin-servidores\", servicio: \"glue\" },\n    { necesidad: \"permisos-de-columna-y-fila-sobre-el-lago-de-datos\", servicio: \"lake-formation\" },\n    { necesidad: \"paneles-interactivos-de-inteligencia-de-negocio\", servicio: \"quicksight\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "catalogar y transformar con ETL es de AWS Glue",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"catalogar-y-transformar-datos-con-etl-sin-servidores\"], \"glue\");"
+          }
+        },
+        {
+          "name": "los permisos de columna y fila son de Lake Formation",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"permisos-de-columna-y-fila-sobre-el-lago-de-datos\"], \"lake-formation\");"
+          }
+        },
+        {
+          "name": "los paneles de inteligencia de negocio siguen en QuickSight",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.servicio]));\nassert.strictEqual(por[\"paneles-interactivos-de-inteligencia-de-negocio\"], \"quicksight\");"
+          }
+        },
+        {
+          "name": "las tres necesidades se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.casos.length, 3);\nconst nombres = diseno.casos.map((caso) => caso.necesidad).sort();\nassert.deepStrictEqual(nombres, [\"catalogar-y-transformar-datos-con-etl-sin-servidores\", \"paneles-interactivos-de-inteligencia-de-negocio\", \"permisos-de-columna-y-fila-sobre-el-lago-de-datos\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-9-4-debug-02",
+      "title": "Tres necesidades de analítica, dos servicios mal elegidos",
+      "statement": "El objeto `diseno` asigna un servicio de analítica a cada una de tres necesidades: catalogar y transformar datos con ETL sin servidores, controlar el acceso a nivel de columna y de fila sobre un lago de datos y mostrar paneles interactivos de inteligencia de negocio. Dos de las asignaciones son incorrectas según las páginas de AWS Glue y de AWS Lake Formation. Corrígelas sin cambiar el nombre de las necesidades, y mantén la forma del valor exportado (`export const diseno = { … }`). Los servicios se escriben así: athena, glue, lake-formation, redshift, emr, quicksight.",
+      "concepts": [
+        "Glue",
+        "Lake Formation",
+        "QuickSight"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html",
+        "https://docs.aws.amazon.com/quicksight/latest/user/welcome.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de analítica a escala (borrador generado por un asistente)\nEscenario: un lago de datos en S3 con analistas, datos de varias fuentes y paneles para la dirección.\n1. Amazon Athena permite analizar datos directamente en Amazon S3 con SQL estándar.\n2. Amazon Athena exige crear y administrar un clúster de servidores antes de ejecutar consultas.\n3. Los rastreadores de AWS Glue infieren automáticamente el esquema de los datos y lo integran en el Data Catalog.\n4. Amazon Redshift es un servicio de ETL sin servidores y no un almacén de datos.\n5. Lake Formation aplica permisos a nivel de columna, fila y celda en servicios como Athena, Redshift Spectrum, EMR y Glue.\n6. Amazon EMR es un servicio sin servidores en el que no existe ningún clúster que administrar.\n7. Amazon QuickSight es el servicio con el que se programan y ejecutan los trabajos de ETL."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Athena y S3",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: Athena es un servicio de consultas interactivo que analiza datos directamente en S3 con SQL estándar."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Clúster para Athena",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Athena es sin servidores, no hay infraestructura que configurar ni administrar y solo pagas por las consultas que ejecutas."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Rastreadores de Glue",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: los rastreadores infieren automáticamente la información de esquema y la integran en el AWS Glue Data Catalog."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Qué es Redshift",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: Amazon Redshift es un almacén de datos totalmente administrado y a escala de petabytes; el servicio de ETL sin servidores es AWS Glue."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Permisos de Lake Formation",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: los permisos de Lake Formation se aplican con controles granulares a nivel de columna, fila y celda en esos servicios."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "EMR sin clúster",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: Amazon EMR es una plataforma de clúster administrada para marcos de big data como Hadoop y Spark."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Papel de QuickSight",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: QuickSight (hoy AWS Quick Sight) ofrece visualización interactiva de datos e inteligencia de negocio, no ejecuta trabajos de ETL."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-9-4-auditoria-01",
+      "title": "Auditar un informe de analítica a escala generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre servicios de analítica en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "Athena",
+        "Glue",
+        "Redshift",
+        "Lake Formation",
+        "EMR",
+        "QuickSight"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html",
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html",
+        "https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html",
+        "https://docs.aws.amazon.com/quicksight/latest/user/welcome.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Redshift con un clúster aprovisionado",
+            "explanation": "Descartada: es un almacén de datos que exige aprovisionar capacidad y cargar los datos."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Athena, con consultas SQL estándar sobre S3",
+            "explanation": "Es la correcta: es sin servidores, consulta los datos directamente en S3 y cobra solo por las consultas ejecutadas."
+          },
+          {
+            "id": "c",
+            "text": "Amazon EMR con un clúster de Hadoop",
+            "explanation": "Descartada: es una plataforma de clúster administrada que hay que aprovisionar y administrar."
+          },
+          {
+            "id": "d",
+            "text": "AWS Lake Formation, con permisos de columna",
+            "explanation": "Descartada: gobierna el acceso a los datos; no es el servicio que ejecuta las consultas SQL."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-4-quiz-01",
+      "title": "SQL ad hoc directamente sobre S3",
+      "statement": "Unos analistas quieren ejecutar consultas SQL ad hoc directamente sobre datos de S3, sin administrar infraestructura y pagando solo por las consultas que ejecutan. ¿Qué servicio es el MEJOR ajuste?",
+      "concepts": [
+        "Athena",
+        "SQL ad hoc"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon Athena, que ejecuta consultas SQL sobre S3",
+            "explanation": "Descartada: consulta datos; el descubrimiento de esquema, el catálogo y el ETL son de AWS Glue."
+          },
+          {
+            "id": "b",
+            "text": "Amazon QuickSight, con paneles interactivos",
+            "explanation": "Descartada: visualiza datos e inteligencia de negocio; no cataloga ni transforma los datos."
+          },
+          {
+            "id": "c",
+            "text": "Amazon EMR, con un clúster de Spark",
+            "explanation": "Descartada: es una plataforma de clúster que hay que administrar, mientras que Glue es sin servidores."
+          },
+          {
+            "id": "d",
+            "text": "AWS Glue, con rastreadores y trabajos ETL sin servidores",
+            "explanation": "Es la correcta: los rastreadores infieren el esquema y lo integran en el Data Catalog; los trabajos ETL se ejecutan sin servidores."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-4-quiz-02",
+      "title": "Descubrir y catalogar con ETL sin servidores",
+      "statement": "Un equipo debe descubrir de forma automática el esquema de datos de varias fuentes, catalogarlos y transformarlos con trabajos ETL, con la MENOR administración de infraestructura. ¿Qué servicio encaja?",
+      "concepts": [
+        "AWS Glue",
+        "rastreadores",
+        "ETL"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Lake Formation, con su modelo de permisos propio",
+            "explanation": "Es la correcta: complementa a IAM y aplica permisos a nivel de columna, fila y celda en esos servicios de analítica."
+          },
+          {
+            "id": "b",
+            "text": "Solo políticas de IAM y de bucket de S3",
+            "explanation": "Descartada: no ofrecen el control detallado de columna, fila y celda que pide el enunciado."
+          },
+          {
+            "id": "c",
+            "text": "Amazon QuickSight, con paneles filtrados",
+            "explanation": "Descartada: visualiza datos; el control de acceso del lago no es su función."
+          },
+          {
+            "id": "d",
+            "text": "Amazon Athena, con consultas parametrizadas",
+            "explanation": "Descartada: consulta los datos; el gobierno de permisos de columna, fila y celda es de Lake Formation."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-4-quiz-03",
+      "title": "Permisos de columna y fila en el lago de datos",
+      "statement": "Una empresa quiere controlar de forma centralizada el acceso a su lago de datos de S3 a nivel de columna y de fila, de modo que se aplique en Athena, Redshift Spectrum y EMR. ¿Qué servicio encaja MÁS?",
+      "concepts": [
+        "Lake Formation",
+        "permisos granulares"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Glue, con trabajos ETL sin servidores",
+            "explanation": "Descartada: integra y prepara datos; no es el almacén de datos."
+          },
+          {
+            "id": "b",
+            "text": "Amazon QuickSight, con paneles",
+            "explanation": "Descartada: visualiza los datos; no los almacena a escala de petabytes."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Redshift, un almacén de datos totalmente administrado",
+            "explanation": "Es la correcta: es un almacén de datos a escala de petabytes que se consulta con las herramientas de SQL y de inteligencia de negocio."
+          },
+          {
+            "id": "d",
+            "text": "Amazon EMR, con un clúster de Hadoop",
+            "explanation": "Descartada: es una plataforma de clúster para marcos de big data, no un almacén de datos administrado."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-4-quiz-04",
+      "title": "Almacén de datos a escala de petabytes",
+      "statement": "Una empresa necesita un almacén de datos totalmente administrado y a escala de petabytes para inteligencia de negocio con herramientas basadas en SQL. ¿Qué servicio es el MEJOR ajuste?",
+      "concepts": [
+        "Redshift",
+        "almacén de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon EMR, una plataforma de clúster administrada",
+            "explanation": "Es la correcta: simplifica la ejecución de marcos de big data como Hadoop y Spark para procesar grandes volúmenes de datos."
+          },
+          {
+            "id": "b",
+            "text": "Amazon QuickSight, con conjuntos de datos",
+            "explanation": "Descartada: es visualización e inteligencia de negocio; no ejecuta trabajos de Spark."
+          },
+          {
+            "id": "c",
+            "text": "Amazon Redshift Serverless",
+            "explanation": "Descartada: es un almacén de datos; el marco de big data administrado es EMR."
+          },
+          {
+            "id": "d",
+            "text": "AWS Lake Formation, con permisos",
+            "explanation": "Descartada: gobierna el acceso al lago de datos; no ejecuta el procesamiento."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-4-quiz-05",
+      "title": "Spark en un clúster administrado",
+      "statement": "Un equipo debe ejecutar trabajos de Apache Spark sobre un gran volumen de datos y quiere una plataforma de clúster administrada, con MENOS tareas de administración del clúster. ¿Qué servicio elige?",
+      "concepts": [
+        "EMR",
+        "Apache Spark"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "AWS Glue, con trabajos ETL",
+            "explanation": "Descartada: prepara y mueve los datos; no es una herramienta de visualización."
+          },
+          {
+            "id": "b",
+            "text": "Amazon Athena, con consultas SQL",
+            "explanation": "Descartada: ejecuta consultas; no ofrece paneles interactivos incrustables."
+          },
+          {
+            "id": "c",
+            "text": "Amazon EMR, con un clúster de Spark",
+            "explanation": "Descartada: procesa datos con marcos de big data, no los visualiza."
+          },
+          {
+            "id": "d",
+            "text": "Amazon QuickSight (hoy AWS Quick Sight)",
+            "explanation": "Es la correcta: ofrece visualización interactiva de datos e inteligencia de negocio, con paneles y analítica incrustable en aplicaciones."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-4-quiz-06",
+      "title": "Paneles de inteligencia de negocio",
+      "statement": "La dirección quiere paneles interactivos de inteligencia de negocio conectados a las fuentes de datos, que puedan incrustarse en aplicaciones. ¿Qué servicio ofrece el MÁXIMO soporte para ello?",
+      "concepts": [
+        "QuickSight",
+        "paneles"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/quicksight/latest/user/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Athena es sin servidores y solo pagas por las consultas que ejecutas",
+            "explanation": "Cumple: no hay infraestructura que configurar o administrar."
+          },
+          {
+            "id": "b",
+            "text": "Athena exige aprovisionar y administrar un clúster antes de consultar",
+            "explanation": "No cumple: Athena es sin servidores y escala automáticamente ejecutando consultas en paralelo."
+          },
+          {
+            "id": "c",
+            "text": "AWS Glue es un almacén de datos a escala de petabytes",
+            "explanation": "No cumple: es un servicio de integración de datos; el almacén de datos es Amazon Redshift."
+          },
+          {
+            "id": "d",
+            "text": "Los rastreadores de AWS Glue infieren el esquema y lo integran en el Data Catalog",
+            "explanation": "Cumple: así se descubren y catalogan los datos de forma automática."
+          },
+          {
+            "id": "e",
+            "text": "Amazon Redshift cobra siempre por la capacidad aunque el almacén esté inactivo",
+            "explanation": "No cumple: en Redshift Serverless no se incurre en cargos cuando el almacén está inactivo."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-4-quiz-07",
+      "title": "Qué es cierto de Athena y Glue",
+      "statement": "Un equipo repasa Athena y AWS Glue. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Athena",
+        "AWS Glue",
+        "rastreadores"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "b",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Ofrece un modelo de permisos propio que complementa al de IAM",
+            "explanation": "Cumple: con un mecanismo de conceder y revocar parecido al de una base de datos relacional."
+          },
+          {
+            "id": "b",
+            "text": "Aplica permisos a nivel de columna, fila y celda en Athena, Redshift Spectrum, EMR y Glue",
+            "explanation": "Cumple: son los servicios de analítica en los que se aplican los controles granulares."
+          },
+          {
+            "id": "c",
+            "text": "Sustituye por completo a IAM y no puede usarse con sus políticas",
+            "explanation": "No cumple: el modo de acceso híbrido permite usar a la vez los permisos de Lake Formation y las políticas de IAM."
+          },
+          {
+            "id": "d",
+            "text": "Solo gestiona datos que no están en Amazon S3",
+            "explanation": "No cumple: gestiona el acceso a los datos del lago en S3 y a sus metadatos en el Data Catalog, y a fuentes externas."
+          },
+          {
+            "id": "e",
+            "text": "Permite compartir datos entre varias cuentas de AWS y organizaciones",
+            "explanation": "Cumple: con acceso detallado a los metadatos del Data Catalog y a los datos subyacentes."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 3,
+        "task": "3.5",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-4-quiz-08",
+      "title": "Qué es cierto de Lake Formation",
+      "statement": "Un equipo repasa AWS Lake Formation. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "Lake Formation",
+        "permisos",
+        "compartir datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "athena",
+            "term": "Amazon Athena",
+            "definition": "Consultas SQL ad hoc directamente sobre datos de S3, sin servidores"
+          },
+          {
+            "id": "glue",
+            "term": "AWS Glue",
+            "definition": "Descubrir, catalogar y preparar datos con ETL sin servidores"
+          },
+          {
+            "id": "crawler",
+            "term": "Rastreador de AWS Glue",
+            "definition": "Inferir el esquema de los datos y añadirlo al Data Catalog"
+          },
+          {
+            "id": "catalog",
+            "term": "AWS Glue Data Catalog",
+            "definition": "Repositorio de metadatos centralizado para descubrir y gestionar datos"
+          },
+          {
+            "id": "lf",
+            "term": "AWS Lake Formation",
+            "definition": "Gobernar el lago de datos con permisos de columna, fila y celda"
+          },
+          {
+            "id": "rs",
+            "term": "Amazon Redshift",
+            "definition": "Almacén de datos totalmente administrado a escala de petabytes"
+          },
+          {
+            "id": "emr",
+            "term": "Amazon EMR",
+            "definition": "Plataforma de clúster administrada para Apache Hadoop y Apache Spark"
+          },
+          {
+            "id": "qs",
+            "term": "Amazon QuickSight",
+            "definition": "Visualización interactiva y paneles de inteligencia de negocio"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada servicio de analítica con la función que cumple. Si dudas, pregúntate qué verbo describe el enunciado: consultar, catalogar, gobernar, almacenar, procesar o visualizar.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Consultar y catalogar: Athena y AWS Glue",
+              "Gobernar el acceso: Lake Formation",
+              "Almacenar y procesar a escala: Redshift y EMR",
+              "Visualizar: QuickSight"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-9-4-memoria-01",
+      "title": "Servicio de analítica y función que cumple",
+      "statement": "Empareja cada servicio de analítica con la función que cumple.",
+      "concepts": [
+        "Athena",
+        "Glue",
+        "Lake Formation",
+        "Redshift",
+        "EMR",
+        "QuickSight"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html",
+        "https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html",
+        "https://docs.aws.amazon.com/quicksight/latest/user/welcome.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C5"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-9-4-reflexion-01",
+      "title": "Reflexión: qué servicio de analítica y por qué",
+      "statement": "Elige una organización que conozcas (por ejemplo, una tienda con datos en S3 y en bases de datos) y escribe un registro breve de decisión sobre cómo montarías su analítica, en 5 a 7 líneas:\n\n1) Decisión: qué servicio usarías para cada necesidad (consultar con SQL, catalogar y transformar, gobernar el acceso, almacenar a escala, procesar con Spark o visualizar) y qué dato de la organización lo decide.\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, un clúster de EMR para consultas ad hoc, o IAM y S3 para el control por columna) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (el catálogo, los permisos de Lake Formation, los trabajos ETL).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Eficiencia del rendimiento) y por qué.\n\n5) Evidencia: qué página oficial (Athena, Glue, Lake Formation, Redshift, EMR o QuickSight) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la organización, el servicio y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "analítica a escala",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/athena/latest/ug/what-is.html",
+        "https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html",
+        "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html",
+        "https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html",
+        "https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html",
+        "https://docs.aws.amazon.com/quicksight/latest/user/welcome.html"
+      ],
+      "order": 19
+    }
+  ]
+}
