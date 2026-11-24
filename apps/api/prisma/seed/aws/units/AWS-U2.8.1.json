@@ -1,0 +1,1235 @@
+{
+  "code": "AWS-U2.8.1",
+  "lessons": [
+    {
+      "slug": "aws-u2-8-1-alta-disponibilidad-multi-az-y-tolerancia-a-fallos",
+      "title": "Alta disponibilidad multi-AZ y tolerancia a fallos",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-well-architected-fiabilidad",
+          "order": 0,
+          "note": "Fuente del pilar de Fiabilidad: resiliencia, gestión de fallos y áreas del pilar."
+        },
+        {
+          "resourceSlug": "aws-well-architected-varias-ubicaciones",
+          "order": 1,
+          "note": "Fuente de la práctica REL10-BP01: desplegar la carga en varias zonas de disponibilidad o Regiones."
+        },
+        {
+          "resourceSlug": "aws-aislamiento-de-fallos",
+          "order": 2,
+          "note": "Fuente de los límites de aislamiento de fallos de AWS: zonas, Regiones, planos de control y de datos."
+        },
+        {
+          "resourceSlug": "aws-rds-multi-az",
+          "order": 3,
+          "note": "Fuente previa del despliegue Multi-AZ de Amazon RDS: instancia con un standby frente a clúster con dos standbys."
+        },
+        {
+          "resourceSlug": "aws-route53-comprobaciones-de-estado",
+          "order": 4,
+          "note": "Fuente previa de las comprobaciones de estado de Route 53 y la conmutación por error de DNS."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 5,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Un principio fundamental del diseño de servicios en AWS es evitar los puntos únicos de fallo, incluida la infraestructura física subyacente. La práctica que recoge la guía de fiabilidad es repartir los datos y los recursos de la carga entre varias zonas de disponibilidad (AZ) y, solo cuando hace falta, entre varias Regiones. En el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», en la parte de alta disponibilidad y tolerancia a fallos, el enunciado describe qué debe sobrevivir la carga (el fallo de una AZ, de un nodo o de una Región), qué servicios de datos usa y cuánta complejidad se acepta, y tú decides dónde despliegas el cómputo, cómo se replican los datos y cómo se dirige el tráfico. Los datos de abajo son de las páginas oficiales de AWS leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí. La página de la práctica REL10-BP01 lleva un aviso de que es una referencia histórica que se retirará, con la guía actualizada en el Well-Architected Framework."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas que esta unidad conecta",
+          "items": [
+            "Regiones y zonas de disponibilidad: cada Región es física y lógicamente independiente y consta de tres o más AZ. Las AZ están geográficamente cerca pero físicamente separadas y aisladas, con infraestructura física independiente (energía, servicios mecánicos y conectividad de red), así que un fallo de esos componentes se limita a la AZ afectada.",
+            "Cómputo: reparte todo el cómputo de la carga entre varias AZ (instancias de EC2, tareas de AWS Fargate y funciones de Lambda conectadas a una VPC). EC2 Auto Scaling, Amazon ECS y Amazon EKS permiten lanzar y gestionar cómputo en varias AZ y reemplazarlo automáticamente en otra AZ.",
+            "Tráfico: coloca un balanceador de carga (Application Load Balancer o Network Load Balancer) delante del cómputo; puede reencaminar el tráfico a las instancias disponibles si una AZ falla.",
+            "Datos replicados por defecto en varias AZ: Amazon S3, Amazon EFS, Amazon Aurora, Amazon DynamoDB, Amazon SQS y Amazon Kinesis Data Streams. Con Amazon RDS, Amazon Redshift y Amazon ElastiCache hay que habilitar la replicación Multi-AZ. Con almacenamiento autogestionado (volúmenes de EBS o almacenamiento de instancia de EC2), la replicación entre AZ la gestionas tú.",
+            "Varias Regiones: para cargas con resiliencia extrema (por ejemplo, infraestructura crítica, aplicaciones de salud o requisitos de disponibilidad estrictos), al menos dos Regiones si la residencia de datos lo permite; el tráfico se dirige con Route 53."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Zonas de disponibilidad: qué aíslan y por qué dos como mínimo",
+          "text": "AWS ofrece sus recursos y servicios en varias ubicaciones geográficas llamadas Regiones; cada una consta de tres o más zonas de disponibilidad. Las AZ de una Región están cerca entre sí, pero físicamente separadas y aisladas para evitar fallos correlacionados por riesgos como incendios, inundaciones o tornados; cada una tiene su propia infraestructura física independiente (conexiones eléctricas, fuentes de alimentación de respaldo, servicios mecánicos y conectividad de red). Al repartir las cargas entre AZ y Regiones se mitiga el riesgo de amenazas como incendios, inundaciones, desastres meteorológicos, terremotos y errores humanos. La guía indica desplegar y operar todas las cargas de producción en al menos dos AZ de una Región. Como las AZ de una misma Región están lo bastante cerca para ofrecer redes de alto rendimiento y baja latencia (de un solo dígito de milisegundos), puedes replicar datos de forma sincrónica entre AZ para la mayoría de las cargas sin afectar de forma significativa a la experiencia del usuario, y puedes usar las AZ en una configuración activo/activo o activo/en espera. La página enumera antipatrones: que la carga de producción exista en una sola AZ, implementar una arquitectura multi-Región cuando una multi-AZ cubriría los requisitos del negocio, que los despliegues o los datos se desincronicen (deriva de configuración o datos con réplicas incompletas) y no tener en cuenta las dependencias entre componentes cuando sus requisitos de resiliencia son distintos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Cómputo, tráfico y datos entre AZ",
+          "text": "Todo el cómputo asociado a la carga debe repartirse entre varias AZ: instancias de EC2, tareas de AWS Fargate y funciones de Lambda conectadas a una VPC. EC2 Auto Scaling, Amazon ECS y Amazon EKS ofrecen formas de lanzar y gestionar cómputo entre AZ y de configurarlo para que reemplace automáticamente el cómputo necesario en otra AZ y así mantener la disponibilidad. Para dirigir el tráfico a las AZ disponibles, se coloca un balanceador de carga (Application Load Balancer o Network Load Balancer) delante del cómputo; los balanceadores de AWS pueden reencaminar el tráfico a las instancias disponibles si una AZ sufre un problema. En cuanto a los datos, hay tres casos que el examen explota. Primero, algunos servicios administrados replican los datos en varias AZ por defecto y son robustos ante un problema de una AZ: Amazon S3, Amazon EFS, Amazon Aurora, Amazon DynamoDB, Amazon SQS y Amazon Kinesis Data Streams. Segundo, con otros servicios administrados, como Amazon RDS, Amazon Redshift y Amazon ElastiCache, debes habilitar la replicación Multi-AZ; una vez habilitada, esos servicios detectan automáticamente un problema de una AZ, redirigen las peticiones a una AZ disponible y vuelven a replicar los datos cuando se recupera, sin intervención del cliente. Tercero, con almacenamiento autogestionado, como los volúmenes de Amazon EBS o el almacenamiento de instancia de EC2, la replicación Multi-AZ la gestionas tú. La propia página recomienda leer la guía de usuario de cada servicio de datos para conocer sus capacidades Multi-AZ."
+        },
+        {
+          "type": "paragraph",
+          "title": "RDS Multi-AZ: failover frente a failover más lectura",
+          "text": "Los despliegues Multi-AZ de Amazon RDS pueden tener uno o dos standbys. Con un standby se llama despliegue Multi-AZ de instancia de base de datos: el standby da soporte de conmutación por error (failover) pero no atiende tráfico de lectura. Con dos standbys se llama despliegue Multi-AZ de clúster de base de datos: los standbys dan soporte de failover y además pueden atender tráfico de lectura; en la consola, cada una de las tres instancias del clúster aparece como Writer instance o Reader instance y con el valor 3 Zones en Multi-AZ. La decisión del examen, por tanto, es si basta con failover (instancia con un standby) o si además se quiere aprovechar los standbys para lecturas (clúster con dos standbys)."
+        },
+        {
+          "type": "paragraph",
+          "title": "Varias Regiones: cuándo, qué duplicar y cómo dirigir el tráfico",
+          "text": "Si la carga requiere una resiliencia extrema, puede necesitar más disponibilidad de la que ofrece una sola Región: entonces la guía indica operarla en al menos dos Regiones, si los requisitos de residencia de datos lo permiten. Las Regiones tienen una separación y un aislamiento físicos aún mayores que las AZ, y los servicios de AWS, con pocas excepciones, operan de forma totalmente independiente entre Regiones: un fallo de un servicio regional está diseñado para no afectar al servicio en otra Región. Con varias Regiones hay requisitos adicionales: como los recursos de distintas Regiones son independientes, hay que duplicar los componentes de la carga en cada Región, incluida la infraestructura básica como las VPC, además del cómputo y los datos. Antes de diseñar una arquitectura multi-Región, hay que comprobar que la carga puede ejecutarse en una sola Región: si creas dependencias entre Regiones, en las que un componente de una Región depende de servicios o componentes de otra, aumenta el riesgo de fallo y se debilita la fiabilidad de forma notable. AWS CloudFormation StackSets puede replicar toda la infraestructura entre Regiones y CloudFormation puede detectar la deriva de configuración. Muchos servicios de datos administrados ofrecen replicación entre Regiones (Amazon S3, Amazon DynamoDB, Amazon RDS, Amazon Aurora, Amazon Redshift, Amazon ElastiCache y Amazon EFS); las tablas globales de DynamoDB aceptan escrituras en cualquier Región admitida y replican los datos entre las demás, mientras que con otros servicios hay que designar una Región primaria para las escrituras y las demás Regiones contienen réplicas de solo lectura. Para dirigir el tráfico, Amazon Route 53 puede enviarlo a la Región disponible más cercana al usuario o configurarse en activo/en espera, con una Región primaria y una réplica regional a la que se recurre solo si la primaria deja de estar sana; las comprobaciones de estado de Route 53 detectan los puntos de enlace no sanos y hacen la conmutación automática, y Amazon Application Recovery Controller (ARC) ofrece un control de enrutamiento de alta disponibilidad para redirigir el tráfico manualmente."
+        },
+        {
+          "type": "paragraph",
+          "title": "Route 53: comprobaciones de estado y conmutación por error de DNS",
+          "text": "Las comprobaciones de estado de Amazon Route 53 supervisan la salud y el rendimiento de tus aplicaciones web, servidores web y otros recursos. Cada comprobación puede supervisar el estado de un recurso concreto, el estado de otras comprobaciones de estado o el estado de una alarma de Amazon CloudWatch. Después de crear una comprobación puedes consultar su estado, recibir notificaciones (con una alarma de CloudWatch por comprobación) y configurar la conmutación por error de DNS: si tienes varios recursos que realizan la misma función, Route 53 puede enrutar el tráfico de un recurso no sano a uno sano; por ejemplo, si tienes dos servidores web y uno deja de estar sano, Route 53 puede enrutar el tráfico al otro. Con ARC puedes además configurar comprobaciones de estado de control de enrutamiento con registros de conmutación por error de DNS para gestionar la conmutación del tráfico de tu aplicación."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Una aplicación web de producción, hoy en una sola AZ, debe sobrevivir al fallo de una AZ completa. (2) Una base de datos Amazon RDS y una caché de Amazon ElastiCache deben resistir el fallo de una AZ. (3) Un volumen de EBS con datos críticos de un servidor debe estar disponible si su AZ falla. (4) Una aplicación crítica con requisitos de disponibilidad estrictos debe resistir el fallo de toda una Región. Paso 1: para (1), la clave es «sobrevivir a una AZ», así que va el cómputo repartido en al menos dos AZ, con EC2 Auto Scaling y un balanceador de carga delante. Paso 2: para (2), la clave es «servicios que exigen habilitar Multi-AZ», así que se habilita la replicación Multi-AZ en RDS y en ElastiCache. Paso 3: para (3), la clave es «almacenamiento autogestionado», así que la replicación entre AZ del volumen de EBS la gestionas tú. Paso 4: para (4), la clave es «fallo de toda una Región», así que va una arquitectura en al menos dos Regiones, con componentes duplicados en cada una y tráfico dirigido con Route 53. Resultado: cada decisión salió de un dato del enunciado, no del nombre del servicio."
+        },
+        {
+          "type": "code",
+          "title": "Una carga distribuida como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const arquitectura = {\n  regiones: [\"region-principal\"],\n  zonasDeDisponibilidad: 3,\n  computo: { reparto: \"varias-az\", balanceador: \"application-load-balancer\", autoScaling: true },\n  datos: [\n    { servicio: \"s3\", replicacionEntreAz: \"por-defecto\" },\n    { servicio: \"rds\", replicacionEntreAz: \"activada\" },\n    { servicio: \"volumen-ebs\", replicacionEntreAz: \"la-gestiona-el-equipo\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De lo que debe sobrevivir la carga a la arquitectura",
+          "code": "flowchart TB\n  N{\"Qué debe sobrevivir la carga\"} -->|\"El fallo de una zona de disponibilidad\"| Z[\"Dos o más AZ de una Región\"]\n  Z --> C[\"Cómputo repartido, Auto Scaling y balanceador de carga\"]\n  Z --> D{\"Cómo replica el servicio de datos\"}\n  D -->|\"Por defecto\"| S[\"S3, EFS, Aurora, DynamoDB, SQS, Kinesis Data Streams\"]\n  D -->|\"Hay que habilitarlo\"| R[\"RDS, Redshift y ElastiCache: Multi-AZ\"]\n  D -->|\"Lo gestiona el equipo\"| E[\"Volúmenes de EBS y almacenamiento de instancia\"]\n  N -->|\"El fallo de una Región completa\"| M[\"Dos o más Regiones con componentes duplicados y Route 53\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: dar por hecho que todo servicio de datos replica entre AZ, o saltar a multi-Región sin necesitarlo",
+          "text": "El enunciado mezcla señales: «sobrevivir al fallo de una AZ», «una base de datos RDS», «un volumen de EBS», «una tabla de DynamoDB», «fallo de una Región», «complejidad mínima». S3, DynamoDB y SQS replican entre AZ por defecto; RDS, Redshift y ElastiCache exigen habilitar Multi-AZ; EBS lo gestionas tú; y una arquitectura multi-Región cuando una multi-AZ cubre los requisitos es un antipatrón. Subraya qué debe sobrevivir la carga y qué servicio de datos usa antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: dejar la carga de producción en una sola zona de disponibilidad",
+          "text": "Causa: desplegar en una AZ por simplicidad o por coste, suponiendo que la infraestructura de AWS nunca falla en esa zona. Consecuencia: una incidencia que afecte a toda la AZ (energía, red, servicios mecánicos) deja la carga caída, porque cada AZ tiene su propia infraestructura y el fallo se limita a ella. Solución: despliega y opera las cargas de producción en al menos dos AZ de una Región, con cómputo repartido (EC2 Auto Scaling, ECS o EKS) y un balanceador de carga delante."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: asumir que RDS, ElastiCache o EBS replican entre AZ sin hacer nada",
+          "text": "Causa: generalizar que los servicios administrados de AWS ya replican en varias AZ. Consecuencia: S3, DynamoDB, SQS, EFS, Aurora y Kinesis Data Streams sí replican por defecto, pero con RDS, Redshift y ElastiCache la replicación Multi-AZ hay que habilitarla, y con los volúmenes de EBS y el almacenamiento de instancia de EC2 la replicación la gestionas tú; si no se hace, un fallo de la AZ deja los datos o el servicio no disponibles. Solución: comprueba para cada servicio de datos si la replicación entre AZ es por defecto, hay que habilitarla o es responsabilidad del equipo, y actúa en consecuencia."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: diseñar multi-Región cuando multi-AZ basta, o con dependencias entre Regiones",
+          "text": "Causa: pensar que más Regiones siempre significa más resiliencia. Consecuencia: implementar una arquitectura multi-Región cuando una multi-AZ satisfaría los requisitos es un antipatrón, y si un componente de una Región depende de otro de otra, aumenta el riesgo de fallo y se debilita la fiabilidad. Solución: empieza por multi-AZ, usa varias Regiones solo para resiliencia extrema o requisitos estrictos, verifica que la carga puede ejecutarse en una sola Región y duplica los componentes en cada una."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Diseñar una arquitectura de alta disponibilidad: repartir el cómputo y el tráfico entre al menos dos zonas de disponibilidad, decidir para cada servicio de datos si la replicación entre AZ es por defecto, hay que habilitarla o la gestiona el equipo, y distinguir cuándo basta multi-AZ y cuándo hacen falta varias Regiones. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes», en la parte de alta disponibilidad y tolerancia a fallos. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la arquitectura, el dato del enunciado que la decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra la decisión y el dato que la determina. Explica con tus palabras el diagrama «De lo que debe sobrevivir la carga a la arquitectura». Después responde: si una carga usa Amazon RDS y un volumen de EBS y debe sobrevivir al fallo de una AZ, ¿qué haces con cada uno y por qué son distintos?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La tienda que vive en una sola zona». Una configuración escrita como objeto despliega una carga de producción en una sola AZ. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la carga y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Los servicios de datos que no replican solos». Un diseño deja sin replicación entre AZ a dos servicios que la exigen habilitar. Decide qué cambias sin tocar los servicios que replican por defecto. Criterio de paso: las pruebas pasan y justificas por escrito cada cambio con la página de despliegue en varias ubicaciones del pilar de Fiabilidad."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre alta disponibilidad. Audítalo en «Auditar un informe de alta disponibilidad generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales del pilar de Fiabilidad y de RDS (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: cuántas AZ tiene una Región y qué aísla cada una; en cuántas AZ como mínimo se despliega la producción; qué servicios de datos replican entre AZ por defecto, cuáles exigen habilitarlo y cuáles gestiona el equipo; y cuándo se justifican varias Regiones. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe qué debe sobrevivir la carga y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una tienda en línea usa instancias de EC2, una base de datos RDS, una caché ElastiCache, un bucket de S3 y un volumen de EBS, debe sobrevivir al fallo de una AZ y, por una norma interna, no puede crecer en complejidad con varias Regiones. Decide qué haces con cada componente. Pregunta de cierre: un compañero dice «RDS ya replica entre AZ sin configurar nada»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Cada Región es física y lógicamente independiente y consta de tres o más AZ. Las AZ están cerca pero separadas y aisladas, con infraestructura física independiente (energía, servicios mecánicos y red), de modo que un fallo se limita a la AZ afectada. La guía indica desplegar la producción en al menos dos AZ de una Región."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-1-tarjeta-01",
+      "title": "Tarjeta: Regiones y zonas de disponibilidad",
+      "statement": "¿Cuántas AZ tiene una Región y qué aísla cada AZ?",
+      "concepts": [
+        "Región",
+        "zona de disponibilidad",
+        "aislamiento"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "El cómputo (instancias de EC2, tareas de Fargate y funciones de Lambda en una VPC) se reparte entre AZ. EC2 Auto Scaling, ECS y EKS lanzan y gestionan cómputo entre AZ y lo reemplazan en otra AZ. Un Application Load Balancer o un Network Load Balancer delante reencamina el tráfico a las instancias disponibles si una AZ falla."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-1-tarjeta-02",
+      "title": "Tarjeta: cómputo y tráfico entre AZ",
+      "statement": "¿Cómo se reparte el cómputo y se dirige el tráfico entre AZ?",
+      "concepts": [
+        "Auto Scaling",
+        "balanceador de carga",
+        "varias AZ"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Por defecto: S3, EFS, Aurora, DynamoDB, SQS y Kinesis Data Streams. Hay que habilitar Multi-AZ en RDS, Redshift y ElastiCache; entonces detectan el problema, redirigen y vuelven a replicar sin intervención. Con almacenamiento autogestionado (volúmenes de EBS y almacenamiento de instancia de EC2), la replicación entre AZ la gestionas tú."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-1-tarjeta-03",
+      "title": "Tarjeta: replicación de datos entre AZ",
+      "statement": "¿Qué servicios replican entre AZ por defecto, cuáles exigen habilitarlo y cuáles gestionas tú?",
+      "concepts": [
+        "replicación por defecto",
+        "Multi-AZ",
+        "EBS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Multi-AZ de instancia: un standby que da soporte de failover pero no atiende lecturas. Multi-AZ de clúster: dos standbys que dan soporte de failover y además pueden atender tráfico de lectura; en la consola, tres instancias del clúster (Writer y Reader) con el valor 3 Zones."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-1-tarjeta-04",
+      "title": "Tarjeta: RDS Multi-AZ",
+      "statement": "¿En qué se diferencian el despliegue Multi-AZ de instancia y el de clúster de base de datos de RDS?",
+      "concepts": [
+        "RDS Multi-AZ",
+        "standby",
+        "clúster de base de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para resiliencia extrema o requisitos de disponibilidad estrictos, en al menos dos Regiones si la residencia de datos lo permite. Hay que duplicar los componentes (incluidas las VPC), verificar que la carga puede ejecutarse en una sola Región y evitar dependencias entre Regiones. Multi-Región cuando multi-AZ basta es un antipatrón."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-1-tarjeta-05",
+      "title": "Tarjeta: cuándo usar varias Regiones",
+      "statement": "¿Cuándo se justifican varias Regiones y qué hay que hacer?",
+      "concepts": [
+        "multi-Región",
+        "dependencias entre Regiones",
+        "antipatrón"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Las comprobaciones de estado supervisan un recurso, otras comprobaciones o una alarma de CloudWatch. Con varios recursos que cumplen la misma función, la conmutación de DNS enruta el tráfico de uno no sano a uno sano. Se puede configurar activo/en espera con una Región primaria; ARC añade un control de enrutamiento para redirigir el tráfico manualmente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-1-tarjeta-06",
+      "title": "Tarjeta: Route 53 y la conmutación por error",
+      "statement": "¿Cómo ayuda Route 53 a la conmutación por error entre recursos o Regiones?",
+      "concepts": [
+        "Route 53",
+        "comprobaciones de estado",
+        "ARC"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html",
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Carga de producción que debe sobrevivir al fallo de una zona de disponibilidad. Corrige su defecto principal.\nexport const diseno = {\n  carga: \"tienda-en-produccion\",\n  requisitos: { sobreviveAlFalloDeUnaAz: true, balanceadorDeCarga: true },\n  zonasDeDisponibilidad: 1,\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  carga: \"tienda-en-produccion\",\n  requisitos: { sobreviveAlFalloDeUnaAz: true, balanceadorDeCarga: true },\n  zonasDeDisponibilidad: 2,\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El requisito es sobrevivir al fallo de una AZ completa. Compara cuántas AZ usa el diseño con lo que indica la guía para las cargas de producción."
+        },
+        {
+          "level": 2,
+          "text": "La guía recomienda desplegar y operar todas las cargas de producción en al menos dos AZ de una Región, porque cada AZ tiene su propia infraestructura y el fallo se limita a ella."
+        },
+        {
+          "level": 3,
+          "text": "Sube zonasDeDisponibilidad a 2 como mínimo. No cambies la carga ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la carga ya no depende de una sola zona",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.ok(diseno.zonasDeDisponibilidad >= 2, \"La producción debe desplegarse en al menos dos zonas de disponibilidad\");"
+          }
+        },
+        {
+          "name": "los requisitos de la carga se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.sobreviveAlFalloDeUnaAz, true);\nassert.strictEqual(diseno.requisitos.balanceadorDeCarga, true);"
+          }
+        },
+        {
+          "name": "el nombre de la carga no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.carga, \"tienda-en-produccion\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-8-1-debug-01",
+      "title": "La tienda que vive en una sola zona",
+      "statement": "El objeto `diseno` modela una tienda en producción que debe sobrevivir al fallo de una zona de disponibilidad. El diseño actual la despliega en una sola zona, un antipatrón que recoge la guía de fiabilidad. Corrige el número de zonas sin cambiar la carga ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`).",
+      "concepts": [
+        "zonas de disponibilidad",
+        "producción",
+        "punto único de fallo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Replicación entre zonas de disponibilidad de cada servicio de datos. Dos servicios no replican: corrígelos.\n// replicacionEntreAz: \"ninguna\", \"por-defecto\" (el servicio ya replica) o \"activada\" (hay que habilitar Multi-AZ).\nexport const diseno = {\n  servicios: [\n    { nombre: \"base-de-datos-rds\", replicacionEntreAz: \"ninguna\" },\n    { nombre: \"cache-elasticache\", replicacionEntreAz: \"ninguna\" },\n    { nombre: \"bucket-s3\", replicacionEntreAz: \"por-defecto\" },\n    { nombre: \"tabla-dynamodb\", replicacionEntreAz: \"por-defecto\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  servicios: [\n    { nombre: \"base-de-datos-rds\", replicacionEntreAz: \"activada\" },\n    { nombre: \"cache-elasticache\", replicacionEntreAz: \"activada\" },\n    { nombre: \"bucket-s3\", replicacionEntreAz: \"por-defecto\" },\n    { nombre: \"tabla-dynamodb\", replicacionEntreAz: \"por-defecto\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la base de datos RDS tiene Multi-AZ habilitado",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const porNombre = Object.fromEntries(diseno.servicios.map((servicio) => [servicio.nombre, servicio.replicacionEntreAz]));\nassert.strictEqual(porNombre[\"base-de-datos-rds\"], \"activada\", \"RDS exige habilitar la replicación Multi-AZ\");"
+          }
+        },
+        {
+          "name": "la caché de ElastiCache tiene Multi-AZ habilitado",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const porNombre = Object.fromEntries(diseno.servicios.map((servicio) => [servicio.nombre, servicio.replicacionEntreAz]));\nassert.strictEqual(porNombre[\"cache-elasticache\"], \"activada\", \"ElastiCache exige habilitar la replicación Multi-AZ\");"
+          }
+        },
+        {
+          "name": "los servicios que replican por defecto no se tocan",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const porNombre = Object.fromEntries(diseno.servicios.map((servicio) => [servicio.nombre, servicio.replicacionEntreAz]));\nassert.strictEqual(porNombre[\"bucket-s3\"], \"por-defecto\");\nassert.strictEqual(porNombre[\"tabla-dynamodb\"], \"por-defecto\");"
+          }
+        },
+        {
+          "name": "los cuatro servicios se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "const nombres = diseno.servicios.map((servicio) => servicio.nombre).sort();\nassert.deepStrictEqual(nombres, [\"base-de-datos-rds\", \"bucket-s3\", \"cache-elasticache\", \"tabla-dynamodb\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-8-1-debug-02",
+      "title": "Los servicios de datos que no replican solos",
+      "statement": "El objeto `diseno` indica, para cuatro servicios de datos, cómo se replica cada uno entre zonas de disponibilidad. Para que la carga sobreviva al fallo de una AZ, dos de ellos están mal configurados según la página de despliegue en varias ubicaciones del pilar de Fiabilidad. Corrígelos sin cambiar los servicios que ya replican por defecto ni los nombres, y mantén la forma del valor exportado (`export const diseno = { … }`).",
+      "concepts": [
+        "replicación Multi-AZ",
+        "RDS",
+        "ElastiCache",
+        "S3",
+        "DynamoDB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de alta disponibilidad (borrador generado por un asistente)\nEscenario: una tienda en línea con instancias de EC2, una base de datos relacional, almacenamiento de objetos y volúmenes de bloques.\n1. Una Región de AWS consta de tres o más zonas de disponibilidad físicamente separadas y aisladas entre sí.\n2. Las zonas de disponibilidad de una Región comparten la misma infraestructura de energía y de red para reducir la latencia.\n3. Amazon S3 y Amazon DynamoDB replican los datos en varias zonas de disponibilidad por defecto.\n4. Amazon RDS replica los datos entre zonas de disponibilidad por defecto, sin que haya que habilitar nada.\n5. Un volumen de Amazon EBS se replica automáticamente entre zonas de disponibilidad.\n6. En un despliegue Multi-AZ de clúster de base de datos de RDS, los standbys dan soporte de failover y también pueden atender lecturas.\n7. Toda carga de producción necesita varias Regiones para ser tolerante al fallo de una zona de disponibilidad."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Estructura de una Región",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: cada Región consta de tres o más zonas de disponibilidad físicamente separadas y aisladas."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Infraestructura de las AZ",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: cada AZ tiene infraestructura física independiente (energía, servicios mecánicos y red), de modo que un fallo se limita a la AZ afectada."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Datos replicados por defecto",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: S3 y DynamoDB, igual que EFS, Aurora, SQS y Kinesis Data Streams, replican en varias AZ por defecto."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Replicación de RDS",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: con RDS, Redshift y ElastiCache hay que habilitar la replicación Multi-AZ; una vez habilitada, el servicio redirige las peticiones y vuelve a replicar sin intervención."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Volúmenes de EBS",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: con almacenamiento autogestionado, como los volúmenes de EBS o el almacenamiento de instancia de EC2, la replicación entre AZ la gestionas tú."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Multi-AZ de clúster de RDS",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: en el clúster de base de datos Multi-AZ los dos standbys dan soporte de failover y pueden atender lecturas, a diferencia del despliegue de instancia."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Varias Regiones para el fallo de una AZ",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: para el fallo de una AZ basta multi-AZ; implementar multi-Región cuando multi-AZ cubriría los requisitos es un antipatrón."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-8-1-auditoria-01",
+      "title": "Auditar un informe de alta disponibilidad generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre alta disponibilidad en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "zonas de disponibilidad",
+        "Multi-AZ",
+        "EBS",
+        "multi-Región"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Añadir más instancias en la misma zona de disponibilidad",
+            "explanation": "Descartada: sigue habiendo un único punto de fallo; un fallo de la AZ afecta a todas las instancias."
+          },
+          {
+            "id": "b",
+            "text": "Repartir el cómputo en al menos dos AZ con Auto Scaling y un balanceador de carga",
+            "explanation": "Es la correcta: cada AZ tiene infraestructura independiente y el balanceador reencamina el tráfico a las instancias disponibles."
+          },
+          {
+            "id": "c",
+            "text": "Desplegar enseguida la aplicación en dos Regiones distintas",
+            "explanation": "Descartada: multi-Región cuando multi-AZ cubre el requisito es un antipatrón que añade complejidad."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar a un tipo de instancia de mayor tamaño en la misma zona",
+            "explanation": "Descartada: más tamaño no elimina el punto único de fallo de la zona."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-1-quiz-01",
+      "title": "Producción en una sola AZ",
+      "statement": "Una aplicación de producción corre en instancias de una sola zona de disponibilidad y debe sobrevivir al fallo de una AZ completa. ¿Qué cambio es el MEJOR?",
+      "concepts": [
+        "varias AZ",
+        "balanceador de carga"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Nada, porque esos servicios replican entre AZ por defecto",
+            "explanation": "Descartada: con RDS, Redshift y ElastiCache hay que habilitar la replicación Multi-AZ."
+          },
+          {
+            "id": "b",
+            "text": "Pasar los tres a un único volumen de EBS compartido",
+            "explanation": "Descartada: con los volúmenes de EBS la replicación entre AZ la gestiona el equipo."
+          },
+          {
+            "id": "c",
+            "text": "Habilitar la replicación Multi-AZ en cada uno de los tres servicios",
+            "explanation": "Es la correcta: una vez habilitada, detectan el problema de una AZ, redirigen las peticiones y vuelven a replicar."
+          },
+          {
+            "id": "d",
+            "text": "Crear instantáneas diarias dentro de la misma zona",
+            "explanation": "Descartada: las copias en la misma zona no mantienen la disponibilidad si esa zona falla."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-1-quiz-02",
+      "title": "Servicios de datos que exigen habilitar Multi-AZ",
+      "statement": "Una carga usa Amazon RDS, Amazon ElastiCache y Amazon Redshift y debe resistir el fallo de una AZ. ¿Qué debe hacer PRIMERO el equipo?",
+      "concepts": [
+        "Multi-AZ",
+        "RDS",
+        "ElastiCache"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un volumen de Amazon EBS con una base de datos propia",
+            "explanation": "Descartada: con los volúmenes de EBS la replicación entre AZ la gestionas tú."
+          },
+          {
+            "id": "b",
+            "text": "Amazon RDS sin habilitar Multi-AZ",
+            "explanation": "Descartada: RDS exige habilitar la replicación Multi-AZ."
+          },
+          {
+            "id": "c",
+            "text": "Amazon ElastiCache sin réplicas habilitadas",
+            "explanation": "Descartada: ElastiCache exige habilitar la replicación Multi-AZ."
+          },
+          {
+            "id": "d",
+            "text": "Amazon DynamoDB",
+            "explanation": "Es la correcta: replica los datos en varias AZ por defecto y es robusto ante un problema de una AZ."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-1-quiz-03",
+      "title": "Datos replicados por defecto",
+      "statement": "Un equipo busca un servicio de datos que ya replique sus datos en varias AZ por defecto, con la MENOS configuración posible. ¿Cuál elige?",
+      "concepts": [
+        "DynamoDB",
+        "replicación por defecto"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Un despliegue Multi-AZ de clúster de base de datos, con dos standbys",
+            "explanation": "Es la correcta: sus standbys dan soporte de failover y también pueden atender tráfico de lectura."
+          },
+          {
+            "id": "b",
+            "text": "Un despliegue Multi-AZ de instancia de base de datos, con un standby",
+            "explanation": "Descartada: su standby da soporte de failover, pero no atiende tráfico de lectura."
+          },
+          {
+            "id": "c",
+            "text": "Una única instancia en una sola AZ con copias de seguridad",
+            "explanation": "Descartada: no da conmutación por error entre AZ y sigue siendo un punto único de fallo."
+          },
+          {
+            "id": "d",
+            "text": "Un volumen de EBS replicado a mano a otra AZ",
+            "explanation": "Descartada: es replicación gestionada por el equipo, no un despliegue Multi-AZ de RDS con standbys."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-1-quiz-04",
+      "title": "Failover y lecturas en RDS",
+      "statement": "Una base de datos de Amazon RDS necesita conmutación por error entre AZ y, además, que los standbys atiendan tráfico de lectura para el MAYOR aprovechamiento de los recursos. ¿Qué despliegue encaja?",
+      "concepts": [
+        "RDS Multi-AZ",
+        "standby",
+        "lecturas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Que un componente de cada Región dependa de servicios de otra Región",
+            "explanation": "Descartada: las dependencias entre Regiones aumentan el riesgo de fallo y debilitan la fiabilidad."
+          },
+          {
+            "id": "b",
+            "text": "Que una única VPC dé servicio a todas las Regiones a la vez",
+            "explanation": "Descartada: los recursos de distintas Regiones son independientes; hay que duplicar los componentes, incluidas las VPC."
+          },
+          {
+            "id": "c",
+            "text": "Que la carga puede ejecutarse en una sola Región, sin depender de otras",
+            "explanation": "Es la correcta: la guía indica verificarlo antes de diseñar una arquitectura multi-Región."
+          },
+          {
+            "id": "d",
+            "text": "Que todas las escrituras se acepten en cualquier Región con cualquier servicio de datos",
+            "explanation": "Descartada: con la mayoría de los servicios hay que designar una Región primaria para escrituras; las demás tienen réplicas de solo lectura."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-1-quiz-05",
+      "title": "Antes de diseñar multi-Región",
+      "statement": "Un equipo va a diseñar una arquitectura multi-Región para una carga con requisitos de disponibilidad estrictos. ¿Qué debe verificar PRIMERO?",
+      "concepts": [
+        "multi-Región",
+        "dependencias entre Regiones"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Una tabla de Amazon DynamoDB de una sola Región con copias de seguridad",
+            "explanation": "Descartada: una sola Región no acepta escrituras en varias Regiones."
+          },
+          {
+            "id": "b",
+            "text": "Las tablas globales de Amazon DynamoDB",
+            "explanation": "Es la correcta: aceptan escrituras en cualquier Región admitida y replican los datos entre las demás Regiones configuradas."
+          },
+          {
+            "id": "c",
+            "text": "Una base de datos de RDS con una réplica de lectura entre Regiones",
+            "explanation": "Descartada: con esos servicios se designa una Región primaria para las escrituras y las demás tienen réplicas de solo lectura."
+          },
+          {
+            "id": "d",
+            "text": "Una caché de ElastiCache con una réplica en otra Región",
+            "explanation": "Descartada: la réplica de otra Región es de solo lectura y las escrituras van a la Región primaria."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-1-quiz-06",
+      "title": "Escrituras en cualquier Región",
+      "statement": "Una carga multi-Región necesita aceptar escrituras en cualquiera de sus Regiones con una base de datos NoSQL. ¿Qué opción ofrece el MÁXIMO de flexibilidad de escritura?",
+      "concepts": [
+        "tablas globales",
+        "escrituras multi-Región"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Una Región consta de tres o más zonas de disponibilidad físicamente separadas y aisladas",
+            "explanation": "Cumple: están geográficamente cerca, pero separadas y aisladas entre sí."
+          },
+          {
+            "id": "b",
+            "text": "Las AZ de una Región comparten la misma fuente de energía para ahorrar costes",
+            "explanation": "No cumple: cada AZ tiene infraestructura física independiente, incluidas las conexiones eléctricas y las fuentes de respaldo."
+          },
+          {
+            "id": "c",
+            "text": "Con una sola AZ y un balanceador de carga la producción es tolerante al fallo de la AZ",
+            "explanation": "No cumple: si la AZ falla, el balanceador no tiene instancias disponibles en otra zona."
+          },
+          {
+            "id": "d",
+            "text": "Entre las AZ de una misma Región se pueden replicar datos de forma sincrónica en la mayoría de las cargas",
+            "explanation": "Cumple: la latencia de un solo dígito de milisegundos permite replicar sin afectar de forma significativa a la experiencia del usuario."
+          },
+          {
+            "id": "e",
+            "text": "Un fallo de un servicio regional está diseñado para afectar también a las demás Regiones",
+            "explanation": "No cumple: un fallo de un servicio regional está diseñado para no afectar al servicio en otra Región."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-1-quiz-07",
+      "title": "Qué es cierto de las zonas de disponibilidad",
+      "statement": "Un equipo repasa cómo se aíslan las zonas de disponibilidad. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "zonas de disponibilidad",
+        "aislamiento",
+        "replicación sincrónica"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Amazon S3",
+            "explanation": "Cumple: replica los datos en varias AZ por defecto."
+          },
+          {
+            "id": "b",
+            "text": "Amazon RDS",
+            "explanation": "No cumple: hay que habilitar la replicación Multi-AZ."
+          },
+          {
+            "id": "c",
+            "text": "Amazon DynamoDB",
+            "explanation": "Cumple: replica los datos en varias AZ por defecto."
+          },
+          {
+            "id": "d",
+            "text": "Volúmenes de Amazon EBS",
+            "explanation": "No cumple: es almacenamiento autogestionado y la replicación entre AZ la gestionas tú."
+          },
+          {
+            "id": "e",
+            "text": "Amazon SQS",
+            "explanation": "Cumple: replica los datos en varias AZ por defecto."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-1-quiz-08",
+      "title": "Servicios que replican por defecto",
+      "statement": "Un equipo repasa qué servicios de datos replican entre AZ sin configuración adicional. Selecciona TRES servicios.",
+      "concepts": [
+        "replicación por defecto",
+        "S3",
+        "DynamoDB",
+        "SQS"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-8-1-reflexion-01",
+      "title": "Reflexión: qué debe sobrevivir mi carga y cómo",
+      "statement": "Elige una carga que conozcas (por ejemplo, una tienda en línea o una API interna) y escribe un registro breve de decisión sobre su alta disponibilidad, en 5 a 7 líneas:\n\n1) Decisión: qué debe sobrevivir (una AZ, un nodo o una Región), cuántas AZ o Regiones usarías, cómo repartirías el cómputo y el tráfico y qué haría cada servicio de datos (replica por defecto, hay que habilitar Multi-AZ o lo gestiona el equipo); nombra el dato de la carga que lo decide.\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, multi-Región cuando multi-AZ basta, o dar por hecho que RDS replica solo) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (réplicas, Auto Scaling, comprobaciones de estado, la replicación de datos autogestionados).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial (el pilar de Fiabilidad, REL10-BP01 o la de RDS Multi-AZ) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, lo que debe sobrevivir y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "alta disponibilidad",
+        "multi-AZ",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html",
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+        "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html"
+      ],
+      "order": 18
+    }
+  ]
+}
