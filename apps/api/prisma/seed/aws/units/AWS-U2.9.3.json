@@ -1,0 +1,1241 @@
+{
+  "code": "AWS-U2.9.3",
+  "lessons": [
+    {
+      "slug": "aws-u2-9-3-costo-de-almacenamiento-transferencia-de-datos-y-nat",
+      "title": "Costo de almacenamiento, transferencia de datos y NAT",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-well-architected-costos",
+          "order": 0,
+          "note": "Fuente del pilar de Optimización de costos: áreas, ciclo de vida de los recursos y planificación de la transferencia de datos."
+        },
+        {
+          "resourceSlug": "aws-s3-clases-de-almacenamiento",
+          "order": 1,
+          "note": "Fuente previa de las clases de almacenamiento de S3: por patrón de acceso, mínimos de duración y tamaño, y recuperación."
+        },
+        {
+          "resourceSlug": "aws-s3-ciclo-de-vida",
+          "order": 2,
+          "note": "Fuente previa del ciclo de vida de S3: acciones de transición y de caducidad, y los costos asociados."
+        },
+        {
+          "resourceSlug": "aws-nat-gateway-precios",
+          "order": 3,
+          "note": "Fuente de los cargos de las puertas de enlace NAT y de cómo reducir su transferencia de datos."
+        },
+        {
+          "resourceSlug": "aws-vpc-nat-gateway",
+          "order": 4,
+          "note": "Fuente previa de las puertas de enlace NAT: tipos público y privado y para qué sirven."
+        },
+        {
+          "resourceSlug": "aws-vpc-endpoints-de-gateway",
+          "order": 5,
+          "note": "Fuente previa de los endpoints de gateway de S3 y DynamoDB: conectividad sin NAT y sin cargo adicional."
+        },
+        {
+          "resourceSlug": "aws-cloudfront-que-es",
+          "order": 6,
+          "note": "Fuente previa de CloudFront: la transferencia desde orígenes de AWS a CloudFront es gratuita."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 7,
+          "note": "Guía de SAA-C03: el dominio 4 (Diseñar arquitecturas optimizadas en costos) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "Tres partidas de la factura se escapan con facilidad: el almacenamiento de objetos que nadie lee, el tráfico de datos que cruza una puerta de enlace NAT y los cargos de transferencia de datos que nadie planificó. El pilar de Optimización de costos de Well-Architected lo resume con tres ideas: gestionar el ciclo de vida de los recursos para que nada se ejecute más tiempo del necesario, planificar los costos de transferencia de datos, que son fáciles de pasar por alto hasta que aparecen en la factura, y elegir el servicio, el tipo de recurso y el modelo de precios que encajan con el patrón de uso. En el dominio 4 de SAA-C03, «Diseñar arquitecturas optimizadas en costos», en las partes de almacenamiento y de red, el enunciado describe cómo se accede a los datos y por dónde viaja el tráfico, y tú eliges la clase de almacenamiento, la regla de ciclo de vida o el camino de red más barato que cumple los requisitos. Los datos de abajo son de las páginas oficiales de AWS leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Las piezas frente a frente",
+          "items": [
+            "Clases de S3 por patrón de acceso: S3 Standard (predeterminada, para datos de acceso frecuente), S3 Intelligent-Tiering (patrones de acceso cambiantes o desconocidos), S3 Standard-IA y S3 One Zone-IA (acceso infrecuente con acceso en milisegundos y tarifa de recuperación) y las clases S3 Glacier (acceso raro y archivado).",
+            "S3 Intelligent-Tiering: mueve automáticamente los objetos al nivel de acceso más rentable sin impacto en el rendimiento. No tiene tarifas de recuperación, pero cobra una pequeña cuota mensual de supervisión y automatización por objeto; los objetos de menos de 128 KB no se supervisan y se quedan siempre en el nivel de acceso frecuente.",
+            "S3 Standard-IA y S3 One Zone-IA: para objetos de más de 128 KB que se guardan al menos 30 días; cobran una tarifa de recuperación. Standard-IA guarda los datos en varias zonas de disponibilidad; One Zone-IA, solo en una, es más barata y no resiste la pérdida física de la zona.",
+            "Ciclo de vida de S3: reglas con acciones de transición (pasar objetos a otra clase de almacenamiento) y de caducidad (eliminar objetos caducados). Se aplican a los objetos existentes y a los que se añadan después.",
+            "Puerta de enlace NAT: se cobra cada hora que está disponible y cada gigabyte de datos que procesa. Para reducir la transferencia: recursos en la misma zona de disponibilidad que la puerta de enlace (o una puerta de enlace en cada zona con recursos) y endpoints de interfaz o de gateway para los servicios de AWS que los admiten.",
+            "Endpoints de gateway: dan conectividad fiable a Amazon S3 y Amazon DynamoDB sin necesidad de una puerta de enlace de internet ni de un dispositivo NAT, y no tienen cargo adicional."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Elegir la clase de almacenamiento de S3 según cómo se accede",
+          "text": "Cada objeto de Amazon S3 tiene una clase de almacenamiento asociada; por defecto es S3 Standard, y las demás clases se eligen según el caso de uso y los requisitos de rendimiento de acceso. Elegir la clase diseñada para tu caso permite optimizar costos, rendimiento y disponibilidad, y todas ofrecen una alta durabilidad. Para datos de acceso frecuente y casos sensibles al rendimiento, la guía ofrece S3 Standard y S3 Express One Zone (una clase de una sola zona para aplicaciones sensibles a la latencia); la clase Reduced Redundancy Storage no se recomienda porque S3 Standard es más rentable. Para datos con patrones de acceso cambiantes o desconocidos, S3 Intelligent-Tiering optimiza el costo moviendo los objetos entre niveles: los objetos que se suben o transicionan a Intelligent-Tiering van al nivel de acceso frecuente, pasan al nivel de acceso infrecuente tras 30 días consecutivos sin acceso y al de acceso instantáneo a archivo tras 90 días; opcionalmente se activan los niveles de acceso a archivo (a partir de 90 días sin acceso) y de archivo profundo (a partir de 180 días), solo para datos a los que se puede acceder de forma asíncrona, porque hay que restaurar el objeto primero. Para datos de acceso infrecuente que aun así necesitan acceso en milisegundos, están S3 Standard-IA y S3 One Zone-IA: cobran una tarifa de recuperación, así que solo compensan para datos que se leen poco; son adecuadas para objetos de más de 128 KB que se guardan al menos 30 días (si un objeto es menor de 128 KB se cobra como 128 KB, y si se elimina, sobrescribe o transiciona antes de 30 días se cobra la parte prorrateada que falta hasta 30). Standard-IA se recomienda para tu copia principal o única de datos que no se pueden recrear; One Zone-IA, si puedes recrear los datos ante un fallo de la zona o para réplicas de objetos al configurar la replicación entre Regiones (CRR). Para datos de acceso raro y archivado, las clases S3 Glacier exigen duraciones mínimas de almacenamiento y tarifas de recuperación, por lo que son más eficaces para datos que casi nunca se leen: Glacier Instant Retrieval para datos de acceso raro que necesitan recuperación en milisegundos, Glacier Flexible Retrieval para archivos de los que puede hacer falta recuperar partes en minutos, y Glacier Deep Archive para archivar datos que rara vez se necesitan; los dos últimos no están disponibles para acceso en tiempo real."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ciclo de vida: pasar o eliminar objetos sin intervención",
+          "text": "S3 Lifecycle ayuda a almacenar los objetos de forma rentable a lo largo de su ciclo de vida, transicionándolos a clases de almacenamiento de menor costo o eliminando los objetos caducados por ti. Para gestionarlo creas una configuración de ciclo de vida para el bucket: un conjunto de reglas con dos tipos de acciones. Las acciones de transición definen cuándo pasan los objetos a otra clase (por ejemplo, a S3 Standard-IA 30 días después de crearlos, o a S3 Glacier Flexible Retrieval un año después); las solicitudes de transición tienen un costo asociado. Las acciones de caducidad definen cuándo expiran los objetos, que S3 elimina por ti (por ejemplo, tras un periodo de cumplimiento normativo); solo puede haber costos asociados a la caducidad cuando expiran objetos de una clase con duración mínima de almacenamiento. Cuando añades una configuración de ciclo de vida a un bucket, las reglas se aplican tanto a los objetos existentes como a los que añadas después. Las transiciones de ciclo de vida no tienen cargos de recuperación de datos, pero sí cargos por solicitud de ingesta al mover datos a cualquier clase con PUT, COPY o reglas de ciclo de vida, por lo que conviene considerar ese costo antes de mover objetos. Los cambios de facturación se aplican en cuanto el objeto es elegible para la acción, con una excepción: si la regla transiciona a S3 Intelligent-Tiering, no cambian hasta que el objeto ha transicionado. Una política de bucket no puede impedir las eliminaciones o las transiciones de una regla de ciclo de vida en los buckets de propósito general."
+        },
+        {
+          "type": "paragraph",
+          "title": "NAT gateway y endpoints: dónde se va el costo de la red",
+          "text": "Una puerta de enlace NAT permite que las instancias de una subred privada se conecten a servicios fuera de la VPC sin que los servicios externos puedan iniciar conexiones con ellas; una pública conecta con internet y requiere una dirección IP elástica, y una privada conecta con otras VPC o con la red local. Al aprovisionar una puerta de enlace NAT se cobra cada hora que está disponible y cada gigabyte de datos que procesa. La página de precios recomienda estrategias para reducir sus cargos de transferencia de datos. Primera: si tus recursos de AWS envían o reciben un volumen significativo de tráfico entre zonas de disponibilidad, asegúrate de que estén en la misma zona que la puerta de enlace NAT, o crea una puerta de enlace NAT en cada zona con recursos. Segunda: si la mayor parte del tráfico por la puerta de enlace va a servicios de AWS que admiten endpoints de interfaz o de gateway, considera crear un endpoint de interfaz o de gateway para esos servicios. Los endpoints de gateway dan conectividad fiable a Amazon S3 y Amazon DynamoDB sin necesidad de una puerta de enlace de internet ni de un dispositivo NAT, y no tienen cargo adicional; no usan AWS PrivateLink, a diferencia de otros tipos de endpoints de VPC. Sin un endpoint, las instancias de una subred privada no pueden enviar tráfico a S3 o DynamoDB, porque por definición no tienen rutas a una puerta de enlace de internet, y habría que añadir un dispositivo NAT. Con un endpoint, cada tabla de rutas de las subredes habilitadas recibe automáticamente una ruta cuyo destino es la lista de prefijos del servicio y cuyo destino de salto es el endpoint; como las listas de prefijos son específicas de una Región, el tráfico a S3 o DynamoDB de otra Región va a la puerta de enlace de internet."
+        },
+        {
+          "type": "paragraph",
+          "title": "Transferencia de datos: planificarla antes de que aparezca en la factura",
+          "text": "El pilar de Optimización de costos incluye, dentro de la conciencia del gasto y del uso, el planificar los costos de transferencia de datos, que son fáciles de pasar por alto hasta que aparecen en la factura, junto con monitorizar el costo y el uso y gestionar el ciclo de vida de los recursos. Un ejemplo de la unidad de rendimiento en el borde: CloudFront cobra las transferencias de datos de salida desde sus ubicaciones de borde y las peticiones, pero la transferencia desde el origen a CloudFront es siempre gratuita cuando se usan orígenes de AWS como Amazon S3, Elastic Load Balancing o Amazon API Gateway. La conclusión de diseño es evaluar el costo al seleccionar los servicios y al diseñar los caminos de red, no después. En los ejercicios de esta unidad no se usan precios reales: los precios cambian y deben consultarse en las páginas de precios de AWS."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Un bucket con datos cuyo patrón de acceso es desconocido y cambia con el tiempo. (2) Una réplica de objetos que se mantiene con replicación entre Regiones y que se puede recrear si la zona falla. (3) Objetos que se suben en S3 Standard y que, pasados 30 días, casi nadie lee, y se quiere pasarlos de clase sin intervención manual. (4) Instancias de una subred privada que leen mucho de S3 a través de una puerta de enlace NAT y generan cargos por procesamiento de datos. Paso 1: para (1), la clave es «patrón de acceso desconocido o cambiante», así que va S3 Intelligent-Tiering. Paso 2: para (2), la clave es «réplica recreable», así que va S3 One Zone-IA. Paso 3: para (3), la clave es «pasar de clase sin intervención», así que va una regla de ciclo de vida con una acción de transición a S3 Standard-IA a los 30 días. Paso 4: para (4), la clave es «tráfico a S3 por NAT», así que se crea un endpoint de gateway para S3, sin cargo adicional. Resultado: cada decisión salió de un dato del enunciado, no del nombre de la clase."
+        },
+        {
+          "type": "code",
+          "title": "Una decisión de almacenamiento y de red como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const decisiones = {\n  casos: [\n    { necesidad: \"patron-de-acceso-desconocido\", opcion: \"intelligent-tiering\" },\n    { necesidad: \"replicas-recreables-de-crr\", opcion: \"one-zone-ia\" },\n    { necesidad: \"pasar-de-clase-a-los-30-dias\", opcion: \"regla-de-ciclo-de-vida\" },\n    { necesidad: \"trafico-a-s3-por-nat\", opcion: \"gateway-endpoint\" },\n  ],\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "De cómo se accede al dato o al tráfico a la opción de menor costo",
+          "code": "flowchart TB\n  N{\"Qué describe el enunciado\"} -->|\"Acceso frecuente\"| S[\"S3 Standard\"]\n  N -->|\"Acceso cambiante o desconocido\"| I[\"S3 Intelligent-Tiering\"]\n  N -->|\"Acceso infrecuente en milisegundos\"| A{\"Se puede recrear el dato\"}\n  A -->|\"No: copia principal\"| SI[\"S3 Standard-IA\"]\n  A -->|\"Sí: réplicas\"| OZ[\"S3 One Zone-IA\"]\n  N -->|\"Acceso raro o archivo\"| G[\"Clases S3 Glacier\"]\n  N -->|\"Pasar de clase con el tiempo\"| L[\"Regla de ciclo de vida\"]\n  N -->|\"Tráfico a S3 o DynamoDB por NAT\"| E[\"Endpoint de gateway: sin cargo adicional\"]\n  N -->|\"Tráfico entre zonas hacia el NAT\"| Z[\"Misma zona o un NAT por zona\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: elegir una clase de acceso infrecuente para datos que no encajan en su mínimo o en su patrón",
+          "text": "El enunciado mezcla señales: «acceso desconocido», «objetos pequeños», «se borran a los 10 días», «copia principal», «réplicas recreables», «tráfico a S3 por NAT». S3 Standard-IA y One Zone-IA cobran una tarifa de recuperación y un mínimo de 30 días y 128 KB, así que no compensan para objetos pequeños o de corta vida; Intelligent-Tiering no supervisa los objetos de menos de 128 KB; One Zone-IA no resiste la pérdida de una zona, así que no es para la copia principal de datos que no se pueden recrear; y el tráfico a S3 o DynamoDB por NAT se evita con un endpoint de gateway, que no tiene cargo adicional. Subraya el patrón de acceso, el tamaño y la vida de los objetos y el camino del tráfico antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: usar S3 Standard-IA para objetos pequeños o de corta vida",
+          "text": "Causa: ver «acceso infrecuente» y pasarlo todo a Standard-IA para ahorrar almacenamiento. Consecuencia: si un objeto es menor de 128 KB se cobra como 128 KB, y si se elimina, sobrescribe o transiciona antes de 30 días se cobra el resto de los 30 días; además hay tarifa de recuperación, así que el ahorro desaparece. Solución: usa Standard-IA o One Zone-IA para objetos de más de 128 KB que se guardan al menos 30 días y se leen poco; para patrones desconocidos, Intelligent-Tiering, y para objetos pequeños o de vida corta, mantén S3 Standard."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: enviar a S3 o DynamoDB por una puerta de enlace NAT",
+          "text": "Causa: dar salida a las instancias de una subred privada con un NAT para todo, incluido el tráfico a S3 o DynamoDB. Consecuencia: la puerta de enlace NAT se cobra cada hora disponible y cada gigabyte que procesa, de modo que un gran volumen de lecturas de S3 se convierte en un cargo continuo. Solución: crea un endpoint de gateway para S3 y para DynamoDB, que no tiene cargo adicional y no necesita NAT ni puerta de enlace de internet, y deja el NAT para el tráfico que sí lo necesita."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: olvidar el tráfico entre zonas de disponibilidad hacia el NAT",
+          "text": "Causa: poner una sola puerta de enlace NAT en una zona y que recursos de otras zonas la usen. Consecuencia: el tráfico entre zonas hacia la puerta de enlace añade cargos de transferencia de datos. Solución: si hay un volumen significativo de tráfico entre zonas, coloca los recursos en la misma zona que la puerta de enlace NAT o crea una puerta de enlace NAT en cada zona con recursos."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la clase de almacenamiento de S3 según el patrón de acceso, el tamaño y la vida de los objetos, escribir una regla de ciclo de vida que transicione objetos y reducir los cargos de una puerta de enlace NAT con endpoints de gateway o con la ubicación de los recursos. Esta unidad prepara el examen SAA-C03, dominio 4 «Diseñar arquitecturas optimizadas en costos», en las partes de almacenamiento y de red. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la opción, el dato del enunciado que la decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra la opción y el dato que la decide. Explica con tus palabras el diagrama «De cómo se accede al dato o al tráfico a la opción de menor costo». Después responde: si unas instancias de una subred privada leen mucho de S3 a través de un NAT, ¿qué cambias, qué cobra el NAT y por qué el cambio no tiene cargo adicional?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «El tráfico a S3 que pasa por el NAT». Una configuración escrita como objeto envía a S3 el tráfico de una subred privada por una puerta de enlace NAT. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la necesidad y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Tres necesidades de almacenamiento, dos clases mal elegidas». Decide qué clase de S3 corresponde a cada necesidad sin alterar el nombre de las necesidades. Criterio de paso: las pruebas pasan y justificas por escrito cada cambio con la página de clases de almacenamiento de S3."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre costos de almacenamiento y de red. Audítalo en «Auditar un informe de costos de almacenamiento y red generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con las páginas oficiales de S3, de NAT y de endpoints de gateway (leídas el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué clase de S3 eliges para acceso frecuente, patrón desconocido, acceso infrecuente y acceso raro; qué mínimos tienen Standard-IA y One Zone-IA; qué dos acciones tiene una regla de ciclo de vida; qué cobra una puerta de enlace NAT; y qué ventaja tiene un endpoint de gateway. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa guarda copias de seguridad que casi nunca se leen pero que, si se necesitan, deben estar disponibles en milisegundos, y sus servidores de una subred privada descargan mucho de S3 y de DynamoDB a través de un NAT. Decide la clase de almacenamiento, la regla de ciclo de vida y el cambio de red. Pregunta de cierre: un compañero dice «los endpoints de gateway cuestan lo mismo que el NAT»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Acceso frecuente: S3 Standard (la predeterminada). Patrón cambiante o desconocido: S3 Intelligent-Tiering. Acceso infrecuente con acceso en milisegundos: S3 Standard-IA o S3 One Zone-IA. Acceso raro y archivado: clases S3 Glacier. Elegir la clase adecuada optimiza costo, rendimiento y disponibilidad; todas ofrecen alta durabilidad. No se recomienda Reduced Redundancy Storage."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-3-tarjeta-01",
+      "title": "Tarjeta: clases de S3 por patrón de acceso",
+      "statement": "¿Qué clase de S3 corresponde a cada patrón de acceso?",
+      "concepts": [
+        "clases de almacenamiento",
+        "patrón de acceso"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Mueve objetos automáticamente al nivel más rentable: acceso frecuente al subir, acceso infrecuente tras 30 días sin acceso y acceso instantáneo a archivo tras 90. Hay niveles opcionales de archivo (90 días) y archivo profundo (180 días) para datos de acceso asíncrono. Sin tarifas de recuperación; cuota mensual pequeña de supervisión. Los objetos de menos de 128 KB no se supervisan."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-3-tarjeta-02",
+      "title": "Tarjeta: S3 Intelligent-Tiering",
+      "statement": "¿Cómo funciona S3 Intelligent-Tiering y qué cobra?",
+      "concepts": [
+        "Intelligent-Tiering",
+        "niveles de acceso",
+        "128 KB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Para objetos de más de 128 KB guardados al menos 30 días; se cobra como 128 KB si es menor y el resto de los 30 días si se elimina antes; hay tarifa de recuperación. Standard-IA guarda los datos en varias zonas; One Zone-IA, en una sola (más barata y no resiste la pérdida de la zona). Standard-IA, para la copia principal; One Zone-IA, para datos recreables o réplicas de CRR."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-3-tarjeta-03",
+      "title": "Tarjeta: Standard-IA y One Zone-IA",
+      "statement": "¿Qué mínimos y diferencias tienen S3 Standard-IA y S3 One Zone-IA?",
+      "concepts": [
+        "Standard-IA",
+        "One Zone-IA",
+        "30 días"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Transición (pasar objetos a otra clase, por ejemplo a Standard-IA a los 30 días) y caducidad (eliminar objetos caducados). Se aplican a objetos existentes y futuros. Las solicitudes de transición tienen costo; no hay cargos de recuperación por la transición, pero sí cargos de ingesta por solicitud. Una política de bucket no impide las acciones del ciclo de vida."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-3-tarjeta-04",
+      "title": "Tarjeta: ciclo de vida de S3",
+      "statement": "¿Qué acciones tiene una regla de ciclo de vida de S3 y qué costos hay?",
+      "concepts": [
+        "ciclo de vida",
+        "transición",
+        "caducidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Se cobra cada hora que está disponible y cada gigabyte que procesa. Para reducir la transferencia: tener los recursos en la misma zona de disponibilidad que el NAT o un NAT en cada zona con recursos, y crear endpoints de interfaz o de gateway para los servicios de AWS que los admiten, si la mayor parte del tráfico va a ellos."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-3-tarjeta-05",
+      "title": "Tarjeta: costo de una puerta de enlace NAT",
+      "statement": "¿Qué cobra una puerta de enlace NAT y cómo se reduce su transferencia de datos?",
+      "concepts": [
+        "NAT gateway",
+        "transferencia de datos",
+        "misma zona"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Conectividad fiable a Amazon S3 y Amazon DynamoDB sin puerta de enlace de internet ni dispositivo NAT, sin cargo adicional y sin usar AWS PrivateLink. Cada tabla de rutas habilitada recibe una ruta a la lista de prefijos del servicio; como las listas son específicas de una Región, el tráfico a S3 o DynamoDB de otra Región va a la puerta de enlace de internet."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-9-3-tarjeta-06",
+      "title": "Tarjeta: endpoints de gateway",
+      "statement": "¿Qué ofrecen los endpoints de gateway de VPC y qué límites tienen?",
+      "concepts": [
+        "endpoint de gateway",
+        "S3",
+        "DynamoDB"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Instancias de una subred privada que leen mucho de S3 y deben evitar los cargos de procesamiento de datos del NAT. Corrige su defecto principal.\nexport const diseno = {\n  necesidad: \"instancias-en-subred-privada-que-leen-mucho-de-s3\",\n  requisitos: { menorCostoDeTransferencia: true, sinInternetGateway: true },\n  camino: \"nat-gateway\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  necesidad: \"instancias-en-subred-privada-que-leen-mucho-de-s3\",\n  requisitos: { menorCostoDeTransferencia: true, sinInternetGateway: true },\n  camino: \"gateway-endpoint\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El tráfico es hacia S3 y se quiere evitar el cargo por gigabyte procesado de la puerta de enlace NAT. Compara el camino elegido con las estrategias de la página de precios de NAT."
+        },
+        {
+          "level": 2,
+          "text": "La página recomienda crear un endpoint de gateway cuando la mayor parte del tráfico va a un servicio de AWS que lo admite; los endpoints de gateway dan conectividad a S3 y DynamoDB sin NAT ni puerta de enlace de internet y sin cargo adicional."
+        },
+        {
+          "level": 3,
+          "text": "Cambia el camino a \"gateway-endpoint\". No cambies la necesidad ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "el camino ya no es la puerta de enlace NAT",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.camino, \"nat-gateway\", \"El NAT cobra cada hora y cada gigabyte que procesa\");\nassert.strictEqual(diseno.camino, \"gateway-endpoint\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.menorCostoDeTransferencia, true);\nassert.strictEqual(diseno.requisitos.sinInternetGateway, true);"
+          }
+        },
+        {
+          "name": "el nombre de la necesidad no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.necesidad, \"instancias-en-subred-privada-que-leen-mucho-de-s3\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-9-3-debug-01",
+      "title": "El tráfico a S3 que pasa por el NAT",
+      "statement": "El objeto `diseno` modela unas instancias de una subred privada que leen mucho de Amazon S3 y que deben evitar los cargos de procesamiento de datos de la puerta de enlace NAT, sin añadir una puerta de enlace de internet. El diseño actual envía todo el tráfico a S3 por la puerta de enlace NAT. Corrige el camino sin cambiar la necesidad ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`). Los caminos se escriben así: nat-gateway, gateway-endpoint, internet-gateway.",
+      "concepts": [
+        "NAT gateway",
+        "endpoint de gateway",
+        "transferencia de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Tres necesidades de almacenamiento y la clase de S3 elegida para cada una. Dos están mal asignadas: corrígelas.\n// Clases: standard, intelligent-tiering, standard-ia, one-zone-ia, glacier-deep-archive.\nexport const diseno = {\n  casos: [\n    { necesidad: \"datos-con-patron-de-acceso-desconocido-o-cambiante\", clase: \"standard-ia\" },\n    { necesidad: \"replicas-recreables-de-replicacion-entre-regiones\", clase: \"standard\" },\n    { necesidad: \"archivo-que-casi-nunca-se-lee-y-no-necesita-acceso-en-tiempo-real\", clase: \"glacier-deep-archive\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  casos: [\n    { necesidad: \"datos-con-patron-de-acceso-desconocido-o-cambiante\", clase: \"intelligent-tiering\" },\n    { necesidad: \"replicas-recreables-de-replicacion-entre-regiones\", clase: \"one-zone-ia\" },\n    { necesidad: \"archivo-que-casi-nunca-se-lee-y-no-necesita-acceso-en-tiempo-real\", clase: \"glacier-deep-archive\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "el patrón de acceso desconocido usa Intelligent-Tiering",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.clase]));\nassert.strictEqual(por[\"datos-con-patron-de-acceso-desconocido-o-cambiante\"], \"intelligent-tiering\");"
+          }
+        },
+        {
+          "name": "las réplicas recreables usan One Zone-IA",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.clase]));\nassert.strictEqual(por[\"replicas-recreables-de-replicacion-entre-regiones\"], \"one-zone-ia\");"
+          }
+        },
+        {
+          "name": "el archivo sin acceso en tiempo real sigue en Deep Archive",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.clase]));\nassert.strictEqual(por[\"archivo-que-casi-nunca-se-lee-y-no-necesita-acceso-en-tiempo-real\"], \"glacier-deep-archive\");"
+          }
+        },
+        {
+          "name": "las tres necesidades se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.casos.length, 3);\nconst nombres = diseno.casos.map((caso) => caso.necesidad).sort();\nassert.deepStrictEqual(nombres, [\"archivo-que-casi-nunca-se-lee-y-no-necesita-acceso-en-tiempo-real\", \"datos-con-patron-de-acceso-desconocido-o-cambiante\", \"replicas-recreables-de-replicacion-entre-regiones\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-9-3-debug-02",
+      "title": "Tres necesidades de almacenamiento, dos clases mal elegidas",
+      "statement": "El objeto `diseno` asigna una clase de almacenamiento de Amazon S3 a cada una de tres necesidades: datos con patrón de acceso desconocido o cambiante, réplicas recreables de una replicación entre Regiones y un archivo que casi nunca se lee y no necesita acceso en tiempo real. Dos asignaciones son incorrectas según la página de clases de almacenamiento de S3. Corrígelas sin cambiar el nombre de las necesidades, y mantén la forma del valor exportado (`export const diseno = { … }`). Las clases se escriben así: standard, intelligent-tiering, standard-ia, one-zone-ia, glacier-deep-archive.",
+      "concepts": [
+        "clases de almacenamiento",
+        "Intelligent-Tiering",
+        "One Zone-IA"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de costos de almacenamiento y de red (borrador generado por un asistente)\nEscenario: un bucket de S3 con objetos de acceso variable y unas instancias de una subred privada que usan un NAT.\n1. S3 Standard es la clase de almacenamiento predeterminada si no se indica otra al subir un objeto.\n2. Un objeto de S3 Standard-IA puede eliminarse antes de 30 días sin ningún cargo adicional.\n3. S3 Intelligent-Tiering no cobra tarifas de recuperación, pero sí una pequeña cuota mensual de supervisión y automatización.\n4. Una puerta de enlace NAT se cobra solo por los gigabytes que procesa y no por las horas que está disponible.\n5. Los endpoints de gateway de Amazon S3 y Amazon DynamoDB no tienen cargo adicional.\n6. Las reglas de ciclo de vida de S3 solo se aplican a los objetos que se añadan después de crear la regla.\n7. S3 One Zone-IA guarda los datos en varias zonas de disponibilidad y resiste la pérdida de una zona."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "Clase predeterminada",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: si no se especifica la clase al subir un objeto, S3 asigna S3 Standard."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Eliminar Standard-IA antes de 30 días",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: los objetos eliminados, sobrescritos o transicionados antes de 30 días pagan el almacenamiento normal más un cargo prorrateado por el resto del mínimo de 30 días."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Cargos de Intelligent-Tiering",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: no hay tarifas de recuperación, pero sí una pequeña cuota mensual de supervisión y automatización de objetos."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Cargos de la puerta de enlace NAT",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: se cobra cada hora que la puerta de enlace NAT está disponible y cada gigabyte de datos que procesa."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Costo de los endpoints de gateway",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: no hay cargo adicional por usar endpoints de gateway, que conectan con S3 y DynamoDB sin NAT ni puerta de enlace de internet."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Alcance de las reglas de ciclo de vida",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: al añadir una configuración de ciclo de vida, las reglas se aplican tanto a los objetos existentes como a los que se añadan después."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Resiliencia de One Zone-IA",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: One Zone-IA guarda los datos en una sola zona de disponibilidad, es más barata y no resiste la pérdida física de la zona."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-9-3-auditoria-01",
+      "title": "Auditar un informe de costos de almacenamiento y red generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre costos de almacenamiento y de red en AWS. Audítalo contra las páginas oficiales: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "S3 Standard-IA",
+        "Intelligent-Tiering",
+        "NAT gateway",
+        "endpoint de gateway"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 Standard-IA para todos los objetos",
+            "explanation": "Descartada: cobra una tarifa de recuperación, que resulta costosa si los objetos se leen con frecuencia."
+          },
+          {
+            "id": "b",
+            "text": "S3 Intelligent-Tiering, que mueve los objetos entre niveles automáticamente",
+            "explanation": "Es la correcta: optimiza el costo de datos con patrones cambiantes o desconocidos sin impacto en el rendimiento ni sobrecarga operativa."
+          },
+          {
+            "id": "c",
+            "text": "S3 Glacier Deep Archive para todos los objetos",
+            "explanation": "Descartada: archiva objetos que no están disponibles para acceso en tiempo real."
+          },
+          {
+            "id": "d",
+            "text": "S3 One Zone-IA para todos los objetos",
+            "explanation": "Descartada: guarda los datos en una sola zona, cobra tarifa de recuperación y no se adapta a patrones cambiantes."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-3-quiz-01",
+      "title": "Patrón de acceso desconocido",
+      "statement": "Una empresa almacena datos en S3 cuyo patrón de acceso es desconocido y cambia con el tiempo. Quiere optimizar el costo sin impacto en el rendimiento ni trabajo operativo. ¿Qué clase es la MEJOR?",
+      "concepts": [
+        "Intelligent-Tiering",
+        "patrón de acceso"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 One Zone-IA",
+            "explanation": "Descartada: guarda los datos en una sola zona y no resiste la pérdida de la zona; no es adecuada para la copia principal de datos no recreables."
+          },
+          {
+            "id": "b",
+            "text": "S3 Glacier Flexible Retrieval",
+            "explanation": "Descartada: está archivada y no está disponible para acceso en tiempo real."
+          },
+          {
+            "id": "c",
+            "text": "S3 Standard",
+            "explanation": "Descartada: está pensada para acceso frecuente; para datos de acceso infrecuente resulta más cara."
+          },
+          {
+            "id": "d",
+            "text": "S3 Standard-IA",
+            "explanation": "Es la correcta: acceso en milisegundos, datos en varias zonas y menor costo de almacenamiento para datos que se leen poco."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-3-quiz-02",
+      "title": "Copia principal de acceso infrecuente",
+      "statement": "Una empresa guarda su copia principal de datos que no se pueden recrear, de más de 128 KB, que se leen poco pero que deben estar disponibles en milisegundos. ¿Qué clase presenta el MENOR costo sin comprometer la resiliencia?",
+      "concepts": [
+        "Standard-IA",
+        "copia principal"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "S3 One Zone-IA, para las réplicas de objetos",
+            "explanation": "Es la correcta: la guía la indica para datos recreables y para réplicas de objetos al configurar CRR; es más barata que Standard-IA."
+          },
+          {
+            "id": "b",
+            "text": "S3 Standard-IA, que guarda los datos en varias zonas",
+            "explanation": "Descartada: es más cara y se recomienda para la copia principal o única de datos no recreables."
+          },
+          {
+            "id": "c",
+            "text": "S3 Express One Zone, para acceso con latencia mínima",
+            "explanation": "Descartada: es una clase de alto rendimiento para aplicaciones sensibles a la latencia, no para réplicas de bajo costo."
+          },
+          {
+            "id": "d",
+            "text": "Reduced Redundancy Storage",
+            "explanation": "Descartada: la guía recomienda no usar esta clase porque S3 Standard es más rentable."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-3-quiz-03",
+      "title": "Réplicas recreables de CRR",
+      "statement": "Un equipo mantiene réplicas de objetos con replicación entre Regiones y puede recrear los datos si la zona falla. ¿Qué clase encaja MÁS con el menor costo?",
+      "concepts": [
+        "One Zone-IA",
+        "réplicas"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Copiar los objetos a mano a otra clase cada mes",
+            "explanation": "Descartada: es justo el trabajo manual que se quiere evitar."
+          },
+          {
+            "id": "b",
+            "text": "Una política de bucket que transicione los objetos a los 30 días",
+            "explanation": "Descartada: una política de bucket no gestiona transiciones; eso lo hacen las reglas de ciclo de vida."
+          },
+          {
+            "id": "c",
+            "text": "Una regla de ciclo de vida con una acción de transición a S3 Standard-IA a los 30 días",
+            "explanation": "Es la correcta: las acciones de transición definen cuándo pasan los objetos a otra clase y se aplican a objetos existentes y futuros."
+          },
+          {
+            "id": "d",
+            "text": "Una regla de ciclo de vida con una acción de caducidad a los 30 días",
+            "explanation": "Descartada: la caducidad elimina los objetos; el equipo quiere conservarlos en otra clase."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-3-quiz-04",
+      "title": "Pasar de clase sin intervención",
+      "statement": "Unos objetos se suben en S3 Standard y, tras 30 días, casi nadie los lee. El equipo quiere pasarlos a S3 Standard-IA con MENOS trabajo manual. ¿Qué opción elige?",
+      "concepts": [
+        "ciclo de vida",
+        "transición"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Crear más puertas de enlace NAT en la misma zona",
+            "explanation": "Descartada: cada puerta de enlace se cobra por hora y por gigabyte procesado; más NAT no reducen el cargo por el tráfico a S3."
+          },
+          {
+            "id": "b",
+            "text": "Crear un endpoint de gateway para S3 y enrutar el tráfico a él",
+            "explanation": "Es la correcta: no tiene cargo adicional y da conectividad a S3 sin necesidad de NAT ni de puerta de enlace de internet."
+          },
+          {
+            "id": "c",
+            "text": "Pasar el tráfico por una puerta de enlace de internet",
+            "explanation": "Descartada: las subredes privadas no tienen rutas a una puerta de enlace de internet por definición."
+          },
+          {
+            "id": "d",
+            "text": "Cambiar la puerta de enlace NAT a una privada",
+            "explanation": "Descartada: una puerta de enlace NAT privada conecta con otras VPC o la red local, no con S3."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-3-quiz-05",
+      "title": "Reducir los cargos del NAT",
+      "statement": "Unas instancias de una subred privada envían la mayor parte de su tráfico a Amazon S3 a través de una puerta de enlace NAT. ¿Qué cambio logra la MAYOR reducción de los cargos de procesamiento de datos?",
+      "concepts": [
+        "endpoint de gateway",
+        "NAT gateway"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Desactivar la puerta de enlace NAT y abrir las subredes a internet",
+            "explanation": "Descartada: no es una estrategia de la guía y elimina el aislamiento de las subredes privadas."
+          },
+          {
+            "id": "b",
+            "text": "Cambiar todos los recursos a una Región distinta",
+            "explanation": "Descartada: no reduce el tráfico entre zonas hacia la puerta de enlace."
+          },
+          {
+            "id": "c",
+            "text": "Aumentar el tamaño de las instancias de los recursos",
+            "explanation": "Descartada: no cambia el camino del tráfico ni los cargos de transferencia."
+          },
+          {
+            "id": "d",
+            "text": "Colocar los recursos en la misma zona que el NAT o crear un NAT en cada zona con recursos",
+            "explanation": "Es la correcta: es la estrategia de la página de precios cuando hay un volumen significativo de tráfico entre zonas."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-3-quiz-06",
+      "title": "Tráfico entre zonas hacia el NAT",
+      "statement": "Unos recursos de varias zonas de disponibilidad envían un gran volumen de tráfico a una única puerta de enlace NAT ubicada en una zona. ¿Qué debe hacer PRIMERO el equipo para reducir los cargos de transferencia de datos?",
+      "concepts": [
+        "tráfico entre zonas",
+        "NAT gateway"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "a",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Son adecuadas para objetos de más de 128 KB que se guardan al menos 30 días",
+            "explanation": "Cumple: si un objeto es menor de 128 KB se cobra como 128 KB."
+          },
+          {
+            "id": "b",
+            "text": "One Zone-IA resiste la pérdida física de la zona de disponibilidad",
+            "explanation": "No cumple: guarda los datos en una sola zona y no resiste su pérdida física."
+          },
+          {
+            "id": "c",
+            "text": "Si se elimina un objeto antes de 30 días no se cobra nada adicional",
+            "explanation": "No cumple: se cobra el almacenamiento normal más una parte prorrateada del resto de los 30 días."
+          },
+          {
+            "id": "d",
+            "text": "Cobran una tarifa de recuperación, por lo que conviene a datos que se leen poco",
+            "explanation": "Cumple: están diseñadas para datos de larga vida y acceso infrecuente."
+          },
+          {
+            "id": "e",
+            "text": "Sus objetos no están disponibles para acceso en milisegundos",
+            "explanation": "No cumple: están disponibles para acceso en milisegundos, como S3 Standard."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.1",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-3-quiz-07",
+      "title": "Qué es cierto de S3 Standard-IA y One Zone-IA",
+      "statement": "Un equipo repasa S3 Standard-IA y S3 One Zone-IA. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "Standard-IA",
+        "One Zone-IA",
+        "tarifa de recuperación"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Una puerta de enlace NAT se cobra por cada hora disponible y por cada gigabyte de datos que procesa",
+            "explanation": "Cumple: es la forma de cobro que describe la página de precios."
+          },
+          {
+            "id": "b",
+            "text": "Los endpoints de gateway tienen un cargo por hora como las puertas de enlace NAT",
+            "explanation": "No cumple: no hay cargo adicional por usar endpoints de gateway."
+          },
+          {
+            "id": "c",
+            "text": "Los endpoints de gateway dan conectividad a S3 y DynamoDB sin puerta de enlace de internet ni dispositivo NAT",
+            "explanation": "Cumple: sin ellos, las subredes privadas no pueden enviar tráfico a S3 o DynamoDB."
+          },
+          {
+            "id": "d",
+            "text": "Los endpoints de gateway admiten cualquier servicio de AWS",
+            "explanation": "No cumple: los endpoints de gateway son para Amazon S3 y Amazon DynamoDB."
+          },
+          {
+            "id": "e",
+            "text": "El tráfico a S3 o DynamoDB de otra Región no usa el endpoint de gateway porque las listas de prefijos son específicas de una Región",
+            "explanation": "Cumple: ese tráfico va a la puerta de enlace de internet."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 4,
+        "task": "4.4",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-9-3-quiz-08",
+      "title": "Qué es cierto de NAT y los endpoints de gateway",
+      "statement": "Un equipo repasa los costos de red de una subred privada. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "NAT gateway",
+        "endpoint de gateway",
+        "listas de prefijos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C12"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-9-3-reflexion-01",
+      "title": "Reflexión: dónde se escapa el costo y cómo lo frenaría",
+      "statement": "Elige una carga que conozcas (por ejemplo, una tienda con un bucket de S3 de datos variados y servidores en subredes privadas) y escribe un registro breve de decisión sobre cómo reducirías sus costos de almacenamiento y de red, en 5 a 7 líneas:\n\n1) Decisión: qué clase de S3 usarías para cada tipo de dato, qué regla de ciclo de vida aplicarías y cómo evitarías los cargos del NAT (endpoints de gateway, misma zona), y qué dato de la carga lo decide (patrón de acceso, tamaño y vida de los objetos, destino del tráfico).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, Standard-IA para objetos pequeños, o One Zone-IA para una copia principal no recreable) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (las reglas de ciclo de vida, la revisión de patrones de acceso, las rutas de los endpoints).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Optimización de costos) y por qué.\n\n5) Evidencia: qué página oficial (clases de almacenamiento de S3, ciclo de vida, precios de NAT o endpoints de gateway) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la opción y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "costo de almacenamiento",
+        "NAT gateway",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html",
+        "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html",
+        "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html",
+        "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html"
+      ],
+      "order": 18
+    }
+  ]
+}
