@@ -1,0 +1,1328 @@
+{
+  "code": "AWS-U2.8.2",
+  "lessons": [
+    {
+      "slug": "aws-u2-8-2-estrategias-de-dr-copia-y-restauracion-pilot-light-warm-standby-activo-activo-y-rpo-rto",
+      "title": "Estrategias de DR (copia y restauración, pilot light, warm standby, activo-activo) y RPO/RTO",
+      "estimatedMin": 60,
+      "order": 1,
+      "isPublished": false,
+      "resources": [
+        {
+          "resourceSlug": "aws-dr-objetivos",
+          "order": 0,
+          "note": "Fuente de la introducción del whitepaper de DR: qué es un desastre, RPO, RTO y la diferencia entre recuperación ante desastres y disponibilidad."
+        },
+        {
+          "resourceSlug": "aws-dr-diferente-en-la-nube",
+          "order": 1,
+          "note": "Fuente de por qué la recuperación ante desastres es distinta en la nube: una Región frente a varias Regiones."
+        },
+        {
+          "resourceSlug": "aws-dr-opciones",
+          "order": 2,
+          "note": "Fuente de las cuatro estrategias de DR (copia y restauración, pilot light, warm standby y multi-site activo/activo) y de los servicios que las implementan."
+        },
+        {
+          "resourceSlug": "aws-route53-comprobaciones-de-estado",
+          "order": 3,
+          "note": "Fuente previa de las comprobaciones de estado de Route 53 y la conmutación por error de DNS."
+        },
+        {
+          "resourceSlug": "aws-well-architected-fiabilidad",
+          "order": 4,
+          "note": "Fuente del pilar de Fiabilidad: la planificación de la recuperación ante desastres como parte de la gestión de fallos."
+        },
+        {
+          "resourceSlug": "aws-saa-c03-guia-de-examen",
+          "order": 5,
+          "note": "Guía de SAA-C03: el dominio 2 (Diseñar arquitecturas resilientes) es el de esta unidad."
+        }
+      ],
+      "content": [
+        {
+          "type": "paragraph",
+          "title": "La idea central",
+          "text": "La recuperación ante desastres (DR) es el proceso de prepararse para un desastre y recuperarse de él; un desastre es un evento que impide que una carga o un sistema cumpla sus objetivos de negocio en su ubicación de despliegue principal. La respuesta debe basarse en los objetivos de negocio de la organización, que fijan dos números: el objetivo de punto de recuperación (RPO), la estrategia para evitar la pérdida de datos, y el objetivo de tiempo de recuperación (RTO), la estrategia para reducir el tiempo de inactividad durante el cual la carga no está disponible. En el dominio 2 de SAA-C03, «Diseñar arquitecturas resilientes», en la parte de recuperación ante desastres, el enunciado da el RPO y el RTO, el alcance del desastre y el costo y la complejidad que se aceptan, y tú eliges una de las cuatro estrategias que AWS describe. Los datos de abajo son del whitepaper «Disaster Recovery of Workloads on AWS» (publicado el 12 de febrero de 2021 según su propia página) y de las páginas de Route 53 y del pilar de Fiabilidad leídas el 2026-11-24; antes de usarlos fuera del estudio, vuelve a comprobarlos allí."
+        },
+        {
+          "type": "list",
+          "title": "Las cuatro estrategias y los dos objetivos",
+          "items": [
+            "RPO y RTO: el RPO es la estrategia para evitar la pérdida de datos; el RTO, la estrategia para reducir el tiempo de inactividad. La recuperación ante desastres mide objetivos para eventos puntuales; la disponibilidad mide valores medios durante un periodo de tiempo (se calcula con el tiempo medio entre fallos y el tiempo medio de recuperación, y se suele expresar en «nueves»).",
+            "Copia y restauración (backup and restore): la de menor costo y complejidad. Sirve contra la pérdida o la corrupción de datos y, copiando los datos a otras Regiones, contra un desastre regional; además de los datos hay que volver a desplegar la infraestructura, la configuración y el código en la Región de recuperación.",
+            "Pilot light: replicas los datos a otra Región y aprovisionas una copia de la infraestructura central; los recursos de replicación y copia (bases de datos y almacenamiento de objetos) están siempre encendidos y los servidores de aplicación están «apagados» hasta las pruebas o el failover.",
+            "Warm standby: una copia reducida pero totalmente funcional del entorno de producción en otra Región, siempre encendida; puede atender tráfico de inmediato a capacidad reducida y solo hace falta escalar.",
+            "Multi-site activo/activo: la carga se ejecuta a la vez en varias Regiones y sirve tráfico desde todas; es la estrategia más compleja y costosa, pero puede reducir el tiempo de recuperación a casi cero para la mayoría de los desastres. Hot standby es la variante activo/pasivo que solo sirve tráfico desde una Región."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "title": "Elegir según el alcance del desastre",
+          "text": "Las estrategias van desde el bajo costo y la baja complejidad de hacer copias de seguridad hasta estrategias más complejas con varias Regiones activas. Las estrategias activo/pasivo usan un sitio activo (por ejemplo, una Región de AWS) para alojar la carga y servir tráfico, y un sitio pasivo (por ejemplo, otra Región) para la recuperación, que no sirve tráfico hasta que se activa un evento de failover. Para un desastre que sea la interrupción o la pérdida de un centro de datos físico en una carga bien diseñada y de alta disponibilidad, puede bastar la copia y restauración. Si tu definición de desastre va más allá, hasta una Región, o si una normativa lo exige, debes considerar pilot light, warm standby o multi-site activo/activo. Con una sola Región, desplegar la carga en varias zonas de disponibilidad mitiga los desastres naturales y técnicos, y hacer copias continuas de los datos reduce el riesgo de amenazas humanas como un error o una actividad no autorizada; para mayor seguridad se pueden copiar datos y configuración (incluida la definición de la infraestructura) a otra Región, lo que reduce el alcance del plan de DR a la copia y restauración de datos. La página recuerda además que hay que evaluar y probar la estrategia con regularidad y menciona AWS Resilience Hub para validar y seguir la resiliencia, incluido si es probable cumplir los objetivos de RTO y RPO."
+        },
+        {
+          "type": "paragraph",
+          "title": "Copia y restauración: la frecuencia de la copia decide el RPO",
+          "text": "La copia y restauración es adecuada para mitigar la pérdida o la corrupción de datos, y también un desastre regional si se replican los datos a otras Regiones o la falta de redundancia de una carga desplegada en una sola zona de disponibilidad. Además de los datos hay que volver a desplegar la infraestructura, la configuración y el código en la Región de recuperación; para hacerlo rápido y sin errores, conviene desplegar siempre con infraestructura como código (por ejemplo, AWS CloudFormation o AWS CDK), porque sin ella restaurar puede ser complejo, aumentar los tiempos de recuperación y superar el RTO. Hay que copiar también el código y la configuración, incluidas las AMI. La frecuencia con la que se ejecuta la copia determina el punto de recuperación alcanzable, que debe alinearse con el RPO, y la copia debe poder restaurarse al momento en que se tomó: ofrecen copia con recuperación a un punto en el tiempo, entre otros, las instantáneas de EBS, las copias de DynamoDB, las instantáneas de RDS y de Aurora y las instantáneas de Redshift. Para S3, la replicación entre Regiones (CRR) copia objetos de forma asíncrona y continua a un bucket de la Región de recuperación y, con el control de versiones, permite elegir el punto de restauración; la replicación continua da el menor tiempo (casi cero) de copia, pero puede proteger peor que las copias con recuperación a un punto en el tiempo frente a la corrupción de datos o un ataque malicioso, como un borrado no autorizado. AWS Backup ofrece un lugar centralizado para configurar, programar y supervisar las copias de varios servicios y admite copiar las copias de seguridad entre Regiones y entre cuentas; esto último ayuda ante amenazas internas o el compromiso de una cuenta. AWS Backup ofrece la restauración, pero no una restauración programada o automática: se puede automatizar con las API de AWS Backup, y programar restauraciones periódicas es buena idea porque restaurar desde una copia es una operación del plano de control."
+        },
+        {
+          "type": "paragraph",
+          "title": "Pilot light y Elastic Disaster Recovery",
+          "text": "Con pilot light replicas los datos de una Región a otra y aprovisionas una copia de la infraestructura central de la carga. Los recursos que sostienen la replicación y la copia, como las bases de datos y el almacenamiento de objetos, están siempre encendidos; otros elementos, como los servidores de aplicación, tienen cargados el código y la configuración, pero están «apagados» y solo se usan en pruebas o cuando se invoca el failover de DR. A diferencia de la copia y restauración, la infraestructura central está siempre disponible y tienes la opción de aprovisionar rápidamente un entorno de producción a escala completa encendiendo y escalando los servidores de aplicación. Pilot light minimiza el costo continuo de DR al minimizar los recursos activos y simplifica la recuperación porque los requisitos de infraestructura central ya están en su sitio; a cambio, exige cambiar el enfoque de despliegue (cambios en cada Región a la vez, automatizados con infraestructura como código) y se recomienda usar una cuenta distinta por Región para el máximo aislamiento. La replicación continua de datos a bases de datos y almacenes activos de la Región de DR es el mejor enfoque para un RPO bajo, junto con copias a un punto en el tiempo, y la página cita para ello la replicación de S3, las réplicas de lectura de RDS, las bases de datos globales de Aurora, las tablas globales de DynamoDB, los clústeres globales de DocumentDB y el Global Datastore de ElastiCache. Al hacer el failover, hay que promocionar una réplica de lectura de RDS a instancia principal (para bases que no son Aurora, tarda unos minutos y reinicia la instancia); con una base de datos global de Aurora, la replicación tiene una latencia típica inferior a un segundo y se puede promocionar una Región secundaria en menos de un minuto incluso ante una caída regional completa. AWS Elastic Disaster Recovery replica de forma continua, mediante replicación a nivel de bloque del servidor subyacente, aplicaciones y bases de datos alojadas en servidores desde cualquier origen a AWS; permite usar una Región de AWS como destino de DR de una carga on-premises o de otro proveedor, y también de cargas de AWS si consisten solo en aplicaciones y bases de datos en EC2 (no en RDS). Usa la estrategia pilot light: mantiene una copia de los datos y recursos «apagados» en una VPC usada como área de preparación y, al activar el failover, crea automáticamente un despliegue de capacidad completa en la VPC de destino."
+        },
+        {
+          "type": "paragraph",
+          "title": "Warm standby: la diferencia con pilot light es qué puede hacer sin más pasos",
+          "text": "Warm standby asegura una copia reducida pero totalmente funcional del entorno de producción en otra Región. Extiende el concepto de pilot light y reduce el tiempo de recuperación porque la carga está siempre encendida en la otra Región; además facilita las pruebas continuas. La página advierte de que la diferencia entre ambas a veces cuesta entender: las dos tienen un entorno en la Región de DR con copias de los activos de la principal, pero pilot light no puede procesar peticiones sin tomar antes una acción adicional (hay que «encender» servidores, quizá desplegar infraestructura no central y escalar), mientras que warm standby puede atender tráfico, con capacidad reducida, de inmediato y solo requiere escalar, porque todo ya está desplegado y en marcha. Usa tus necesidades de RTO y RPO para elegir entre ambas. Para llevar la Región de DR a plena capacidad se usa EC2 Auto Scaling, por ejemplo aumentando la capacidad deseada del grupo; la página recuerda comprobar que las cuotas de servicio de la Región de DR permitan escalar a la capacidad de producción y señala que Auto Scaling es una actividad del plano de control, por lo que depender de él reduce la resiliencia de la estrategia: es un compromiso. Una alternativa es aprovisionar capacidad suficiente para soportar toda la carga de producción, una configuración estáticamente estable que se llama hot standby."
+        },
+        {
+          "type": "paragraph",
+          "title": "Multi-site activo/activo: sin failover y con tres estrategias de escritura",
+          "text": "Con multi-site activo/activo, los usuarios pueden acceder a la carga en cualquiera de las Regiones en las que está desplegada; es el enfoque más complejo y costoso, pero puede reducir el tiempo de recuperación a casi cero para la mayoría de los desastres (la corrupción de datos puede exigir recurrir a las copias de seguridad, lo que normalmente da un punto de recuperación distinto de cero). Hot standby, en cambio, es activo/pasivo: los usuarios van a una sola Región y las Regiones de DR no reciben tráfico. Como la carga se ejecuta en más de una Región, en este escenario no existe el failover: las pruebas de DR se centran en cómo reacciona la carga a la pérdida de una Región (si se desvía el tráfico de la Región que falla y si las demás pueden con todo el tráfico), y hay que probar también un desastre de datos; la copia de seguridad y la recuperación siguen siendo necesarias. Para dirigir el tráfico, tanto Route 53 como AWS Global Accelerator permiten definir políticas que determinan qué usuarios van a qué punto de enlace regional; con Global Accelerator se usa un control (traffic dial) para fijar el porcentaje de tráfico de cada punto de enlace, y Route 53 admite ese enfoque y otras políticas como las de geoproximidad y latencia. Con activo/pasivo las escrituras van solo a la Región principal; con activo/activo hay que diseñar cómo se gestiona la consistencia de las escrituras en cada Región. Es habitual servir las lecturas desde la Región más cercana (read local). Para las escrituras hay tres opciones: write global, que dirige todas las escrituras a una sola Región y, si esta falla, promociona otra (una base de datos global de Aurora encaja y permite promocionar una Región secundaria en menos de un minuto); write local, que dirige las escrituras a la Región más cercana (las tablas globales de DynamoDB permiten leer y escribir en cada Región y usan la reconciliación «el último escritor gana» entre actualizaciones concurrentes); y write partitioned, que asigna las escrituras a una Región según una clave de partición, como el ID de usuario, para evitar conflictos (la replicación bidireccional de S3 admite este caso entre dos Regiones). Además de la replicación, la estrategia debe incluir copias a un punto en el tiempo contra la corrupción o la destrucción de datos."
+        },
+        {
+          "type": "paragraph",
+          "title": "Conmutación por error: automática o manual, y plano de datos o de control",
+          "text": "En una configuración activo/pasivo como pilot light, todo el tráfico va primero a la Región principal y pasa a la de recuperación si la principal deja de estar disponible. La conmutación puede iniciarse de forma automática o manual. La página advierte de que la conmutación iniciada automáticamente por comprobaciones de estado o alarmas debe usarse con cautela: incluso con las mejores prácticas, el tiempo y el punto de recuperación serán mayores que cero y, si conmutas sin necesidad (una falsa alarma), incurres en esas pérdidas; por eso suele usarse la conmutación iniciada manualmente, aunque conviene automatizar los pasos para que iniciarla sea como pulsar un botón. Para dirigir el tráfico hay varias opciones. Con Amazon Route 53 asocias varios puntos de enlace IP de una o más Regiones a un nombre de dominio y las comprobaciones de estado permiten configurar una conmutación de DNS iniciada automáticamente, una operación del plano de datos muy fiable. Para la conmutación manual puedes usar Amazon Application Recovery Controller (ARC): crea comprobaciones de estado de Route 53 que no comprueban la salud, sino que actúan como interruptores de encendido y apagado que controlas por completo con la AWS CLI o el SDK mediante una API del plano de datos de alta disponibilidad. Otra opción manual es cambiar los pesos de una política de enrutamiento ponderada, pero es una operación del plano de control y, por tanto, menos resiliente. También puedes usar AWS Global Accelerator, que asocia varios puntos de enlace de una o más Regiones a las mismas direcciones IP públicas estáticas, comprueba su salud y dirige el tráfico a los sanos, y evita los problemas de caché de DNS; ajustar los traffic dials para una conmutación manual es una operación del plano de control. Amazon CloudFront ofrece conmutación de origen por petición: si una petición al origen principal falla, se enruta al secundario, pero las peticiones siguientes siguen yendo al principal. Para la máxima resiliencia, la página recomienda usar solo operaciones del plano de datos en la conmutación, porque los planos de datos suelen tener objetivos de disponibilidad más altos que los planos de control."
+        },
+        {
+          "type": "paragraph",
+          "title": "Ejemplo resuelto: cuatro casos, cuatro decisiones",
+          "text": "Un equipo tiene cuatro casos. (1) Un sistema interno puede tolerar restaurar los datos y volver a desplegar la infraestructura tras un desastre y quiere el menor costo y la menor complejidad. (2) Una carga necesita tener replicados los datos y la infraestructura central lista en otra Región, con los servidores de aplicación apagados para minimizar el costo continuo. (3) Una carga debe poder atender tráfico de inmediato, aunque sea con capacidad reducida, y solo escalar al ocurrir el desastre. (4) Una carga con usuarios en varias Regiones necesita un tiempo de recuperación casi cero y acepta la mayor complejidad y costo. Paso 1: para (1), la clave es «menor costo y complejidad, se acepta restaurar», así que va la copia y restauración. Paso 2: para (2), la clave es «datos replicados, infraestructura central lista, servidores apagados», así que va pilot light. Paso 3: para (3), la clave es «atiende tráfico de inmediato a capacidad reducida», así que va warm standby. Paso 4: para (4), la clave es «tiempo de recuperación casi cero y tráfico desde varias Regiones», así que va multi-site activo/activo. Resultado: cada decisión salió de un dato del enunciado, no del nombre de la estrategia."
+        },
+        {
+          "type": "code",
+          "title": "Una estrategia elegida según los objetivos, como valor (identificadores ficticios)",
+          "language": "typescript",
+          "code": "export const plan = {\n  objetivos: { rpo: \"perdida-minima-de-datos\", rto: \"recuperacion-rapida\" },\n  estrategia: \"warm-standby\",\n  regionDeRecuperacion: { datos: \"replicados-de-forma-continua\", servidores: \"encendidos-a-capacidad-reducida\" },\n  conmutacion: { inicio: \"manual-automatizada\", mecanismo: \"application-recovery-controller\", plano: \"de-datos\" },\n  copiasDeSeguridad: { puntoEnElTiempo: true, entreRegiones: true },\n};"
+        },
+        {
+          "type": "mermaid",
+          "title": "Del alcance del desastre y los objetivos a la estrategia",
+          "code": "flowchart TB\n  N{\"Qué debe cubrir el plan de DR\"} -->|\"Pérdida de un centro de datos y menor costo\"| B[\"Copia y restauración\"]\n  N -->|\"Una Región: infraestructura central lista y servidores apagados\"| P[\"Pilot light\"]\n  N -->|\"Una Región: copia reducida que atiende tráfico de inmediato\"| W[\"Warm standby\"]\n  N -->|\"Tiempo de recuperación casi cero, varias Regiones activas\"| A[\"Multi-site activo/activo\"]\n  P --> C{\"Cómo se conmuta\"}\n  W --> C\n  C -->|\"Automática\"| H[\"Comprobaciones de estado de Route 53: con cautela\"]\n  C -->|\"Manual, plano de datos\"| R[\"Application Recovery Controller\"]"
+        },
+        {
+          "type": "callout",
+          "title": "Trampa típica de examen: confundir pilot light con warm standby, o creer que replicar equivale a respaldar",
+          "text": "El enunciado mezcla señales: «servidores apagados», «atiende tráfico de inmediato a capacidad reducida», «tiempo de recuperación casi cero», «borrado malicioso», «corrupción de datos». En pilot light los servidores de aplicación están apagados y hay que encenderlos y escalar; en warm standby ya funcionan a capacidad reducida y solo hay que escalar; la replicación continua da un RPO casi cero, pero no protege por sí sola frente a la corrupción o el borrado, para lo que hacen falta versiones o copias a un punto en el tiempo; y en multi-site activo/activo no hay failover. Subraya el RPO, el RTO y qué debe poder hacer la Región de recuperación sin acciones adicionales antes de mirar las opciones."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 1: elegir pilot light cuando la Región de recuperación debe atender tráfico de inmediato",
+          "text": "Causa: ver «datos replicados e infraestructura lista» y concluir que la Región de DR ya puede servir peticiones. Consecuencia: pilot light no puede procesar peticiones sin una acción adicional (encender los servidores de aplicación, quizá desplegar infraestructura no central y escalar), así que el RTO es mayor del que exige el enunciado. Solución: si la Región de recuperación debe atender tráfico de inmediato, aunque sea a capacidad reducida, elige warm standby; reserva pilot light para cuando se acepta encender y escalar y se quiere minimizar el costo continuo."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 2: confiar en una conmutación automática o en el plano de control para el failover",
+          "text": "Causa: automatizar el failover con comprobaciones de estado o alarmas y suponer que es siempre lo más seguro, o basar la conmutación en cambiar los pesos de una política ponderada o en el escalado automático. Consecuencia: una falsa alarma provoca pérdidas de disponibilidad y de datos sin necesidad, y las operaciones del plano de control son menos resilientes que las del plano de datos durante un desastre. Solución: automatiza los pasos, pero inicia la conmutación de forma manual cuando convenga, y usa operaciones del plano de datos, como Route 53 con las comprobaciones de estado de Application Recovery Controller."
+        },
+        {
+          "type": "callout",
+          "title": "Error común 3: creer que la replicación continua protege de la corrupción o del borrado",
+          "text": "Causa: confundir una réplica con una copia de seguridad: si los datos se replican al instante a la Región de DR, parece que siempre hay una copia buena. Consecuencia: la replicación continua puede no proteger frente a la corrupción de datos o un ataque malicioso, como un borrado no autorizado, porque el cambio también llega a la réplica; con S3, por defecto un borrado en el bucket de origen solo añade un marcador de borrado en el origen. Solución: combina la replicación con el control de versiones y con copias a un punto en el tiempo, por ejemplo con AWS Backup, y prueba las restauraciones."
+        }
+      ],
+      "steps": [
+        {
+          "kind": "objective",
+          "title": "Objetivo medible",
+          "body": "Elegir la estrategia de recuperación ante desastres (copia y restauración, pilot light, warm standby o multi-site activo/activo) que cumple un RPO y un RTO dados, distinguir pilot light de warm standby, elegir cómo se conmuta el tráfico (automática o manual, plano de datos o de control) y explicar por qué la replicación no sustituye a las copias a un punto en el tiempo. Esta unidad prepara el examen SAA-C03, dominio 2 «Diseñar arquitecturas resilientes», en la parte de recuperación ante desastres. Criterio: las pruebas de los ejercicios pasan y, ante un escenario nuevo, nombras la estrategia, el dato del enunciado que la decide y por qué las otras opciones quedan fuera, sin mirar la lección."
+        },
+        {
+          "kind": "explanation",
+          "title": "Explicación y ejemplo resuelto",
+          "body": "Lee la lección y rehaz, tapando las respuestas, las cuatro decisiones del ejemplo: para cada caso, nombra la estrategia y el dato que la decide. Explica con tus palabras el diagrama «Del alcance del desastre y los objetivos a la estrategia». Después responde: si la Región de DR tiene los datos replicados y los servidores de aplicación apagados, ¿qué estrategia es y qué debe hacerse al ocurrir el desastre?"
+        },
+        {
+          "kind": "guided_practice",
+          "title": "Práctica guiada",
+          "body": "Resuelve el ejercicio «La estrategia más cara para un sistema que tolera restaurar». Una configuración escrita como objeto elige multi-site activo/activo para un sistema que acepta restaurar y quiere el menor costo. Usa las pistas por niveles solo si te atascas. Criterio de paso: las pruebas visibles pasan y conservas la necesidad y sus requisitos."
+        },
+        {
+          "kind": "independent_practice",
+          "title": "Práctica independiente",
+          "body": "Sin pistas: resuelve «Cuatro necesidades de DR, dos estrategias intercambiadas». Decide qué estrategia corresponde a cada necesidad sin alterar el nombre de las necesidades. Criterio de paso: las pruebas pasan y justificas por escrito cada cambio con la página de opciones de recuperación ante desastres en la nube."
+        },
+        {
+          "kind": "debug",
+          "title": "Depuración y revisión con IA",
+          "body": "Un asistente redactó un informe sobre estrategias de recuperación ante desastres. Audítalo en «Auditar un informe de recuperación ante desastres generado por IA»: marca solo los defectos reales y deja sin marcar lo que es correcto aunque parezca raro. Contrasta cada afirmación con el whitepaper de recuperación ante desastres de AWS (leído el 2026-11-24) y decide si se acepta, se corrige o se descarta."
+        },
+        {
+          "kind": "assessment",
+          "title": "Recuperación y evaluación",
+          "body": "Responde por escrito y de memoria: qué miden el RPO y el RTO; en qué se diferencian las cuatro estrategias y cuál es la de menor costo y cuál la de menor tiempo de recuperación; qué distingue pilot light de warm standby; y por qué la conmutación automática debe usarse con cautela. Después responde sin apuntes las 8 preguntas de escenario de la unidad: antes de elegir, escribe el dato y el calificador de cada una. Criterio de paso: cuatro de cinco respuestas de memoria correctas y al menos 6 de las 8 preguntas."
+        },
+        {
+          "kind": "transfer",
+          "title": "Transferencia",
+          "body": "Variante con restricción: una empresa tiene una tienda que no puede perder más que unos minutos de pedidos, pero acepta que la recuperación tarde y no quiere pagar una segunda Región en marcha. Decide la estrategia, cómo replicas los datos y qué copias a un punto en el tiempo mantienes. Pregunta de cierre: un compañero dice «con la replicación continua a la otra Región ya estamos protegidos si alguien borra los datos»; ¿qué le respondes y qué propones?"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "RPO: la estrategia para evitar la pérdida de datos. RTO: la estrategia para reducir el tiempo de inactividad en que la carga no está disponible. La recuperación ante desastres mide objetivos para eventos puntuales; la disponibilidad mide valores medios durante un periodo y se calcula con el tiempo medio entre fallos y el de recuperación («nueves»)."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-2-tarjeta-01",
+      "title": "Tarjeta: RPO, RTO y la diferencia con la disponibilidad",
+      "statement": "¿Qué son el RPO y el RTO y en qué se diferencia la recuperación ante desastres de la disponibilidad?",
+      "concepts": [
+        "RPO",
+        "RTO",
+        "disponibilidad"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/introduction.html"
+      ],
+      "order": 1
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Es la de menor costo y complejidad; mitiga la pérdida o la corrupción de datos y, copiando a otra Región, un desastre regional. Hay que volver a desplegar infraestructura, configuración y código en la Región de recuperación, mejor con infraestructura como código; sin ella aumenta el tiempo y puede superarse el RTO. La frecuencia de la copia determina el RPO alcanzable."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-2-tarjeta-02",
+      "title": "Tarjeta: copia y restauración",
+      "statement": "¿Cuándo sirve la copia y restauración y qué hay que volver a desplegar?",
+      "concepts": [
+        "copia y restauración",
+        "infraestructura como código",
+        "RPO"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+      ],
+      "order": 2
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Se replican los datos a otra Región y se aprovisiona una copia de la infraestructura central. Lo que sostiene la replicación (bases de datos, almacenamiento de objetos) está siempre encendido; los servidores de aplicación tienen código y configuración pero están apagados hasta las pruebas o el failover. Minimiza el costo continuo; no atiende peticiones sin una acción adicional."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-2-tarjeta-03",
+      "title": "Tarjeta: pilot light",
+      "statement": "¿Qué es pilot light y qué está encendido y qué apagado?",
+      "concepts": [
+        "pilot light",
+        "infraestructura central",
+        "servidores apagados"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+      ],
+      "order": 3
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Warm standby es una copia reducida pero totalmente funcional de producción en otra Región, siempre encendida: atiende tráfico de inmediato a capacidad reducida y solo hay que escalar. Pilot light no puede procesar peticiones sin antes encender servidores, quizá desplegar infraestructura no central y escalar. Warm standby reduce el tiempo de recuperación y facilita las pruebas continuas."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-2-tarjeta-04",
+      "title": "Tarjeta: warm standby",
+      "statement": "¿En qué se diferencia warm standby de pilot light?",
+      "concepts": [
+        "warm standby",
+        "pilot light",
+        "escalar"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+      ],
+      "order": 4
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "La carga corre en varias Regiones a la vez y sirve tráfico desde todas: es la estrategia más compleja y costosa, pero lleva el tiempo de recuperación a casi cero y no hay failover. Hot standby es activo/pasivo: solo una Región sirve tráfico y las demás son para DR. Las escrituras pueden ser write global, write local o write partitioned."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-2-tarjeta-05",
+      "title": "Tarjeta: multi-site activo/activo",
+      "statement": "¿Qué es multi-site activo/activo y en qué se diferencia de hot standby?",
+      "concepts": [
+        "multi-site activo/activo",
+        "hot standby",
+        "escrituras"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+      ],
+      "order": 5
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": {
+        "back": "Route 53 con comprobaciones de estado conmuta el DNS de forma automática (plano de datos), pero la conmutación automática debe usarse con cautela por las falsas alarmas. Application Recovery Controller ofrece interruptores manuales con API del plano de datos; cambiar pesos ponderados o los traffic dials de Global Accelerator es del plano de control, menos resiliente."
+      },
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 1,
+      "estimatedMin": 1,
+      "type": "FLASHCARD",
+      "slug": "aws-u2-8-2-tarjeta-06",
+      "title": "Tarjeta: conmutación por error",
+      "statement": "¿Cómo se conmuta el tráfico a la Región de recuperación y qué precauciones hay?",
+      "concepts": [
+        "Route 53",
+        "Application Recovery Controller",
+        "plano de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html"
+      ],
+      "order": 6
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Sistema interno que tolera restaurar tras un desastre y busca el menor costo y la menor complejidad. Corrige su defecto principal.\nexport const diseno = {\n  necesidad: \"sistema-interno-que-tolera-restaurar\",\n  requisitos: { menorCosto: true, menorComplejidad: true, aceptaRestaurar: true },\n  estrategia: \"multi-site-activo-activo\",\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  necesidad: \"sistema-interno-que-tolera-restaurar\",\n  requisitos: { menorCosto: true, menorComplejidad: true, aceptaRestaurar: true },\n  estrategia: \"copia-y-restauracion\",\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [
+        {
+          "level": 1,
+          "text": "El sistema acepta restaurar y busca el menor costo y la menor complejidad. Compara esas exigencias con el costo y la complejidad de la estrategia elegida."
+        },
+        {
+          "level": 2,
+          "text": "La página de opciones de DR ordena las estrategias desde el bajo costo y la baja complejidad de hacer copias de seguridad hasta las más complejas con varias Regiones activas; multi-site activo/activo es la más compleja y costosa."
+        },
+        {
+          "level": 3,
+          "text": "Cambia la estrategia a \"copia-y-restauracion\". No cambies la necesidad ni los requisitos."
+        }
+      ],
+      "tests": [
+        {
+          "name": "la estrategia ya no es multi-site activo/activo",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "assert.notStrictEqual(diseno.estrategia, \"multi-site-activo-activo\", \"Es la estrategia más compleja y costosa\");\nassert.strictEqual(diseno.estrategia, \"copia-y-restauracion\");"
+          }
+        },
+        {
+          "name": "los requisitos se conservan",
+          "isHidden": false,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.requisitos.menorCosto, true);\nassert.strictEqual(diseno.requisitos.menorComplejidad, true);\nassert.strictEqual(diseno.requisitos.aceptaRestaurar, true);"
+          }
+        },
+        {
+          "name": "el nombre de la necesidad no cambia",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "assert.strictEqual(diseno.necesidad, \"sistema-interno-que-tolera-restaurar\");"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "GUIDED",
+      "difficulty": 2,
+      "estimatedMin": 10,
+      "type": "DEBUG",
+      "slug": "aws-u2-8-2-debug-01",
+      "title": "La estrategia más cara para un sistema que tolera restaurar",
+      "statement": "El objeto `diseno` modela un sistema interno que acepta restaurar datos y volver a desplegar la infraestructura tras un desastre y que busca el menor costo y la menor complejidad. El diseño actual elige la estrategia que, según la página de opciones de recuperación ante desastres, es la más compleja y costosa. Corrige la estrategia sin cambiar la necesidad ni los requisitos, y mantén la forma del valor exportado (`export const diseno = { … }`). Las estrategias se escriben así: copia-y-restauracion, pilot-light, warm-standby, multi-site-activo-activo.",
+      "concepts": [
+        "copia y restauración",
+        "multi-site activo/activo",
+        "costo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+      ],
+      "order": 7
+    },
+    {
+      "language": "typescript",
+      "starterCode": "// Cuatro necesidades de recuperación ante desastres y la estrategia elegida para cada una. Dos están intercambiadas: corrígelas.\nexport const diseno = {\n  casos: [\n    { necesidad: \"region-de-dr-que-atiende-trafico-de-inmediato-a-capacidad-reducida\", estrategia: \"pilot-light\" },\n    { necesidad: \"datos-replicados-y-servidores-de-aplicacion-apagados-hasta-el-failover\", estrategia: \"warm-standby\" },\n    { necesidad: \"recuperacion-casi-inmediata-sirviendo-trafico-desde-varias-regiones\", estrategia: \"multi-site-activo-activo\" },\n    { necesidad: \"menor-costo-restaurando-datos-e-infraestructura-tras-el-desastre\", estrategia: \"copia-y-restauracion\" },\n  ],\n};\n",
+      "solution": {
+        "code": "export const diseno = {\n  casos: [\n    { necesidad: \"region-de-dr-que-atiende-trafico-de-inmediato-a-capacidad-reducida\", estrategia: \"warm-standby\" },\n    { necesidad: \"datos-replicados-y-servidores-de-aplicacion-apagados-hasta-el-failover\", estrategia: \"pilot-light\" },\n    { necesidad: \"recuperacion-casi-inmediata-sirviendo-trafico-desde-varias-regiones\", estrategia: \"multi-site-activo-activo\" },\n    { necesidad: \"menor-costo-restaurando-datos-e-infraestructura-tras-el-desastre\", estrategia: \"copia-y-restauracion\" },\n  ],\n};\n"
+      },
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [
+        {
+          "name": "la Región que atiende tráfico de inmediato a capacidad reducida es warm standby",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.estrategia]));\nassert.strictEqual(por[\"region-de-dr-que-atiende-trafico-de-inmediato-a-capacidad-reducida\"], \"warm-standby\");"
+          }
+        },
+        {
+          "name": "los servidores apagados hasta el failover son pilot light",
+          "isHidden": false,
+          "weight": 3,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.estrategia]));\nassert.strictEqual(por[\"datos-replicados-y-servidores-de-aplicacion-apagados-hasta-el-failover\"], \"pilot-light\");"
+          }
+        },
+        {
+          "name": "las otras dos asignaciones siguen siendo correctas",
+          "isHidden": true,
+          "weight": 2,
+          "spec": {
+            "code": "const por = Object.fromEntries(diseno.casos.map((caso) => [caso.necesidad, caso.estrategia]));\nassert.strictEqual(por[\"recuperacion-casi-inmediata-sirviendo-trafico-desde-varias-regiones\"], \"multi-site-activo-activo\");\nassert.strictEqual(por[\"menor-costo-restaurando-datos-e-infraestructura-tras-el-desastre\"], \"copia-y-restauracion\");"
+          }
+        },
+        {
+          "name": "las cuatro necesidades se conservan",
+          "isHidden": true,
+          "weight": 1,
+          "spec": {
+            "code": "assert.strictEqual(diseno.casos.length, 4);\nconst nombres = diseno.casos.map((caso) => caso.necesidad).sort();\nassert.deepStrictEqual(nombres, [\"datos-replicados-y-servidores-de-aplicacion-apagados-hasta-el-failover\", \"menor-costo-restaurando-datos-e-infraestructura-tras-el-desastre\", \"recuperacion-casi-inmediata-sirviendo-trafico-desde-varias-regiones\", \"region-de-dr-que-atiende-trafico-de-inmediato-a-capacidad-reducida\"]);"
+          }
+        }
+      ],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "AUTONOMOUS",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "DEBUG",
+      "slug": "aws-u2-8-2-debug-02",
+      "title": "Cuatro necesidades de DR, dos estrategias intercambiadas",
+      "statement": "El objeto `diseno` asigna una estrategia de recuperación ante desastres a cada una de cuatro necesidades. Dos de las asignaciones están intercambiadas respecto a lo que dice la página de opciones de recuperación ante desastres. Corrígelas sin cambiar el nombre de las necesidades, y mantén la forma del valor exportado (`export const diseno = { … }`). Las estrategias se escriben así: copia-y-restauracion, pilot-light, warm-standby, multi-site-activo-activo.",
+      "concepts": [
+        "pilot light",
+        "warm standby",
+        "multi-site activo/activo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+      ],
+      "order": 8
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": {
+        "artifact": {
+          "language": "text",
+          "content": "Informe de recuperación ante desastres (borrador generado por un asistente)\nEscenario: una carga con una Región principal y una Región de recuperación, con objetivos de RPO y RTO definidos.\n1. El RPO expresa la estrategia para evitar la pérdida de datos y el RTO, la estrategia para reducir el tiempo de inactividad.\n2. En pilot light, los servidores de aplicación están encendidos y atienden tráfico a capacidad reducida en la Región de recuperación.\n3. Warm standby puede atender tráfico de inmediato a capacidad reducida y solo hace falta escalar para llegar a producción.\n4. En multi-site activo/activo hay un proceso de failover que se inicia cuando se detecta el fallo de una Región.\n5. La replicación continua de datos a la Región de recuperación protege por sí sola frente a la corrupción y al borrado malicioso.\n6. AWS Elastic Disaster Recovery usa la estrategia pilot light, con replicación a nivel de bloque de los servidores.\n7. Cambiar los pesos de una política de enrutamiento ponderada es una operación del plano de datos tan resiliente como Application Recovery Controller."
+        },
+        "findings": [
+          {
+            "id": "f1",
+            "lines": [
+              3,
+              3
+            ],
+            "label": "RPO y RTO",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: el RPO es la estrategia para evitar la pérdida de datos y el RTO la de reducir el tiempo de inactividad."
+          },
+          {
+            "id": "f2",
+            "lines": [
+              4,
+              4
+            ],
+            "label": "Servidores de pilot light",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: en pilot light los servidores de aplicación están «apagados» y no atienden peticiones hasta encenderlos; atender tráfico a capacidad reducida es propio de warm standby."
+          },
+          {
+            "id": "f3",
+            "lines": [
+              5,
+              5
+            ],
+            "label": "Warm standby",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto: warm standby puede atender tráfico de inmediato a capacidad reducida y solo requiere escalar."
+          },
+          {
+            "id": "f4",
+            "lines": [
+              6,
+              6
+            ],
+            "label": "Failover en multi-site activo/activo",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: como la carga se ejecuta en más de una Región, en multi-site activo/activo no existe el failover; las pruebas se centran en cómo reacciona la carga a la pérdida de una Región."
+          },
+          {
+            "id": "f5",
+            "lines": [
+              7,
+              7
+            ],
+            "label": "Replicación y corrupción de datos",
+            "isDefect": true,
+            "severity": "high",
+            "explanation": "Es un error: la replicación continua puede no proteger frente a la corrupción de datos o un borrado malicioso; hacen falta versiones o copias a un punto en el tiempo."
+          },
+          {
+            "id": "f6",
+            "lines": [
+              8,
+              8
+            ],
+            "label": "Elastic Disaster Recovery",
+            "isDefect": false,
+            "severity": null,
+            "explanation": "Es correcto aunque parezca raro: AWS Elastic Disaster Recovery usa pilot light, con replicación continua a nivel de bloque y recursos «apagados» en una VPC de preparación."
+          },
+          {
+            "id": "f7",
+            "lines": [
+              9,
+              9
+            ],
+            "label": "Pesos ponderados frente a ARC",
+            "isDefect": true,
+            "severity": "medium",
+            "explanation": "Es un error: cambiar los pesos de una política ponderada es una operación del plano de control, menos resiliente que la API del plano de datos de Application Recovery Controller."
+          }
+        ],
+        "verdict": "fix"
+      },
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 3,
+      "estimatedMin": 15,
+      "type": "AUDIT",
+      "slug": "aws-u2-8-2-auditoria-01",
+      "title": "Auditar un informe de recuperación ante desastres generado por IA",
+      "statement": "Un asistente de IA redactó este informe sobre estrategias de recuperación ante desastres en AWS. Audítalo contra el whitepaper oficial: marca los hallazgos que son defectos reales, deja sin marcar los que son correctos aunque parezcan sospechosos y decide si el informe se acepta, se corrige o se descarta.",
+      "concepts": [
+        "pilot light",
+        "warm standby",
+        "multi-site activo/activo",
+        "plano de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/introduction.html",
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+      ],
+      "order": 9
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Multi-site activo/activo, con la carga en varias Regiones a la vez",
+            "explanation": "Descartada: es la estrategia más compleja y costosa."
+          },
+          {
+            "id": "b",
+            "text": "Warm standby, con una copia reducida siempre encendida",
+            "explanation": "Descartada: mantiene un entorno funcional en marcha, con más costo continuo que hacer copias de seguridad."
+          },
+          {
+            "id": "c",
+            "text": "Copia y restauración, con copias de datos, código y configuración",
+            "explanation": "Es la correcta: es la de menor costo y complejidad, a cambio de restaurar y volver a desplegar tras el desastre."
+          },
+          {
+            "id": "d",
+            "text": "Pilot light, con la infraestructura central replicada y encendida",
+            "explanation": "Descartada: mantiene recursos de replicación siempre encendidos y exige cambiar el enfoque de despliegue."
+          }
+        ],
+        "correctOptionId": "c"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-2-quiz-01",
+      "title": "Menor costo y complejidad de DR",
+      "statement": "Una empresa acepta restaurar los datos y volver a desplegar la infraestructura en la Región de recuperación tras un desastre, y quiere el MENOR costo y la MENOR complejidad. ¿Qué estrategia encaja?",
+      "concepts": [
+        "copia y restauración",
+        "costo"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 10
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Pilot light, con los servidores apagados hasta el failover",
+            "explanation": "Es la correcta: replica los datos, mantiene la infraestructura central y apaga los servidores de aplicación."
+          },
+          {
+            "id": "b",
+            "text": "Warm standby, que atiende tráfico de inmediato a capacidad reducida",
+            "explanation": "Descartada: en warm standby los servidores están encendidos a capacidad reducida."
+          },
+          {
+            "id": "c",
+            "text": "Multi-site activo/activo, que sirve tráfico desde todas las Regiones",
+            "explanation": "Descartada: no deja servidores apagados; ejecuta la carga en varias Regiones a la vez."
+          },
+          {
+            "id": "d",
+            "text": "Copia y restauración, que solo guarda copias de seguridad",
+            "explanation": "Descartada: no mantiene la infraestructura central aprovisionada ni la replicación siempre encendida."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-2-quiz-02",
+      "title": "Datos replicados y servidores apagados",
+      "statement": "Una carga replica sus datos a otra Región y mantiene aprovisionada la infraestructura central, pero los servidores de aplicación están apagados hasta el failover, para minimizar el costo continuo. ¿Qué estrategia describe MEJOR esta carga?",
+      "concepts": [
+        "pilot light"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 11
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Pilot light, que exige encender los servidores antes de atender peticiones",
+            "explanation": "Descartada: no puede procesar peticiones sin una acción adicional previa."
+          },
+          {
+            "id": "b",
+            "text": "Copia y restauración, que restaura los datos tras el desastre",
+            "explanation": "Descartada: no tiene una carga en marcha en la Región de recuperación."
+          },
+          {
+            "id": "c",
+            "text": "Multi-site activo/activo, que ejecuta la carga completa en varias Regiones",
+            "explanation": "Descartada: no es una copia reducida que escala; ejecuta la carga completa y es la estrategia más costosa."
+          },
+          {
+            "id": "d",
+            "text": "Warm standby, con una copia reducida pero totalmente funcional",
+            "explanation": "Es la correcta: está siempre encendida, atiende tráfico de inmediato a capacidad reducida y solo requiere escalar."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-2-quiz-03",
+      "title": "Atender tráfico de inmediato",
+      "statement": "La Región de recuperación debe poder atender tráfico de inmediato, aunque sea a capacidad reducida, y solo escalar al ocurrir el desastre. ¿Qué estrategia encaja MÁS?",
+      "concepts": [
+        "warm standby"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 12
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Copia y restauración, con copias entre Regiones",
+            "explanation": "Descartada: es la de menor costo y complejidad, pero con mayor tiempo de recuperación."
+          },
+          {
+            "id": "b",
+            "text": "Multi-site activo/activo, sirviendo tráfico desde todas las Regiones",
+            "explanation": "Es la correcta: puede reducir el tiempo de recuperación a casi cero para la mayoría de los desastres."
+          },
+          {
+            "id": "c",
+            "text": "Pilot light, con los servidores de aplicación apagados",
+            "explanation": "Descartada: hay que encender servidores y escalar antes de atender tráfico."
+          },
+          {
+            "id": "d",
+            "text": "Warm standby, con una Región reducida encendida",
+            "explanation": "Descartada: reduce el tiempo de recuperación frente a pilot light, pero hay que escalar."
+          }
+        ],
+        "correctOptionId": "b"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-2-quiz-04",
+      "title": "Recuperación casi inmediata",
+      "statement": "Una carga con usuarios en varias Regiones necesita el tiempo de recuperación MÍNIMO posible y acepta la mayor complejidad y costo. ¿Qué estrategia elige?",
+      "concepts": [
+        "multi-site activo/activo",
+        "RTO"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 13
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Application Recovery Controller, con comprobaciones de estado de Route 53 como interruptores",
+            "explanation": "Es la correcta: actúan como interruptores que controlas con una API del plano de datos de alta disponibilidad."
+          },
+          {
+            "id": "b",
+            "text": "Cambiar los pesos de una política de enrutamiento ponderada de Route 53",
+            "explanation": "Descartada: es una operación del plano de control y, por tanto, menos resiliente."
+          },
+          {
+            "id": "c",
+            "text": "Restaurar la base de datos desde una copia de seguridad en el momento del desastre",
+            "explanation": "Descartada: restaurar desde una copia es una operación del plano de control."
+          },
+          {
+            "id": "d",
+            "text": "Depender de Auto Scaling para escalar la Región de recuperación durante el desastre",
+            "explanation": "Descartada: Auto Scaling es una actividad del plano de control; depender de él reduce la resiliencia."
+          }
+        ],
+        "correctOptionId": "a"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-2-quiz-05",
+      "title": "Conmutación manual con plano de datos",
+      "statement": "Una empresa prefiere iniciar el failover a la Región de recuperación de forma manual, pero con la MAYOR resiliencia posible: solo con operaciones del plano de datos. ¿Qué opción elige?",
+      "concepts": [
+        "Application Recovery Controller",
+        "plano de datos"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 14
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "single",
+        "options": [
+          {
+            "id": "a",
+            "text": "Más replicación continua hacia una tercera Región",
+            "explanation": "Descartada: la replicación continua puede no proteger frente a la corrupción o el borrado, porque el cambio también se replica."
+          },
+          {
+            "id": "b",
+            "text": "Más instancias de EC2 en la Región de recuperación",
+            "explanation": "Descartada: más cómputo no protege los datos frente al borrado o la corrupción."
+          },
+          {
+            "id": "c",
+            "text": "Replicación Multi-AZ en la Región principal",
+            "explanation": "Descartada: replica los datos entre zonas, pero no da una versión anterior a la que volver."
+          },
+          {
+            "id": "d",
+            "text": "El control de versiones de S3 y copias a un punto en el tiempo, por ejemplo con AWS Backup",
+            "explanation": "Es la correcta: permiten volver a una versión o a un punto anterior al borrado o a la corrupción."
+          }
+        ],
+        "correctOptionId": "d"
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-2-quiz-06",
+      "title": "Replicación y borrado malicioso",
+      "statement": "Una carga replica de forma continua sus objetos de S3 a la Región de recuperación y el equipo teme un borrado malicioso o la corrupción de los datos. ¿Qué debe añadir para protegerse MEJOR?",
+      "concepts": [
+        "control de versiones",
+        "punto en el tiempo",
+        "AWS Backup"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 15
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 2,
+        "correctOptionIds": [
+          "b",
+          "d"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "En warm standby hay que encender servidores y desplegar infraestructura antes de atender tráfico",
+            "explanation": "No cumple: en warm standby todo está ya desplegado y en marcha; solo hay que escalar."
+          },
+          {
+            "id": "b",
+            "text": "En pilot light los recursos de replicación y de copia de datos están siempre encendidos",
+            "explanation": "Cumple: bases de datos y almacenamiento de objetos están siempre en marcha; los servidores de aplicación están apagados."
+          },
+          {
+            "id": "c",
+            "text": "Pilot light atiende tráfico a capacidad reducida desde el primer momento",
+            "explanation": "No cumple: pilot light no puede procesar peticiones sin una acción adicional previa."
+          },
+          {
+            "id": "d",
+            "text": "Warm standby puede atender tráfico de inmediato a capacidad reducida y solo requiere escalar",
+            "explanation": "Cumple: es la diferencia clave con pilot light."
+          },
+          {
+            "id": "e",
+            "text": "Ambas estrategias eliminan por completo el tiempo y el punto de recuperación",
+            "explanation": "No cumple: incluso con las mejores prácticas, el tiempo y el punto de recuperación serán mayores que cero."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-2-quiz-07",
+      "title": "Pilot light frente a warm standby",
+      "statement": "Un equipo compara pilot light y warm standby. Selecciona DOS afirmaciones correctas.",
+      "concepts": [
+        "pilot light",
+        "warm standby"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 16
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": {
+        "kind": "multiple",
+        "selectCount": 3,
+        "correctOptionIds": [
+          "a",
+          "c",
+          "e"
+        ],
+        "options": [
+          {
+            "id": "a",
+            "text": "Sirve tráfico desde todas las Regiones en las que está desplegado y no existe el failover",
+            "explanation": "Cumple: como la carga corre en más de una Región, las pruebas se centran en la pérdida de una Región."
+          },
+          {
+            "id": "b",
+            "text": "Hot standby sirve tráfico desde todas las Regiones a la vez",
+            "explanation": "No cumple: hot standby es activo/pasivo y solo sirve tráfico desde una Región."
+          },
+          {
+            "id": "c",
+            "text": "Es la estrategia más compleja y costosa, pero puede reducir el tiempo de recuperación a casi cero",
+            "explanation": "Cumple: la corrupción de datos puede exigir recurrir a copias, con un punto de recuperación distinto de cero."
+          },
+          {
+            "id": "d",
+            "text": "Elimina la necesidad de copias de seguridad y de recuperación",
+            "explanation": "No cumple: la copia de seguridad y la recuperación siguen siendo necesarias y deben probarse."
+          },
+          {
+            "id": "e",
+            "text": "Las tablas globales de DynamoDB permiten leer y escribir en cada Región y usan «el último escritor gana»",
+            "explanation": "Cumple: es la estrategia write local para las escrituras."
+          }
+        ]
+      },
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": {
+        "certification": "SAA-C03",
+        "domain": 2,
+        "task": "2.2",
+        "pool": "unit"
+      },
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 3,
+      "type": "QUIZ",
+      "slug": "aws-u2-8-2-quiz-08",
+      "title": "Qué es cierto de multi-site activo/activo",
+      "statement": "Un equipo repasa el multi-site activo/activo. Selecciona TRES afirmaciones correctas.",
+      "concepts": [
+        "multi-site activo/activo",
+        "tablas globales",
+        "hot standby"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+      ],
+      "order": 17
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": {
+        "mode": "match",
+        "pairs": [
+          {
+            "id": "rpo",
+            "term": "RPO",
+            "definition": "La estrategia para evitar la pérdida de datos tras un desastre"
+          },
+          {
+            "id": "rto",
+            "term": "RTO",
+            "definition": "La estrategia para reducir el tiempo en que la carga no está disponible"
+          },
+          {
+            "id": "backup",
+            "term": "Copia y restauración",
+            "definition": "Menor costo y complejidad: se restauran los datos y se vuelve a desplegar la infraestructura"
+          },
+          {
+            "id": "pilot",
+            "term": "Pilot light",
+            "definition": "Datos replicados e infraestructura central lista, con los servidores de aplicación apagados"
+          },
+          {
+            "id": "warm",
+            "term": "Warm standby",
+            "definition": "Copia reducida y funcional que atiende tráfico de inmediato y solo necesita escalar"
+          },
+          {
+            "id": "active",
+            "term": "Multi-site activo/activo",
+            "definition": "Sirve tráfico desde varias Regiones, no hay failover y el tiempo de recuperación se acerca a cero"
+          },
+          {
+            "id": "arc",
+            "term": "Application Recovery Controller",
+            "definition": "Interruptores de Route 53 para redirigir el tráfico a mano con operaciones del plano de datos"
+          },
+          {
+            "id": "drs",
+            "term": "AWS Elastic Disaster Recovery",
+            "definition": "Replica servidores a nivel de bloque y aplica pilot light con recursos apagados en una VPC de preparación"
+          }
+        ],
+        "intro": {
+          "summary": "Empareja cada estrategia o concepto de recuperación ante desastres con la característica que lo define. Si dudas, pregúntate qué está encendido en la Región de recuperación, qué cuesta más y qué se tolera perder.",
+          "list": {
+            "title": "Las preguntas que repasa el juego",
+            "ordered": true,
+            "items": [
+              "Objetivos: RPO y RTO",
+              "Las cuatro estrategias: copia y restauración, pilot light, warm standby y multi-site activo/activo",
+              "Conmutación: Application Recovery Controller y el plano de datos",
+              "Replicación de servidores: AWS Elastic Disaster Recovery"
+            ]
+          }
+        }
+      },
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 6,
+      "type": "MEMORY",
+      "slug": "aws-u2-8-2-memoria-01",
+      "title": "Estrategia o concepto de DR y característica que lo define",
+      "statement": "Empareja cada estrategia o concepto de recuperación ante desastres con la característica que lo define.",
+      "concepts": [
+        "RPO",
+        "RTO",
+        "estrategias de DR"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/introduction.html",
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+      ],
+      "order": 18
+    },
+    {
+      "language": null,
+      "starterCode": null,
+      "solution": null,
+      "harness": null,
+      "quiz": null,
+      "flashcard": null,
+      "memory": null,
+      "audit": null,
+      "cloudLab": null,
+      "maxAttempts": null,
+      "isPublished": false,
+      "hints": [],
+      "tests": [],
+      "exam": null,
+      "competencies": [
+        "AWS-C11"
+      ],
+      "ladder": "SEMI",
+      "difficulty": 2,
+      "estimatedMin": 8,
+      "type": "REFLECT",
+      "slug": "aws-u2-8-2-reflexion-01",
+      "title": "Reflexión: qué estrategia de DR y por qué",
+      "statement": "Elige una carga que conozcas (por ejemplo, una tienda en línea o un sistema interno) y escribe un registro breve de decisión sobre su recuperación ante desastres, en 5 a 7 líneas:\n\n1) Decisión: qué RPO y RTO exige la carga, qué estrategia elegirías (copia y restauración, pilot light, warm standby o multi-site activo/activo) y cómo conmutarías el tráfico; nombra el dato de la carga que lo decide (cuántos datos se pueden perder, cuánto tiempo puede estar caída, el costo aceptado).\n\n2) Alternativa descartada: otra opción que parecía válida (por ejemplo, pilot light cuando se exige atender tráfico de inmediato, o confiar solo en la replicación frente a un borrado malicioso) y la razón por la que la descartaste.\n\n3) Consecuencia: qué deberá mantener tu equipo (infraestructura como código en la Región de recuperación, copias a un punto en el tiempo, pruebas periódicas de recuperación).\n\n4) Pilar de Well-Architected: a qué pilar sirve tu decisión (por ejemplo, Fiabilidad) y por qué.\n\n5) Evidencia: qué página oficial (el whitepaper de recuperación ante desastres, su introducción o las comprobaciones de estado de Route 53) usarías para comprobarlo.\n\nNo hay una única respuesta correcta: cuenta que el razonamiento nombre la carga, la estrategia y el dato que decide. Escríbelo con tus palabras; releerlo antes de tu próximo simulacro te recordará cómo decidiste.",
+      "concepts": [
+        "recuperación ante desastres",
+        "RPO",
+        "RTO",
+        "decisión"
+      ],
+      "sources": [
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/introduction.html",
+        "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+        "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html"
+      ],
+      "order": 19
+    }
+  ]
+}
