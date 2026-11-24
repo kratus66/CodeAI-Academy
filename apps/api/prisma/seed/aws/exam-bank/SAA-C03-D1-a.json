@@ -1,0 +1,1427 @@
+{
+  "certification": "SAA-C03",
+  "domain": 1,
+  "questions": [
+    {
+      "unitCode": "AWS-U2.1.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Se deniega, porque una denegación explícita prevalece sobre cualquier permiso",
+              "explanation": "Es la correcta: la lógica de evaluación da prioridad a la denegación explícita sobre cualquier Allow."
+            },
+            {
+              "id": "b",
+              "text": "Se permite, porque la política de identidad se evalúa primero",
+              "explanation": "Descartada: el orden de las políticas no importa: una denegación explícita siempre gana."
+            },
+            {
+              "id": "c",
+              "text": "Se permite, porque el permiso es más específico que la denegación",
+              "explanation": "Descartada: la especificidad no cambia el resultado frente a una denegación explícita."
+            },
+            {
+              "id": "d",
+              "text": "Se permite solo si el usuario tiene MFA activado",
+              "explanation": "Descartada: el MFA no anula una denegación explícita que no lo condiciona."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-01",
+        "title": "Una denegación explícita frente a un permiso",
+        "statement": "Un desarrollador tiene una política de identidad que le permite s3:GetObject sobre todos los buckets, pero la política de un bucket concreto contiene una declaración Deny para su usuario. ¿Qué ocurre cuando intenta leer un objeto de ese bucket y cuál es la regla que MEJOR lo explica?",
+        "concepts": [
+          "denegación explícita",
+          "evaluación de políticas"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1001
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Se permite, porque el usuario pertenece a la cuenta propietaria del bucket",
+              "explanation": "Descartada: pertenecer a la cuenta no concede permisos por sí solo a un usuario."
+            },
+            {
+              "id": "b",
+              "text": "Se permite listar pero no leer objetos, porque es una acción de solo lectura",
+              "explanation": "Descartada: no existe un permiso de solo lectura por defecto para usuarios nuevos."
+            },
+            {
+              "id": "c",
+              "text": "Se deniega solo hasta que el usuario cambie su contraseña",
+              "explanation": "Descartada: el cambio de contraseña no concede ningún permiso."
+            },
+            {
+              "id": "d",
+              "text": "Se deniega, porque por defecto todas las solicitudes se deniegan de forma implícita",
+              "explanation": "Es la correcta: sin un Allow explícito que lo permita, la solicitud no se autoriza."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-02",
+        "title": "El efecto de no tener ninguna política",
+        "statement": "Un administrador crea un usuario de IAM nuevo y no le asocia ninguna política. El usuario intenta listar los buckets de S3. ¿Cuál es el resultado y qué explicación es la MÁS precisa?",
+        "concepts": [
+          "denegación implícita"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1002
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Una política con Allow sobre «*» no puede ser anulada por un Deny",
+              "explanation": "No cumple: un Deny explícito sí la anula."
+            },
+            {
+              "id": "b",
+              "text": "Un Allow en cualquier política anula una denegación explícita de otra",
+              "explanation": "No cumple: no ocurre: la denegación explícita siempre prevalece."
+            },
+            {
+              "id": "c",
+              "text": "Una denegación explícita en cualquier política aplicable anula los permisos",
+              "explanation": "Cumple: el Deny explícito prevalece sobre cualquier Allow."
+            },
+            {
+              "id": "d",
+              "text": "Por defecto todas las solicitudes se deniegan de forma implícita",
+              "explanation": "Cumple: sin permiso explícito, la solicitud se deniega."
+            },
+            {
+              "id": "e",
+              "text": "Las políticas se evalúan en orden y gana la primera que coincide",
+              "explanation": "No cumple: IAM evalúa todas las políticas aplicables, no la primera que coincide."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-03",
+        "title": "Dos reglas de la evaluación de políticas",
+        "statement": "Un equipo repasa cómo IAM evalúa una solicitud. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "evaluación de políticas"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1003
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un usuario de IAM en la cuenta B con claves de acceso guardadas en la aplicación",
+              "explanation": "Descartada: crea credenciales de larga duración, justo lo que se quiere evitar."
+            },
+            {
+              "id": "b",
+              "text": "Un rol en la cuenta B que confía en la cuenta A y que la aplicación asume con sts:AssumeRole",
+              "explanation": "Es la correcta: entrega credenciales temporales sin crear usuarios nuevos."
+            },
+            {
+              "id": "c",
+              "text": "Compartir la contraseña del usuario raíz de la cuenta B",
+              "explanation": "Descartada: el usuario raíz no debe usarse para tareas de aplicaciones."
+            },
+            {
+              "id": "d",
+              "text": "Hacer pública la tabla para que la cuenta A la lea",
+              "explanation": "Descartada: expone los datos a cualquiera y no usa credenciales temporales."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-04",
+        "title": "Acceso de una cuenta de producción a otra de datos",
+        "statement": "Una aplicación en la cuenta A necesita leer una tabla de la cuenta B con credenciales temporales y SIN crear usuarios de IAM en la cuenta B. ¿Qué diseño es el MÁS adecuado?",
+        "concepts": [
+          "AssumeRole",
+          "acceso entre cuentas"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_cross-account-with-roles.html",
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_manage-assume.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1004
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Asociar un rol de IAM a la instancia mediante un perfil de instancia",
+              "explanation": "Es la correcta: la instancia recibe credenciales temporales que se rotan automáticamente."
+            },
+            {
+              "id": "b",
+              "text": "Guardar las claves de un usuario de IAM en un archivo de configuración",
+              "explanation": "Descartada: deja credenciales de larga duración en el disco."
+            },
+            {
+              "id": "c",
+              "text": "Incrustar las claves en la imagen de máquina (AMI)",
+              "explanation": "Descartada: cualquiera que use la imagen obtiene las claves."
+            },
+            {
+              "id": "d",
+              "text": "Abrir el bucket al público para escritura",
+              "explanation": "Descartada: expone el bucket a cualquier solicitante."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-05",
+        "title": "Credenciales para una instancia de EC2",
+        "statement": "Una aplicación en una instancia de EC2 debe escribir en un bucket de S3 sin guardar claves en el disco ni en el código. ¿Qué solución es la MÁS segura?",
+        "concepts": [
+          "perfil de instancia",
+          "rol"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1005
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Una clave de acceso del usuario raíz de la cuenta B",
+              "explanation": "No cumple: no se necesita y no debe usarse."
+            },
+            {
+              "id": "b",
+              "text": "Una política de confianza en el rol de la cuenta B que permita a la cuenta A",
+              "explanation": "Cumple: define quién puede asumir el rol."
+            },
+            {
+              "id": "c",
+              "text": "Un bucket de S3 compartido entre ambas cuentas",
+              "explanation": "No cumple: no interviene en la asunción de un rol."
+            },
+            {
+              "id": "d",
+              "text": "Un permiso sts:AssumeRole en la identidad de la cuenta A sobre ese rol",
+              "explanation": "Cumple: autoriza al usuario a solicitar el rol."
+            },
+            {
+              "id": "e",
+              "text": "Una conexión de peering entre las dos cuentas",
+              "explanation": "No cumple: es de redes y no interviene en la asunción de roles."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-06",
+        "title": "Qué hace falta para asumir un rol de otra cuenta",
+        "statement": "Un usuario de la cuenta A debe asumir un rol de la cuenta B. Selecciona DOS elementos necesarios.",
+        "concepts": [
+          "política de confianza",
+          "AssumeRole"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_cross-account-with-roles.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1006
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una política de confianza del rol",
+              "explanation": "Descartada: define quién puede asumir el rol, no el máximo de permisos."
+            },
+            {
+              "id": "b",
+              "text": "Una etiqueta de costo en el rol",
+              "explanation": "Descartada: sirve para asignar costos y no limita permisos."
+            },
+            {
+              "id": "c",
+              "text": "Un límite de permisos asociado al usuario o rol",
+              "explanation": "Es la correcta: establece el máximo de permisos que la identidad puede tener, sin concederlos por sí mismo."
+            },
+            {
+              "id": "d",
+              "text": "Un grupo de seguridad en la instancia",
+              "explanation": "Descartada: controla tráfico de red, no los permisos de IAM."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-07",
+        "title": "Qué hace un límite de permisos",
+        "statement": "Un equipo delega la creación de roles a desarrolladores, pero quiere que ninguno pueda concederse más permisos de los acordados. ¿Qué característica fija el MÁXIMO de permisos que puede tener un rol o usuario?",
+        "concepts": [
+          "límite de permisos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1007
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Listar manualmente el ID de cada cuenta en la política",
+              "explanation": "Descartada: obliga a actualizarla cada vez que cambian las cuentas."
+            },
+            {
+              "id": "b",
+              "text": "Una condición aws:PrincipalOrgID en la política del bucket",
+              "explanation": "Es la correcta: permite el acceso a cualquier entidad de la organización sin listar cuentas."
+            },
+            {
+              "id": "c",
+              "text": "Hacer el bucket público y confiar en la URL secreta",
+              "explanation": "Descartada: cualquiera que conozca la URL accede a los datos."
+            },
+            {
+              "id": "d",
+              "text": "Crear un usuario compartido con una clave para todas las cuentas",
+              "explanation": "Descartada: comparte credenciales de larga duración entre cuentas."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-08",
+        "title": "Restringir un bucket a una organización",
+        "statement": "Una empresa quiere que SOLO las cuentas de su organización de AWS lean un bucket, sin enumerar cada cuenta y con el MENOR mantenimiento. ¿Qué elige?",
+        "concepts": [
+          "aws:PrincipalOrgID",
+          "política de bucket"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition.html",
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1008
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Solo funciona dentro de la misma cuenta",
+              "explanation": "No cumple: también concede acceso entre cuentas."
+            },
+            {
+              "id": "b",
+              "text": "Una política basada en recursos se asocia al recurso, como un bucket",
+              "explanation": "Cumple: define quién puede acceder a ese recurso."
+            },
+            {
+              "id": "c",
+              "text": "Se asocia a un usuario de IAM y no a un recurso",
+              "explanation": "No cumple: describe una política de identidad, no una basada en recursos."
+            },
+            {
+              "id": "d",
+              "text": "Sustituye a las políticas de identidad en todos los servicios",
+              "explanation": "No cumple: no todos los servicios admiten políticas basadas en recursos."
+            },
+            {
+              "id": "e",
+              "text": "Puede conceder acceso a una entidad de otra cuenta sin que asuma un rol",
+              "explanation": "Cumple: es una forma de acceso entre cuentas en servicios que lo admiten."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-09",
+        "title": "Dos afirmaciones sobre políticas basadas en recursos",
+        "statement": "Un equipo compara políticas de identidad y políticas basadas en recursos. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "política basada en recursos"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_identity-vs-resource.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1009
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Se permite, porque el SCP concede el permiso a toda la unidad",
+              "explanation": "Descartada: un SCP no concede permisos."
+            },
+            {
+              "id": "b",
+              "text": "Se permite, porque el usuario está en una cuenta de la organización",
+              "explanation": "Descartada: pertenecer a la organización no concede permisos."
+            },
+            {
+              "id": "c",
+              "text": "Se permite solo si el usuario es administrador de la cuenta",
+              "explanation": "Descartada: la condición de administrador no es un permiso por sí misma."
+            },
+            {
+              "id": "d",
+              "text": "Se deniega, porque un SCP no concede permisos y solo fija el máximo disponible",
+              "explanation": "Es la correcta: hace falta además un permiso explícito de IAM."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-10",
+        "title": "Un SCP no concede permisos",
+        "statement": "Un SCP de una unidad organizativa permite todas las acciones de EC2, pero un usuario de una cuenta miembro no tiene ninguna política de IAM que las permita. ¿Qué explica MEJOR lo que ocurre cuando intenta lanzar una instancia?",
+        "concepts": [
+          "SCP"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
+          "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1010
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Conceden permisos a las identidades de la cuenta miembro",
+              "explanation": "No cumple: un SCP nunca concede permisos."
+            },
+            {
+              "id": "b",
+              "text": "Limitan los permisos de usuarios y roles de las cuentas miembro",
+              "explanation": "Cumple: fijan el máximo de permisos disponible en esas cuentas."
+            },
+            {
+              "id": "c",
+              "text": "Solo se pueden aplicar a una única cuenta",
+              "explanation": "No cumple: pueden aplicarse a la raíz, a unidades organizativas o a cuentas."
+            },
+            {
+              "id": "d",
+              "text": "No afectan a la cuenta de administración de la organización",
+              "explanation": "Cumple: los SCP no se aplican a la cuenta de administración."
+            },
+            {
+              "id": "e",
+              "text": "Sustituyen por completo a las políticas de IAM",
+              "explanation": "No cumple: se combinan con IAM; no las sustituyen."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-11",
+        "title": "Dos hechos sobre los SCP",
+        "statement": "Un equipo diseña la gobernanza de una organización. Selecciona DOS afirmaciones correctas sobre los SCP.",
+        "concepts": [
+          "SCP",
+          "Organizations"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1011
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un usuario de IAM por empleado en cada cuenta",
+              "explanation": "Descartada: obliga a administrar identidades en cada cuenta por separado."
+            },
+            {
+              "id": "b",
+              "text": "AWS IAM Identity Center",
+              "explanation": "Es la correcta: ofrece acceso único y asignación central de permisos a varias cuentas."
+            },
+            {
+              "id": "c",
+              "text": "Amazon Cognito grupos de identidades",
+              "explanation": "Descartada: da credenciales a usuarios de aplicaciones, no a la fuerza laboral."
+            },
+            {
+              "id": "d",
+              "text": "Un bucket con la lista de credenciales del equipo",
+              "explanation": "Descartada: guarda credenciales de forma insegura y sin acceso único."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-12",
+        "title": "Acceso único para la fuerza laboral",
+        "statement": "Una empresa quiere que sus empleados inicien sesión una sola vez y accedan a varias cuentas de AWS con permisos asignados de forma central. ¿Qué servicio es el MEJOR ajuste?",
+        "concepts": [
+          "IAM Identity Center"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1012
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "AWS Control Tower",
+              "explanation": "Es la correcta: configura una landing zone con barandillas preventivas y de detección."
+            },
+            {
+              "id": "b",
+              "text": "Amazon Inspector",
+              "explanation": "Descartada: evalúa vulnerabilidades de cargas de trabajo, no gobierna cuentas."
+            },
+            {
+              "id": "c",
+              "text": "AWS Budgets",
+              "explanation": "Descartada: avisa de gasto y no establece una configuración base de cuentas."
+            },
+            {
+              "id": "d",
+              "text": "Amazon Route 53",
+              "explanation": "Descartada: resuelve nombres y no gobierna cuentas."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-13",
+        "title": "Barandillas en una landing zone",
+        "statement": "Una empresa quiere crear cuentas nuevas con una configuración base y aplicar reglas preventivas y de detección de forma coherente. ¿Qué servicio ofrece el MEJOR entorno de varias cuentas con barandillas gestionadas?",
+        "concepts": [
+          "Control Tower",
+          "barandillas"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/controltower/latest/userguide/what-is-control-tower.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1013
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un grupo de identidades de Cognito",
+              "explanation": "Descartada: entrega credenciales de AWS; no es el directorio de usuarios."
+            },
+            {
+              "id": "b",
+              "text": "Un rol de servicio de EC2",
+              "explanation": "Descartada: es para instancias y no para usuarios finales."
+            },
+            {
+              "id": "c",
+              "text": "Una política de bucket de S3",
+              "explanation": "Descartada: controla acceso a datos y no gestiona usuarios."
+            },
+            {
+              "id": "d",
+              "text": "Un grupo de usuarios de Cognito",
+              "explanation": "Es la correcta: es el directorio de usuarios que gestiona registro e inicio de sesión."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-14",
+        "title": "Autenticar a los usuarios de una aplicación",
+        "statement": "Una aplicación móvil necesita registro e inicio de sesión de sus propios usuarios, con un directorio gestionado. ¿Qué componente de Amazon Cognito es el MÁS adecuado?",
+        "concepts": [
+          "grupos de usuarios de Cognito"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1014
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un grupo de usuarios de Cognito por sí solo",
+              "explanation": "Descartada: autentica usuarios pero no entrega credenciales de AWS por sí solo."
+            },
+            {
+              "id": "b",
+              "text": "El usuario raíz de la cuenta",
+              "explanation": "Descartada: no debe usarse para acceso de aplicaciones."
+            },
+            {
+              "id": "c",
+              "text": "Un grupo de identidades de Cognito",
+              "explanation": "Es la correcta: intercambia la identidad del usuario por credenciales temporales de AWS."
+            },
+            {
+              "id": "d",
+              "text": "Una clave de acceso incrustada en la app",
+              "explanation": "Descartada: es una credencial de larga duración expuesta en la aplicación."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-15",
+        "title": "Credenciales temporales para subir a S3",
+        "statement": "Los usuarios de una aplicación móvil deben subir fotos directamente a S3 con credenciales temporales de AWS de privilegios mínimos. ¿Qué componente de Cognito es el MEJOR para entregar esas credenciales?",
+        "concepts": [
+          "grupos de identidades de Cognito"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1015
+      }
+    },
+    {
+      "unitCode": "AWS-U2.1.5",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Un grupo de identidades sustituye al directorio de usuarios",
+              "explanation": "No cumple: no es un directorio; entrega credenciales."
+            },
+            {
+              "id": "b",
+              "text": "Un grupo de usuarios es un directorio para registro e inicio de sesión",
+              "explanation": "Cumple: gestiona las identidades de los usuarios de la aplicación."
+            },
+            {
+              "id": "c",
+              "text": "Cognito cifra los volúmenes de EBS de la aplicación",
+              "explanation": "No cumple: no es su función."
+            },
+            {
+              "id": "d",
+              "text": "Un grupo de identidades entrega credenciales temporales de AWS",
+              "explanation": "Cumple: permite acceder a servicios de AWS con permisos acotados."
+            },
+            {
+              "id": "e",
+              "text": "Cognito solo sirve para empleados de una empresa",
+              "explanation": "No cumple: está pensado para usuarios de aplicaciones."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.1",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C2"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-16",
+        "title": "Dos funciones de Cognito",
+        "statement": "Un equipo repasa Amazon Cognito. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "Cognito"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html",
+          "https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1016
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "El grupo de seguridad es con estado y la ACL de red es sin estado",
+              "explanation": "Es la correcta: el primero permite la respuesta automáticamente; la segunda exige reglas de salida."
+            },
+            {
+              "id": "b",
+              "text": "Ambos son sin estado y exigen reglas de entrada y de salida",
+              "explanation": "Descartada: el grupo de seguridad sí es con estado."
+            },
+            {
+              "id": "c",
+              "text": "El grupo de seguridad es sin estado y la ACL de red es con estado",
+              "explanation": "Descartada: el funcionamiento real es el contrario al que se indica."
+            },
+            {
+              "id": "d",
+              "text": "Ambos son con estado y no necesitan reglas de salida",
+              "explanation": "Descartada: la ACL de red es sin estado."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-17",
+        "title": "Estado en un grupo de seguridad",
+        "statement": "Una instancia web permite tráfico entrante por el puerto 443. ¿Qué afirmación describe MEJOR cómo trata la respuesta un grupo de seguridad frente a una ACL de red?",
+        "concepts": [
+          "grupo de seguridad",
+          "ACL de red"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+          "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1017
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Ambos evalúan las reglas por número, de menor a mayor",
+              "explanation": "No cumple: solo la ACL de red evalúa por número."
+            },
+            {
+              "id": "b",
+              "text": "Una ACL de red se asocia a la instancia y no a la subred",
+              "explanation": "No cumple: se asocia a la subred."
+            },
+            {
+              "id": "c",
+              "text": "Una ACL de red puede incluir reglas de denegación",
+              "explanation": "Cumple: permite bloquear explícitamente direcciones o rangos."
+            },
+            {
+              "id": "d",
+              "text": "Un grupo de seguridad solo admite reglas de permiso",
+              "explanation": "Cumple: no se pueden crear reglas de denegación en un grupo de seguridad."
+            },
+            {
+              "id": "e",
+              "text": "Un grupo de seguridad se aplica a toda la VPC por defecto",
+              "explanation": "No cumple: se asocia a interfaces de red, no a toda la VPC."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-18",
+        "title": "Dos diferencias entre grupo de seguridad y ACL de red",
+        "statement": "Un equipo compara controles de red de una VPC. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "grupo de seguridad",
+          "ACL de red"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+          "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1018
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Una puerta de enlace NAT en una subred pública",
+              "explanation": "Descartada: saca el tráfico por internet y añade cargos por datos procesados."
+            },
+            {
+              "id": "b",
+              "text": "Una conexión VPN con un centro de datos",
+              "explanation": "Descartada: no es necesaria para llegar a S3 y añade costo."
+            },
+            {
+              "id": "c",
+              "text": "Un punto de enlace de VPC de tipo gateway para S3",
+              "explanation": "Es la correcta: enruta el tráfico a S3 por la red de AWS, sin costo por hora."
+            },
+            {
+              "id": "d",
+              "text": "Una dirección IP elástica en cada instancia",
+              "explanation": "Descartada: exigiría acceso a internet, que se quiere evitar."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-19",
+        "title": "S3 privado desde una subred privada",
+        "statement": "Instancias en una subred privada sin acceso a internet deben leer de S3 sin que el tráfico salga de la red de AWS y con el MENOR costo. ¿Qué elige?",
+        "concepts": [
+          "endpoint de gateway",
+          "S3"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1019
+      }
+    },
+    {
+      "unitCode": "AWS-U2.2.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Los endpoints de gateway existen para S3 y DynamoDB",
+              "explanation": "Cumple: son los dos servicios que admiten este tipo."
+            },
+            {
+              "id": "b",
+              "text": "Un endpoint de gateway funciona con cualquier servicio de AWS",
+              "explanation": "No cumple: solo se aplica a S3 y DynamoDB."
+            },
+            {
+              "id": "c",
+              "text": "Un endpoint de interfaz requiere una puerta de enlace de internet",
+              "explanation": "No cumple: su objetivo es evitar la ruta por internet."
+            },
+            {
+              "id": "d",
+              "text": "Los endpoints de gateway se basan en interfaces de red de la subred",
+              "explanation": "No cumple: es el funcionamiento de los de interfaz."
+            },
+            {
+              "id": "e",
+              "text": "Los endpoints de interfaz usan interfaces de red con IP privada de la subred",
+              "explanation": "Cumple: se basan en AWS PrivateLink."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 1,
+          "task": "1.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C3"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d1-a-20",
+        "title": "Dos hechos sobre los puntos de enlace de VPC",
+        "statement": "Un equipo revisa los puntos de enlace de VPC. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "endpoints de VPC",
+          "PrivateLink"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html",
+          "https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1020
+      }
+    }
+  ]
+}
