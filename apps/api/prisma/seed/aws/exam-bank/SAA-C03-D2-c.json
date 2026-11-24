@@ -1,0 +1,1211 @@
+{
+  "certification": "SAA-C03",
+  "domain": 2,
+  "questions": [
+    {
+      "unitCode": "AWS-U2.8.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "c",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Ambos miden el tamaño de los datos protegidos",
+              "explanation": "No cumple: miden tiempo, no tamaño."
+            },
+            {
+              "id": "b",
+              "text": "El RPO mide cuánto tarda en restablecerse el servicio",
+              "explanation": "No cumple: eso lo mide el RTO."
+            },
+            {
+              "id": "c",
+              "text": "El RTO indica cuánto tiempo puede tardar en restablecerse el servicio",
+              "explanation": "Cumple: define la interrupción máxima aceptable."
+            },
+            {
+              "id": "d",
+              "text": "El RPO indica cuánta pérdida de datos, medida en tiempo, es aceptable",
+              "explanation": "Cumple: define hasta qué punto en el pasado pueden perderse datos."
+            },
+            {
+              "id": "e",
+              "text": "El RTO mide la pérdida de datos aceptable",
+              "explanation": "No cumple: eso lo mide el RPO."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-01",
+        "title": "Dos definiciones de RPO y RTO",
+        "statement": "Una empresa define objetivos de recuperación ante desastres. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "RPO",
+          "RTO"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/introduction.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1201
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Multisitio activo-activo",
+              "explanation": "Descartada: ejecuta plena capacidad en varias regiones a la vez."
+            },
+            {
+              "id": "b",
+              "text": "Luz piloto (pilot light)",
+              "explanation": "Es la correcta: mantiene el núcleo listo y escala al declarar el desastre."
+            },
+            {
+              "id": "c",
+              "text": "Solo copias de seguridad y restauración",
+              "explanation": "Descartada: no mantiene un núcleo ya en funcionamiento."
+            },
+            {
+              "id": "d",
+              "text": "Una única región sin réplica",
+              "explanation": "Descartada: no tiene recuperación en otra región."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-02",
+        "title": "Núcleo siempre listo y el resto apagado",
+        "statement": "Una empresa mantiene replicados los datos críticos en otra región y solo despliega el resto de la infraestructura cuando declara el desastre, con el MENOR costo en espera. ¿Qué estrategia es?",
+        "concepts": [
+          "pilot light"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1202
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Espera templada (warm standby)",
+              "explanation": "Es la correcta: mantiene una copia reducida funcional que se escala al necesitarla."
+            },
+            {
+              "id": "b",
+              "text": "Copia de seguridad y restauración",
+              "explanation": "Descartada: tarda más porque debe reconstruir el entorno."
+            },
+            {
+              "id": "c",
+              "text": "Ningún entorno secundario",
+              "explanation": "Descartada: no ofrece recuperación en otra región."
+            },
+            {
+              "id": "d",
+              "text": "Un único servidor de respaldo apagado",
+              "explanation": "Descartada: no está funcional al declarar el desastre."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-03",
+        "title": "Recuperación en minutos con costo intermedio",
+        "statement": "Un negocio necesita recuperarse en minutos tras un desastre y acepta pagar un entorno reducido pero funcional siempre encendido en otra región. ¿Qué estrategia encaja MEJOR?",
+        "concepts": [
+          "warm standby"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1203
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Copia de seguridad y restauración ofrece la menor interrupción",
+              "explanation": "No cumple: es la de mayor tiempo de recuperación."
+            },
+            {
+              "id": "b",
+              "text": "Copia de seguridad y restauración es la más económica pero la más lenta",
+              "explanation": "Cumple: reconstruye el entorno desde copias."
+            },
+            {
+              "id": "c",
+              "text": "Luz piloto ejecuta una copia completa del entorno todo el tiempo",
+              "explanation": "No cumple: mantiene solo el núcleo."
+            },
+            {
+              "id": "d",
+              "text": "Multisitio activo-activo ofrece la menor interrupción y el mayor costo",
+              "explanation": "Cumple: ejecuta carga completa en varias ubicaciones."
+            },
+            {
+              "id": "e",
+              "text": "Todas las estrategias tienen el mismo costo y tiempo de recuperación",
+              "explanation": "No cumple: difieren en ambos."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-04",
+        "title": "Dos hechos sobre las estrategias de recuperación",
+        "statement": "Un equipo compara estrategias de recuperación ante desastres. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "estrategias de DR"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+          "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-is-different-in-the-cloud.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1204
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.2",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Copia de seguridad y restauración",
+              "explanation": "Descartada: implica un tiempo de recuperación largo."
+            },
+            {
+              "id": "b",
+              "text": "Luz piloto con servidores apagados",
+              "explanation": "Descartada: requiere encender y escalar tras el desastre."
+            },
+            {
+              "id": "c",
+              "text": "Multisitio activo-activo",
+              "explanation": "Es la correcta: sirve tráfico desde varias regiones al mismo tiempo."
+            },
+            {
+              "id": "d",
+              "text": "Una región con instantáneas semanales",
+              "explanation": "Descartada: tiene alto RPO y RTO."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-05",
+        "title": "Casi cero interrupción en dos regiones",
+        "statement": "Un servicio financiero no tolera casi ninguna interrupción y acepta el MAYOR costo para atender tráfico desde dos regiones a la vez. ¿Qué estrategia es la MÁS adecuada?",
+        "concepts": [
+          "activo-activo"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1205
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Scripts distintos en cada instancia",
+              "explanation": "Descartada: dispersan la administración."
+            },
+            {
+              "id": "b",
+              "text": "AWS Backup con planes de copia",
+              "explanation": "Es la correcta: centraliza y automatiza las copias de varios servicios."
+            },
+            {
+              "id": "c",
+              "text": "Amazon Route 53",
+              "explanation": "Descartada: es un servicio DNS."
+            },
+            {
+              "id": "d",
+              "text": "AWS Shield",
+              "explanation": "Descartada: protege contra DDoS y no hace copias."
+            }
+          ],
+          "correctOptionId": "b"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-06",
+        "title": "Copias centralizadas de varios servicios",
+        "statement": "Una empresa quiere definir una única política de copias de seguridad para EBS, RDS y DynamoDB, administrada de forma central. ¿Qué servicio es el MÁS adecuado?",
+        "concepts": [
+          "AWS Backup",
+          "plan de copias"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/aws-backup/latest/devguide/whatisbackup.html",
+          "https://docs.aws.amazon.com/aws-backup/latest/devguide/about-backup-plans.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1206
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "No permite definir periodos de retención",
+              "explanation": "No cumple: los planes definen retención."
+            },
+            {
+              "id": "b",
+              "text": "Puede copiar las copias de seguridad a otra región o a otra cuenta",
+              "explanation": "Cumple: añade resiliencia frente a fallos de región o de cuenta."
+            },
+            {
+              "id": "c",
+              "text": "Solo admite copias dentro de la misma zona de disponibilidad",
+              "explanation": "No cumple: admite copias entre regiones y cuentas."
+            },
+            {
+              "id": "d",
+              "text": "Reemplaza el cifrado de los datos de origen",
+              "explanation": "No cumple: no sustituye el cifrado."
+            },
+            {
+              "id": "e",
+              "text": "Backup Vault Lock aplica un modelo WORM a las copias de un almacén",
+              "explanation": "Cumple: impide borrarlas durante la retención."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-07",
+        "title": "Dos funciones de AWS Backup",
+        "statement": "Un equipo diseña la protección de datos con AWS Backup. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "AWS Backup"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/aws-backup/latest/devguide/cross-region-backup.html",
+          "https://docs.aws.amazon.com/aws-backup/latest/devguide/vault-lock.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1207
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un correo semanal con los datos",
+              "explanation": "Descartada: no es una replicación continua."
+            },
+            {
+              "id": "b",
+              "text": "Amazon CloudFront",
+              "explanation": "Descartada: entrega contenido y no replica servidores."
+            },
+            {
+              "id": "c",
+              "text": "Amazon SQS",
+              "explanation": "Descartada: es una cola de mensajes."
+            },
+            {
+              "id": "d",
+              "text": "AWS Elastic Disaster Recovery",
+              "explanation": "Es la correcta: replica a nivel de bloque a un área de almacenamiento de bajo costo."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-08",
+        "title": "Replicar servidores locales para recuperación",
+        "statement": "Una empresa quiere replicar de forma continua sus servidores locales a AWS para recuperarlos en minutos y pagar poco mientras no haya desastre. ¿Qué servicio es el MEJOR?",
+        "concepts": [
+          "Elastic Disaster Recovery"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/drs/latest/userguide/what-is-drs.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1208
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Ser buckets públicos",
+              "explanation": "Descartada: no es un requisito y expone los datos."
+            },
+            {
+              "id": "b",
+              "text": "Estar en la misma región",
+              "explanation": "Descartada: la replicación entre regiones es posible."
+            },
+            {
+              "id": "c",
+              "text": "Tener activado el versionado",
+              "explanation": "Es la correcta: la replicación de S3 exige versionado en ambos buckets."
+            },
+            {
+              "id": "d",
+              "text": "No tener cifrado",
+              "explanation": "Descartada: el cifrado no impide la replicación."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-09",
+        "title": "Requisito previo para replicar entre buckets",
+        "statement": "Una empresa quiere replicar objetos de un bucket a otro bucket en otra región. ¿Qué requisito es el MÍNIMO necesario en los buckets de origen y destino?",
+        "concepts": [
+          "replicación de S3",
+          "versionado"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html",
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1209
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "a",
+            "c"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Requiere versionado en los buckets de origen y destino",
+              "explanation": "Cumple: es un requisito de la replicación."
+            },
+            {
+              "id": "b",
+              "text": "Funciona sin ningún permiso de IAM",
+              "explanation": "No cumple: requiere un rol con permisos."
+            },
+            {
+              "id": "c",
+              "text": "Admite replicación entre regiones y dentro de la misma región",
+              "explanation": "Cumple: cubre ambos casos de uso."
+            },
+            {
+              "id": "d",
+              "text": "Reemplaza el versionado",
+              "explanation": "No cumple: depende de él."
+            },
+            {
+              "id": "e",
+              "text": "Solo replica hacia buckets públicos",
+              "explanation": "No cumple: no requiere buckets públicos."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-10",
+        "title": "Dos hechos sobre la replicación de S3",
+        "statement": "Un equipo configura la replicación de S3. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "replicación de S3"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1210
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Copiar los snapshots de EBS a la región de recuperación",
+              "explanation": "Es la correcta: permite restaurar el volumen allí."
+            },
+            {
+              "id": "b",
+              "text": "Aumentar el tamaño del volumen",
+              "explanation": "Descartada: no protege frente a un desastre regional."
+            },
+            {
+              "id": "c",
+              "text": "Reiniciar la instancia cada día",
+              "explanation": "Descartada: no crea una copia remota."
+            },
+            {
+              "id": "d",
+              "text": "Desactivar los snapshots",
+              "explanation": "Descartada: elimina la capacidad de recuperación."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-11",
+        "title": "Disponer de un volumen en otra región para recuperación",
+        "statement": "Una empresa quiere poder recrear en otra región el volumen de EBS de una instancia crítica tras un desastre regional. ¿Qué es lo MÁS adecuado?",
+        "concepts": [
+          "snapshot de EBS",
+          "copia entre regiones"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-snapshots.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1211
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.3",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "El modo de capacidad bajo demanda",
+              "explanation": "Descartada: afecta al cobro y no a la recuperación."
+            },
+            {
+              "id": "b",
+              "text": "Un índice secundario global",
+              "explanation": "Descartada: acelera consultas y no recupera datos."
+            },
+            {
+              "id": "c",
+              "text": "Una tabla global",
+              "explanation": "Descartada: replica entre regiones, incluida la sobrescritura errónea."
+            },
+            {
+              "id": "d",
+              "text": "La recuperación a un momento dado (PITR)",
+              "explanation": "Es la correcta: restaura a cualquier segundo dentro del periodo de retención."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-12",
+        "title": "Recuperar una tabla tras un borrado accidental",
+        "statement": "Una aplicación sobrescribe por error datos de una tabla de DynamoDB. ¿Qué función es la MEJOR para restaurar la tabla a un instante anterior del periodo de recuperación?",
+        "concepts": [
+          "recuperación a un momento dado"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1212
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Activar Multi-AZ después del error",
+              "explanation": "Descartada: replica también el daño ya hecho."
+            },
+            {
+              "id": "b",
+              "text": "Crear una réplica de lectura",
+              "explanation": "Descartada: replica el estado actual, ya dañado."
+            },
+            {
+              "id": "c",
+              "text": "Restaurar a un momento anterior a las 14:03",
+              "explanation": "Es la correcta: usa las copias automáticas y los registros para recuperar."
+            },
+            {
+              "id": "d",
+              "text": "Reiniciar la instancia",
+              "explanation": "Descartada: no deshace los cambios."
+            }
+          ],
+          "correctOptionId": "c"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-13",
+        "title": "Volver a un instante antes de una actualización errónea",
+        "statement": "Una actualización errónea dañó datos de una base de datos de RDS a las 14:03. ¿Qué es lo MÁS adecuado para recuperar el estado anterior?",
+        "concepts": [
+          "restauración a un momento dado"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1213
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "d"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "La restauración sobrescribe la instancia original en el mismo punto",
+              "explanation": "No cumple: crea una instancia nueva."
+            },
+            {
+              "id": "b",
+              "text": "Restaurar a un momento dado crea una instancia nueva",
+              "explanation": "Cumple: no sobrescribe la instancia original."
+            },
+            {
+              "id": "c",
+              "text": "Restaurar es instantáneo y sin cambiar el punto de conexión",
+              "explanation": "No cumple: la instancia nueva tiene su propio punto de conexión."
+            },
+            {
+              "id": "d",
+              "text": "Las copias automáticas se conservan durante el periodo de retención configurado",
+              "explanation": "Cumple: definen hasta cuándo se puede restaurar."
+            },
+            {
+              "id": "e",
+              "text": "Las copias automáticas no admiten ningún periodo de retención",
+              "explanation": "No cumple: tienen un periodo de retención."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-14",
+        "title": "Dos hechos sobre restaurar en RDS",
+        "statement": "Un equipo planifica la recuperación de Amazon RDS. Selecciona DOS afirmaciones correctas.",
+        "concepts": [
+          "copias automáticas",
+          "restauración"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html",
+          "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1214
+      }
+    },
+    {
+      "unitCode": "AWS-U2.5.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Réplicas en otra zona con failover automático",
+              "explanation": "Es la correcta: promueve una réplica si falla el principal."
+            },
+            {
+              "id": "b",
+              "text": "Un único nodo sin réplicas",
+              "explanation": "Descartada: es un punto único de fallo."
+            },
+            {
+              "id": "c",
+              "text": "Desactivar la caché",
+              "explanation": "Descartada: elimina el beneficio de la caché."
+            },
+            {
+              "id": "d",
+              "text": "Guardar la caché en un archivo local",
+              "explanation": "Descartada: no es una caché distribuida disponible."
+            }
+          ],
+          "correctOptionId": "a"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-15",
+        "title": "Caché con conmutación por error automática",
+        "statement": "Una caché en memoria de ElastiCache debe seguir disponible si falla el nodo principal, con conmutación por error automática. ¿Qué configuración es la MÁS adecuada?",
+        "concepts": [
+          "ElastiCache",
+          "Multi-AZ"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/BestPractices.html",
+          "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/SelectEngine.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1215
+      }
+    },
+    {
+      "unitCode": "AWS-U2.4.4",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "text": "Un volumen de EBS adjunto a una sola instancia",
+              "explanation": "Descartada: queda ligado a una zona y a una instancia."
+            },
+            {
+              "id": "b",
+              "text": "El almacenamiento de instancia efímero",
+              "explanation": "Descartada: se pierde con la instancia."
+            },
+            {
+              "id": "c",
+              "text": "Un disco local sin copia",
+              "explanation": "Descartada: no es compartido ni resiliente."
+            },
+            {
+              "id": "d",
+              "text": "Amazon EFS con almacenamiento regional",
+              "explanation": "Es la correcta: guarda los datos en varias zonas y se monta desde ellas."
+            }
+          ],
+          "correctOptionId": "d"
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C5"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-16",
+        "title": "Sistema de archivos compartido entre zonas",
+        "statement": "Varias instancias en distintas zonas deben compartir un sistema de archivos que siga disponible si cae una zona. ¿Qué opción es la MEJOR?",
+        "concepts": [
+          "EFS"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/efs/latest/ug/whatisefs.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1216
+      }
+    },
+    {
+      "unitCode": "AWS-U2.8.1",
+      "exercise": {
+        "language": null,
+        "starterCode": null,
+        "solution": null,
+        "harness": null,
+        "quiz": {
+          "kind": "multiple",
+          "selectCount": 2,
+          "correctOptionIds": [
+            "b",
+            "e"
+          ],
+          "options": [
+            {
+              "id": "a",
+              "text": "Recuperar siempre a mano y sin pruebas",
+              "explanation": "No cumple: es lento y propenso a errores."
+            },
+            {
+              "id": "b",
+              "text": "Automatizar la recuperación ante fallos",
+              "explanation": "Cumple: reduce el tiempo de recuperación y los errores humanos."
+            },
+            {
+              "id": "c",
+              "text": "Suponer que un fallo nunca ocurrirá en producción",
+              "explanation": "No cumple: va contra el diseño para el fallo."
+            },
+            {
+              "id": "d",
+              "text": "Mantener un único componente crítico sin respaldo",
+              "explanation": "No cumple: es un punto único de fallo."
+            },
+            {
+              "id": "e",
+              "text": "Probar los procedimientos de recuperación de forma periódica",
+              "explanation": "Cumple: comprueba que la recuperación funciona antes del desastre."
+            }
+          ]
+        },
+        "flashcard": null,
+        "memory": null,
+        "audit": null,
+        "cloudLab": null,
+        "maxAttempts": null,
+        "isPublished": false,
+        "hints": [],
+        "tests": [],
+        "exam": {
+          "certification": "SAA-C03",
+          "domain": 2,
+          "task": "2.2",
+          "pool": "reserved"
+        },
+        "competencies": [
+          "AWS-C11"
+        ],
+        "ladder": "SEMI",
+        "difficulty": 2,
+        "estimatedMin": 3,
+        "type": "QUIZ",
+        "slug": "saa-c03-r-d2-c-17",
+        "title": "Dos prácticas de fiabilidad",
+        "statement": "Un equipo aplica el pilar de fiabilidad del Well-Architected Framework. Selecciona DOS prácticas recomendadas.",
+        "concepts": [
+          "pilar de fiabilidad"
+        ],
+        "sources": [
+          "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html",
+          "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html"
+        ],
+        "order": 1217
+      }
+    }
+  ]
+}
